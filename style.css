@@ -73,22 +73,6 @@ body {
   to { transform: translateY(-80px); }
 }
 
-/* Capa 3 — Sombras rojas suaves */
-.layer-redglow {
-  position: fixed;
-  inset: 0;
-  background:
-    radial-gradient(circle at 50% 10%, rgba(255,0,0,0.25), transparent 60%),
-    radial-gradient(circle at 80% 80%, rgba(255,0,0,0.18), transparent 70%),
-    radial-gradient(circle at 10% 70%, rgba(255,80,0,0.15), transparent 65%);
-  animation: glowMove 14s ease-in-out infinite alternate;
-  z-index: -1;
-}
-
-@keyframes glowMove {
-  from { transform: translateY(0px); }
-  to { transform: translateY(30px); }
-}
 
 /* Partículas doradas */
 body::after {
