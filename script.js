@@ -13,13 +13,15 @@ dojoAmbience.play().catch(() => {
   document.addEventListener("click", () => dojoAmbience.play(), { once: true });
 });
 
-// 🔥 Fade-in suave del ambiente (FASE 8)
+
+// Fade-in más rápido y más inmediato
 let vol = 0;
 const fadeIn = setInterval(() => {
-  vol += 0.01;
-  dojoAmbience.volume = Math.min(vol, 0.15); // volumen final
+  vol += 0.03; // antes 0.01
+  dojoAmbience.volume = Math.min(vol, 0.15);
   if (vol >= 0.15) clearInterval(fadeIn);
-}, 120);
+}, 80); // antes 120
+
 
 // 🎧 Sonido cuando Yumiko responde
 const yumikoSound = new Audio("/varios/musica/doing.mp3");
