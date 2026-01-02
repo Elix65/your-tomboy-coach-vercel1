@@ -240,3 +240,9 @@ button:hover {
     rgba(0,0,0,0.35) 100%
   );
 }
+.layer-wood,
+.layer-shoji,
+.layer-pattern {
+  will-change: transform;
+  transition: transform 0.1s linear;
+}

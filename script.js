@@ -38,3 +38,17 @@ sendBtn.addEventListener("click", () => {
     addMessage("Estoy procesando tu mensaje…", "bot");
   }, 1000);
 });
+
+// Parallax suave del dojo
+document.addEventListener("mousemove", (e) => {
+  const x = (e.clientX / window.innerWidth - 0.5) * 10;
+  const y = (e.clientY / window.innerHeight - 0.5) * 10;
+
+  const wood = document.querySelector(".layer-wood");
+  const shoji = document.querySelector(".layer-shoji");
+  const pattern = document.querySelector(".layer-pattern");
+
+  if (wood) wood.style.transform = `translate(${x}px, ${y}px)`;
+  if (shoji) shoji.style.transform = `translate(${x * 0.6}px, ${y * 0.6}px)`;
+  if (pattern) pattern.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
+});
