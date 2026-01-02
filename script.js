@@ -3,6 +3,20 @@ const userInput = document.getElementById("user-input");
 const sendBtn = document.getElementById("send-btn");
 const typingIndicator = document.getElementById("typing");
 
+// 🎧 Sonido ambiente del dojo
+const dojoAmbience = new Audio("/varios/musica/ambient.mp3");
+dojoAmbience.volume = 0.25;
+dojoAmbience.loop = true;
+
+// Intento de autoplay (si falla, se activa al primer click)
+dojoAmbience.play().catch(() => {
+  document.addEventListener("click", () => dojoAmbience.play(), { once: true });
+});
+
+// 🎧 Sonido cuando Yumiko responde
+const yumikoSound = new Audio("/varios/musica/doing.mp3");
+yumikoSound.volume = 0.4;
+
 function addMessage(text, sender) {
   const message = document.createElement("div");
   message.classList.add("message", sender);
@@ -52,6 +66,10 @@ sendBtn.addEventListener("click", async () => {
     const reply = data.reply || "No pude procesar tu mensaje.";
 
     addMessage(reply, "bot");
+
+    // 🎧 Sonido de Yumiko respondiendo
+    yumikoSound.currentTime = 0;
+    yumikoSound.play();
 
   } catch (error) {
     addMessage("Hubo un error al conectar con Yumiko.", "bot");
