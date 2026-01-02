@@ -1,5 +1,5 @@
 /* ================================
-   FONDO DOJO — 100% CSS, SIN IMÁGENES
+   FONDO DOJO — TEXTURA REAL
    ================================ */
 
 body {
@@ -11,24 +11,20 @@ body {
   background: #050505;
 }
 
-/* Capa 1 — Madera estilizada (repeating gradient) */
+/* Capa 1 — Hinoki oscuro envejecido (imagen real) */
 .layer-wood {
   position: fixed;
   inset: 0;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      #2b1a10 0px,
-      #2b1a10 8px,
-      #24140b 8px,
-      #24140b 16px
-    );
-  opacity: 0.35;
-  filter: blur(1px);
+  background-image: url("/texturas/hinoki-dark-e1.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0.55;
+  filter: brightness(0.85) contrast(1.1);
   z-index: -3;
 }
 
-/* Capa 2 — Patrón tipo papel/dojo muy sutil */
+/* Capa 2 — Patrón japonés sutil (CSS-only) */
 .layer-pattern {
   position: fixed;
   inset: 0;
@@ -48,7 +44,7 @@ body {
   to { transform: translateY(-80px); }
 }
 
-/* Capa 3 — Sombras y glow rojo */
+/* Capa 3 — Sombras rojas suaves */
 .layer-redglow {
   position: fixed;
   inset: 0;
