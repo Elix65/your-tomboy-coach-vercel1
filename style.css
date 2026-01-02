@@ -361,7 +361,7 @@ button:hover {
 .aura-yumiko { animation-delay: 1.4s; }
 
 /* ================================
-   TÍTULO CINEMÁTICO — SUMI‑E + GLOW
+   TÍTULO CINEMÁTICO — SUMI‑E + GLOW (CORREGIDO)
    ================================ */
 
 .title-cinematic {
@@ -372,14 +372,50 @@ button:hover {
   animation-delay: 1.2s;
   letter-spacing: 0.5px;
 
-  /* SUMI‑E */
-  background: linear-gradient(to right, #f7f3e9 0%, #f7f3e9 60%, transparent 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-
-  filter: drop-shadow(0 0 6px rgba(255, 240, 220, 0.15));
+  /* SUMI‑E CORREGIDO (sin cuadrado blanco) */
+  color: #f7f3e9;
+  text-shadow: 0 0 6px rgba(255, 240, 220, 0.15);
 }
+
+/* Glow espiritual */
+.title-cinematic::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 160%;
+  height: 160%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(255, 230, 200, 0.12), transparent 70%);
+  opacity: 0;
+  animation: titleGlow 2.4s ease forwards;
+  animation-delay: 1.6s;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Animaciones del título */
+@keyframes titleReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(-14px);
+    clip-path: inset(0 100% 0 0);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes titleGlow {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
 
 /* Glow espiritual */
 .title-cinematic::after {
