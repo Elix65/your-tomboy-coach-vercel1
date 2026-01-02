@@ -12,7 +12,7 @@ function addMessage(text, sender) {
 
   avatar.src = sender === "user"
     ? "https://i.imgur.com/1XKQFQ2.png"
-    : "https://i.imgur.com/8Km9tLL.png";
+    : "https://copilot.microsoft.com/th/id/BCO.71c599d0-e7fb-4f35-aca0-f60954cec101.png";
 
   const bubble = document.createElement("div");
   bubble.classList.add("bubble");
