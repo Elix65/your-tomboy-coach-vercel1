@@ -24,7 +24,7 @@ function addMessage(text, sender) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-sendBtn.addEventListener("click", () => {
+sendBtn.addEventListener("click", async () => {
   const text = userInput.value.trim();
   if (!text) return;
 
@@ -32,18 +32,27 @@ sendBtn.addEventListener("click", () => {
   userInput.value = "";
 
   typingIndicator.classList.remove("hidden");
-
-  // 🔥 Glow ON cuando Yumiko empieza a escribir
   document.querySelector(".glow-yumiko").style.opacity = 1;
 
-  setTimeout(() => {
-    typingIndicator.classList.add("hidden");
+  try {
+    // 🔥 LLAMADA REAL AL BACKEND
+    const res = await fetch("/api/yumiko", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text })
+    });
 
-    // 🔥 Glow OFF cuando Yumiko termina
-    document.querySelector(".glow-yumiko").style.opacity = 0;
+    const data = await res.json();
+    const reply = data.reply || "No pude procesar tu mensaje.";
 
-    addMessage("Estoy procesando tu mensaje…", "bot");
-  }, 1000);
+    addMessage(reply, "bot");
+
+  } catch (error) {
+    addMessage("Hubo un error al conectar con Yumiko.", "bot");
+  }
+
+  typingIndicator.classList.add("hidden");
+  document.querySelector(".glow-yumiko").style.opacity = 0;
 });
 
 // Parallax suave del dojo
