@@ -29,10 +29,8 @@ body {
   position: fixed;
   inset: 0;
   background:
-    /* Textura suave de papel */
     radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
     radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-    /* Cuadrícula japonesa muy sutil */
     repeating-linear-gradient(
       to right,
       rgba(255,255,255,0.05) 0px,
@@ -72,7 +70,6 @@ body {
   from { transform: translateY(0); }
   to { transform: translateY(-80px); }
 }
-
 
 /* ================================
    CONTENEDOR Y CHAT
@@ -226,4 +223,20 @@ button:hover {
 
 .hidden {
   display: none;
+}
+
+/* ================================
+   VIÑETA ANIME (FASE 1)
+   ================================ */
+
+.vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9;
+  background: radial-gradient(
+    circle at center,
+    rgba(0,0,0,0) 40%,
+    rgba(0,0,0,0.35) 100%
+  );
 }
