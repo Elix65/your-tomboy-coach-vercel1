@@ -5,7 +5,7 @@ const typingIndicator = document.getElementById("typing");
 
 // 🎧 Sonido ambiente del dojo
 const dojoAmbience = new Audio("/varios/musica/ambient.mp3");
-dojoAmbience.volume = 0.25;
+dojoAmbience.volume = 0.15; // 🔥 volumen ajustado (antes 0.25)
 dojoAmbience.loop = true;
 
 // Intento de autoplay (si falla, se activa al primer click)
@@ -15,7 +15,7 @@ dojoAmbience.play().catch(() => {
 
 // 🎧 Sonido cuando Yumiko responde
 const yumikoSound = new Audio("/varios/musica/doing.mp3");
-yumikoSound.volume = 0.4;
+yumikoSound.volume = 0.65; // 🔥 volumen ajustado (antes 0.4)
 
 function addMessage(text, sender) {
   const message = document.createElement("div");
