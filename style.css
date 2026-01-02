@@ -51,7 +51,7 @@ body {
   z-index: -2.5;
 }
 
-/* Capa 2 — Patrón japonés sutil (CSS-only) */
+/* Capa 2 — Patrón japonés sutil */
 .layer-pattern {
   position: fixed;
   inset: 0;
@@ -240,6 +240,7 @@ button:hover {
     rgba(0,0,0,0.35) 100%
   );
 }
+
 .layer-wood,
 .layer-shoji,
 .layer-pattern {
@@ -257,6 +258,7 @@ button:hover {
   pointer-events: none;
   z-index: 8;
 }
+
 /* Partículas anime flotando */
 .particles-anime {
   position: fixed;
@@ -286,8 +288,10 @@ button:hover {
   transition: opacity 0.4s ease, transform 0.6s ease;
 }
 
+/* ================================
+   SUMI‑E EN MENSAJES
+   ================================ */
 
-/* Animación estilo tinta japonesa para mensajes de Yumiko */
 .message.bot .bubble {
   animation: sumiReveal 0.6s ease forwards;
   transform-origin: left center;
@@ -309,7 +313,11 @@ button:hover {
     transform: scale(1);
   }
 }
-/* Modo Cinemático — Entrada Anime */
+
+/* ================================
+   MODO CINEMÁTICO — ENTRADA ANIME
+   ================================ */
+
 .cinematic-overlay {
   position: fixed;
   inset: 0;
@@ -343,7 +351,7 @@ button:hover {
   100% { opacity: 1; transform: scale(1); }
 }
 
-/* Delay para cada capa (profundidad cinematográfica) */
+/* Delay para cada capa */
 .layer-wood { animation-delay: 0.3s; }
 .layer-shoji { animation-delay: 0.45s; }
 .layer-pattern { animation-delay: 0.6s; }
@@ -352,40 +360,45 @@ button:hover {
 .glow-yumiko { animation-delay: 1.2s; }
 .aura-yumiko { animation-delay: 1.4s; }
 
-/* Entrada Cinemática del Título */
+/* ================================
+   TÍTULO CINEMÁTICO — SUMI‑E + GLOW
+   ================================ */
+
 .title-cinematic {
+  position: relative;
   opacity: 0;
   transform: translateY(-12px);
   animation: titleReveal 1.6s ease forwards;
-  animation-delay: 1.2s; /* aparece después del fade del dojo */
+  animation-delay: 1.2s;
   letter-spacing: 0.5px;
-}
 
-/* Efecto sumi-e (pincel japonés) */
-.title-cinematic {
+  /* SUMI‑E */
   background: linear-gradient(to right, #f7f3e9 0%, #f7f3e9 60%, transparent 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   color: transparent;
+
   filter: drop-shadow(0 0 6px rgba(255, 240, 220, 0.15));
 }
 
-/* Glow espiritual suave */
+/* Glow espiritual */
 .title-cinematic::after {
   content: "";
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 140%;
-  height: 140%;
+  width: 160%;
+  height: 160%;
   transform: translate(-50%, -50%);
   background: radial-gradient(circle, rgba(255, 230, 200, 0.12), transparent 70%);
   opacity: 0;
   animation: titleGlow 2.4s ease forwards;
   animation-delay: 1.6s;
   pointer-events: none;
+  z-index: -1;
 }
 
-/* Animaciones */
+/* Animaciones del título */
 @keyframes titleReveal {
   0% {
     opacity: 0;
