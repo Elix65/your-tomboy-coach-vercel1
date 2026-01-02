@@ -11,7 +11,7 @@ body {
   background: #050505;
 }
 
-/* Capa 1 — Hinoki oscuro envejecido (imagen real) */
+/* Capa 1 — Hinoki oscuro envejecido */
 .layer-wood {
   position: fixed;
   inset: 0;
@@ -24,34 +24,22 @@ body {
   z-index: -3;
 }
 
-/* Capa Shoji — Papel japonés translúcido */
+/* Capa Shoji */
 .layer-shoji {
   position: fixed;
   inset: 0;
   background:
     radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
     radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-    repeating-linear-gradient(
-      to right,
-      rgba(255,255,255,0.05) 0px,
-      rgba(255,255,255,0.05) 1px,
-      transparent 1px,
-      transparent 40px
-    ),
-    repeating-linear-gradient(
-      to bottom,
-      rgba(255,255,255,0.05) 0px,
-      rgba(255,255,255,0.05) 1px,
-      transparent 1px,
-      transparent 40px
-    );
+    repeating-linear-gradient(to right, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 40px),
+    repeating-linear-gradient(to bottom, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 40px);
   background-size: 3px 3px, 4px 4px, 40px 40px, 40px 40px;
   mix-blend-mode: soft-light;
   opacity: 0.28;
   z-index: -2.5;
 }
 
-/* Capa 2 — Patrón japonés sutil */
+/* Capa patrón japonés */
 .layer-pattern {
   position: fixed;
   inset: 0;
@@ -99,21 +87,66 @@ body {
   border: 2px solid #ff4d4d;
 }
 
+/* ================================
+   TÍTULOS
+   ================================ */
+
+/* Título general */
 .title {
   font-size: 34px;
   font-weight: bold;
   color: #f7f3e9;
-  text-shadow: 0 0 6px rgba(255, 240, 220, 0.25); /* glow cálido y suave */
+  text-shadow: 0 0 6px rgba(255, 240, 220, 0.25);
 }
 
+/* Título cinematográfico (para ambos títulos) */
+.title-cinematic {
+  position: relative;
+  opacity: 0;
+  transform: translateY(-12px);
+  animation: titleReveal 1.6s ease forwards;
+  animation-delay: 1.2s;
+  letter-spacing: 0.5px;
+  color: #f7f3e9;
+  text-shadow: 0 0 6px rgba(255, 240, 220, 0.15);
+}
 
+/* Glow espiritual */
+.title-cinematic::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 160%;
+  height: 160%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, rgba(255, 230, 200, 0.12), transparent 70%);
+  opacity: 0;
+  animation: titleGlow 2.4s ease forwards;
+  animation-delay: 1.6s;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Subtítulo zen */
 .subtitle {
   text-align: center;
   margin-bottom: 20px;
-  opacity: 0.85;
+  opacity: 0;
+  animation: subtitleZen 2.4s ease forwards;
+  animation-delay: 2s;
+  color: #f7f3e9;
 }
 
-/* Caja de chat */
+@keyframes subtitleZen {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 0.85; transform: translateY(0); }
+}
+
+/* ================================
+   CHAT
+   ================================ */
+
 .chat-box {
   background: rgba(0, 0, 0, 0.6);
   height: 60vh;
@@ -227,7 +260,7 @@ button:hover {
 }
 
 /* ================================
-   VIÑETA ANIME (FASE 1)
+   VIÑETA ANIME
    ================================ */
 
 .vignette {
@@ -235,11 +268,7 @@ button:hover {
   inset: 0;
   pointer-events: none;
   z-index: 999;
-  background: radial-gradient(
-    circle at center,
-    rgba(0,0,0,0) 40%,
-    rgba(0,0,0,0.35) 100%
-  );
+  background: radial-gradient(circle at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.35) 100%);
 }
 
 .layer-wood,
@@ -249,7 +278,7 @@ button:hover {
   transition: transform 0.1s linear;
 }
 
-/* Glow dinámico cuando Yumiko responde */
+/* Glow dinámico */
 .glow-yumiko {
   position: fixed;
   inset: 0;
@@ -260,7 +289,7 @@ button:hover {
   z-index: 8;
 }
 
-/* Partículas anime flotando */
+/* Partículas anime */
 .particles-anime {
   position: fixed;
   inset: 0;
@@ -277,7 +306,7 @@ button:hover {
   to { background-position: -200px -200px; }
 }
 
-/* Aura dinámica de Yumiko */
+/* Aura */
 .aura-yumiko {
   position: fixed;
   inset: 0;
@@ -362,80 +391,9 @@ button:hover {
 .aura-yumiko { animation-delay: 1.4s; }
 
 /* ================================
-   TÍTULO CINEMÁTICO — SUMI‑E + GLOW (CORREGIDO)
+   ANIMACIONES DEL TÍTULO
    ================================ */
 
-.title-cinematic {
-  position: relative;
-  opacity: 0;
-  transform: translateY(-12px);
-  animation: titleReveal 1.6s ease forwards;
-  animation-delay: 1.2s;
-  letter-spacing: 0.5px;
-
-  /* SUMI‑E CORREGIDO (sin cuadrado blanco) */
-  color: #f7f3e9;
-  text-shadow: 0 0 6px rgba(255, 240, 220, 0.15);
-}
-
-/* Glow espiritual */
-.title-cinematic::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 160%;
-  height: 160%;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(circle, rgba(255, 230, 200, 0.12), transparent 70%);
-  opacity: 0;
-  animation: titleGlow 2.4s ease forwards;
-  animation-delay: 1.6s;
-  pointer-events: none;
-  z-index: -1;
-}
-
-/* Animaciones del título */
-@keyframes titleReveal {
-  0% {
-    opacity: 0;
-    transform: translateY(-14px);
-    clip-path: inset(0 100% 0 0);
-  }
-  60% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-    clip-path: inset(0 0 0 0);
-  }
-}
-
-@keyframes titleGlow {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-
-/* Glow espiritual */
-.title-cinematic::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 160%;
-  height: 160%;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(circle, rgba(255, 230, 200, 0.12), transparent 70%);
-  opacity: 0;
-  animation: titleGlow 2.4s ease forwards;
-  animation-delay: 1.6s;
-  pointer-events: none;
-  z-index: -1;
-}
-
-/* Animaciones del título */
 @keyframes titleReveal {
   0% {
     opacity: 0;
