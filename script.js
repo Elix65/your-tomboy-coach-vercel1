@@ -3,9 +3,9 @@ const userInput = document.getElementById("user-input");
 const sendBtn = document.getElementById("send-btn");
 const typingIndicator = document.getElementById("typing");
 
-// 🎧 Sonido ambiente del dojo
+// 🎧 Sonido ambiente del dojo (FASE 8 — fade-in)
 const dojoAmbience = new Audio("/varios/musica/ambient.mp3");
-dojoAmbience.volume = 0.15; // 🔥 volumen ajustado (antes 0.25)
+dojoAmbience.volume = 0; // empieza en silencio para el fade-in
 dojoAmbience.loop = true;
 
 // Intento de autoplay (si falla, se activa al primer click)
@@ -13,9 +13,17 @@ dojoAmbience.play().catch(() => {
   document.addEventListener("click", () => dojoAmbience.play(), { once: true });
 });
 
+// 🔥 Fade-in suave del ambiente (FASE 8)
+let vol = 0;
+const fadeIn = setInterval(() => {
+  vol += 0.01;
+  dojoAmbience.volume = Math.min(vol, 0.15); // volumen final
+  if (vol >= 0.15) clearInterval(fadeIn);
+}, 120);
+
 // 🎧 Sonido cuando Yumiko responde
 const yumikoSound = new Audio("/varios/musica/doing.mp3");
-yumikoSound.volume = 0.65; // 🔥 volumen ajustado (antes 0.4)
+yumikoSound.volume = 0.65;
 
 function addMessage(text, sender) {
   const message = document.createElement("div");
@@ -50,12 +58,11 @@ sendBtn.addEventListener("click", async () => {
   // 🔥 Glow ON
   document.querySelector(".glow-yumiko").style.opacity = 1;
 
-  // 🔥 Aura ON (FASE 5)
+  // 🔥 Aura ON
   document.querySelector(".aura-yumiko").style.opacity = 1;
   document.querySelector(".aura-yumiko").style.transform = "scale(1.15)";
 
   try {
-    // 🔥 LLAMADA REAL AL BACKEND
     const res = await fetch("/api/yumiko", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -80,7 +87,7 @@ sendBtn.addEventListener("click", async () => {
   // 🔥 Glow OFF
   document.querySelector(".glow-yumiko").style.opacity = 0;
 
-  // 🔥 Aura OFF (FASE 5)
+  // 🔥 Aura OFF
   document.querySelector(".aura-yumiko").style.opacity = 0;
   document.querySelector(".aura-yumiko").style.transform = "scale(1)";
 });

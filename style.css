@@ -309,3 +309,45 @@ button:hover {
     transform: scale(1);
   }
 }
+/* Modo Cinemático — Entrada Anime */
+.cinematic-overlay {
+  position: fixed;
+  inset: 0;
+  background: black;
+  z-index: 9999;
+  opacity: 1;
+  pointer-events: none;
+  animation: cinematicFade 2.2s ease forwards;
+}
+
+@keyframes cinematicFade {
+  0% { opacity: 1; }
+  40% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* Aparición suave de capas */
+.layer-wood,
+.layer-shoji,
+.layer-pattern,
+.vignette,
+.particles-anime,
+.glow-yumiko,
+.aura-yumiko {
+  opacity: 0;
+  animation: layerReveal 1.8s ease forwards;
+}
+
+@keyframes layerReveal {
+  0% { opacity: 0; transform: scale(1.02); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Delay para cada capa (profundidad cinematográfica) */
+.layer-wood { animation-delay: 0.3s; }
+.layer-shoji { animation-delay: 0.45s; }
+.layer-pattern { animation-delay: 0.6s; }
+.vignette { animation-delay: 0.8s; }
+.particles-anime { animation-delay: 1s; }
+.glow-yumiko { animation-delay: 1.2s; }
+.aura-yumiko { animation-delay: 1.4s; }
