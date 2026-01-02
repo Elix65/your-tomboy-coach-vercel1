@@ -257,3 +257,19 @@ button:hover {
   pointer-events: none;
   z-index: 8;
 }
+/* Partículas anime flotando */
+.particles-anime {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 7;
+  background-image: radial-gradient(circle, rgba(255,80,80,0.12) 1px, transparent 1px);
+  background-size: 4px 4px;
+  animation: particlesFloat 60s linear infinite;
+  opacity: 0.2;
+}
+
+@keyframes particlesFloat {
+  from { background-position: 0 0; }
+  to { background-position: -200px -200px; }
+}
