@@ -1,15 +1,8 @@
-<<<<<<< HEAD
 /* Fondo general */
 body {
   margin: 0;
   padding: 0;
   background: linear-gradient(180deg, #0a0a0a, #1a0000);
-=======
-body {
-  margin: 0;
-  padding: 0;
-  background: #0d0d0d;
->>>>>>> 0b2a9a1dc9c901d8ceffac29c6a027b9fe906b20
   font-family: 'Segoe UI', sans-serif;
   color: white;
   overflow: hidden;
@@ -23,20 +16,13 @@ body::before {
   left: 0;
   width: 100%;
   height: 100%;
-<<<<<<< HEAD
   background-image: radial-gradient(rgba(255, 200, 50, 0.3) 2px, transparent 2px);
   background-size: 3px 3px;
   animation: particles 10s linear infinite;
-=======
-  background-image: radial-gradient(rgba(255, 200, 50, 0.4) 2px, transparent 2px);
-  background-size: 3px 3px;
-  animation: particles 8s linear infinite;
->>>>>>> 0b2a9a1dc9c901d8ceffac29c6a027b9fe906b20
   pointer-events: none;
 }
 
 @keyframes particles {
-<<<<<<< HEAD
   from { transform: translateY(-5%); }
   to { transform: translateY(5%); }
 }
@@ -45,54 +31,30 @@ body::before {
 .container {
   width: 100%;
   max-width: 480px;
-=======
-  from { transform: translateY(-10%); }
-  to { transform: translateY(10%); }
-}
-
-.container {
-  width: 100%;
-  max-width: 450px;
->>>>>>> 0b2a9a1dc9c901d8ceffac29c6a027b9fe906b20
   margin: auto;
   padding-top: 40px;
 }
 
-<<<<<<< HEAD
-/* Título aa */
+/* Título */
 .title {
   text-align: center;
   font-size: 34px;
   font-weight: bold;
   color: #ff4d4d;
   text-shadow: 0 0 10px rgba(255, 50, 50, 0.6);
-=======
-.title {
-  text-align: center;
-  font-size: 32px;
-  font-weight: bold;
-  color: #ff4d4d;
->>>>>>> 0b2a9a1dc9c901d8ceffac29c6a027b9fe906b20
 }
 
 .subtitle {
   text-align: center;
   margin-bottom: 20px;
-<<<<<<< HEAD
   opacity: 0.8;
 }
 
 /* Caja de chat */
-=======
-  opacity: 0.7;
-}
-
->>>>>>> 0b2a9a1dc9c901d8ceffac29c6a027b9fe906b20
 .chat-box {
   background: rgba(255, 255, 255, 0.05);
   height: 60vh;
   padding: 15px;
-<<<<<<< HEAD
   border-radius: 12px;
   overflow-y: auto;
   backdrop-filter: blur(8px);
@@ -151,32 +113,6 @@ body::before {
 }
 
 /* Input */
-=======
-  border-radius: 10px;
-  overflow-y: auto;
-  backdrop-filter: blur(6px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.message {
-  margin-bottom: 12px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  max-width: 80%;
-  line-height: 1.4;
-}
-
-.user {
-  background: #ff4d4d;
-  margin-left: auto;
-}
-
-.bot {
-  background: rgba(255, 255, 255, 0.15);
-  border-left: 3px solid #ff4d4d;
-}
-
->>>>>>> 0b2a9a1dc9c901d8ceffac29c6a027b9fe906b20
 .input-area {
   display: flex;
   margin-top: 15px;
@@ -188,11 +124,8 @@ input {
   border-radius: 8px;
   border: none;
   outline: none;
-<<<<<<< HEAD
   background: rgba(255, 255, 255, 0.1);
   color: white;
-=======
->>>>>>> 0b2a9a1dc9c901d8ceffac29c6a027b9fe906b20
 }
 
 button {
@@ -204,7 +137,6 @@ button {
   color: white;
   cursor: pointer;
   font-weight: bold;
-<<<<<<< HEAD
   transition: 0.2s;
 }
 
@@ -213,6 +145,13 @@ button:hover {
 }
 
 /* Typing indicator */
-=======
+.typing {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+  opacity: 0.8;
 }
->>>>>>> 0b2a9a1dc9c901d8ceffac29c6a027b9fe906b20
+
+.hidden {
+  display: none;
+}
