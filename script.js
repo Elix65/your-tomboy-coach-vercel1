@@ -33,8 +33,15 @@ sendBtn.addEventListener("click", () => {
 
   typingIndicator.classList.remove("hidden");
 
+  // 🔥 Glow ON cuando Yumiko empieza a escribir
+  document.querySelector(".glow-yumiko").style.opacity = 1;
+
   setTimeout(() => {
     typingIndicator.classList.add("hidden");
+
+    // 🔥 Glow OFF cuando Yumiko termina
+    document.querySelector(".glow-yumiko").style.opacity = 0;
+
     addMessage("Estoy procesando tu mensaje…", "bot");
   }, 1000);
 });

@@ -246,3 +246,14 @@ button:hover {
   will-change: transform;
   transition: transform 0.1s linear;
 }
+
+/* Glow dinámico cuando Yumiko responde */
+.glow-yumiko {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 50% 50%, rgba(255,80,80,0.25), transparent 70%);
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 8;
+}
