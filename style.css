@@ -1,5 +1,5 @@
 /* ================================
-   FONDO DOJO — 3 CAPAS PARALLAX
+   FONDO DOJO — VERSION PRO
    ================================ */
 
 body {
@@ -8,10 +8,10 @@ body {
   font-family: 'Segoe UI', sans-serif;
   color: white;
   overflow: hidden;
-  background: #000;
+  background: #0a0a0a;
 }
 
-/* Capa 1 — Madera japonesa */
+/* Capa 1 — Madera japonesa (muy tenue) */
 .layer-wood {
   position: fixed;
   top: 0;
@@ -21,11 +21,12 @@ body {
   background-image: url("https://i.imgur.com/8kZP0oF.jpeg");
   background-size: cover;
   background-position: center;
-  opacity: 0.25;
+  opacity: 0.12; /* BAJAMOS MUCHO LA OPACIDAD */
+  filter: blur(2px);
   z-index: -3;
 }
 
-/* Capa 2 — Patrón japonés Seigaiha */
+/* Capa 2 — Patrón japonés Seigaiha (ultra sutil) */
 .layer-pattern {
   position: fixed;
   top: 0;
@@ -33,33 +34,34 @@ body {
   width: 100%;
   height: 100%;
   background-image: url("https://i.imgur.com/4bX5x0G.png");
-  background-size: 600px;
-  opacity: 0.08;
-  animation: patternMove 40s linear infinite;
+  background-size: 400px;
+  opacity: 0.05; /* CASI INVISIBLE */
+  mix-blend-mode: overlay; /* SE INTEGRA MEJOR */
+  animation: patternMove 60s linear infinite;
   z-index: -2;
 }
 
 @keyframes patternMove {
   from { transform: translateY(0); }
-  to { transform: translateY(-200px); }
+  to { transform: translateY(-150px); }
 }
 
-/* Capa 3 — Sombras rojas dinámicas */
+/* Capa 3 — Sombras rojas suaves */
 .layer-redglow {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background: radial-gradient(circle at 50% 20%, rgba(255,0,0,0.25), transparent 60%),
-              radial-gradient(circle at 80% 80%, rgba(255,0,0,0.15), transparent 70%);
-  animation: glowMove 12s ease-in-out infinite alternate;
+  background: radial-gradient(circle at 50% 20%, rgba(255,0,0,0.18), transparent 60%),
+              radial-gradient(circle at 80% 80%, rgba(255,0,0,0.10), transparent 70%);
+  animation: glowMove 14s ease-in-out infinite alternate;
   z-index: -1;
 }
 
 @keyframes glowMove {
   from { transform: translateY(0px); }
-  to { transform: translateY(40px); }
+  to { transform: translateY(30px); }
 }
 
 /* ================================
@@ -73,16 +75,16 @@ body::after {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: radial-gradient(rgba(255, 200, 50, 0.4) 2px, transparent 2px);
+  background-image: radial-gradient(rgba(255, 200, 50, 0.25) 2px, transparent 2px);
   background-size: 3px 3px;
-  animation: particles 12s linear infinite;
+  animation: particles 14s linear infinite;
   pointer-events: none;
   z-index: -1;
 }
 
 @keyframes particles {
-  from { transform: translateY(-5%); }
-  to { transform: translateY(5%); }
+  from { transform: translateY(-4%); }
+  to { transform: translateY(4%); }
 }
 
 /* ================================
@@ -97,6 +99,22 @@ body::after {
   position: relative;
   z-index: 10;
 }
+
+.chat-box {
+  background: rgba(0, 0, 0, 0.55); /* MÁS OSCURO PARA CONTRASTE */
+  height: 60vh;
+  padding: 15px;
+  border-radius: 12px;
+  overflow-y: auto;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 0 25px rgba(255, 0, 0, 0.25);
+  scroll-behavior: smooth;
+}
+
+/* ================================
+   RESTO DEL DISEÑO (igual que antes)
+   ================================ */
 
 .header {
   display: flex;
@@ -125,22 +143,6 @@ body::after {
   margin-bottom: 20px;
   opacity: 0.8;
 }
-
-.chat-box {
-  background: rgba(0, 0, 0, 0.45);
-  height: 60vh;
-  padding: 15px;
-  border-radius: 12px;
-  overflow-y: auto;
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  box-shadow: 0 0 25px rgba(255, 0, 0, 0.25);
-  scroll-behavior: smooth;
-}
-
-/* ================================
-   MENSAJES
-   ================================ */
 
 .message {
   display: flex;
@@ -188,10 +190,6 @@ body::after {
   border-bottom-left-radius: 4px;
 }
 
-/* ================================
-   INPUT
-   ================================ */
-
 .input-area {
   display: flex;
   margin-top: 15px;
@@ -222,10 +220,6 @@ button {
 button:hover {
   background: #ff1a1a;
 }
-
-/* ================================
-   TYPING
-   ================================ */
 
 .typing {
   display: flex;
