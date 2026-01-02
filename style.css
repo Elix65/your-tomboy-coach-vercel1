@@ -74,23 +74,6 @@ body {
 }
 
 
-/* Partículas doradas */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background-image: radial-gradient(rgba(255, 200, 50, 0.25) 2px, transparent 2px);
-  background-size: 3px 3px;
-  animation: particles 14s linear infinite;
-  pointer-events: none;
-  z-index: -1;
-}
-
-@keyframes particles {
-  from { transform: translateY(-4%); }
-  to { transform: translateY(4%); }
-}
-
 /* ================================
    CONTENEDOR Y CHAT
    ================================ */
