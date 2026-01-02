@@ -5,27 +5,38 @@ const typingIndicator = document.getElementById("typing");
 
 // 🎧 Sonido ambiente del dojo (FASE 8 — fade-in)
 const dojoAmbience = new Audio("/varios/musica/ambient.mp3");
-dojoAmbience.volume = 0; // empieza en silencio para el fade-in
+dojoAmbience.volume = 0; 
 dojoAmbience.loop = true;
 
 // Intento de autoplay (si falla, se activa al primer click)
-dojoAmbience.play().catch(() => {
-  document.addEventListener("click", () => dojoAmbience.play(), { once: true });
+dojoAmbience.play().then(() => {
+  startFadeIn();
+}).catch(() => {
+  document.addEventListener("click", () => {
+    dojoAmbience.play();
+    startFadeIn();
+  }, { once: true });
 });
 
+// 🔁 Loop garantizado incluso con fade-in
+dojoAmbience.addEventListener("ended", () => {
+  dojoAmbience.currentTime = 0;
+  dojoAmbience.play();
+});
 
 // Fade-in más rápido y más inmediato
-let vol = 0;
-const fadeIn = setInterval(() => {
-  vol += 0.03; // antes 0.01
-  dojoAmbience.volume = Math.min(vol, 0.15);
-  if (vol >= 0.15) clearInterval(fadeIn);
-}, 80); // antes 120
-
+function startFadeIn() {
+  let vol = 0;
+  const fadeIn = setInterval(() => {
+    vol += 0.03;
+    dojoAmbience.volume = Math.min(vol, 0.10); // 🔉 música más baja
+    if (vol >= 0.10) clearInterval(fadeIn);
+  }, 80);
+}
 
 // 🎧 Sonido cuando Yumiko responde
 const yumikoSound = new Audio("/varios/musica/doing.mp3");
-yumikoSound.volume = 0.65;
+yumikoSound.volume = 0.85; // 🔔 ting más fuerte
 
 function addMessage(text, sender) {
   const message = document.createElement("div");
