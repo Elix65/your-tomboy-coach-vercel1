@@ -24,6 +24,35 @@ body {
   z-index: -3;
 }
 
+/* Capa Shoji — Papel japonés translúcido */
+.layer-shoji {
+  position: fixed;
+  inset: 0;
+  background:
+    /* Textura suave de papel */
+    radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+    radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
+    /* Cuadrícula japonesa muy sutil */
+    repeating-linear-gradient(
+      to right,
+      rgba(255,255,255,0.05) 0px,
+      rgba(255,255,255,0.05) 1px,
+      transparent 1px,
+      transparent 40px
+    ),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.05) 0px,
+      rgba(255,255,255,0.05) 1px,
+      transparent 1px,
+      transparent 40px
+    );
+  background-size: 3px 3px, 4px 4px, 40px 40px, 40px 40px;
+  mix-blend-mode: soft-light;
+  opacity: 0.28;
+  z-index: -2.5;
+}
+
 /* Capa 2 — Patrón japonés sutil (CSS-only) */
 .layer-pattern {
   position: fixed;
