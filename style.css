@@ -103,8 +103,9 @@ body {
   font-size: 34px;
   font-weight: bold;
   color: #f7f3e9;
-  text-shadow: 0 0 10px rgba(255, 50, 50, 0.6);
+  text-shadow: 0 0 6px rgba(255, 240, 220, 0.25); /* glow cálido y suave */
 }
+
 
 .subtitle {
   text-align: center;
