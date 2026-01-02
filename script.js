@@ -32,7 +32,13 @@ sendBtn.addEventListener("click", async () => {
   userInput.value = "";
 
   typingIndicator.classList.remove("hidden");
+
+  // 🔥 Glow ON
   document.querySelector(".glow-yumiko").style.opacity = 1;
+
+  // 🔥 Aura ON (FASE 5)
+  document.querySelector(".aura-yumiko").style.opacity = 1;
+  document.querySelector(".aura-yumiko").style.transform = "scale(1.15)";
 
   try {
     // 🔥 LLAMADA REAL AL BACKEND
@@ -52,7 +58,13 @@ sendBtn.addEventListener("click", async () => {
   }
 
   typingIndicator.classList.add("hidden");
+
+  // 🔥 Glow OFF
   document.querySelector(".glow-yumiko").style.opacity = 0;
+
+  // 🔥 Aura OFF (FASE 5)
+  document.querySelector(".aura-yumiko").style.opacity = 0;
+  document.querySelector(".aura-yumiko").style.transform = "scale(1)";
 });
 
 // Parallax suave del dojo

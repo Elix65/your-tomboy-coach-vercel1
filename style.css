@@ -273,3 +273,15 @@ button:hover {
   from { background-position: 0 0; }
   to { background-position: -200px -200px; }
 }
+
+/* Aura dinámica de Yumiko */
+.aura-yumiko {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  background: radial-gradient(circle at center, rgba(255, 60, 60, 0.18), transparent 70%);
+  opacity: 0;
+  transform: scale(1);
+  transition: opacity 0.4s ease, transform 0.6s ease;
+}
