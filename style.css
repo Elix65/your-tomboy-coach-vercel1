@@ -91,7 +91,6 @@ body {
    TÍTULOS
    ================================ */
 
-/* Título general */
 .title {
   font-size: 34px;
   font-weight: bold;
@@ -99,7 +98,6 @@ body {
   text-shadow: 0 0 6px rgba(255, 240, 220, 0.25);
 }
 
-/* Título cinematográfico (para ambos títulos) */
 .title-cinematic {
   position: relative;
   opacity: 0;
@@ -111,7 +109,6 @@ body {
   text-shadow: 0 0 6px rgba(255, 240, 220, 0.15);
 }
 
-/* Glow espiritual */
 .title-cinematic::after {
   content: "";
   position: absolute;
@@ -128,7 +125,6 @@ body {
   z-index: -1;
 }
 
-/* Subtítulo zen */
 .subtitle {
   text-align: center;
   margin-bottom: 20px;
@@ -271,14 +267,22 @@ button:hover {
   background: radial-gradient(circle at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.35) 100%);
 }
 
+/* ================================
+   PARALLAX — ARREGLADO
+   ================================ */
+
 .layer-wood,
 .layer-shoji,
 .layer-pattern {
   will-change: transform;
-  transition: transform 0.1s linear;
+  transition: transform 0.05s ease-out;
+  animation: none; /* evita conflicto con layerReveal */
 }
 
-/* Glow dinámico */
+/* ================================
+   GLOW Y AURA — ARREGLADOS
+   ================================ */
+
 .glow-yumiko {
   position: fixed;
   inset: 0;
@@ -289,7 +293,6 @@ button:hover {
   z-index: 8;
 }
 
-/* Partículas anime */
 .particles-anime {
   position: fixed;
   inset: 0;
@@ -306,7 +309,6 @@ button:hover {
   to { background-position: -200px -200px; }
 }
 
-/* Aura */
 .aura-yumiko {
   position: fixed;
   inset: 0;
@@ -364,7 +366,6 @@ button:hover {
   100% { opacity: 0; }
 }
 
-/* Aparición suave de capas */
 .layer-wood,
 .layer-shoji,
 .layer-pattern,
@@ -381,7 +382,6 @@ button:hover {
   100% { opacity: 1; transform: scale(1); }
 }
 
-/* Delay para cada capa */
 .layer-wood { animation-delay: 0.3s; }
 .layer-shoji { animation-delay: 0.45s; }
 .layer-pattern { animation-delay: 0.6s; }

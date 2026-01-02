@@ -5,7 +5,7 @@ const typingIndicator = document.getElementById("typing");
 
 // 🎧 Sonido ambiente del dojo (FASE 8 — fade-in)
 const dojoAmbience = new Audio("/varios/musica/ambient.mp3");
-dojoAmbience.volume = 0; 
+dojoAmbience.volume = 0;
 dojoAmbience.loop = true;
 
 // Intento de autoplay (si falla, se activa al primer click)
@@ -24,19 +24,19 @@ dojoAmbience.addEventListener("ended", () => {
   dojoAmbience.play();
 });
 
-// Fade-in más rápido y más inmediato
+// Fade-in suave
 function startFadeIn() {
   let vol = 0;
   const fadeIn = setInterval(() => {
     vol += 0.03;
-    dojoAmbience.volume = Math.min(vol, 0.10); // 🔉 música más baja
+    dojoAmbience.volume = Math.min(vol, 0.10); // música más baja
     if (vol >= 0.10) clearInterval(fadeIn);
   }, 80);
 }
 
 // 🎧 Sonido cuando Yumiko responde
 const yumikoSound = new Audio("/varios/musica/doing.mp3");
-yumikoSound.volume = 0.85; // 🔔 ting más fuerte
+yumikoSound.volume = 0.85; // ting más fuerte
 
 function addMessage(text, sender) {
   const message = document.createElement("div");
@@ -105,10 +105,10 @@ sendBtn.addEventListener("click", async () => {
   document.querySelector(".aura-yumiko").style.transform = "scale(1)";
 });
 
-// Parallax suave del dojo
+// Parallax suave del dojo — PROFUNDO Y ARREGLADO
 document.addEventListener("mousemove", (e) => {
-  const x = (e.clientX / window.innerWidth - 0.5) * 10;
-  const y = (e.clientY / window.innerHeight - 0.5) * 10;
+  const x = (e.clientX / window.innerWidth - 0.5) * 20; // más profundidad
+  const y = (e.clientY / window.innerHeight - 0.5) * 20;
 
   const wood = document.querySelector(".layer-wood");
   const shoji = document.querySelector(".layer-shoji");
