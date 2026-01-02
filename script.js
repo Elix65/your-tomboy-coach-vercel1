@@ -1,11 +1,15 @@
 const chatBox = document.getElementById("chat-box");
 const input = document.getElementById("user-input");
 const sendBtn = document.getElementById("send-btn");
+<<<<<<< HEAD
 const typing = document.getElementById("typing");
+=======
+>>>>>>> 0b2a9a1dc9c901d8ceffac29c6a027b9fe906b20
 
 function addMessage(text, sender) {
   const msg = document.createElement("div");
   msg.classList.add("message", sender);
+<<<<<<< HEAD
 
   const avatar = document.createElement("img");
   avatar.classList.add("avatar");
@@ -21,6 +25,9 @@ function addMessage(text, sender) {
   msg.appendChild(avatar);
   msg.appendChild(bubble);
 
+=======
+  msg.textContent = text;
+>>>>>>> 0b2a9a1dc9c901d8ceffac29c6a027b9fe906b20
   chatBox.appendChild(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
@@ -37,8 +44,11 @@ async function sendMessage() {
   addMessage(text, "user");
   input.value = "";
 
+<<<<<<< HEAD
   typing.classList.remove("hidden");
 
+=======
+>>>>>>> 0b2a9a1dc9c901d8ceffac29c6a027b9fe906b20
   const response = await fetch("/api/yumiko", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -46,8 +56,11 @@ async function sendMessage() {
   });
 
   const data = await response.json();
+<<<<<<< HEAD
 
   typing.classList.add("hidden");
 
+=======
+>>>>>>> 0b2a9a1dc9c901d8ceffac29c6a027b9fe906b20
   addMessage(data.reply, "bot");
 }
