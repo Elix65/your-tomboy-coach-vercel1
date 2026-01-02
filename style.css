@@ -15,7 +15,7 @@ body {
 .layer-wood {
   position: fixed;
   inset: 0;
-  background-image: url("/varios/texturas/hinoki-dark-e1.png");
+  background-image: url("/varios/textures/hinoki-dark-e1.png");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
