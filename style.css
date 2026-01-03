@@ -80,11 +80,12 @@ body {
 }
 
 .avatar-header {
-  width: 60px;
-  height: 60px;
+  width: 72px; /* más grande para que se vea bien */
+  height: 72px;
   border-radius: 50%;
   margin-right: 12px;
-  border: 2px solid #ff4d4d;
+  object-fit: cover; /* asegura que no se deforme */
+  border: none; /* elimina el borde rojo */
 }
 
 /* ================================
