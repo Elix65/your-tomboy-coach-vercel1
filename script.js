@@ -1,6 +1,13 @@
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
 const sendBtn = document.getElementById("send-btn");
+userInput.addEventListener("keydown", function(event) {
+  if (event.key === "Enter") {
+    event.preventDefault(); // evita salto de línea
+    sendBtn.click(); // simula clic en el botón
+  }
+});
+
 const typingIndicator = document.getElementById("typing");
 
 // 🎧 Audio 1 — Ambiente inicial (NO loop)
