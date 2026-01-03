@@ -96,11 +96,13 @@ function detectProfileData(userMessage) {
 
 const typingIndicator = document.getElementById("typing");
 
-const ambienceIntro = new Audio("/varios/musica/ambiente-inicial.mp3");
+
+
+const ambienceIntro = document.getElementById("ambience-intro");
 ambienceIntro.volume = 0;
 ambienceIntro.loop = false;
 
-const ambienceLoop = new Audio("/varios/musica/ambiente-bucle.mp3");
+const ambienceLoop = document.getElementById("ambience-loop");
 ambienceLoop.volume = 0;
 ambienceLoop.loop = true;
 
