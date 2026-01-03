@@ -1,31 +1,111 @@
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
 const sendBtn = document.getElementById("send-btn");
+
 userInput.addEventListener("keydown", function(event) {
   if (event.key === "Enter") {
-    event.preventDefault(); // evita salto de línea
-    sendBtn.click(); // simula clic en el botón
+    event.preventDefault();
+    sendBtn.click();
   }
 });
 
+// =========================
+// MEMORIA DEL DOJO
+// =========================
+
+// Historial del chat
+function saveMessage(role, content) {
+    const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
+    history.push({ role, content });
+    localStorage.setItem("chatHistory", JSON.stringify(history));
+}
+
+function loadHistory() {
+    const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
+    history.forEach(msg => {
+        addMessage(msg.content, msg.role === "assistant" ? "bot" : "user");
+    });
+    return history;
+}
+
+// Perfil del usuario
+let profile = JSON.parse(localStorage.getItem("profile")) || {
+    name: null,
+    goal: null,
+    challengeStart: null
+};
+
+function saveProfile() {
+    localStorage.setItem("profile", JSON.stringify(profile));
+}
+
+// Día del reto
+function getChallengeDay() {
+    if (!profile.challengeStart) return null;
+
+    const start = new Date(profile.challengeStart);
+    const now = new Date();
+
+    const diff = Math.floor((now - start) / (1000 * 60 * 60 * 24)) + 1;
+    return diff;
+}
+
+// Pregunta tsundere de Yumiko
+function yumikoChallengePrompt() {
+    const day = getChallengeDay();
+    const username = profile.name || "usuario-kun";
+
+    if (!day) return null;
+
+    return `Hey ${username}, mi memoria es mala... ¿por qué día del reto vamos? ¡No vayas a mentirme, idiota!`;
+}
+
+// Mensaje inicial solo la primera vez
+function startIfNew() {
+    const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
+
+    if (history.length === 0) {
+        const firstMessage = "Bienvenido al dojo. Estoy lista para entrenar contigo.";
+        addMessage(firstMessage, "bot");
+        saveMessage("assistant", firstMessage);
+    }
+}
+
+// Detectar nombre y meta
+function detectProfileData(userMessage) {
+
+    // Nombre
+    if (userMessage.toLowerCase().includes("mi nombre es")) {
+        const name = userMessage.split("mi nombre es")[1].trim();
+        profile.name = name;
+        saveProfile();
+    }
+
+    // Meta
+    if (userMessage.toLowerCase().includes("mi meta es")) {
+        const goal = userMessage.split("mi meta es")[1].trim();
+        profile.goal = goal;
+        profile.challengeStart = new Date().toISOString();
+        saveProfile();
+    }
+}
+
+// ===============================
+// AUDIO Y EFECTOS
+// ===============================
+
 const typingIndicator = document.getElementById("typing");
 
-// 🎧 Audio 1 — Ambiente inicial (NO loop)
 const ambienceIntro = new Audio("/varios/musica/ambiente-inicial.mp3");
 ambienceIntro.volume = 0;
 ambienceIntro.loop = false;
 
-// 🎧 Audio 2 — Ambiente en bucle (loop infinito)
 const ambienceLoop = new Audio("/varios/musica/ambiente-bucle.mp3");
 ambienceLoop.volume = 0;
 ambienceLoop.loop = true;
 
-// ===============================
-// 🔥 AUTOPLAY + FALLBACK
-// ===============================
-
 ambienceIntro.play().then(() => {
-  fadeIn(ambienceIntro, 0.12); // volumen inicial suave
+  fadeIn(ambienceIntro, 0.12);
 }).catch(() => {
   document.addEventListener("click", () => {
     ambienceIntro.play();
@@ -33,19 +113,11 @@ ambienceIntro.play().then(() => {
   }, { once: true });
 });
 
-// ===============================
-// 🔄 CUANDO TERMINA EL INICIAL → ENTRA EL LOOP
-// ===============================
-
 ambienceIntro.addEventListener("ended", () => {
   ambienceLoop.currentTime = 0;
   ambienceLoop.play();
-  fadeIn(ambienceLoop, 0.18); // un poco más fuerte si querés
+  fadeIn(ambienceLoop, 0.18);
 });
-
-// ===============================
-// 🌅 FUNCIÓN DE FADE-IN GENÉRICA
-// ===============================
 
 function fadeIn(audio, targetVolume) {
   let vol = 0;
@@ -56,20 +128,17 @@ function fadeIn(audio, targetVolume) {
   }, 80);
 }
 
-
-// 🎧 Sonido cuando Yumiko responde
 const yumikoSound = new Audio("/varios/musica/doing.mp3");
-yumikoSound.volume = 0.85; // ting más fuerte
+yumikoSound.volume = 0.85;
 
 function addMessage(text, sender) {
   const message = document.createElement("div");
   message.classList.add("message", sender);
 
-  // Solo Yumiko tiene avatar
   if (sender === "bot") {
     const avatar = document.createElement("img");
     avatar.classList.add("avatar-small");
-    avatar.src = "varios/yumiko/yumiko-face-full-face.png"; // ruta corregida
+    avatar.src = "varios/yumiko/yumiko-face-full-face.png";
     message.appendChild(avatar);
   }
 
@@ -83,19 +152,23 @@ function addMessage(text, sender) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
+// ===============================
+// ENVÍO DE MENSAJES
+// ===============================
+
 sendBtn.addEventListener("click", async () => {
   const text = userInput.value.trim();
   if (!text) return;
 
   addMessage(text, "user");
+  saveMessage("user", text);
+  detectProfileData(text);
+
   userInput.value = "";
 
   typingIndicator.classList.remove("hidden");
 
-  // 🔥 Glow ON
   document.querySelector(".glow-yumiko").style.opacity = 1;
-
-  // 🔥 Aura ON
   document.querySelector(".aura-yumiko").style.opacity = 1;
   document.querySelector(".aura-yumiko").style.transform = "scale(1.15)";
 
@@ -110,8 +183,8 @@ sendBtn.addEventListener("click", async () => {
     const reply = data.reply || "No pude procesar tu mensaje.";
 
     addMessage(reply, "bot");
+    saveMessage("assistant", reply);
 
-    // 🎧 Sonido de Yumiko respondiendo
     yumikoSound.currentTime = 0;
     yumikoSound.play();
 
@@ -121,17 +194,17 @@ sendBtn.addEventListener("click", async () => {
 
   typingIndicator.classList.add("hidden");
 
-  // 🔥 Glow OFF
   document.querySelector(".glow-yumiko").style.opacity = 0;
-
-  // 🔥 Aura OFF
   document.querySelector(".aura-yumiko").style.opacity = 0;
   document.querySelector(".aura-yumiko").style.transform = "scale(1)";
 });
 
-// Parallax suave del dojo — PROFUNDO Y ARREGLADO
+// ===============================
+// PARALLAX
+// ===============================
+
 document.addEventListener("mousemove", (e) => {
-  const x = (e.clientX / window.innerWidth - 0.5) * 20; // más profundidad
+  const x = (e.clientX / window.innerWidth - 0.5) * 20;
   const y = (e.clientY / window.innerHeight - 0.5) * 20;
 
   const wood = document.querySelector(".layer-wood");
@@ -142,3 +215,18 @@ document.addEventListener("mousemove", (e) => {
   if (shoji) shoji.style.transform = `translate(${x * 0.6}px, ${y * 0.6}px)`;
   if (pattern) pattern.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
 });
+
+// ===============================
+// INICIALIZACIÓN
+// ===============================
+
+window.onload = () => {
+    loadHistory();
+    startIfNew();
+
+    const prompt = yumikoChallengePrompt();
+    if (prompt) {
+        addMessage(prompt, "bot");
+        saveMessage("assistant", prompt);
+    }
+};
