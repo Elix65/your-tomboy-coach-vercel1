@@ -156,11 +156,12 @@ body {
   scroll-behavior: smooth;
   z-index: 1;
 }
+
 .chat-box::before {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: url('varios\yumiko\yumiko fondo chat.png'); /* ← aquí va tu ruta */
+  background-image: url('/varios/yumiko/yumikochat.png'); /* ← ruta correcta */
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center bottom;
@@ -168,6 +169,7 @@ body {
   pointer-events: none;
   z-index: 0;
 }
+
 
 
 /* ================================
