@@ -433,3 +433,109 @@ button:hover {
   0% { opacity: 0; }
   100% { opacity: 1; }
 }
+
+
+/* ============================
+   📱 RESPONSIVE — TABLET Y MÓVIL
+   ============================ */
+
+@media (max-width: 768px) {
+
+  body {
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .container {
+    width: 92%;
+    max-width: none;
+    padding-top: 20px;
+  }
+
+  .title {
+    font-size: 1.8rem;
+    text-align: center;
+  }
+
+  .subtitle {
+    font-size: 1rem;
+    text-align: center;
+  }
+
+  .avatar-header {
+    width: 64px;
+    height: 64px;
+  }
+
+  .chat-box {
+    height: 55vh;
+    padding: 10px;
+    font-size: 0.95rem;
+  }
+
+  .bubble {
+    max-width: 85%;
+    font-size: 0.9rem;
+    padding: 10px 14px;
+  }
+
+  .input-area {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  #user-input {
+    width: 100%;
+    font-size: 1rem;
+    padding: 12px;
+  }
+
+  #send-btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 1rem;
+  }
+
+  /* Glow y aura más suaves */
+  .glow-yumiko {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+
+  .aura-yumiko {
+    opacity: 0.25;
+    transform: scale(0.9);
+  }
+
+  /* Capas del dojo más contenidas */
+  .layer-wood,
+  .layer-shoji,
+  .layer-pattern {
+    background-size: cover;
+    background-position: center;
+  }
+}
+
+/* ============================
+   📱 MÓVILES MUY PEQUEÑOS
+   ============================ */
+
+@media (max-width: 480px) {
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .chat-box {
+    height: 50vh;
+  }
+
+  .bubble {
+    font-size: 0.85rem;
+  }
+
+  .avatar-small {
+    width: 28px;
+    height: 28px;
+  }
+}
