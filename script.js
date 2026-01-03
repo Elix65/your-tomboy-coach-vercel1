@@ -58,17 +58,18 @@ function addMessage(text, sender) {
   const message = document.createElement("div");
   message.classList.add("message", sender);
 
-  const avatar = document.createElement("img");
-  avatar.classList.add("avatar-small");
-  avatar.src = sender === "user"
-    ? "https://cdn-icons-png.flaticon.com/512/847/847969.png"
-    : "https://copilot.microsoft.com/th/id/BCO.71c599d0-e7fb-4f35-aca0-f60954cec101.png";
+  // Solo Yumiko tiene avatar
+  if (sender === "bot") {
+    const avatar = document.createElement("img");
+    avatar.classList.add("avatar-small");
+    avatar.src = "varios/yumiko/yumiko-face-full-face.png"; // ruta corregida
+    message.appendChild(avatar);
+  }
 
   const bubble = document.createElement("div");
   bubble.classList.add("bubble");
   bubble.textContent = text;
 
-  message.appendChild(avatar);
   message.appendChild(bubble);
   chatBox.appendChild(message);
 
