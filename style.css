@@ -162,7 +162,7 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: url('/varios/yumiko/yumikochat.png'); /* ← ruta correcta */
+  background-image: url('/varios/yumiko/yumiko-face-full-face.png'); /* ← ruta correcta */
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center bottom;
