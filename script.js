@@ -3,36 +3,52 @@ const userInput = document.getElementById("user-input");
 const sendBtn = document.getElementById("send-btn");
 const typingIndicator = document.getElementById("typing");
 
-// 🎧 Sonido ambiente del dojo (FASE 8 — fade-in)
-const dojoAmbience = new Audio("/varios/musica/ambient.mp3");
-dojoAmbience.volume = 0;
-dojoAmbience.loop = true;
+// 🎧 Audio 1 — Ambiente inicial (NO loop)
+const ambienceIntro = new Audio("/varios/musica/ambiente-inicial.mp3");
+ambienceIntro.volume = 0;
+ambienceIntro.loop = false;
 
-// Intento de autoplay (si falla, se activa al primer click)
-dojoAmbience.play().then(() => {
-  startFadeIn();
+// 🎧 Audio 2 — Ambiente en bucle (loop infinito)
+const ambienceLoop = new Audio("/varios/musica/ambiente-bucle.mp3");
+ambienceLoop.volume = 0;
+ambienceLoop.loop = true;
+
+// ===============================
+// 🔥 AUTOPLAY + FALLBACK
+// ===============================
+
+ambienceIntro.play().then(() => {
+  fadeIn(ambienceIntro, 0.12); // volumen inicial suave
 }).catch(() => {
   document.addEventListener("click", () => {
-    dojoAmbience.play();
-    startFadeIn();
+    ambienceIntro.play();
+    fadeIn(ambienceIntro, 0.12);
   }, { once: true });
 });
 
-// 🔁 Loop garantizado incluso con fade-in
-dojoAmbience.addEventListener("ended", () => {
-  dojoAmbience.currentTime = 0;
-  dojoAmbience.play();
+// ===============================
+// 🔄 CUANDO TERMINA EL INICIAL → ENTRA EL LOOP
+// ===============================
+
+ambienceIntro.addEventListener("ended", () => {
+  ambienceLoop.currentTime = 0;
+  ambienceLoop.play();
+  fadeIn(ambienceLoop, 0.18); // un poco más fuerte si querés
 });
 
-// Fade-in suave
-function startFadeIn() {
+// ===============================
+// 🌅 FUNCIÓN DE FADE-IN GENÉRICA
+// ===============================
+
+function fadeIn(audio, targetVolume) {
   let vol = 0;
-  const fadeIn = setInterval(() => {
-    vol += 0.03;
-    dojoAmbience.volume = Math.min(vol, 0.10); // música más baja
-    if (vol >= 0.10) clearInterval(fadeIn);
+  const fade = setInterval(() => {
+    vol += 0.02;
+    audio.volume = Math.min(vol, targetVolume);
+    if (vol >= targetVolume) clearInterval(fade);
   }, 80);
 }
+
 
 // 🎧 Sonido cuando Yumiko responde
 const yumikoSound = new Audio("/varios/musica/doing.mp3");
