@@ -178,8 +178,12 @@ sendBtn.addEventListener("click", async () => {
     const res = await fetch("/api/yumiko", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text })
-    });
+      body: JSON.stringify({
+      message: text,
+      profile: profile
+    })
+  });
+
 
     const data = await res.json();
     const reply = data.reply || "No pude procesar tu mensaje.";

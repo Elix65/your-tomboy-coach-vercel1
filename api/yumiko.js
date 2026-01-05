@@ -1,6 +1,37 @@
 import fs from "fs";
 import path from "path";
 
+// ===============================
+// MEMORIA DEL DOJO (BACKEND)
+// ===============================
+global.yumikoSession = global.yumikoSession || {
+  meta: null,
+  name: null,
+  challengeStart: null
+};
+
+// Detectar meta automáticamente
+function detectarMeta(texto) {
+  const t = texto.toLowerCase();
+
+  if (t.includes("ingresos") && t.includes("uber")) {
+    return "aumentar ingresos como conductor de Uber en 15 días";
+  }
+
+  return null;
+}
+
+// Calcular día del reto
+function calcularDia(startDate) {
+  if (!startDate) return null;
+
+  const start = new Date(startDate);
+  const now = new Date();
+
+  const diff = Math.floor((now - start) / (1000 * 60 * 60 * 24)) + 1;
+  return diff;
+}
+
 export default async function handler(req, res) {
   if (req.method === "GET") {
     return res.status(200).json({ status: "ok", message: "Yumiko API está viva" });
@@ -11,7 +42,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { message } = req.body || {};
+    const { message, profile } = req.body || {};
 
     if (!message) {
       return res.status(400).json({ error: "Falta el campo 'message' en el cuerpo." });
@@ -22,10 +53,75 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: "Falta la variable de entorno DEEPSEEK_KEY." });
     }
 
-    // Cargar prompt externo
+    // ===============================
+    // SINCRONIZAR PERFIL DEL FRONTEND
+    // ===============================
+    if (profile?.name) {
+      global.yumikoSession.name = profile.name;
+    }
+
+    if (profile?.goal) {
+      global.yumikoSession.meta = profile.goal;
+    }
+
+    if (profile?.challengeStart) {
+      global.yumikoSession.challengeStart = profile.challengeStart;
+    }
+
+    // ===============================
+    // DETECTAR META AUTOMÁTICAMENTE
+    // ===============================
+    const posibleMeta = detectarMeta(message);
+    if (posibleMeta) {
+      global.yumikoSession.meta = posibleMeta;
+
+      // Si no había fecha de inicio, la creamos
+      if (!global.yumikoSession.challengeStart) {
+        global.yumikoSession.challengeStart = new Date().toISOString();
+      }
+    }
+
+    const dia = calcularDia(global.yumikoSession.challengeStart);
+
+    // ===============================
+    // CARGAR PROMPT BASE
+    // ===============================
     const promptPath = path.join(process.cwd(), "prompt.txt");
     const basePrompt = fs.readFileSync(promptPath, "utf8");
 
+    // ===============================
+    // CONSTRUIR MENSAJES PARA DEEPSEEK
+    // ===============================
+    const messages = [
+      { role: "system", content: basePrompt }
+    ];
+
+    if (global.yumikoSession.name) {
+      messages.push({
+        role: "system",
+        content: `El nombre del usuario es ${global.yumikoSession.name}.`
+      });
+    }
+
+    if (global.yumikoSession.meta) {
+      messages.push({
+        role: "system",
+        content: `La meta del usuario es: ${global.yumikoSession.meta}.`
+      });
+    }
+
+    if (dia) {
+      messages.push({
+        role: "system",
+        content: `Hoy es el día ${dia} del reto de 15 días.`
+      });
+    }
+
+    messages.push({ role: "user", content: message });
+
+    // ===============================
+    // LLAMADA A DEEPSEEK
+    // ===============================
     const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -34,10 +130,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: "deepseek-chat",
-        messages: [
-          { role: "system", content: basePrompt },
-          { role: "user", content: message }
-        ]
+        messages
       })
     });
 
