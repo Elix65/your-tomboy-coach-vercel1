@@ -564,3 +564,17 @@ button:hover {
   border-color: white;
   box-shadow: 0 0 16px rgba(255, 77, 77, 0.4);
 }
+/* ============================
+   📱 RESPONSIVE — BOTÓN RESET
+   ============================ */
+
+@media (max-width: 768px) {
+  #reset-chat {
+    bottom: auto;
+    top: 20px;
+    left: 20px;
+    padding: 8px 14px;
+    font-size: 13px;
+    z-index: 9999;
+  }
+}
