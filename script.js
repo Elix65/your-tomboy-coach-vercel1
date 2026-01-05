@@ -237,6 +237,60 @@ if (resetBtn) {
         location.reload();
     });
 }
+// ===============================
+// BOTÓN: REGENERAR RESPUESTA
+// ===============================
+
+const regenBtn = document.getElementById("regenerate-btn");
+
+if (regenBtn) {
+    regenBtn.addEventListener("click", async () => {
+
+        const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
+
+        // Encontrar el último mensaje del usuario
+        const lastUserMessage = [...history].reverse().find(msg => msg.role === "user");
+
+        if (!lastUserMessage) {
+            addMessage("No hay mensaje para regenerar.", "bot");
+            return;
+        }
+
+        typingIndicator.classList.remove("hidden");
+
+        try {
+            const res = await fetch("/api/yumiko", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    message: lastUserMessage.content,
+                    profile: profile
+                })
+            });
+
+            const data = await res.json();
+            const newReply = data.reply || "No pude regenerar la respuesta.";
+
+            // Reemplazar la última respuesta del bot en pantalla
+            const botMessages = document.querySelectorAll(".message.bot .bubble");
+            if (botMessages.length > 0) {
+                botMessages[botMessages.length - 1].textContent = newReply;
+            }
+
+            // Guardar en historial
+            history.push({ role: "assistant", content: newReply });
+            localStorage.setItem("chatHistory", JSON.stringify(history));
+
+            yumikoSound.currentTime = 0;
+            yumikoSound.play();
+
+        } catch (error) {
+            addMessage("Hubo un error al regenerar la respuesta.", "bot");
+        }
+
+        typingIndicator.classList.add("hidden");
+    });
+}
 
 // ===============================
 // INICIALIZACIÓN

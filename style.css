@@ -578,3 +578,28 @@ button:hover {
     z-index: 9999;
   }
 }
+
+#regenerate-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  padding: 10px 18px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #f7f3e9;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(255, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(6px);
+}
+
+#regenerate-btn:hover {
+  background: rgba(255, 77, 77, 0.85);
+  color: white;
+  border-color: white;
+  box-shadow: 0 0 16px rgba(255, 77, 77, 0.4);
+}
