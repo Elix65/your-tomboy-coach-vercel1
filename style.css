@@ -81,12 +81,12 @@ body {
 }
 
 .avatar-header {
-  width: 72px; /* más grande para que se vea bien */
+  width: 72px;
   height: 72px;
   border-radius: 50%;
   margin-right: 12px;
-  object-fit: cover; /* asegura que no se deforme */
-  border: none; /* elimina el borde rojo */
+  object-fit: cover;
+  border: none;
 }
 
 /* ================================
@@ -163,7 +163,7 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: url('/varios/yumiko/yumikochat.png'); /* ← ruta original */
+  background-image: url('/varios/yumiko/yumikochat.png');
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center bottom;
@@ -171,9 +171,6 @@ body {
   pointer-events: none;
   z-index: 0;
 }
-
-
-
 
 /* ================================
    MENSAJES
@@ -226,11 +223,13 @@ body {
 }
 
 /* ================================
-   INPUT
+   INPUT + BOTONES
    ================================ */
 
 .input-area {
   display: flex;
+  flex-direction: column;
+  gap: 10px;
   margin-top: 15px;
 }
 
@@ -244,8 +243,8 @@ input {
   color: white;
 }
 
-button {
-  margin-left: 10px;
+/* SOLO el botón Enviar */
+.input-area > button {
   padding: 12px 20px;
   background: #ff4d4d;
   border: none;
@@ -256,8 +255,64 @@ button {
   transition: 0.2s;
 }
 
-button:hover {
+.input-area > button:hover {
   background: #ff1a1a;
+}
+
+/* ================================
+   BOTONES EXTRA
+   ================================ */
+
+.extra-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.extra-buttons button {
+  padding: 10px 16px;
+  background: rgba(0, 0, 0, 0.75);
+  color: #f7f3e9;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(255, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(6px);
+}
+
+.extra-buttons button:hover {
+  background: rgba(255, 77, 77, 0.85);
+  color: white;
+  border-color: white;
+  box-shadow: 0 0 16px rgba(255, 77, 77, 0.4);
+}
+
+/* ================================
+   ANIMACIÓN REGENERANDO
+   ================================ */
+
+#regenerate-btn.loading {
+  pointer-events: none;
+  opacity: 0.6;
+  background: rgba(255, 77, 77, 0.5);
+  position: relative;
+}
+
+#regenerate-btn.loading::after {
+  content: "…";
+  position: absolute;
+  right: 12px;
+  animation: dots 1s infinite;
+}
+
+@keyframes dots {
+  0% { content: "…"; }
+  33% { content: "."; }
+  66% { content: ".."; }
+  100% { content: "…"; }
 }
 
 /* ================================
@@ -296,11 +351,11 @@ button:hover {
 .layer-pattern {
   will-change: transform;
   transition: transform 0.05s ease-out;
-  animation: none; /* evita conflicto con layerReveal */
+  animation: none;
 }
 
 /* ================================
-   GLOW Y AURA — ARREGLADOS
+   GLOW Y AURA
    ================================ */
 
 .glow-yumiko {
@@ -411,41 +466,10 @@ button:hover {
 .aura-yumiko { animation-delay: 1.4s; }
 
 /* ================================
-   ANIMACIONES DEL TÍTULO
+   RESPONSIVE — TABLET Y MÓVIL
    ================================ */
 
-@keyframes titleReveal {
-  0% {
-    opacity: 0;
-    transform: translateY(-14px);
-    clip-path: inset(0 100% 0 0);
-  }
-  60% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-    clip-path: inset(0 0 0 0);
-  }
-}
-
-@keyframes titleGlow {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
-}
-
-
-/* ============================
-   📱 RESPONSIVE — TABLET Y MÓVIL
-   ============================ */
-
 @media (max-width: 768px) {
-
-  body {
-    overflow-x: hidden;
-    overflow-y: auto;
-  }
 
   .container {
     width: 92%;
@@ -497,29 +521,20 @@ button:hover {
     font-size: 1rem;
   }
 
-  /* Glow y aura más suaves */
-  .glow-yumiko {
-    opacity: 0.35;
-    transform: scale(0.8);
+  .extra-buttons {
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .aura-yumiko {
-    opacity: 0.25;
-    transform: scale(0.9);
-  }
-
-  /* Capas del dojo más contenidas */
-  .layer-wood,
-  .layer-shoji,
-  .layer-pattern {
-    background-size: cover;
-    background-position: center;
+  .extra-buttons button {
+    width: 100%;
+    font-size: 15px;
   }
 }
 
-/* ============================
-   📱 MÓVILES MUY PEQUEÑOS
-   ============================ */
+/* ================================
+   MÓVILES MUY PEQUEÑOS
+   ================================ */
 
 @media (max-width: 480px) {
 
@@ -538,45 +553,5 @@ button:hover {
   .avatar-small {
     width: 28px;
     height: 28px;
-  }
-}
-.extra-buttons {
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
-  justify-content: flex-end;
-}
-
-.extra-buttons button {
-  padding: 10px 16px;
-  background: rgba(0, 0, 0, 0.75);
-  color: #f7f3e9;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: bold;
-  cursor: pointer;
-  box-shadow: 0 0 12px rgba(255, 0, 0, 0.2);
-  transition: all 0.3s ease;
-  backdrop-filter: blur(6px);
-}
-
-.extra-buttons button:hover {
-  background: rgba(255, 77, 77, 0.85);
-  color: white;
-  border-color: white;
-  box-shadow: 0 0 16px rgba(255, 77, 77, 0.4);
-}
-
-/* Responsive: en móviles, los botones van en columna */
-@media (max-width: 768px) {
-  .extra-buttons {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .extra-buttons button {
-    width: 100%;
-    font-size: 15px;
   }
 }

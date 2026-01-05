@@ -8,17 +8,6 @@
 </head>
 
 <body> 
-  <div class="input-area">
-  <input id="user-input" type="text" placeholder="Escribe aquí..." autocomplete="off">
-  <button id="send-btn">Enviar</button>
-
-  <div class="extra-buttons">
-    <button id="regenerate-btn" class="dojo-btn">Regenerar</button>
-    <button id="reset-chat" class="dojo-btn">Reiniciar Chat</button>
-  </div>
-</div>
-
-
   <!-- entrada cinematica -->
   <div class="cinematic-overlay"></div>
 
@@ -38,12 +27,9 @@
 
     <div class="header">
       <img src="varios/yumiko/yumiko-face-full-face.png" class="avatar-header">
-
-      <!-- TÍTULO CORREGIDO -->
       <h1 class="title title-cinematic">Your coach Yumiko</h1>
     </div>
 
-    <!-- SUBTÍTULO ACTUALIZADO -->
     <p class="subtitle">El Dojo Despierta Contigo</p>
 
     <div id="chat-box" class="chat-box"></div>
@@ -53,13 +39,20 @@
       <span>Yumiko está escribiendo…</span>
     </div>
 
+    <!-- INPUT + BOTONES -->
     <div class="input-area">
       <input id="user-input" type="text" placeholder="Escribe aquí..." autocomplete="off">
       <button id="send-btn">Enviar</button>
+
+      <div class="extra-buttons">
+        <button id="regenerate-btn" class="dojo-btn">Regenerar</button>
+        <button id="reset-chat" class="dojo-btn">Reiniciar Chat</button>
+      </div>
     </div>
 
   </div>
 
+  <!-- AUDIO -->
   <audio id="ambience-intro" src="/varios/musica/ambiente-inicial.mp3" preload="auto"></audio>
   <audio id="ambience-loop" src="/varios/musica/ambiente-bucle.mp3" preload="auto" loop></audio>
   <audio id="yumiko-sound" src="/varios/musica/doing.mp3"></audio>
