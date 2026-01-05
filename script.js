@@ -242,17 +242,26 @@ if (resetBtn) {
 // ===============================
 
 const regenBtn = document.getElementById("regenerate-btn");
+let regenCooldown = false;
 
 if (regenBtn) {
     regenBtn.addEventListener("click", async () => {
 
+        if (regenCooldown) return;
+
+        regenCooldown = true;
+        regenBtn.classList.add("loading");
+        regenBtn.textContent = "Regenerando";
+
         const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
 
-        // Encontrar el último mensaje del usuario
         const lastUserMessage = [...history].reverse().find(msg => msg.role === "user");
 
         if (!lastUserMessage) {
             addMessage("No hay mensaje para regenerar.", "bot");
+            regenBtn.classList.remove("loading");
+            regenBtn.textContent = "Regenerar";
+            regenCooldown = false;
             return;
         }
 
@@ -271,13 +280,11 @@ if (regenBtn) {
             const data = await res.json();
             const newReply = data.reply || "No pude regenerar la respuesta.";
 
-            // Reemplazar la última respuesta del bot en pantalla
             const botMessages = document.querySelectorAll(".message.bot .bubble");
             if (botMessages.length > 0) {
                 botMessages[botMessages.length - 1].textContent = newReply;
             }
 
-            // Guardar en historial
             history.push({ role: "assistant", content: newReply });
             localStorage.setItem("chatHistory", JSON.stringify(history));
 
@@ -289,8 +296,16 @@ if (regenBtn) {
         }
 
         typingIndicator.classList.add("hidden");
+
+        // Cooldown de 7 segundos
+        setTimeout(() => {
+            regenBtn.classList.remove("loading");
+            regenBtn.textContent = "Regenerar";
+            regenCooldown = false;
+        }, 7000);
     });
 }
+
 
 // ===============================
 // INICIALIZACIÓN
