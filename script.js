@@ -224,6 +224,19 @@ if (window.innerWidth > 768) {
     if (pattern) pattern.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
   });
 }
+// ===============================
+// BOTÓN: REINICIAR CHAT
+// ===============================
+
+const resetBtn = document.getElementById("reset-chat");
+
+if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+        localStorage.removeItem("chatHistory");
+        localStorage.removeItem("profile");
+        location.reload();
+    });
+}
 
 // ===============================
 // INICIALIZACIÓN
