@@ -540,3 +540,17 @@ button:hover {
     height: 28px;
   }
 }
+#dojo-btn,
+#reset-chat {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  z-index: 9999;
+  padding: 10px 16px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  border: 1px solid #fff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
