@@ -30,29 +30,35 @@ function enviarNotificacion(titulo, cuerpo) {
             icon: "varios/yumiko/yumiko-face-full-face.png"
         });
 
-        // Vibración en móviles compatibles
         if (navigator.vibrate) {
             navigator.vibrate([120, 80, 120]);
         }
     }
 }
 
-
 // ===============================
-// SISTEMA DE INACTIVIDAD (SEGURO)
+// SISTEMA DE INACTIVIDAD (1 min + 5 min)
 // ===============================
 let inactivityTimer;
-const INACTIVITY_LIMIT = 7000; // 7 segundos
+let secondInactivityTimer;
+let firstMessageSent = false;
 
-function resetInactivityTimer() {
+function resetInactivityTimers() {
     clearTimeout(inactivityTimer);
+    clearTimeout(secondInactivityTimer);
+
     inactivityTimer = setTimeout(() => {
-        sendInactivityMessage();
-    }, INACTIVITY_LIMIT);
+        sendFirstInactivityMessage();
+    }, 60000); // 1 minuto
+
+    firstMessageSent = false;
 }
 
-async function sendInactivityMessage() {
-    const neutralPrompt = "El usuario estuvo inactivo. Retoma la conversación de forma amable y neutral.";
+async function sendFirstInactivityMessage() {
+    if (firstMessageSent) return;
+    firstMessageSent = true;
+
+    const neutralPrompt = "El usuario estuvo inactivo por 1 minuto. Retoma la conversación de forma amable, tomboy y cotidiana.";
 
     try {
         const res = await fetch("/api/yumiko", {
@@ -65,19 +71,45 @@ async function sendInactivityMessage() {
         });
 
         const data = await res.json();
-        const reply = data.reply || "¿Seguimos hablando?";
+        const reply = data.reply || "Ey… te me fuiste un minuto. ¿Todo bien por ahí?";
 
         addMessage(reply, "bot");
         saveMessage("assistant", reply);
-
-        // Notificación + vibración
-        enviarNotificacion("Nuevo mensaje", reply);
+        enviarNotificacion("Yumiko", reply);
 
     } catch (error) {
         console.error("Error en mensaje automático:", error);
     }
 
-    resetInactivityTimer();
+    // Programar segundo mensaje a los 5 minutos
+    secondInactivityTimer = setTimeout(() => {
+        sendSecondInactivityMessage();
+    }, 5 * 60 * 1000);
+}
+
+async function sendSecondInactivityMessage() {
+    const neutralPrompt = "El usuario estuvo inactivo por 5 minutos. Envia un mensaje suave, tomboy y respetuoso, sin generar dependencia.";
+
+    try {
+        const res = await fetch("/api/yumiko", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                message: neutralPrompt,
+                profile: profile
+            })
+        });
+
+        const data = await res.json();
+        const reply = data.reply || "Bueno… ya pasaron varios minutos. Si necesitás hablar, estoy acá.";
+
+        addMessage(reply, "bot");
+        saveMessage("assistant", reply);
+        enviarNotificacion("Yumiko", reply);
+
+    } catch (error) {
+        console.error("Error en segundo mensaje automático:", error);
+    }
 }
 
 // ===============================
@@ -94,9 +126,7 @@ async function mensajeBienvenidaRegreso() {
     const ahora = Date.now();
     const diferenciaMin = (ahora - ultimo) / 1000 / 60;
 
-    // Si pasaron más de 30 minutos
     if (diferenciaMin >= 30) {
-
         const prompt = "El usuario volvió a la página después de un tiempo. Dale una bienvenida amable y neutral.";
 
         try {
@@ -124,12 +154,9 @@ async function mensajeBienvenidaRegreso() {
     }
 }
 
-
 // =========================
 // MEMORIA DEL DOJO
 // =========================
-
-// Historial del chat
 function saveMessage(role, content) {
     const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
     history.push({ role, content });
@@ -144,7 +171,6 @@ function loadHistory() {
     return history;
 }
 
-// Perfil del usuario
 let profile = JSON.parse(localStorage.getItem("profile")) || {
     name: null,
     goal: null
@@ -154,17 +180,13 @@ function saveProfile() {
     localStorage.setItem("profile", JSON.stringify(profile));
 }
 
-// Detectar nombre y meta
 function detectProfileData(userMessage) {
-
-    // Nombre
     if (userMessage.toLowerCase().includes("mi nombre es")) {
         const name = userMessage.split("mi nombre es")[1].trim();
         profile.name = name;
         saveProfile();
     }
 
-    // Meta (se guarda pero ya no activa retos)
     if (userMessage.toLowerCase().includes("mi meta es")) {
         const goal = userMessage.split("mi meta es")[1].trim();
         profile.goal = goal;
@@ -175,7 +197,6 @@ function detectProfileData(userMessage) {
 // ===============================
 // AUDIO Y EFECTOS
 // ===============================
-
 const typingIndicator = document.getElementById("typing");
 
 const ambienceIntro = document.getElementById("ambience-intro");
@@ -237,7 +258,6 @@ function addMessage(text, sender) {
 // ===============================
 // ENVÍO DE MENSAJES
 // ===============================
-
 sendBtn.addEventListener("click", async () => {
   const text = userInput.value.trim();
   if (!text) return;
@@ -246,7 +266,6 @@ sendBtn.addEventListener("click", async () => {
   saveMessage("user", text);
   detectProfileData(text);
 
-  // 🔥 Registrar actividad del usuario
   registrarActividad();
 
   userInput.value = "";
@@ -276,7 +295,7 @@ sendBtn.addEventListener("click", async () => {
     yumikoSound.currentTime = 0;
     yumikoSound.play();
 
-    resetInactivityTimer();
+    resetInactivityTimers();
 
   } catch (error) {
     addMessage("Hubo un error al conectar con Yumiko.", "bot");
@@ -289,13 +308,11 @@ sendBtn.addEventListener("click", async () => {
   document.querySelector(".aura-yumiko").style.transform = "scale(1)";
 });
 
-// Resetear timer cuando el usuario escribe
-userInput.addEventListener("input", resetInactivityTimer);
+userInput.addEventListener("input", resetInactivityTimers);
 
 // ===============================
-// PARALLAX (DESACTIVADO EN MÓVIL)
+// PARALLAX
 // ===============================
-
 if (window.innerWidth > 768) {
   document.addEventListener("mousemove", (e) => {
     const x = (e.clientX / window.innerWidth - 0.5) * 20;
@@ -314,7 +331,6 @@ if (window.innerWidth > 768) {
 // ===============================
 // BOTÓN: REINICIAR CHAT
 // ===============================
-
 const resetBtn = document.getElementById("reset-chat");
 
 if (resetBtn) {
@@ -328,7 +344,6 @@ if (resetBtn) {
 // ===============================
 // BOTÓN: REGENERAR RESPUESTA
 // ===============================
-
 const regenBtn = document.getElementById("regenerate-btn");
 let regenCooldown = false;
 
@@ -379,7 +394,7 @@ if (regenBtn) {
             yumikoSound.currentTime = 0;
             yumikoSound.play();
 
-            resetInactivityTimer();
+            resetInactivityTimers();
 
         } catch (error) {
             addMessage("Hubo un error al regenerar la respuesta.", "bot");
@@ -398,14 +413,11 @@ if (regenBtn) {
 // ===============================
 // INICIALIZACIÓN
 // ===============================
-
 window.onload = async () => {
     loadHistory();
-    resetInactivityTimer();
+    resetInactivityTimers();
     solicitarPermisoNotificaciones();
 
     await mensajeBienvenidaRegreso();
     registrarActividad();
 };
-
-
