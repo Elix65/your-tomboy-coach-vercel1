@@ -9,6 +9,45 @@ userInput.addEventListener("keydown", function(event) {
   }
 });
 
+// ===============================
+// SISTEMA DE INACTIVIDAD (SEGURO)
+// ===============================
+let inactivityTimer;
+const INACTIVITY_LIMIT = 7000; // 7 segundos
+
+function resetInactivityTimer() {
+    clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => {
+        sendInactivityMessage();
+    }, INACTIVITY_LIMIT);
+}
+
+async function sendInactivityMessage() {
+    const neutralPrompt = "El usuario estuvo inactivo. Retoma la conversación de forma amable y neutral.";
+
+    try {
+        const res = await fetch("/api/yumiko", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                message: neutralPrompt,
+                profile: profile
+            })
+        });
+
+        const data = await res.json();
+        const reply = data.reply || "¿Seguimos hablando?";
+
+        addMessage(reply, "bot");
+        saveMessage("assistant", reply);
+
+    } catch (error) {
+        console.error("Error en mensaje automático:", error);
+    }
+
+    resetInactivityTimer();
+}
+
 // =========================
 // MEMORIA DEL DOJO
 // =========================
@@ -31,44 +70,11 @@ function loadHistory() {
 // Perfil del usuario
 let profile = JSON.parse(localStorage.getItem("profile")) || {
     name: null,
-    goal: null,
-    challengeStart: null
+    goal: null
 };
 
 function saveProfile() {
     localStorage.setItem("profile", JSON.stringify(profile));
-}
-
-// Día del reto
-function getChallengeDay() {
-    if (!profile.challengeStart) return null;
-
-    const start = new Date(profile.challengeStart);
-    const now = new Date();
-
-    const diff = Math.floor((now - start) / (1000 * 60 * 60 * 24)) + 1;
-    return diff;
-}
-
-// Pregunta tsundere de Yumiko
-function yumikoChallengePrompt() {
-    const day = getChallengeDay();
-    const username = profile.name || "usuario-kun";
-
-    if (!day) return null;
-
-    return `Hey ${username}, mi memoria es mala... ¿por qué día del reto vamos? ¡No vayas a mentirme, idiota!`;
-}
-
-// Mensaje inicial solo la primera vez
-function startIfNew() {
-    const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
-
-    if (history.length === 0) {
-        const firstMessage = "Bienvenido al dojo. Estoy lista para entrenar contigo.";
-        addMessage(firstMessage, "bot");
-        saveMessage("assistant", firstMessage);
-    }
 }
 
 // Detectar nombre y meta
@@ -81,11 +87,10 @@ function detectProfileData(userMessage) {
         saveProfile();
     }
 
-    // Meta
+    // Meta (se guarda pero ya no activa retos)
     if (userMessage.toLowerCase().includes("mi meta es")) {
         const goal = userMessage.split("mi meta es")[1].trim();
         profile.goal = goal;
-        profile.challengeStart = new Date().toISOString();
         saveProfile();
     }
 }
@@ -95,8 +100,6 @@ function detectProfileData(userMessage) {
 // ===============================
 
 const typingIndicator = document.getElementById("typing");
-
-
 
 const ambienceIntro = document.getElementById("ambience-intro");
 ambienceIntro.volume = 0;
@@ -184,7 +187,6 @@ sendBtn.addEventListener("click", async () => {
     })
   });
 
-
     const data = await res.json();
     const reply = data.reply || "No pude procesar tu mensaje.";
 
@@ -193,6 +195,8 @@ sendBtn.addEventListener("click", async () => {
 
     yumikoSound.currentTime = 0;
     yumikoSound.play();
+
+    resetInactivityTimer();
 
   } catch (error) {
     addMessage("Hubo un error al conectar con Yumiko.", "bot");
@@ -205,6 +209,8 @@ sendBtn.addEventListener("click", async () => {
   document.querySelector(".aura-yumiko").style.transform = "scale(1)";
 });
 
+// Resetear timer cuando el usuario escribe
+userInput.addEventListener("input", resetInactivityTimer);
 
 // ===============================
 // PARALLAX (DESACTIVADO EN MÓVIL)
@@ -224,6 +230,7 @@ if (window.innerWidth > 768) {
     if (pattern) pattern.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
   });
 }
+
 // ===============================
 // BOTÓN: REINICIAR CHAT
 // ===============================
@@ -237,6 +244,7 @@ if (resetBtn) {
         location.reload();
     });
 }
+
 // ===============================
 // BOTÓN: REGENERAR RESPUESTA
 // ===============================
@@ -291,13 +299,14 @@ if (regenBtn) {
             yumikoSound.currentTime = 0;
             yumikoSound.play();
 
+            resetInactivityTimer();
+
         } catch (error) {
             addMessage("Hubo un error al regenerar la respuesta.", "bot");
         }
 
         typingIndicator.classList.add("hidden");
 
-        // Cooldown de 7 segundos
         setTimeout(() => {
             regenBtn.classList.remove("loading");
             regenBtn.textContent = "Regenerar";
@@ -306,7 +315,6 @@ if (regenBtn) {
     });
 }
 
-
 // ===============================
 // INICIALIZACIÓN
 // ===============================
@@ -314,10 +322,5 @@ if (regenBtn) {
 window.onload = () => {
     loadHistory();
     startIfNew();
-
-    const prompt = yumikoChallengePrompt();
-    if (prompt) {
-        addMessage(prompt, "bot");
-        saveMessage("assistant", prompt);
-    }
+    resetInactivityTimer();
 };
