@@ -153,6 +153,30 @@ async function mensajeBienvenidaRegreso() {
         }
     }
 }
+// ===============================
+// MENSAJE INICIAL ALEATORIO (SOLO PRIMERA VEZ)
+// ===============================
+async function mensajeInicialYumiko() {
+    const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
+
+    // Si ya hay historial, no enviar mensaje inicial
+    if (history.length > 0) return;
+
+    const mensajesIniciales = [
+        "Ey… llegaste justo. Estaba por servirme un café.",
+        "Ah, hola. No pensé que vendrías tan temprano.",
+        "Te estaba esperando… bueno, más o menos. ¿Cómo va?",
+        "Llegaste. Mi día estaba medio aburrido, así que está bueno verte.",
+        "¿Vos sos el nuevo? Bueno… supongo que podemos hablar un rato."
+    ];
+
+    const random = Math.floor(Math.random() * mensajesIniciales.length);
+    const prompt = mensajesIniciales[random];
+
+    addMessage(prompt, "bot");
+    saveMessage("assistant", prompt);
+}
+
 
 // =========================
 // MEMORIA DEL DOJO
@@ -415,9 +439,11 @@ if (regenBtn) {
 // ===============================
 window.onload = async () => {
     loadHistory();
-    resetInactivityTimers();
     solicitarPermisoNotificaciones();
 
     await mensajeBienvenidaRegreso();
+    await mensajeInicialYumiko();
+
     registrarActividad();
+    resetInactivityTimers();
 };
