@@ -354,8 +354,7 @@ if (regenBtn) {
 
 window.onload = () => {
     loadHistory();
-    startIfNew();
     resetInactivityTimer();
     solicitarPermisoNotificaciones();
-
 };
+
