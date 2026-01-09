@@ -10,6 +10,35 @@ userInput.addEventListener("keydown", function(event) {
 });
 
 // ===============================
+// NOTIFICACIONES DEL SISTEMA
+// ===============================
+function solicitarPermisoNotificaciones() {
+    if (!("Notification" in window)) {
+        console.log("Este navegador no soporta notificaciones.");
+        return;
+    }
+
+    if (Notification.permission === "default") {
+        Notification.requestPermission();
+    }
+}
+
+function enviarNotificacion(titulo, cuerpo) {
+    if (Notification.permission === "granted") {
+        new Notification(titulo, {
+            body: cuerpo,
+            icon: "varios/yumiko/yumiko-face-full-face.png"
+        });
+
+        // Vibración en móviles compatibles
+        if (navigator.vibrate) {
+            navigator.vibrate([120, 80, 120]);
+        }
+    }
+}
+
+
+// ===============================
 // SISTEMA DE INACTIVIDAD (SEGURO)
 // ===============================
 let inactivityTimer;
@@ -41,12 +70,16 @@ async function sendInactivityMessage() {
         addMessage(reply, "bot");
         saveMessage("assistant", reply);
 
+        // Notificación + vibración
+        enviarNotificacion("Nuevo mensaje", reply);
+
     } catch (error) {
         console.error("Error en mensaje automático:", error);
     }
 
     resetInactivityTimer();
 }
+
 
 // =========================
 // MEMORIA DEL DOJO
@@ -323,4 +356,6 @@ window.onload = () => {
     loadHistory();
     startIfNew();
     resetInactivityTimer();
+    solicitarPermisoNotificaciones();
+
 };
