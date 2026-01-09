@@ -80,6 +80,50 @@ async function sendInactivityMessage() {
     resetInactivityTimer();
 }
 
+// ===============================
+// DETECTAR REGRESO DEL USUARIO
+// ===============================
+function registrarActividad() {
+    localStorage.setItem("lastActive", Date.now());
+}
+
+async function mensajeBienvenidaRegreso() {
+    const ultimo = localStorage.getItem("lastActive");
+    if (!ultimo) return;
+
+    const ahora = Date.now();
+    const diferenciaMin = (ahora - ultimo) / 1000 / 60;
+
+    // Si pasaron más de 30 minutos
+    if (diferenciaMin >= 30) {
+
+        const prompt = "El usuario volvió a la página después de un tiempo. Dale una bienvenida amable y neutral.";
+
+        try {
+            const res = await fetch("/api/yumiko", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    message: prompt,
+                    profile: profile
+                })
+            });
+
+            const data = await res.json();
+            const reply = data.reply || "Bienvenido de nuevo.";
+
+            addMessage(reply, "bot");
+            saveMessage("assistant", reply);
+
+            enviarNotificacion("Yumiko", reply);
+            if (navigator.vibrate) navigator.vibrate([120, 80, 120]);
+
+        } catch (e) {
+            console.error("Error en mensaje de regreso:", e);
+        }
+    }
+}
+
 
 // =========================
 // MEMORIA DEL DOJO
@@ -202,6 +246,9 @@ sendBtn.addEventListener("click", async () => {
   saveMessage("user", text);
   detectProfileData(text);
 
+  // 🔥 Registrar actividad del usuario
+  registrarActividad();
+
   userInput.value = "";
 
   typingIndicator.classList.remove("hidden");
@@ -215,10 +262,10 @@ sendBtn.addEventListener("click", async () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-      message: text,
-      profile: profile
-    })
-  });
+        message: text,
+        profile: profile
+      })
+    });
 
     const data = await res.json();
     const reply = data.reply || "No pude procesar tu mensaje.";
@@ -352,9 +399,13 @@ if (regenBtn) {
 // INICIALIZACIÓN
 // ===============================
 
-window.onload = () => {
+window.onload = async () => {
     loadHistory();
     resetInactivityTimer();
     solicitarPermisoNotificaciones();
+
+    await mensajeBienvenidaRegreso();
+    registrarActividad();
 };
+
 
