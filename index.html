@@ -25,6 +25,18 @@
   <!-- CONTENIDO -->
   <div class="container">
 
+    <!-- FORMULARIO DE LOGIN / REGISTRO -->
+    <div id="auth-container">
+        <h2>Entrar al Dojo</h2>
+
+        <input id="email" type="email" placeholder="Email">
+        <input id="password" type="password" placeholder="Contraseña">
+
+        <button id="btn-register">Registrarse</button>
+        <button id="btn-login">Iniciar sesión</button>
+        <button id="btn-logout" class="hidden">Cerrar sesión</button>
+    </div>
+
     <div class="header">
       <img src="varios/yumiko/yumiko-face-full-face.png" class="avatar-header">
       <h1 class="title title-cinematic">Your coach Yumiko</h1>
@@ -57,6 +69,7 @@
   <audio id="ambience-loop" src="/varios/musica/ambiente-bucle.mp3" preload="auto" loop></audio>
   <audio id="yumiko-sound" src="/varios/musica/doing.mp3"></audio>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="script.js" defer></script>
 </body>
 </html>

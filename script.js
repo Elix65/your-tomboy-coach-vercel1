@@ -1,3 +1,101 @@
+// ===============================
+// SUPABASE CLIENT (desde CDN)
+// ===============================
+const supabase = supabase.createClient(
+    'https://rlunygzxvpldfaanhxnj.supabase.co',
+    'sb_publishable_LcfKHbQf88gNcxQkdEvEaA_Ll_twyUd'
+);
+
+// ===============================
+// AUTH: REGISTRO, LOGIN, USUARIO ACTUAL, LOGOUT
+// ===============================
+
+// Crear cuenta
+async function signUp(email, password) {
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    if (error) {
+        console.error("Error al registrarse:", error.message);
+        alert("Error: " + error.message);
+        return;
+    }
+    alert("Registro exitoso. Revisa tu correo para confirmar.");
+}
+
+// Iniciar sesión
+async function signIn(email, password) {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+        console.error("Error al iniciar sesión:", error.message);
+        alert("Error: " + error.message);
+        return;
+    }
+    alert("Login exitoso.");
+}
+
+// Obtener usuario actual
+async function getUser() {
+    const { data: { user } } = await supabase.auth.getUser();
+    return user;
+}
+
+// Cerrar sesión
+async function logout() {
+    await supabase.auth.signOut();
+    alert("Sesión cerrada.");
+}
+
+// ===============================
+// CONECTAR BOTONES DEL HTML
+// ===============================
+document.getElementById("btn-register").addEventListener("click", async () => {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
+    await signUp(email, password);
+});
+
+document.getElementById("btn-login").addEventListener("click", async () => {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value.trim();
+    await signIn(email, password);
+    await checkAuthState();
+});
+
+document.getElementById("btn-logout").addEventListener("click", async () => {
+    await logout();
+    await checkAuthState();
+});
+
+// ===============================
+// CONTROL DE ESTADO DE AUTENTICACIÓN
+// ===============================
+async function checkAuthState() {
+    const user = await getUser();
+
+    if (user) {
+        // Usuario logeado
+        document.getElementById("auth-container").style.display = "none";
+        document.getElementById("btn-logout").classList.remove("hidden");
+
+        // Mostrar el chat
+        document.getElementById("chat-box").style.display = "block";
+        document.getElementById("user-input").style.display = "block";
+        document.getElementById("send-btn").style.display = "block";
+
+    } else {
+        // Usuario NO logeado
+        document.getElementById("auth-container").style.display = "block";
+        document.getElementById("btn-logout").classList.add("hidden");
+
+        // Ocultar el chat
+        document.getElementById("chat-box").style.display = "none";
+        document.getElementById("user-input").style.display = "none";
+        document.getElementById("send-btn").style.display = "none";
+    }
+}
+
+// ===============================
+// CHAT YUMIKO (todo tu código original)
+// ===============================
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
 const sendBtn = document.getElementById("send-btn");
@@ -37,7 +135,7 @@ function enviarNotificacion(titulo, cuerpo) {
 }
 
 // ===============================
-// SISTEMA DE INACTIVIDAD (1 min + 5 min)
+// SISTEMA DE INACTIVIDAD
 // ===============================
 let inactivityTimer;
 let secondInactivityTimer;
@@ -49,7 +147,7 @@ function resetInactivityTimers() {
 
     inactivityTimer = setTimeout(() => {
         sendFirstInactivityMessage();
-    }, 60000); // 1 minuto
+    }, 60000);
 
     firstMessageSent = false;
 }
@@ -81,7 +179,6 @@ async function sendFirstInactivityMessage() {
         console.error("Error en mensaje automático:", error);
     }
 
-    // Programar segundo mensaje a los 5 minutos
     secondInactivityTimer = setTimeout(() => {
         sendSecondInactivityMessage();
     }, 5 * 60 * 1000);
@@ -153,13 +250,13 @@ async function mensajeBienvenidaRegreso() {
         }
     }
 }
+
 // ===============================
-// MENSAJE INICIAL ALEATORIO (SOLO PRIMERA VEZ)
+// MENSAJE INICIAL ALEATORIO
 // ===============================
 async function mensajeInicialYumiko() {
     const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
 
-    // Si ya hay historial, no enviar mensaje inicial
     if (history.length > 0) return;
 
     const mensajesIniciales = [
@@ -177,10 +274,9 @@ async function mensajeInicialYumiko() {
     saveMessage("assistant", prompt);
 }
 
-
-// =========================
+// ===============================
 // MEMORIA DEL DOJO
-// =========================
+// ===============================
 function saveMessage(role, content) {
     const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
     history.push({ role, content });
@@ -440,10 +536,10 @@ if (regenBtn) {
 window.onload = async () => {
     loadHistory();
     solicitarPermisoNotificaciones();
-
     await mensajeBienvenidaRegreso();
     await mensajeInicialYumiko();
-
     registrarActividad();
     resetInactivityTimers();
+
+    await checkAuthState(); // <-- ahora al final
 };
