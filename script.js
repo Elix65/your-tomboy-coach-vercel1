@@ -72,20 +72,44 @@ async function checkAuthState() {
     const user = await getUser();
 
     if (user) {
+        // Usuario logeado
         document.getElementById("auth-container").style.display = "none";
         document.getElementById("btn-logout").classList.remove("hidden");
 
+        // Mostrar el chat
         document.getElementById("chat-box").style.display = "block";
         document.getElementById("user-input").style.display = "block";
         document.getElementById("send-btn").style.display = "block";
 
+        // Mostrar visuales del Dojo
+        document.querySelector(".cinematic-overlay").style.display = "block";
+        document.querySelector(".layer-wood").style.display = "block";
+        document.querySelector(".layer-shoji").style.display = "block";
+        document.querySelector(".layer-pattern").style.display = "block";
+        document.querySelector(".vignette").style.display = "block";
+        document.querySelector(".glow-yumiko").style.display = "block";
+        document.querySelector(".particles-anime").style.display = "block";
+        document.querySelector(".aura-yumiko").style.display = "block";
+
     } else {
+        // Usuario NO logeado
         document.getElementById("auth-container").style.display = "block";
         document.getElementById("btn-logout").classList.add("hidden");
 
+        // Ocultar el chat
         document.getElementById("chat-box").style.display = "none";
         document.getElementById("user-input").style.display = "none";
         document.getElementById("send-btn").style.display = "none";
+
+        // Ocultar visuales del Dojo
+        document.querySelector(".cinematic-overlay").style.display = "none";
+        document.querySelector(".layer-wood").style.display = "none";
+        document.querySelector(".layer-shoji").style.display = "none";
+        document.querySelector(".layer-pattern").style.display = "none";
+        document.querySelector(".vignette").style.display = "none";
+        document.querySelector(".glow-yumiko").style.display = "none";
+        document.querySelector(".particles-anime").style.display = "none";
+        document.querySelector(".aura-yumiko").style.display = "none";
     }
 }
 
