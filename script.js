@@ -76,7 +76,8 @@ async function checkAuthState() {
         document.getElementById("auth-container").style.display = "none";
         document.getElementById("btn-logout").classList.remove("hidden");
 
-        // Mostrar el chat
+        // Mostrar el Dojo completo
+        document.getElementById("dojo-ui").style.display = "block";
         document.getElementById("chat-box").style.display = "block";
         document.getElementById("user-input").style.display = "block";
         document.getElementById("send-btn").style.display = "block";
@@ -96,7 +97,8 @@ async function checkAuthState() {
         document.getElementById("auth-container").style.display = "block";
         document.getElementById("btn-logout").classList.add("hidden");
 
-        // Ocultar el chat
+        // Ocultar el Dojo completo
+        document.getElementById("dojo-ui").style.display = "none";
         document.getElementById("chat-box").style.display = "none";
         document.getElementById("user-input").style.display = "none";
         document.getElementById("send-btn").style.display = "none";
@@ -114,7 +116,7 @@ async function checkAuthState() {
 }
 
 // ===============================
-// CHAT YUMIKO (todo tu código original)
+// CHAT YUMIKO
 // ===============================
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
