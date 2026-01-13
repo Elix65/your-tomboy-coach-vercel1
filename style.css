@@ -555,3 +555,66 @@ input {
     height: 28px;
   }
 }
+
+#auth-container {
+    background: rgba(0,0,0,0.35);
+    padding: 20px;
+    border-radius: 12px;
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,0.15);
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto 25px auto;
+    text-align: center;
+}
+
+#auth-container input {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    border: none;
+    background: rgba(255,255,255,0.1);
+    color: white;
+    font-size: 15px;
+    outline: none;
+}
+
+#auth-container button {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    border: none;
+    font-size: 15px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+#btn-register {
+    background: #c0392b;
+    color: white;
+}
+
+#btn-register:hover {
+    background: #e74c3c;
+}
+
+#btn-login {
+    background: #2980b9;
+    color: white;
+}
+
+#btn-login:hover {
+    background: #3498db;
+}
+
+#btn-logout {
+    background: #7f8c8d;
+    color: white;
+}
+
+#btn-logout:hover {
+    background: #95a5a6;
+}
