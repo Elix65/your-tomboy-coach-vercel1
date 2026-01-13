@@ -532,30 +532,7 @@ input {
   }
 }
 
-/* ================================
-   MÓVILES MUY PEQUEÑOS
-   ================================ */
-
-@media (max-width: 480px) {
-
-  .title {
-    font-size: 1.5rem;
-  }
-
-  .chat-box {
-    height: 50vh;
-  }
-
-  .bubble {
-    font-size: 0.85rem;
-  }
-
-  .avatar-small {
-    width: 28px;
-    height: 28px;
-  }
-}
-
+/*boton de login*/
 #auth-container {
     background: rgba(0,0,0,0.35);
     padding: 20px;
@@ -617,4 +594,56 @@ input {
 
 #btn-logout:hover {
     background: #95a5a6;
+}
+
+/* boton de logout */
+.logout-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(255, 80, 80, 0.85);
+    color: white;
+    padding: 10px 16px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+    transition: 0.2s ease;
+}
+
+.logout-btn:hover {
+    background: rgba(255, 120, 120, 1);
+    transform: scale(1.05);
+}
+
+.logout-btn.hidden {
+    display: none;
+}
+
+
+/* ================================
+   MÓVILES MUY PEQUEÑOS
+   ================================ */
+
+@media (max-width: 480px) {
+
+  .title {
+    font-size: 1.5rem;
+  }
+
+  .chat-box {
+    height: 50vh;
+  }
+
+  .bubble {
+    font-size: 0.85rem;
+  }
+
+  .avatar-small {
+    width: 28px;
+    height: 28px;
+  }
 }
