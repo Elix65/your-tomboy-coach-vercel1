@@ -8,7 +8,9 @@
 </head>
 
 <body> 
+  <!-- BOTÓN DE LOGOUT -->
   <button id="btn-logout" class="logout-btn hidden">Cerrar sesión</button>
+
   <!-- entrada cinematica -->
   <div class="cinematic-overlay"></div>
 
@@ -35,35 +37,39 @@
 
         <button id="btn-register">Registrarse</button>
         <button id="btn-login">Iniciar sesión</button>
-        <button id="btn-logout" class="hidden">Cerrar sesión</button>
     </div>
 
-    <div class="header">
-      <img src="varios/yumiko/yumiko-face-full-face.png" class="avatar-header">
-      <h1 class="title title-cinematic">Your coach Yumiko</h1>
-    </div>
+    <!-- TODO EL DOJO AGRUPADO AQUÍ -->
+    <div id="dojo-ui">
 
-    <p class="subtitle">El Dojo Despierta Contigo</p>
-
-    <div id="chat-box" class="chat-box"></div>
-
-    <div id="typing" class="typing hidden">
-      <img src="varios/yumiko/yumiko-face-full-face.png" class="avatar-small">
-      <span>Yumiko está escribiendo…</span>
-    </div>
-
-    <!-- INPUT + BOTONES -->
-    <div class="input-area">
-      <input id="user-input" type="text" placeholder="Escribe aquí..." autocomplete="off">
-      <button id="send-btn">Enviar</button>
-
-      <div class="extra-buttons">
-        <button id="regenerate-btn" class="dojo-btn">Regenerar</button>
-        <button id="reset-chat" class="dojo-btn">Reiniciar Chat</button>
+      <div class="header">
+        <img src="varios/yumiko/yumiko-face-full-face.png" class="avatar-header">
+        <h1 class="title title-cinematic">Your coach Yumiko</h1>
       </div>
-    </div>
 
-  </div>
+      <p class="subtitle">El Dojo Despierta Contigo</p>
+
+      <div id="chat-box" class="chat-box"></div>
+
+      <div id="typing" class="typing hidden">
+        <img src="varios/yumiko/yumiko-face-full-face.png" class="avatar-small">
+        <span>Yumiko está escribiendo…</span>
+      </div>
+
+      <!-- INPUT + BOTONES -->
+      <div class="input-area">
+        <input id="user-input" type="text" placeholder="Escribe aquí..." autocomplete="off">
+        <button id="send-btn">Enviar</button>
+
+        <div class="extra-buttons">
+          <button id="regenerate-btn" class="dojo-btn">Regenerar</button>
+          <button id="reset-chat" class="dojo-btn">Reiniciar Chat</button>
+        </div>
+      </div>
+
+    </div> <!-- cierre dojo-ui -->
+
+  </div> <!-- cierre container -->
 
   <!-- AUDIO -->
   <audio id="ambience-intro" src="/varios/musica/ambiente-inicial.mp3" preload="auto"></audio>
