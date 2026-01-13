@@ -1,7 +1,7 @@
 // ===============================
 // SUPABASE CLIENT (desde CDN)
 // ===============================
-const supabase = supabase.createClient(
+const supabaseClient = window.supabase.createClient(
     'https://rlunygzxvpldfaanhxnj.supabase.co',
     'sb_publishable_LcfKHbQf88gNcxQkdEvEaA_Ll_twyUd'
 );
@@ -12,7 +12,7 @@ const supabase = supabase.createClient(
 
 // Crear cuenta
 async function signUp(email, password) {
-    const { data, error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabaseClient.auth.signUp({ email, password });
     if (error) {
         console.error("Error al registrarse:", error.message);
         alert("Error: " + error.message);
@@ -23,7 +23,7 @@ async function signUp(email, password) {
 
 // Iniciar sesión
 async function signIn(email, password) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
     if (error) {
         console.error("Error al iniciar sesión:", error.message);
         alert("Error: " + error.message);
@@ -34,13 +34,13 @@ async function signIn(email, password) {
 
 // Obtener usuario actual
 async function getUser() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { user } } = await supabaseClient.auth.getUser();
     return user;
 }
 
 // Cerrar sesión
 async function logout() {
-    await supabase.auth.signOut();
+    await supabaseClient.auth.signOut();
     alert("Sesión cerrada.");
 }
 
@@ -72,21 +72,17 @@ async function checkAuthState() {
     const user = await getUser();
 
     if (user) {
-        // Usuario logeado
         document.getElementById("auth-container").style.display = "none";
         document.getElementById("btn-logout").classList.remove("hidden");
 
-        // Mostrar el chat
         document.getElementById("chat-box").style.display = "block";
         document.getElementById("user-input").style.display = "block";
         document.getElementById("send-btn").style.display = "block";
 
     } else {
-        // Usuario NO logeado
         document.getElementById("auth-container").style.display = "block";
         document.getElementById("btn-logout").classList.add("hidden");
 
-        // Ocultar el chat
         document.getElementById("chat-box").style.display = "none";
         document.getElementById("user-input").style.display = "none";
         document.getElementById("send-btn").style.display = "none";
@@ -111,14 +107,8 @@ userInput.addEventListener("keydown", function(event) {
 // NOTIFICACIONES DEL SISTEMA
 // ===============================
 function solicitarPermisoNotificaciones() {
-    if (!("Notification" in window)) {
-        console.log("Este navegador no soporta notificaciones.");
-        return;
-    }
-
-    if (Notification.permission === "default") {
-        Notification.requestPermission();
-    }
+    if (!("Notification" in window)) return;
+    if (Notification.permission === "default") Notification.requestPermission();
 }
 
 function enviarNotificacion(titulo, cuerpo) {
@@ -127,10 +117,7 @@ function enviarNotificacion(titulo, cuerpo) {
             body: cuerpo,
             icon: "varios/yumiko/yumiko-face-full-face.png"
         });
-
-        if (navigator.vibrate) {
-            navigator.vibrate([120, 80, 120]);
-        }
+        if (navigator.vibrate) navigator.vibrate([120, 80, 120]);
     }
 }
 
@@ -162,10 +149,7 @@ async function sendFirstInactivityMessage() {
         const res = await fetch("/api/yumiko", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                message: neutralPrompt,
-                profile: profile
-            })
+            body: JSON.stringify({ message: neutralPrompt, profile: profile })
         });
 
         const data = await res.json();
@@ -191,10 +175,7 @@ async function sendSecondInactivityMessage() {
         const res = await fetch("/api/yumiko", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                message: neutralPrompt,
-                profile: profile
-            })
+            body: JSON.stringify({ message: neutralPrompt, profile: profile })
         });
 
         const data = await res.json();
@@ -230,10 +211,7 @@ async function mensajeBienvenidaRegreso() {
             const res = await fetch("/api/yumiko", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    message: prompt,
-                    profile: profile
-                })
+                body: JSON.stringify({ message: prompt, profile: profile })
             });
 
             const data = await res.json();
@@ -241,9 +219,7 @@ async function mensajeBienvenidaRegreso() {
 
             addMessage(reply, "bot");
             saveMessage("assistant", reply);
-
             enviarNotificacion("Yumiko", reply);
-            if (navigator.vibrate) navigator.vibrate([120, 80, 120]);
 
         } catch (e) {
             console.error("Error en mensaje de regreso:", e);
@@ -256,7 +232,6 @@ async function mensajeBienvenidaRegreso() {
 // ===============================
 async function mensajeInicialYumiko() {
     const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
-
     if (history.length > 0) return;
 
     const mensajesIniciales = [
@@ -400,10 +375,7 @@ sendBtn.addEventListener("click", async () => {
     const res = await fetch("/api/yumiko", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: text,
-        profile: profile
-      })
+      body: JSON.stringify({ message: text, profile: profile })
     });
 
     const data = await res.json();
@@ -494,10 +466,7 @@ if (regenBtn) {
             const res = await fetch("/api/yumiko", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    message: lastUserMessage.content,
-                    profile: profile
-                })
+                body: JSON.stringify({ message: lastUserMessage.content, profile: profile })
             });
 
             const data = await res.json();
@@ -541,5 +510,5 @@ window.onload = async () => {
     registrarActividad();
     resetInactivityTimers();
 
-    await checkAuthState(); // <-- ahora al final
+    await checkAuthState();
 };
