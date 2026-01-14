@@ -29,7 +29,7 @@ async function signIn(email, password) {
         alert("Error: " + error.message);
         return;
     }
-    alert("Login exitoso.");
+    //alert("Login exitoso.");
 }
 
 // Obtener usuario actual
@@ -41,7 +41,7 @@ async function getUser() {
 // Cerrar sesión
 async function logout() {
     await supabaseClient.auth.signOut();
-    alert("Sesión cerrada.");
+    //alert("Sesión cerrada.");
 }
 
 // ===============================
