@@ -1,6 +1,6 @@
 /* ================================
-   FONDO DOJO — TEXTURA REAL
-   ================================ */
+   BASE
+================================ */
 
 body {
   margin: 0;
@@ -12,23 +12,35 @@ body {
   background: #050505;
 }
 
-/* Capa 1 — Hinoki oscuro envejecido */
-.layer-wood {
+.hidden {
+  display: none;
+}
+
+/* ================================
+   FONDOS Y CAPAS DEL DOJO
+================================ */
+
+.layer-wood,
+.layer-shoji,
+.layer-pattern {
   position: fixed;
   inset: 0;
-  background-image: url("/varios/textures/hinoki-dark-e1.png");
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  opacity: 0.55;
-  filter: brightness(0.85) contrast(1.1);
+  will-change: transform;
+  transition: transform 0.05s ease-out;
+  animation: none;
   z-index: -3;
 }
 
-/* Capa Shoji */
+.layer-wood {
+  background-image: url("/varios/textures/hinoki-dark-e1.png");
+  opacity: 0.55;
+  filter: brightness(0.85) contrast(1.1);
+}
+
 .layer-shoji {
-  position: fixed;
-  inset: 0;
   background:
     radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
     radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
@@ -40,10 +52,7 @@ body {
   z-index: -2.5;
 }
 
-/* Capa patrón japonés */
 .layer-pattern {
-  position: fixed;
-  inset: 0;
   background-image:
     radial-gradient(circle at 0 0, rgba(255,255,255,0.04) 0, transparent 40%),
     radial-gradient(circle at 100% 0, rgba(255,255,255,0.04) 0, transparent 40%),
@@ -61,8 +70,8 @@ body {
 }
 
 /* ================================
-   CONTENEDOR Y CHAT
-   ================================ */
+   CONTENEDOR GENERAL
+================================ */
 
 .container {
   width: 100%;
@@ -72,6 +81,72 @@ body {
   position: relative;
   z-index: 10;
 }
+
+/* ================================
+   LOGIN — ESTILOS SEPARADOS
+================================ */
+
+#auth-container {
+  background: rgba(0,0,0,0.35);
+  padding: 22px;
+  border-radius: 12px;
+  backdrop-filter: blur(6px);
+  border: 1px solid rgba(255,255,255,0.15);
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto 25px auto;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+#auth-container input[type="email"],
+#auth-container input[type="password"] {
+  width: 100%;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255,255,255,0.12);
+  color: white;
+  font-size: 16px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+#auth-container button {
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s ease;
+  box-sizing: border-box;
+}
+
+#btn-register {
+  background: #c0392b;
+  color: white;
+}
+
+#btn-register:hover {
+  background: #e74c3c;
+}
+
+#btn-login {
+  background: #2980b9;
+  color: white;
+}
+
+#btn-login:hover {
+  background: #3498db;
+}
+
+/* ================================
+   HEADER (AVATAR + TÍTULO)
+================================ */
 
 .header {
   display: flex;
@@ -86,12 +161,7 @@ body {
   border-radius: 50%;
   margin-right: 12px;
   object-fit: cover;
-  border: none;
 }
-
-/* ================================
-   TÍTULOS
-   ================================ */
 
 .title {
   font-size: 34px;
@@ -101,30 +171,10 @@ body {
 }
 
 .title-cinematic {
-  position: relative;
   opacity: 0;
   transform: translateY(-12px);
   animation: titleReveal 1.6s ease forwards;
   animation-delay: 1.2s;
-  letter-spacing: 0.5px;
-  color: #f7f3e9;
-  text-shadow: 0 0 6px rgba(255, 240, 220, 0.15);
-}
-
-.title-cinematic::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 160%;
-  height: 160%;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(circle, rgba(255, 230, 200, 0.12), transparent 70%);
-  opacity: 0;
-  animation: titleGlow 2.4s ease forwards;
-  animation-delay: 1.6s;
-  pointer-events: none;
-  z-index: -1;
 }
 
 .subtitle {
@@ -133,17 +183,11 @@ body {
   opacity: 0;
   animation: subtitleZen 2.4s ease forwards;
   animation-delay: 2s;
-  color: #f7f3e9;
-}
-
-@keyframes subtitleZen {
-  0% { opacity: 0; transform: translateY(6px); }
-  100% { opacity: 0.85; transform: translateY(0); }
 }
 
 /* ================================
    CHAT
-   ================================ */
+================================ */
 
 .chat-box {
   position: relative;
@@ -156,7 +200,6 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 0 28px rgba(255, 0, 0, 0.28);
   scroll-behavior: smooth;
-  z-index: 1;
 }
 
 .chat-box::before {
@@ -169,31 +212,17 @@ body {
   background-position: center bottom;
   opacity: 0.12;
   pointer-events: none;
-  z-index: 0;
 }
 
 /* ================================
    MENSAJES
-   ================================ */
+================================ */
 
 .message {
   display: flex;
   align-items: flex-start;
   margin-bottom: 14px;
   animation: fadeIn 0.3s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  margin-right: 10px;
-  border: 2px solid #ff4d4d;
 }
 
 .avatar-small {
@@ -223,8 +252,8 @@ body {
 }
 
 /* ================================
-   INPUT + BOTONES
-   ================================ */
+   INPUT DEL CHAT
+================================ */
 
 .input-area {
   display: flex;
@@ -233,8 +262,8 @@ body {
   margin-top: 15px;
 }
 
-input {
-  flex: 1;
+#user-input {
+  width: 100%;
   padding: 12px;
   border-radius: 8px;
   border: none;
@@ -243,8 +272,7 @@ input {
   color: white;
 }
 
-/* SOLO el botón Enviar */
-.input-area > button {
+#send-btn {
   padding: 12px 20px;
   background: #ff4d4d;
   border: none;
@@ -255,13 +283,13 @@ input {
   transition: 0.2s;
 }
 
-.input-area > button:hover {
+#send-btn:hover {
   background: #ff1a1a;
 }
 
 /* ================================
    BOTONES EXTRA
-   ================================ */
+================================ */
 
 .extra-buttons {
   display: flex;
@@ -278,7 +306,6 @@ input {
   font-size: 14px;
   font-weight: bold;
   cursor: pointer;
-  box-shadow: 0 0 12px rgba(255, 0, 0, 0.2);
   transition: all 0.3s ease;
   backdrop-filter: blur(6px);
 }
@@ -287,193 +314,75 @@ input {
   background: rgba(255, 77, 77, 0.85);
   color: white;
   border-color: white;
-  box-shadow: 0 0 16px rgba(255, 77, 77, 0.4);
 }
 
 /* ================================
-   ANIMACIÓN REGENERANDO
-   ================================ */
+   EFECTOS (GLOW, AURA, PARTÍCULAS)
+================================ */
 
-#regenerate-btn.loading {
-  pointer-events: none;
-  opacity: 0.6;
-  background: rgba(255, 77, 77, 0.5);
-  position: relative;
-}
-
-#regenerate-btn.loading::after {
-  content: "…";
-  position: absolute;
-  right: 12px;
-  animation: dots 1s infinite;
-}
-
-@keyframes dots {
-  0% { content: "…"; }
-  33% { content: "."; }
-  66% { content: ".."; }
-  100% { content: "…"; }
-}
-
-/* ================================
-   TYPING
-   ================================ */
-
-.typing {
-  display: flex;
-  align-items: center;
-  margin-top: 10px;
-  opacity: 0.8;
-}
-
-.hidden {
-  display: none;
-}
-
-/* ================================
-   VIÑETA ANIME
-   ================================ */
-
-.vignette {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 999;
-  background: radial-gradient(circle at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.35) 100%);
-}
-
-/* ================================
-   PARALLAX — ARREGLADO
-   ================================ */
-
-.layer-wood,
-.layer-shoji,
-.layer-pattern {
-  will-change: transform;
-  transition: transform 0.05s ease-out;
-  animation: none;
-}
-
-/* ================================
-   GLOW Y AURA
-   ================================ */
-
-.glow-yumiko {
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(circle at 50% 50%, rgba(255,80,80,0.25), transparent 70%);
-  opacity: 0;
-  transition: opacity 0.4s ease;
-  pointer-events: none;
-  z-index: 8;
-}
-
-.particles-anime {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 7;
-  background-image: radial-gradient(circle, rgba(255,80,80,0.12) 1px, transparent 1px);
-  background-size: 4px 4px;
-  animation: particlesFloat 60s linear infinite;
-  opacity: 0.2;
-}
-
-@keyframes particlesFloat {
-  from { background-position: 0 0; }
-  to { background-position: -200px -200px; }
-}
-
+.glow-yumiko,
+.particles-anime,
 .aura-yumiko {
   position: fixed;
   inset: 0;
   pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.glow-yumiko {
+  background: radial-gradient(circle at 50% 50%, rgba(255,80,80,0.25), transparent 70%);
+  z-index: 8;
+}
+
+.particles-anime {
+  z-index: 7;
+  background-image: radial-gradient(circle, rgba(255,80,80,0.12) 1px, transparent 1px);
+  background-size: 4px 4px;
+  animation: particlesFloat 60s linear infinite;
+}
+
+.aura-yumiko {
   z-index: 6;
   background: radial-gradient(circle at center, rgba(255, 60, 60, 0.18), transparent 70%);
-  opacity: 0;
   transform: scale(1);
   transition: opacity 0.4s ease, transform 0.6s ease;
 }
 
 /* ================================
-   SUMI‑E EN MENSAJES
-   ================================ */
+   LOGOUT BUTTON
+================================ */
 
-.message.bot .bubble {
-  animation: sumiReveal 0.6s ease forwards;
-  transform-origin: left center;
-  opacity: 0;
-}
-
-@keyframes sumiReveal {
-  0% {
-    clip-path: inset(0 100% 0 0);
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  60% {
-    opacity: 1;
-  }
-  100% {
-    clip-path: inset(0 0 0 0);
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* ================================
-   MODO CINEMÁTICO — ENTRADA ANIME
-   ================================ */
-
-.cinematic-overlay {
+.logout-btn {
   position: fixed;
-  inset: 0;
-  background: black;
+  top: 20px;
+  right: 20px;
+  background: rgba(255, 80, 80, 0.85);
+  color: white;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
   z-index: 9999;
-  opacity: 1;
-  pointer-events: none;
-  animation: cinematicFade 2.2s ease forwards;
+  backdrop-filter: blur(4px);
+  transition: 0.2s ease;
 }
 
-@keyframes cinematicFade {
-  0% { opacity: 1; }
-  40% { opacity: 1; }
-  100% { opacity: 0; }
+.logout-btn:hover {
+  background: rgba(255, 120, 120, 1);
+  transform: scale(1.05);
 }
-
-.layer-wood,
-.layer-shoji,
-.layer-pattern,
-.vignette,
-.particles-anime,
-.glow-yumiko,
-.aura-yumiko {
-  opacity: 0;
-  animation: layerReveal 1.8s ease forwards;
-}
-
-@keyframes layerReveal {
-  0% { opacity: 0; transform: scale(1.02); }
-  100% { opacity: 1; transform: scale(1); }
-}
-
-.layer-wood { animation-delay: 0.3s; }
-.layer-shoji { animation-delay: 0.45s; }
-.layer-pattern { animation-delay: 0.6s; }
-.vignette { animation-delay: 0.8s; }
-.particles-anime { animation-delay: 1s; }
-.glow-yumiko { animation-delay: 1.2s; }
-.aura-yumiko { animation-delay: 1.4s; }
 
 /* ================================
-   RESPONSIVE — TABLET Y MÓVIL
-   ================================ */
+   RESPONSIVE — TABLET
+================================ */
 
 @media (max-width: 768px) {
 
   .container {
     width: 92%;
-    max-width: none;
     padding-top: 20px;
   }
 
@@ -484,7 +393,6 @@ input {
 
   .subtitle {
     font-size: 1rem;
-    text-align: center;
   }
 
   .avatar-header {
@@ -504,23 +412,6 @@ input {
     padding: 10px 14px;
   }
 
-  .input-area {
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  #user-input {
-    width: 100%;
-    font-size: 1rem;
-    padding: 12px;
-  }
-
-  #send-btn {
-    width: 100%;
-    padding: 12px;
-    font-size: 1rem;
-  }
-
   .extra-buttons {
     flex-direction: column;
     align-items: stretch;
@@ -528,105 +419,12 @@ input {
 
   .extra-buttons button {
     width: 100%;
-    font-size: 15px;
   }
 }
 
-/*boton de login*/
-#auth-container {
-    background: rgba(0,0,0,0.35);
-    padding: 20px;
-    border-radius: 12px;
-    backdrop-filter: blur(6px);
-    border: 1px solid rgba(255,255,255,0.15);
-    width: 100%;
-    max-width: 320px;
-    margin: 0 auto 25px auto;
-    text-align: center;
-}
-
-#auth-container input {
-    width: 100%;
-    padding: 12px;
-    margin-bottom: 12px;
-    border-radius: 8px;
-    border: none;
-    background: rgba(255,255,255,0.1);
-    color: white;
-    font-size: 15px;
-    outline: none;
-}
-
-#auth-container button {
-    width: 100%;
-    padding: 12px;
-    margin-bottom: 10px;
-    border-radius: 8px;
-    border: none;
-    font-size: 15px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: 0.2s ease;
-}
-
-#btn-register {
-    background: #c0392b;
-    color: white;
-}
-
-#btn-register:hover {
-    background: #e74c3c;
-}
-
-#btn-login {
-    background: #2980b9;
-    color: white;
-}
-
-#btn-login:hover {
-    background: #3498db;
-}
-
-#btn-logout {
-    background: #7f8c8d;
-    color: white;
-}
-
-#btn-logout:hover {
-    background: #95a5a6;
-}
-
-/* boton de logout */
-.logout-btn {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: rgba(255, 80, 80, 0.85);
-    color: white;
-    padding: 10px 16px;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: bold;
-    cursor: pointer;
-    z-index: 9999;
-    backdrop-filter: blur(4px);
-    transition: 0.2s ease;
-}
-
-.logout-btn:hover {
-    background: rgba(255, 120, 120, 1);
-    transform: scale(1.05);
-}
-
-.logout-btn.hidden {
-    display: none;
-}
-
-
 /* ================================
-   MÓVILES MUY PEQUEÑOS
-   ================================ */
+   RESPONSIVE — MÓVILES PEQUEÑOS
+================================ */
 
 @media (max-width: 480px) {
 
