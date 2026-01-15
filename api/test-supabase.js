@@ -6,7 +6,10 @@ const supabase = createClient(
 )
 
 export default async function handler(req, res) {
-  const { data, error } = await supabase.from('profiles').select('*').limit(1)
+  const { data, error } = await supabase
+    .from('skins')
+    .select('*')
+    .limit(1)
 
   if (error) {
     return res.status(500).json({ error })
