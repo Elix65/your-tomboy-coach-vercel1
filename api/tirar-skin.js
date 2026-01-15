@@ -113,3 +113,5 @@ export default async function handler(req, res) {
   }
 }
 console.log('🔍 Supabase URL:', process.env.SUPABASE_URL)
+console.log('🔍 Skins recibidas:', skins)
+console.log('🔍 Error en consulta:', skinsError)
