@@ -11,7 +11,7 @@ export default async function handler(req, res) {
       return res.status(405).json({ error: 'Método no permitido' })
     }
 
-    const { user_id } = JSON.parse(req.body)
+    const { user_id } = req.body
 
     if (!user_id) {
       return res.status(400).json({ error: 'Falta user_id' })
