@@ -215,7 +215,7 @@ async function sendSecondInactivityMessage() {
         console.error("Error en segundo mensaje automático:", error);
     }
 }
-
+ console.log('prueba en logs xddxdxdx')
 // ===============================
 // DETECTAR REGRESO DEL USUARIO
 // ===============================
