@@ -47,13 +47,13 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: 'No se pudo seleccionar skin' })
     }
 
-    // 3. Registrar tirada
+    // 3. Registrar tirada en user_rolls
     const { error: rollError } = await supabase
       .from('user_rolls')
       .insert({
         user_id,
         skin_id: selectedSkin.id,
-        tipo: 'single',
+        tipo: 'comun',   // 👈 enum válido en tu tabla
         cantidad: 1
       })
 
@@ -61,7 +61,7 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: rollError.message })
     }
 
-    // 4. Actualizar inventario
+    // 4. Actualizar inventario (users_skins)
     const { data: existing, error: invError } = await supabase
       .from('users_skins')
       .select('*')
@@ -109,4 +109,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: err.message })
   }
 }
-
