@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     const { data: skins, error: skinsError } = await supabase
       .from('skins')
       .select('*')
-      .filter('activa', 'eq', true)
+      .eq('activa', true)
 
     console.log('🔍 Skins recibidas:', skins)
     console.log('🔍 Error en consulta:', skinsError)
