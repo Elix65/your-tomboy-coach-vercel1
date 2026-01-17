@@ -53,7 +53,7 @@ export default async function handler(req, res) {
       .insert({
         user_id,
         skin_id: selectedSkin.id,
-        tipo: 'comun',   // 👈 enum válido en tu tabla
+        tipo: 'comun',   // ✅ Enum válido
         cantidad: 1
       })
 
@@ -61,9 +61,9 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: rollError.message })
     }
 
-    // 4. Actualizar inventario (users_skins)
+    // 4. Actualizar inventario (user_skins)
     const { data: existing, error: invError } = await supabase
-      .from('users_skins')
+      .from('user_skins')
       .select('*')
       .eq('user_id', user_id)
       .eq('skin_id', selectedSkin.id)
@@ -75,7 +75,7 @@ export default async function handler(req, res) {
 
     if (existing) {
       const { error: updateError } = await supabase
-        .from('users_skins')
+        .from('user_skins')
         .update({
           cantidad: existing.cantidad + 1
         })
@@ -86,7 +86,7 @@ export default async function handler(req, res) {
       }
     } else {
       const { error: insertError } = await supabase
-        .from('users_skins')
+        .from('user_skins')
         .insert({
           user_id,
           skin_id: selectedSkin.id,
