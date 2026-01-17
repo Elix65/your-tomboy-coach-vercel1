@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     const { data: skins, error: skinsError } = await supabase
       .from('skins')
       .select('*')
-      .eq('activa', true)
+      .filter('activa', 'eq', true)
 
     if (skinsError) {
       return res.status(500).json({ error: skinsError })
@@ -115,4 +115,7 @@ export default async function handler(req, res) {
 console.log("🔍 URL usada:", process.env.SUPABASE_URL)
 console.log("🔍 KEY empieza:", process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 15))
 console.log("🔍 Entorno:", process.env.NODE_ENV)
+console.log('🔍 Skins recibidas:', skins)
+console.log('🔍 Error en consulta:', skinsError)
+
 
