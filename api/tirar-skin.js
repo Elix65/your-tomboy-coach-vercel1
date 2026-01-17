@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -11,7 +12,6 @@ export default async function handler(req, res) {
     }
 
     const { user_id } = req.body
-
     if (!user_id) {
       return res.status(400).json({ error: 'Falta user_id' })
     }
@@ -22,8 +22,11 @@ export default async function handler(req, res) {
       .select('*')
       .filter('activa', 'eq', true)
 
+    console.log('🔍 Skins recibidas:', skins)
+    console.log('🔍 Error en consulta:', skinsError)
+
     if (skinsError) {
-      return res.status(500).json({ error: skinsError })
+      return res.status(500).json({ error: skinsError.message || 'Error al consultar skins' })
     }
 
     if (!skins || skins.length === 0) {
@@ -32,7 +35,6 @@ export default async function handler(req, res) {
 
     // 2. Selección probabilística
     const totalProb = skins.reduce((sum, s) => sum + s.probabilidad, 0)
-
     let random = Math.random() * totalProb
     let selectedSkin = null
 
@@ -59,7 +61,7 @@ export default async function handler(req, res) {
       })
 
     if (rollError) {
-      return res.status(500).json({ error: rollError })
+      return res.status(500).json({ error: rollError.message || 'Error al registrar tirada' })
     }
 
     // 4. Actualizar inventario (users_skins)
@@ -71,11 +73,10 @@ export default async function handler(req, res) {
       .maybeSingle()
 
     if (invError) {
-      return res.status(500).json({ error: invError })
+      return res.status(500).json({ error: invError.message || 'Error al consultar inventario' })
     }
 
     if (existing) {
-      // Ya la tiene → sumar cantidad
       const { error: updateError } = await supabase
         .from('users_skins')
         .update({
@@ -84,10 +85,9 @@ export default async function handler(req, res) {
         .eq('id', existing.id)
 
       if (updateError) {
-        return res.status(500).json({ error: updateError })
+        return res.status(500).json({ error: updateError.message || 'Error al actualizar inventario' })
       }
     } else {
-      // No la tiene → crear registro
       const { error: insertError } = await supabase
         .from('users_skins')
         .insert({
@@ -98,7 +98,7 @@ export default async function handler(req, res) {
         })
 
       if (insertError) {
-        return res.status(500).json({ error: insertError })
+        return res.status(500).json({ error: insertError.message || 'Error al insertar inventario' })
       }
     }
 
@@ -109,13 +109,7 @@ export default async function handler(req, res) {
     })
 
   } catch (err) {
-    return res.status(500).json({ error: err.message })
+    console.error('🔥 Error inesperado:', err)
+    return res.status(500).json({ error: err.message || 'Error interno del servidor' })
   }
 }
-console.log("🔍 URL usada:", process.env.SUPABASE_URL)
-console.log("🔍 KEY empieza:", process.env.SUPABASE_SERVICE_ROLE_KEY?.slice(0, 15))
-console.log("🔍 Entorno:", process.env.NODE_ENV)
-console.log('🔍 Skins recibidas:', skins)
-console.log('🔍 Error en consulta:', skinsError)
-
-
