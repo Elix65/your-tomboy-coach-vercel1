@@ -214,8 +214,8 @@ body {
   scroll-behavior: smooth;
 }
 
-.chat-box::before {
-  content: "";
+/* Fondo fijo de Yumiko detrás del chat */
+#yumiko-bg {
   position: absolute;
   inset: 0;
   background-image: url('/varios/yumiko/yumikochat.png');
@@ -224,7 +224,15 @@ body {
   background-position: center bottom;
   opacity: 0.12;
   pointer-events: none;
+  z-index: 0;
 }
+
+/* Asegura que el chat esté por encima del fondo */
+.chat-box {
+  position: relative;
+  z-index: 1;
+}
+
 
 /* ================================
    MENSAJES
@@ -279,10 +287,12 @@ body {
   padding: 12px;
   border-radius: 8px;
   border: none;
-  outline: none;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255,255,255,0.08);
   color: white;
+  font-size: 16px;
+  box-sizing: border-box;
 }
+
 
 #send-btn {
   padding: 12px 20px;
