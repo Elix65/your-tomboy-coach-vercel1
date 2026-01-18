@@ -1,4 +1,3 @@
-
 // ===============================
 // NAVEGACIÓN TOP BAR
 // ===============================
@@ -79,20 +78,11 @@ if (mLogout) {
 }
 
 // ===============================
-// CHAT YUMIKO
+// CHAT YUMIKO (VERSIÓN ESTABLE)
 // ===============================
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
 const sendBtn = document.getElementById("send-btn");
-
-if (userInput) {
-  userInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      sendBtn.click();
-    }
-  });
-}
 
 function addMessage(text, sender) {
   const msg = document.createElement("div");
@@ -114,18 +104,21 @@ function addMessage(text, sender) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// ===============================
-// ENVÍO DE MENSAJES
-// ===============================
+if (userInput) {
+  userInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      sendBtn.click();
+    }
+  });
+}
+
 if (sendBtn) {
   sendBtn.onclick = async () => {
     const text = userInput.value.trim();
     if (!text) return;
 
     addMessage(text, "user");
-    saveMessage("user", text);
-    detectProfileData(text);
-
     userInput.value = "";
 
     const typing = document.getElementById("typing");
@@ -135,19 +128,15 @@ if (sendBtn) {
       const res = await fetch("/api/yumiko", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text, profile })
+        body: JSON.stringify({ message: text })
       });
 
       const data = await res.json();
-      const reply = data.reply || "No pude procesar tu mensaje.";
+      addMessage(data.reply, "bot");
 
-      addMessage(reply, "bot");
-      saveMessage("assistant", reply);
-
+      const yumikoSound = document.getElementById("yumiko-sound");
       yumikoSound.currentTime = 0;
       yumikoSound.play();
-
-      resetInactivityTimers();
 
     } catch (e) {
       addMessage("Hubo un error al conectar con Yumiko.", "bot");
@@ -158,37 +147,7 @@ if (sendBtn) {
 }
 
 // ===============================
-// MEMORIA DEL DOJO
-// ===============================
-function saveMessage(role, content) {
-  const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
-  history.push({ role, content });
-  localStorage.setItem("chatHistory", JSON.stringify(history));
-}
-
-function loadHistory() {
-  const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
-  history.forEach(msg => {
-    addMessage(msg.content, msg.role === "assistant" ? "bot" : "user");
-  });
-}
-
-let profile = JSON.parse(localStorage.getItem("profile")) || { name: null, goal: null };
-
-function detectProfileData(text) {
-  if (text.toLowerCase().includes("mi nombre es")) {
-    profile.name = text.split("mi nombre es")[1].trim();
-    localStorage.setItem("profile", JSON.stringify(profile));
-  }
-
-  if (text.toLowerCase().includes("mi meta es")) {
-    profile.goal = text.split("mi meta es")[1].trim();
-    localStorage.setItem("profile", JSON.stringify(profile));
-  }
-}
-
-// ===============================
-// INVENTARIO
+// INVENTARIO (VERSIÓN ESTABLE)
 // ===============================
 async function openInventoryPanel() {
   let overlay = document.getElementById("inventory-overlay");
@@ -236,10 +195,6 @@ async function openInventoryPanel() {
   try {
     const { data: { user } } = await supabaseClient.auth.getUser();
     const userId = user?.id;
-    if (!userId) {
-      content.innerHTML = `<p style="color:#f88">No se pudo obtener tu sesión.</p>`;
-      return;
-    }
 
     const res = await fetch("/api/inventario", {
       method: "POST",
@@ -255,121 +210,27 @@ async function openInventoryPanel() {
       return;
     }
 
-    content.innerHTML = items.map(i => {
-      const rareza = i.rareza?.toLowerCase() || "comun";
-      const color =
-        rareza === "rara" ? "#4da6ff" :
-        rareza === "epica" || rareza === "épica" ? "#c77dff" :
-        rareza === "legendaria" ? "#ffcc00" : "#f7f3e9";
-
-      return `
-        <div style="padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03)">
-          <div style="font-weight:600;color:${color}">${i.nombre}</div>
-          <div style="font-size:13px;opacity:0.8;margin-top:4px">
-            ${rareza.charAt(0).toUpperCase() + rareza.slice(1)} • x${i.cantidad}
-          </div>
+    content.innerHTML = items.map(i => `
+      <div style="padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03)">
+        <div style="font-weight:600;color:#f7f3e9">${i.nombre}</div>
+        <div style="font-size:13px;opacity:0.8;margin-top:4px">
+          ${i.rareza} • x${i.cantidad}
         </div>
-      `;
-    }).join("");
+      </div>
+    `).join("");
 
   } catch (e) {
-    console.error(e);
     content.innerHTML = `<p style="color:#f88">No se pudo cargar el inventario.</p>`;
   }
 }
 
-
 // ===============================
-// INACTIVIDAD
+// MOSTRAR UI SI HAY SESIÓN
 // ===============================
-let inactivityTimer;
-let secondInactivityTimer;
-let firstMessageSent = false;
+async function initializeUI() {
+  const { data: { user } = {} } = await supabaseClient.auth.getUser();
+  if (!user) return;
 
-function resetInactivityTimers() {
-  clearTimeout(inactivityTimer);
-  clearTimeout(secondInactivityTimer);
-
-  inactivityTimer = setTimeout(sendFirstInactivityMessage, 60000);
-  firstMessageSent = false;
-}
-
-async function sendFirstInactivityMessage() {
-  if (firstMessageSent) return;
-  firstMessageSent = true;
-
-  const res = await fetch("/api/yumiko", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      message: "El usuario estuvo inactivo por 1 minuto. Retoma la conversación.",
-      profile
-    })
-  });
-
-  const data = await res.json();
-  addMessage(data.reply, "bot");
-  saveMessage("assistant", data.reply);
-
-  secondInactivityTimer = setTimeout(sendSecondInactivityMessage, 5 * 60 * 1000);
-}
-
-async function sendSecondInactivityMessage() {
-  const res = await fetch("/api/yumiko", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      message: "El usuario estuvo inactivo por 5 minutos. Envía un mensaje suave.",
-      profile
-    })
-  });
-
-  const data = await res.json();
-  addMessage(data.reply, "bot");
-  saveMessage("assistant", data.reply);
-}
-
-// ===============================
-// AUDIO
-// ===============================
-const ambienceIntro = document.getElementById("ambience-intro");
-const ambienceLoop = document.getElementById("ambience-loop");
-const yumikoSound = document.getElementById("yumiko-sound");
-
-if (ambienceIntro) {
-  ambienceIntro.volume = 0;
-  ambienceIntro.play().then(() => fadeIn(ambienceIntro, 0.12));
-  ambienceIntro.onended = () => {
-    ambienceLoop.volume = 0;
-    ambienceLoop.play();
-    fadeIn(ambienceLoop, 0.18);
-  };
-}
-
-function fadeIn(audio, target) {
-  let v = 0;
-  const interval = setInterval(() => {
-    v += 0.02;
-    audio.volume = Math.min(v, target);
-    if (v >= target) clearInterval(interval);
-  }, 80);
-}
-
-// ===============================
-// PARALLAX
-// ===============================
-if (window.innerWidth > 768) {
-  document.addEventListener("mousemove", (e) => {
-    const x = (e.clientX / window.innerWidth - 0.5) * 20;
-    const y = (e.clientY / window.innerHeight - 0.5) * 20;
-
-    document.querySelector(".layer-wood").style.transform = `translate(${x}px, ${y}px)`;
-    document.querySelector(".layer-shoji").style.transform = `translate(${x * 0.6}px, ${y * 0.6}px)`;
-    document.querySelector(".layer-pattern").style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
-  });
-}
-
-function initializeUI() {
   const topBar = document.getElementById("top-bar");
   const hamburgerBtn = document.getElementById("hamburger-btn");
   const mobileMenu = document.getElementById("mobile-menu-overlay");
@@ -390,100 +251,42 @@ function initializeUI() {
   }
 }
 
-
-function initializeUI() {
-  const topBar = document.getElementById("top-bar");
-  const hamburgerBtn = document.getElementById("hamburger-btn");
-  const mobileMenu = document.getElementById("mobile-menu-overlay");
-
-  if (topBar) topBar.classList.remove("hidden");
-
-  if (hamburgerBtn) {
-    if (window.innerWidth <= 768) {
-      hamburgerBtn.classList.remove("hidden");
-    } else {
-      hamburgerBtn.classList.add("hidden");
-    }
-  }
-
-  if (mobileMenu) {
-    mobileMenu.classList.add("hidden");
-    mobileMenu.classList.remove("active");
-  }
-}
-
-function registerSendHandler() {
-  const sendBtn = document.getElementById("send-btn");
-  if (!sendBtn) return;
-
-  sendBtn.onclick = async () => {
-    // tu bloque de envío de mensajes corregido
-  };
-}
-
-
 // ===============================
-// INICIALIZACIÓN COMPLETA DEL DOJO
+// AUDIO + PARALLAX + INICIALIZACIÓN
 // ===============================
 window.addEventListener("DOMContentLoaded", async () => {
-  try {
-    // 1. Verificar sesión antes de mostrar UI
-    const { data: { user } = {} } = await supabaseClient.auth.getUser();
-    if (user) {
-      initializeUI();      // muestra top bar, menú hamburguesa, etc.
-      registerSendHandler(); // activa el botón de enviar
-    }
+  await initializeUI();
 
-    // 2. Cargar historial y mensaje inicial
-    await loadHistoryFromSupabase();
-    await sendInitialMessageIfEmpty();
+  const ambienceIntro = document.getElementById("ambience-intro");
+  const ambienceLoop = document.getElementById("ambience-loop");
 
-    // 3. Activar sistema de inactividad
-    resetInactivityTimers();
-    window.addEventListener("mousemove", resetInactivityTimers);
-    window.addEventListener("keydown", resetInactivityTimers);
+  if (ambienceIntro) {
+    ambienceIntro.volume = 0;
+    ambienceIntro.play().then(() => fadeIn(ambienceIntro, 0.12));
+    ambienceIntro.onended = () => {
+      ambienceLoop.volume = 0;
+      ambienceLoop.play();
+      fadeIn(ambienceLoop, 0.18);
+    };
+  }
 
-    // 4. AUDIO
-    const ambienceIntro = document.getElementById("ambience-intro");
-    const ambienceLoop = document.getElementById("ambience-loop");
+  function fadeIn(audio, target) {
+    let v = 0;
+    const interval = setInterval(() => {
+      v += 0.02;
+      audio.volume = Math.min(v, target);
+      if (v >= target) clearInterval(interval);
+    }, 80);
+  }
 
-    if (ambienceIntro) {
-      ambienceIntro.volume = 0;
-      ambienceIntro.play().then(() => fadeIn(ambienceIntro, 0.12)).catch(() => {});
-      ambienceIntro.onended = () => {
-        if (ambienceLoop) {
-          ambienceLoop.volume = 0;
-          ambienceLoop.play().then(() => fadeIn(ambienceLoop, 0.18)).catch(() => {});
-        }
-      };
-    }
+  if (window.innerWidth > 768) {
+    document.addEventListener("mousemove", (e) => {
+      const x = (e.clientX / window.innerWidth - 0.5) * 20;
+      const y = (e.clientY / window.innerHeight - 0.5) * 20;
 
-    function fadeIn(audio, target) {
-      let v = 0;
-      const interval = setInterval(() => {
-        v += 0.02;
-        audio.volume = Math.min(v, target);
-        if (v >= target) clearInterval(interval);
-      }, 80);
-    }
-
-    // 5. PARALLAX
-    if (window.innerWidth > 768) {
-      document.addEventListener("mousemove", (e) => {
-        const x = (e.clientX / window.innerWidth - 0.5) * 20;
-        const y = (e.clientY / window.innerHeight - 0.5) * 20;
-
-        const wood = document.querySelector(".layer-wood");
-        const shoji = document.querySelector(".layer-shoji");
-        const pattern = document.querySelector(".layer-pattern");
-
-        if (wood) wood.style.transform = `translate(${x}px, ${y}px)`;
-        if (shoji) shoji.style.transform = `translate(${x * 0.6}px, ${y * 0.6}px)`;
-        if (pattern) pattern.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
-      });
-    }
-
-  } catch (e) {
-    console.error("Error en la inicialización del Dojo:", e);
+      document.querySelector(".layer-wood").style.transform = `translate(${x}px, ${y}px)`;
+      document.querySelector(".layer-shoji").style.transform = `translate(${x * 0.6}px, ${y * 0.6}px)`;
+      document.querySelector(".layer-pattern").style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
+    });
   }
 });
