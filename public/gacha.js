@@ -7,7 +7,7 @@ const btnInvNav = document.getElementById("btn-inventario");
 const btnLogoutNav = document.getElementById("btn-logout");
 
 if (btnGachaNav) {
-  btnGachaNav.onclick = () => window.location.href = "index.html";
+  btnGachaNav.onclick = () => window.location.href = "/index.html";
 }
 
 if (btnInvNav) {
@@ -64,7 +64,7 @@ if (mGacha) {
     mobileMenu.classList.add("hidden");
     mobileMenu.classList.remove("active");
     hamburgerBtn.classList.remove("open");
-    window.location.href = "index.html";
+    window.location.href = "/index.html";
   };
 }
 
