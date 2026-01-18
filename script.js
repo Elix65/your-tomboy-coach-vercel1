@@ -370,31 +370,37 @@ if (window.innerWidth > 768) {
 }
 
 // ===============================
-// MOSTRAR UI SI HAY SESIÓN
+// MOSTRAR UI SI HAY SESIÓN (CORREGIDO)
 // ===============================
-supabaseClient.auth.getUser().then(({ data: { user } }) => {
-  if (!user) return;
+async function initializeUIIfSession() {
+  try {
+    const { data: { user } = {} } = await supabaseClient.auth.getUser();
+    if (!user) return;
 
-  const topBar = document.getElementById("top-bar");
-  const hamburgerBtn = document.getElementById("hamburger-btn");
-  const mobileMenu = document.getElementById("mobile-menu-overlay");
+    const topBar = document.getElementById("top-bar");
+    const hamburgerBtn = document.getElementById("hamburger-btn");
+    const mobileMenu = document.getElementById("mobile-menu-overlay");
 
-  if (topBar) topBar.classList.remove("hidden");
+    if (topBar) topBar.classList.remove("hidden");
 
-  if (hamburgerBtn) {
-    if (window.innerWidth <= 768) {
-      hamburgerBtn.classList.remove("hidden");
-    } else {
-      hamburgerBtn.classList.add("hidden");
+    if (hamburgerBtn) {
+      if (window.innerWidth <= 768) {
+        hamburgerBtn.classList.remove("hidden");
+      } else {
+        hamburgerBtn.classList.add("hidden");
+      }
     }
-  }
 
-  if (mobileMenu) {
-    mobileMenu.classList.add("hidden");
-    mobileMenu.classList.remove("active");
+    if (mobileMenu) {
+      mobileMenu.classList.add("hidden");
+      mobileMenu.classList.remove("active");
+    }
+  } catch (e) {
+    console.error("Error al inicializar la UI:", e);
   }
+}
+
+window.addEventListener("DOMContentLoaded", async () => {
+  await initializeUIIfSession();
 });
 
-// ===============================
-// FIN
-// ===============================
