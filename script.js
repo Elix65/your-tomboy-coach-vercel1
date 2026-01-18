@@ -369,38 +369,121 @@ if (window.innerWidth > 768) {
   });
 }
 
-// ===============================
-// MOSTRAR UI SI HAY SESIÓN (CORREGIDO)
-// ===============================
-async function initializeUIIfSession() {
-  try {
-    const { data: { user } = {} } = await supabaseClient.auth.getUser();
-    if (!user) return;
+function initializeUI() {
+  const topBar = document.getElementById("top-bar");
+  const hamburgerBtn = document.getElementById("hamburger-btn");
+  const mobileMenu = document.getElementById("mobile-menu-overlay");
 
-    const topBar = document.getElementById("top-bar");
-    const hamburgerBtn = document.getElementById("hamburger-btn");
-    const mobileMenu = document.getElementById("mobile-menu-overlay");
+  if (topBar) topBar.classList.remove("hidden");
 
-    if (topBar) topBar.classList.remove("hidden");
-
-    if (hamburgerBtn) {
-      if (window.innerWidth <= 768) {
-        hamburgerBtn.classList.remove("hidden");
-      } else {
-        hamburgerBtn.classList.add("hidden");
-      }
+  if (hamburgerBtn) {
+    if (window.innerWidth <= 768) {
+      hamburgerBtn.classList.remove("hidden");
+    } else {
+      hamburgerBtn.classList.add("hidden");
     }
+  }
 
-    if (mobileMenu) {
-      mobileMenu.classList.add("hidden");
-      mobileMenu.classList.remove("active");
-    }
-  } catch (e) {
-    console.error("Error al inicializar la UI:", e);
+  if (mobileMenu) {
+    mobileMenu.classList.add("hidden");
+    mobileMenu.classList.remove("active");
   }
 }
 
-window.addEventListener("DOMContentLoaded", async () => {
-  await initializeUIIfSession();
-});
 
+function initializeUI() {
+  const topBar = document.getElementById("top-bar");
+  const hamburgerBtn = document.getElementById("hamburger-btn");
+  const mobileMenu = document.getElementById("mobile-menu-overlay");
+
+  if (topBar) topBar.classList.remove("hidden");
+
+  if (hamburgerBtn) {
+    if (window.innerWidth <= 768) {
+      hamburgerBtn.classList.remove("hidden");
+    } else {
+      hamburgerBtn.classList.add("hidden");
+    }
+  }
+
+  if (mobileMenu) {
+    mobileMenu.classList.add("hidden");
+    mobileMenu.classList.remove("active");
+  }
+}
+
+function registerSendHandler() {
+  const sendBtn = document.getElementById("send-btn");
+  if (!sendBtn) return;
+
+  sendBtn.onclick = async () => {
+    // tu bloque de envío de mensajes corregido
+  };
+}
+
+
+// ===============================
+// INICIALIZACIÓN COMPLETA DEL DOJO
+// ===============================
+window.addEventListener("DOMContentLoaded", async () => {
+  try {
+    // 1. Verificar sesión antes de mostrar UI
+    const { data: { user } = {} } = await supabaseClient.auth.getUser();
+    if (user) {
+      initializeUI();      // muestra top bar, menú hamburguesa, etc.
+      registerSendHandler(); // activa el botón de enviar
+    }
+
+    // 2. Cargar historial y mensaje inicial
+    await loadHistoryFromSupabase();
+    await sendInitialMessageIfEmpty();
+
+    // 3. Activar sistema de inactividad
+    resetInactivityTimers();
+    window.addEventListener("mousemove", resetInactivityTimers);
+    window.addEventListener("keydown", resetInactivityTimers);
+
+    // 4. AUDIO
+    const ambienceIntro = document.getElementById("ambience-intro");
+    const ambienceLoop = document.getElementById("ambience-loop");
+
+    if (ambienceIntro) {
+      ambienceIntro.volume = 0;
+      ambienceIntro.play().then(() => fadeIn(ambienceIntro, 0.12)).catch(() => {});
+      ambienceIntro.onended = () => {
+        if (ambienceLoop) {
+          ambienceLoop.volume = 0;
+          ambienceLoop.play().then(() => fadeIn(ambienceLoop, 0.18)).catch(() => {});
+        }
+      };
+    }
+
+    function fadeIn(audio, target) {
+      let v = 0;
+      const interval = setInterval(() => {
+        v += 0.02;
+        audio.volume = Math.min(v, target);
+        if (v >= target) clearInterval(interval);
+      }, 80);
+    }
+
+    // 5. PARALLAX
+    if (window.innerWidth > 768) {
+      document.addEventListener("mousemove", (e) => {
+        const x = (e.clientX / window.innerWidth - 0.5) * 20;
+        const y = (e.clientY / window.innerHeight - 0.5) * 20;
+
+        const wood = document.querySelector(".layer-wood");
+        const shoji = document.querySelector(".layer-shoji");
+        const pattern = document.querySelector(".layer-pattern");
+
+        if (wood) wood.style.transform = `translate(${x}px, ${y}px)`;
+        if (shoji) shoji.style.transform = `translate(${x * 0.6}px, ${y * 0.6}px)`;
+        if (pattern) pattern.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
+      });
+    }
+
+  } catch (e) {
+    console.error("Error en la inicialización del Dojo:", e);
+  }
+});
