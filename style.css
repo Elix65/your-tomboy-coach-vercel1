@@ -466,6 +466,21 @@ body {
 .mobile-menu-btn:hover {
   background: rgba(255, 120, 120, 1);
 }
+.inventory-close-btn {
+  padding: 10px 16px;
+  background: #ff4d4d;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  align-self: flex-end;
+  transition: 0.2s ease;
+}
+
+.inventory-close-btn:hover {
+  background: #ff1a1a;
+}
 
 /* ================================
    RESPONSIVE — MOBILE
