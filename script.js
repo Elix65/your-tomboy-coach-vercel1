@@ -1,118 +1,81 @@
-// ===============================
-// SUPABASE CLIENT (desde CDN)
-// ===============================
-const supabaseClient = window.supabase.createClient(
-    'https://rlunygzxvpldfaanhxnj.supabase.co',
-    'sb_publishable_LcfKHbQf88gNcxQkdEvEaA_Ll_twyUd'
-);
 
 // ===============================
-// AUTH: REGISTRO, LOGIN, USUARIO ACTUAL, LOGOUT
+// NAVEGACIÓN TOP BAR
 // ===============================
+const btnGacha = document.getElementById("btn-gacha");
+const btnInventario = document.getElementById("btn-inventario");
+const btnLogout = document.getElementById("btn-logout");
 
-// Crear cuenta
-async function signUp(email, password) {
-    const { data, error } = await supabaseClient.auth.signUp({ email, password });
-    if (error) {
-        console.error("Error al registrarse:", error.message);
-        alert("Error: " + error.message);
-        return;
-    }
-    alert("Registro exitoso. Revisa tu correo para confirmar.");
+if (btnGacha) {
+  btnGacha.onclick = () => window.location.href = "gacha.html";
 }
 
-// Iniciar sesión
-async function signIn(email, password) {
-    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-    if (error) {
-        console.error("Error al iniciar sesión:", error.message);
-        alert("Error: " + error.message);
-        return;
-    }
-    //alert("Login exitoso.");
+if (btnInventario) {
+  btnInventario.onclick = () => openInventoryPanel();
 }
 
-// Obtener usuario actual
-async function getUser() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    return user;
-}
-
-// Cerrar sesión
-async function logout() {
+if (btnLogout) {
+  btnLogout.onclick = async () => {
     await supabaseClient.auth.signOut();
-    //alert("Sesión cerrada.");
+    window.location.href = "login.html";
+  };
 }
 
 // ===============================
-// CONECTAR BOTONES DEL HTML
+// MENÚ HAMBURGUESA (MOBILE)
 // ===============================
-document.getElementById("btn-register").addEventListener("click", async () => {
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value.trim();
-    await signUp(email, password);
-});
+const hamburgerBtn = document.getElementById("hamburger-btn");
+const mobileMenu = document.getElementById("mobile-menu-overlay");
 
-document.getElementById("btn-login").addEventListener("click", async () => {
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value.trim();
-    await signIn(email, password);
-    await checkAuthState();
-});
+if (hamburgerBtn) {
+  hamburgerBtn.onclick = () => {
+    mobileMenu.classList.toggle("hidden");
+    mobileMenu.classList.toggle("active");
+    hamburgerBtn.classList.toggle("open");
+  };
+}
 
-document.getElementById("btn-logout").addEventListener("click", async () => {
-    await logout();
-    await checkAuthState();
-});
-
-// ===============================
-// CONTROL DE ESTADO DE AUTENTICACIÓN
-// ===============================
-async function checkAuthState() {
-    const user = await getUser();
-
-    if (user) {
-        // Usuario logeado
-        document.getElementById("auth-container").style.display = "none";
-        document.getElementById("btn-logout").classList.remove("hidden");
-
-        // Mostrar el Dojo completo
-        document.getElementById("dojo-ui").style.display = "block";
-        document.getElementById("chat-box").style.display = "block";
-        document.getElementById("user-input").style.display = "block";
-        document.getElementById("send-btn").style.display = "block";
-
-        // Mostrar visuales del Dojo
-        document.querySelector(".cinematic-overlay").style.display = "block";
-        document.querySelector(".layer-wood").style.display = "block";
-        document.querySelector(".layer-shoji").style.display = "block";
-        document.querySelector(".layer-pattern").style.display = "block";
-        document.querySelector(".vignette").style.display = "block";
-        document.querySelector(".glow-yumiko").style.display = "block";
-        document.querySelector(".particles-anime").style.display = "block";
-        document.querySelector(".aura-yumiko").style.display = "block";
-
-    } else {
-        // Usuario NO logeado
-        document.getElementById("auth-container").style.display = "block";
-        document.getElementById("btn-logout").classList.add("hidden");
-
-        // Ocultar el Dojo completo
-        document.getElementById("dojo-ui").style.display = "none";
-        document.getElementById("chat-box").style.display = "none";
-        document.getElementById("user-input").style.display = "none";
-        document.getElementById("send-btn").style.display = "none";
-
-        // Ocultar visuales del Dojo
-        document.querySelector(".cinematic-overlay").style.display = "none";
-        document.querySelector(".layer-wood").style.display = "none";
-        document.querySelector(".layer-shoji").style.display = "none";
-        document.querySelector(".layer-pattern").style.display = "none";
-        document.querySelector(".vignette").style.display = "none";
-        document.querySelector(".glow-yumiko").style.display = "none";
-        document.querySelector(".particles-anime").style.display = "none";
-        document.querySelector(".aura-yumiko").style.display = "none";
+if (mobileMenu) {
+  mobileMenu.onclick = (e) => {
+    if (e.target === mobileMenu) {
+      mobileMenu.classList.add("hidden");
+      mobileMenu.classList.remove("active");
+      hamburgerBtn.classList.remove("open");
     }
+  };
+}
+
+// Botones internos del menú mobile
+const mInv = document.getElementById("m-inventario");
+const mGacha = document.getElementById("m-gacha");
+const mLogout = document.getElementById("m-logout");
+
+if (mInv) {
+  mInv.onclick = () => {
+    mobileMenu.classList.add("hidden");
+    mobileMenu.classList.remove("active");
+    hamburgerBtn.classList.remove("open");
+    openInventoryPanel();
+  };
+}
+
+if (mGacha) {
+  mGacha.onclick = () => {
+    mobileMenu.classList.add("hidden");
+    mobileMenu.classList.remove("active");
+    hamburgerBtn.classList.remove("open");
+    window.location.href = "gacha.html";
+  };
+}
+
+if (mLogout) {
+  mLogout.onclick = async () => {
+    mobileMenu.classList.add("hidden");
+    mobileMenu.classList.remove("active");
+    hamburgerBtn.classList.remove("open");
+    await supabaseClient.auth.signOut();
+    window.location.href = "login.html";
+  };
 }
 
 // ===============================
@@ -122,311 +85,238 @@ const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
 const sendBtn = document.getElementById("send-btn");
 
-userInput.addEventListener("keydown", function(event) {
-  if (event.key === "Enter") {
-    event.preventDefault();
-    sendBtn.click();
-  }
-});
-
-// ===============================
-// NOTIFICACIONES DEL SISTEMA
-// ===============================
-function solicitarPermisoNotificaciones() {
-    if (!("Notification" in window)) return;
-    if (Notification.permission === "default") Notification.requestPermission();
-}
-
-function enviarNotificacion(titulo, cuerpo) {
-    if (Notification.permission === "granted") {
-        new Notification(titulo, {
-            body: cuerpo,
-            icon: "varios/yumiko/yumiko-face-full-face.png"
-        });
-        if (navigator.vibrate) navigator.vibrate([120, 80, 120]);
+if (userInput) {
+  userInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      sendBtn.click();
     }
+  });
 }
-
-// ===============================
-// SISTEMA DE INACTIVIDAD
-// ===============================
-let inactivityTimer;
-let secondInactivityTimer;
-let firstMessageSent = false;
-
-function resetInactivityTimers() {
-    clearTimeout(inactivityTimer);
-    clearTimeout(secondInactivityTimer);
-
-    inactivityTimer = setTimeout(() => {
-        sendFirstInactivityMessage();
-    }, 60000);
-
-    firstMessageSent = false;
-}
-
-async function sendFirstInactivityMessage() {
-    if (firstMessageSent) return;
-    firstMessageSent = true;
-
-    const neutralPrompt = "El usuario estuvo inactivo por 1 minuto. Retoma la conversación de forma amable, tomboy y cotidiana.";
-
-    try {
-        const res = await fetch("/api/yumiko", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: neutralPrompt, profile: profile })
-        });
-
-        const data = await res.json();
-        const reply = data.reply || "Ey… te me fuiste un minuto. ¿Todo bien por ahí?";
-
-        addMessage(reply, "bot");
-        saveMessage("assistant", reply);
-        enviarNotificacion("Yumiko", reply);
-
-    } catch (error) {
-        console.error("Error en mensaje automático:", error);
-    }
-
-    secondInactivityTimer = setTimeout(() => {
-        sendSecondInactivityMessage();
-    }, 5 * 60 * 1000);
-}
-
-async function sendSecondInactivityMessage() {
-    const neutralPrompt = "El usuario estuvo inactivo por 5 minutos. Envia un mensaje suave, tomboy y respetuoso, sin generar dependencia.";
-
-    try {
-        const res = await fetch("/api/yumiko", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: neutralPrompt, profile: profile })
-        });
-
-        const data = await res.json();
-        const reply = data.reply || "Bueno… ya pasaron varios minutos. Si necesitás hablar, estoy acá.";
-
-        addMessage(reply, "bot");
-        saveMessage("assistant", reply);
-        enviarNotificacion("Yumiko", reply);
-
-    } catch (error) {
-        console.error("Error en segundo mensaje automático:", error);
-    }
-}
- console.log('prueba en logs xddxdxdx')
-// ===============================
-// DETECTAR REGRESO DEL USUARIO
-// ===============================
-function registrarActividad() {
-    localStorage.setItem("lastActive", Date.now());
-}
-
-async function mensajeBienvenidaRegreso() {
-    const ultimo = localStorage.getItem("lastActive");
-    if (!ultimo) return;
-
-    const ahora = Date.now();
-    const diferenciaMin = (ahora - ultimo) / 1000 / 60;
-
-    if (diferenciaMin >= 30) {
-        const prompt = "El usuario volvió a la página después de un tiempo. Dale una bienvenida amable y neutral.";
-
-        try {
-            const res = await fetch("/api/yumiko", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: prompt, profile: profile })
-            });
-
-            const data = await res.json();
-            const reply = data.reply || "Bienvenido de nuevo.";
-
-            addMessage(reply, "bot");
-            saveMessage("assistant", reply);
-            enviarNotificacion("Yumiko", reply);
-
-        } catch (e) {
-            console.error("Error en mensaje de regreso:", e);
-        }
-    }
-}
-
-// ===============================
-// MENSAJE INICIAL ALEATORIO
-// ===============================
-async function mensajeInicialYumiko() {
-    const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
-    if (history.length > 0) return;
-
-    const mensajesIniciales = [
-        "Ey… llegaste justo. Estaba por servirme un café.",
-        "Ah, hola. No pensé que vendrías tan temprano.",
-        "Te estaba esperando… bueno, más o menos. ¿Cómo va?",
-        "Llegaste. Mi día estaba medio aburrido, así que está bueno verte.",
-        "¿Vos sos el nuevo? Bueno… supongo que podemos hablar un rato."
-    ];
-
-    const random = Math.floor(Math.random() * mensajesIniciales.length);
-    const prompt = mensajesIniciales[random];
-
-    addMessage(prompt, "bot");
-    saveMessage("assistant", prompt);
-}
-
-// ===============================
-// MEMORIA DEL DOJO
-// ===============================
-function saveMessage(role, content) {
-    const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
-    history.push({ role, content });
-    localStorage.setItem("chatHistory", JSON.stringify(history));
-}
-
-function loadHistory() {
-    const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
-    history.forEach(msg => {
-        addMessage(msg.content, msg.role === "assistant" ? "bot" : "user");
-    });
-    return history;
-}
-
-let profile = JSON.parse(localStorage.getItem("profile")) || {
-    name: null,
-    goal: null
-};
-
-function saveProfile() {
-    localStorage.setItem("profile", JSON.stringify(profile));
-}
-
-function detectProfileData(userMessage) {
-    if (userMessage.toLowerCase().includes("mi nombre es")) {
-        const name = userMessage.split("mi nombre es")[1].trim();
-        profile.name = name;
-        saveProfile();
-    }
-
-    if (userMessage.toLowerCase().includes("mi meta es")) {
-        const goal = userMessage.split("mi meta es")[1].trim();
-        profile.goal = goal;
-        saveProfile();
-    }
-}
-
-// ===============================
-// AUDIO Y EFECTOS
-// ===============================
-const typingIndicator = document.getElementById("typing");
-
-const ambienceIntro = document.getElementById("ambience-intro");
-ambienceIntro.volume = 0;
-ambienceIntro.loop = false;
-
-const ambienceLoop = document.getElementById("ambience-loop");
-ambienceLoop.volume = 0;
-ambienceLoop.loop = true;
-
-ambienceIntro.play().then(() => {
-  fadeIn(ambienceIntro, 0.12);
-}).catch(() => {
-  document.addEventListener("click", () => {
-    ambienceIntro.play();
-    fadeIn(ambienceIntro, 0.12);
-  }, { once: true });
-});
-
-ambienceIntro.addEventListener("ended", () => {
-  ambienceLoop.currentTime = 0;
-  ambienceLoop.play();
-  fadeIn(ambienceLoop, 0.18);
-});
-
-function fadeIn(audio, targetVolume) {
-  let vol = 0;
-  const fade = setInterval(() => {
-    vol += 0.02;
-    audio.volume = Math.min(vol, targetVolume);
-    if (vol >= targetVolume) clearInterval(fade);
-  }, 80);
-}
-
-const yumikoSound = new Audio("/varios/musica/doing.mp3");
-yumikoSound.volume = 0.85;
 
 function addMessage(text, sender) {
-  const message = document.createElement("div");
-  message.classList.add("message", sender);
+  const msg = document.createElement("div");
+  msg.classList.add("message", sender);
 
   if (sender === "bot") {
     const avatar = document.createElement("img");
-    avatar.classList.add("avatar-small");
     avatar.src = "varios/yumiko/yumiko-face-full-face.png";
-    message.appendChild(avatar);
+    avatar.classList.add("avatar-small");
+    msg.appendChild(avatar);
   }
 
   const bubble = document.createElement("div");
   bubble.classList.add("bubble");
   bubble.textContent = text;
 
-  message.appendChild(bubble);
-  chatBox.appendChild(message);
-
+  msg.appendChild(bubble);
+  chatBox.appendChild(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
 // ===============================
 // ENVÍO DE MENSAJES
 // ===============================
-sendBtn.addEventListener("click", async () => {
-  const text = userInput.value.trim();
-  if (!text) return;
+if (sendBtn) {
+  sendBtn.onclick = async () => {
+    const text = userInput.value.trim();
+    if (!text) return;
 
-  addMessage(text, "user");
-  saveMessage("user", text);
-  detectProfileData(text);
+    addMessage(text, "user");
+    saveMessage("user", text);
+    detectProfileData(text);
 
-  registrarActividad();
+    userInput.value = "";
 
-  userInput.value = "";
+    const typing = document.getElementById("typing");
+    typing.classList.remove("hidden");
 
-  typingIndicator.classList.remove("hidden");
+    try {
+      const res = await fetch("/api/yumiko", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text, profile })
+      });
 
-  document.querySelector(".glow-yumiko").style.opacity = 1;
-  document.querySelector(".aura-yumiko").style.opacity = 1;
-  document.querySelector(".aura-yumiko").style.transform = "scale(1.15)";
+      const data = await res.json();
+      const reply = data.reply || "No pude procesar tu mensaje.";
 
-  try {
-    const res = await fetch("/api/yumiko", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: text, profile: profile })
-    });
+      addMessage(reply, "bot");
+      saveMessage("assistant", reply);
 
-    const data = await res.json();
-    const reply = data.reply || "No pude procesar tu mensaje.";
+      yumikoSound.currentTime = 0;
+      yumikoSound.play();
 
-    addMessage(reply, "bot");
-    saveMessage("assistant", reply);
+      resetInactivityTimers();
 
-    yumikoSound.currentTime = 0;
-    yumikoSound.play();
+    } catch (e) {
+      addMessage("Hubo un error al conectar con Yumiko.", "bot");
+    }
 
-    resetInactivityTimers();
+    typing.classList.add("hidden");
+  };
+}
 
-  } catch (error) {
-    addMessage("Hubo un error al conectar con Yumiko.", "bot");
+// ===============================
+// MEMORIA DEL DOJO
+// ===============================
+function saveMessage(role, content) {
+  const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
+  history.push({ role, content });
+  localStorage.setItem("chatHistory", JSON.stringify(history));
+}
+
+function loadHistory() {
+  const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
+  history.forEach(msg => {
+    addMessage(msg.content, msg.role === "assistant" ? "bot" : "user");
+  });
+}
+
+let profile = JSON.parse(localStorage.getItem("profile")) || { name: null, goal: null };
+
+function detectProfileData(text) {
+  if (text.toLowerCase().includes("mi nombre es")) {
+    profile.name = text.split("mi nombre es")[1].trim();
+    localStorage.setItem("profile", JSON.stringify(profile));
   }
 
-  typingIndicator.classList.add("hidden");
+  if (text.toLowerCase().includes("mi meta es")) {
+    profile.goal = text.split("mi meta es")[1].trim();
+    localStorage.setItem("profile", JSON.stringify(profile));
+  }
+}
 
-  document.querySelector(".glow-yumiko").style.opacity = 0;
-  document.querySelector(".aura-yumiko").style.opacity = 0;
-  document.querySelector(".aura-yumiko").style.transform = "scale(1)";
-});
+// ===============================
+// INVENTARIO
+// ===============================
+async function openInventoryPanel() {
+  let overlay = document.getElementById("inventory-overlay");
 
-userInput.addEventListener("input", resetInactivityTimers);
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "inventory-overlay";
+    overlay.style.position = "fixed";
+    overlay.style.inset = "0";
+    overlay.style.background = "rgba(0,0,0,0.6)";
+    overlay.style.zIndex = "10000";
+    overlay.style.display = "flex";
+    overlay.style.justifyContent = "flex-end";
+
+    const drawer = document.createElement("div");
+    drawer.style.width = "360px";
+    drawer.style.maxWidth = "90%";
+    drawer.style.background = "rgba(0,0,0,0.85)";
+    drawer.style.padding = "18px";
+    drawer.style.overflowY = "auto";
+
+    const closeBtn = document.createElement("button");
+    closeBtn.textContent = "Cerrar";
+    closeBtn.onclick = () => overlay.remove();
+
+    drawer.appendChild(closeBtn);
+
+    const content = document.createElement("div");
+    content.id = "inventory-content";
+    drawer.appendChild(content);
+
+    overlay.appendChild(drawer);
+    document.body.appendChild(overlay);
+  }
+
+  const content = document.getElementById("inventory-content");
+  content.innerHTML = "Cargando...";
+
+  const user = await supabaseClient.auth.getUser();
+  const userId = user.data.user.id;
+
+  const res = await fetch("/api/inventario", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId })
+  });
+
+  const data = await res.json();
+  content.innerHTML = data.items
+    .map(i => `<p>${i.nombre} (${i.rareza}) x${i.cantidad}</p>`)
+    .join("");
+}
+
+// ===============================
+// INACTIVIDAD
+// ===============================
+let inactivityTimer;
+let secondInactivityTimer;
+let firstMessageSent = false;
+
+function resetInactivityTimers() {
+  clearTimeout(inactivityTimer);
+  clearTimeout(secondInactivityTimer);
+
+  inactivityTimer = setTimeout(sendFirstInactivityMessage, 60000);
+  firstMessageSent = false;
+}
+
+async function sendFirstInactivityMessage() {
+  if (firstMessageSent) return;
+  firstMessageSent = true;
+
+  const res = await fetch("/api/yumiko", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: "El usuario estuvo inactivo por 1 minuto. Retoma la conversación.",
+      profile
+    })
+  });
+
+  const data = await res.json();
+  addMessage(data.reply, "bot");
+  saveMessage("assistant", data.reply);
+
+  secondInactivityTimer = setTimeout(sendSecondInactivityMessage, 5 * 60 * 1000);
+}
+
+async function sendSecondInactivityMessage() {
+  const res = await fetch("/api/yumiko", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      message: "El usuario estuvo inactivo por 5 minutos. Envía un mensaje suave.",
+      profile
+    })
+  });
+
+  const data = await res.json();
+  addMessage(data.reply, "bot");
+  saveMessage("assistant", data.reply);
+}
+
+// ===============================
+// AUDIO
+// ===============================
+const ambienceIntro = document.getElementById("ambience-intro");
+const ambienceLoop = document.getElementById("ambience-loop");
+const yumikoSound = document.getElementById("yumiko-sound");
+
+if (ambienceIntro) {
+  ambienceIntro.volume = 0;
+  ambienceIntro.play().then(() => fadeIn(ambienceIntro, 0.12));
+  ambienceIntro.onended = () => {
+    ambienceLoop.volume = 0;
+    ambienceLoop.play();
+    fadeIn(ambienceLoop, 0.18);
+  };
+}
+
+function fadeIn(audio, target) {
+  let v = 0;
+  const interval = setInterval(() => {
+    v += 0.02;
+    audio.volume = Math.min(v, target);
+    if (v >= target) clearInterval(interval);
+  }, 80);
+}
 
 // ===============================
 // PARALLAX
@@ -436,105 +326,38 @@ if (window.innerWidth > 768) {
     const x = (e.clientX / window.innerWidth - 0.5) * 20;
     const y = (e.clientY / window.innerHeight - 0.5) * 20;
 
-    const wood = document.querySelector(".layer-wood");
-    const shoji = document.querySelector(".layer-shoji");
-    const pattern = document.querySelector(".layer-pattern");
-
-    if (wood) wood.style.transform = `translate(${x}px, ${y}px)`;
-    if (shoji) shoji.style.transform = `translate(${x * 0.6}px, ${y * 0.6}px)`;
-    if (pattern) pattern.style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
+    document.querySelector(".layer-wood").style.transform = `translate(${x}px, ${y}px)`;
+    document.querySelector(".layer-shoji").style.transform = `translate(${x * 0.6}px, ${y * 0.6}px)`;
+    document.querySelector(".layer-pattern").style.transform = `translate(${x * 0.3}px, ${y * 0.3}px)`;
   });
 }
 
 // ===============================
-// BOTÓN: REINICIAR CHAT
+// MOSTRAR UI SI HAY SESIÓN
 // ===============================
-const resetBtn = document.getElementById("reset-chat");
+supabaseClient.auth.getUser().then(({ data: { user } }) => {
+  if (!user) return;
 
-if (resetBtn) {
-    resetBtn.addEventListener("click", () => {
-        localStorage.removeItem("chatHistory");
-        localStorage.removeItem("profile");
-        location.reload();
-    });
-}
+  const topBar = document.getElementById("top-bar");
+  const hamburgerBtn = document.getElementById("hamburger-btn");
+  const mobileMenu = document.getElementById("mobile-menu-overlay");
 
-// ===============================
-// BOTÓN: REGENERAR RESPUESTA
-// ===============================
-const regenBtn = document.getElementById("regenerate-btn");
-let regenCooldown = false;
+  if (topBar) topBar.classList.remove("hidden");
 
-if (regenBtn) {
-    regenBtn.addEventListener("click", async () => {
+  if (hamburgerBtn) {
+    if (window.innerWidth <= 768) {
+      hamburgerBtn.classList.remove("hidden");
+    } else {
+      hamburgerBtn.classList.add("hidden");
+    }
+  }
 
-        if (regenCooldown) return;
-
-        regenCooldown = true;
-        regenBtn.classList.add("loading");
-        regenBtn.textContent = "Regenerando";
-
-        const history = JSON.parse(localStorage.getItem("chatHistory")) || [];
-
-        const lastUserMessage = [...history].reverse().find(msg => msg.role === "user");
-
-        if (!lastUserMessage) {
-            addMessage("No hay mensaje para regenerar.", "bot");
-            regenBtn.classList.remove("loading");
-            regenBtn.textContent = "Regenerar";
-            regenCooldown = false;
-            return;
-        }
-
-        typingIndicator.classList.remove("hidden");
-
-        try {
-            const res = await fetch("/api/yumiko", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: lastUserMessage.content, profile: profile })
-            });
-
-            const data = await res.json();
-            const newReply = data.reply || "No pude regenerar la respuesta.";
-
-            const botMessages = document.querySelectorAll(".message.bot .bubble");
-            if (botMessages.length > 0) {
-                botMessages[botMessages.length - 1].textContent = newReply;
-            }
-
-            history.push({ role: "assistant", content: newReply });
-            localStorage.setItem("chatHistory", JSON.stringify(history));
-
-            yumikoSound.currentTime = 0;
-            yumikoSound.play();
-
-            resetInactivityTimers();
-
-        } catch (error) {
-            addMessage("Hubo un error al regenerar la respuesta.", "bot");
-        }
-
-        typingIndicator.classList.add("hidden");
-
-        setTimeout(() => {
-            regenBtn.classList.remove("loading");
-            regenBtn.textContent = "Regenerar";
-            regenCooldown = false;
-        }, 7000);
-    });
-}
+  if (mobileMenu) {
+    mobileMenu.classList.add("hidden");
+    mobileMenu.classList.remove("active");
+  }
+});
 
 // ===============================
-// INICIALIZACIÓN
+// FIN
 // ===============================
-window.onload = async () => {
-    loadHistory();
-    solicitarPermisoNotificaciones();
-    await mensajeBienvenidaRegreso();
-    await mensajeInicialYumiko();
-    registrarActividad();
-    resetInactivityTimers();
-
-    await checkAuthState();
-};

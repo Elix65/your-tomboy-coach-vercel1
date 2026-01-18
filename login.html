@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entrar al Dojo</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="login.css">
+</head>
+
+<body>
+
+  <div id="login-container">
+
+    <h2 class="login-title">Entrar al Dojo</h2>
+
+    <input id="email" type="email" placeholder="Email" autocomplete="email">
+    <input id="password" type="password" placeholder="Contraseña">
+
+    <button id="btn-login" class="login-btn">Iniciar sesión</button>
+    <button id="btn-register" class="login-btn secondary">Registrarse</button>
+
+    <p id="login-error" class="login-error hidden"></p>
+
+  </div>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Lógica de autenticación -->
+    <script src="auth.js"></script>
+
+
+</body>
+</html>

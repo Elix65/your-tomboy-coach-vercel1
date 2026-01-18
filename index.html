@@ -5,13 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Comienza tu Entrenamiento con Yumiko</title>
   <link rel="stylesheet" href="style.css">
-
 </head>
 
-<body> 
-  <!-- BOTÓN DE LOGOUT -->
-  <button id="btn-logout" class="logout-btn hidden">Cerrar sesión</button>
-  <button><a href="gacha.html">Ir al Gacha</a></button>
+<body>
+
+  <!-- BOTÓN HAMBURGUESA (solo mobile) -->
+  <div id="hamburger-btn" class="hamburger hidden">
+    <div></div>
+    <div></div>
+    <div></div>
+  </div>
+
+  <!-- MENÚ LATERAL MOBILE -->
+  <div id="mobile-menu-overlay" class="mobile-menu-overlay hidden">
+    <div class="mobile-menu-drawer">
+      <button id="m-inventario" class="mobile-menu-btn">Inventario</button>
+      <button id="m-gacha" class="mobile-menu-btn">Gacha</button>
+      <button id="m-logout" class="mobile-menu-btn logout">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <!-- TOP BAR (DESKTOP) -->
+  <div class="top-bar hidden" id="top-bar">
+    <button id="btn-inventario" class="top-btn">Inventario</button>
+    <button id="btn-gacha" class="top-btn">Gacha</button>
+    <button id="btn-logout" class="top-btn">Cerrar sesión</button>
+  </div>
+
   <!-- entrada cinematica -->
   <div class="cinematic-overlay"></div>
 
@@ -29,18 +49,7 @@
   <!-- CONTENIDO -->
   <div class="container">
 
-    <!-- FORMULARIO DE LOGIN / REGISTRO -->
-    <div id="auth-container">
-        <h2>Entrar al Dojo</h2>
-
-        <input id="email" type="email" placeholder="Email" autocomplete="email" inputmode="email">
-        <input id="password" type="password" placeholder="Contraseña">
-
-        <button id="btn-register">Registrarse</button>
-        <button id="btn-login">Iniciar sesión</button>
-    </div>
-
-    <!-- TODO EL DOJO AGRUPADO AQUÍ -->
+    <!-- DOJO UI (ya no hay login aquí) -->
     <div id="dojo-ui">
 
       <div class="header">
@@ -77,7 +86,13 @@
   <audio id="ambience-loop" src="/varios/musica/ambiente-bucle.mp3" preload="auto" loop></audio>
   <audio id="yumiko-sound" src="/varios/musica/doing.mp3"></audio>
 
+  <!-- SUPABASE -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="script.js" defer></script>
+
+  <!-- LÓGICA PRINCIPAL DEL DOJO -->
+<script src="auth.js"></script>
+<script src="script.js" defer></script>
+
+
 </body>
 </html>

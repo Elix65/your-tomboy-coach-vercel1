@@ -1,20 +1,73 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <title>Yumiko Gacha</title>
-  <link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gacha de Yumiko</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="gacha.css">
 </head>
-<body>
-  <div id="app-gacha">
-    <h1>Gacha de Yumiko</h1>
-    <button id="tirar-una">Tirar 1</button>
-    <button id="tirar-diez">Tirar x10</button>
 
-    <div id="resultado"></div>
-    <div id="inventario"></div>
+<body>
+
+  <!-- BOTÓN HAMBURGUESA (solo mobile) -->
+  <div id="hamburger-btn" class="hamburger hidden">
+    <div></div>
+    <div></div>
+    <div></div>
   </div>
 
-  <script src="gacha.js"></script>
+  <!-- MENÚ LATERAL MOBILE -->
+  <div id="mobile-menu-overlay" class="mobile-menu-overlay hidden">
+    <div class="mobile-menu-drawer">
+      <button id="m-inventario" class="mobile-menu-btn">Inventario</button>
+      <button id="m-gacha" class="mobile-menu-btn">Inicio</button>
+      <button id="m-logout" class="mobile-menu-btn logout">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <!-- TOP BAR (DESKTOP) -->
+  <div class="top-bar hidden" id="top-bar">
+    <button id="btn-inventario" class="top-btn">Inventario</button>
+    <button id="btn-gacha" class="top-btn">Inicio</button>
+    <button id="btn-logout" class="top-btn">Cerrar sesión</button>
+  </div>
+
+  <!-- CAPAS DE FONDO -->
+  <div class="layer layer-wood"></div>
+  <div class="layer layer-shoji"></div>
+  <div class="layer layer-pattern"></div>
+
+  <div class="container" id="gacha-container">
+
+    <!-- HEADER -->
+    <div class="header">
+      <img src="varios/yumiko/yumiko-face-full-face.png" class="avatar-header">
+      <h1 class="title">Gacha de Yumiko</h1>
+    </div>
+
+    <p class="subtitle">Prueba tu suerte, discípulo</p>
+
+    <!-- BOTONES -->
+    <div class="gacha-buttons">
+      <button id="btn-tirar-1">Tirar 1</button>
+      <button id="btn-tirar-10">Tirar x10</button>
+    </div>
+
+    <!-- RESULTADOS -->
+    <div id="gacha-resultados">
+      <p style="opacity:0.7;">Aquí aparecerán tus resultados…</p>
+    </div>
+
+  </div>
+
+  <!-- Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Lógica del gacha -->
+<script src="auth.js"></script>
+<script src="gacha.js"></script>
+
+
 </body>
 </html>
