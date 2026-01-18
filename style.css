@@ -497,13 +497,17 @@ body {
 ================================ */
 
 @media (max-width: 768px) {
+  /* Ocultar top bar en mobile */
   .top-bar {
-    display: none;
+    display: none !important;
   }
+
+  /* Mostrar botón hamburguesa en mobile */
   .hamburger {
-    display: flex;
+    display: flex !important;
   }
 }
+
 
 /* ================================
    RESPONSIVE — TABLET
