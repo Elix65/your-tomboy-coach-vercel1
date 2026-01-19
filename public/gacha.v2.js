@@ -1,13 +1,12 @@
-
 // ===============================
 // NAVEGACIÓN TOP BAR
 // ===============================
-const btnGachaNav = document.getElementById("btn-gacha");
+const btnInicioNav = document.getElementById("btn-inicio");
 const btnInvNav = document.getElementById("btn-inventario");
 const btnLogoutNav = document.getElementById("btn-logout");
 
-if (btnGachaNav) {
-  btnGachaNav.onclick = () => window.location.href = "/index.html";
+if (btnInicioNav) {
+  btnInicioNav.onclick = () => window.location.href = "/index.html";
 }
 
 if (btnInvNav) {
@@ -17,7 +16,7 @@ if (btnInvNav) {
 if (btnLogoutNav) {
   btnLogoutNav.onclick = async () => {
     await supabaseClient.auth.signOut();
-    window.location.href = "login.html";
+    window.location.href = "/login.html";
   };
 }
 
@@ -47,7 +46,7 @@ if (mobileMenu) {
 
 // Botones internos del menú mobile
 const mInv = document.getElementById("m-inventario");
-const mGacha = document.getElementById("m-gacha");
+const mInicio = document.getElementById("m-inicio");
 const mLogout = document.getElementById("m-logout");
 
 if (mInv) {
@@ -59,8 +58,8 @@ if (mInv) {
   };
 }
 
-if (mGacha) {
-  mGacha.onclick = () => {
+if (mInicio) {
+  mInicio.onclick = () => {
     mobileMenu.classList.add("hidden");
     mobileMenu.classList.remove("active");
     hamburgerBtn.classList.remove("open");
@@ -74,7 +73,7 @@ if (mLogout) {
     mobileMenu.classList.remove("active");
     hamburgerBtn.classList.remove("open");
     await supabaseClient.auth.signOut();
-    window.location.href = "login.html";
+    window.location.href = "/login.html";
   };
 }
 
@@ -226,7 +225,6 @@ async function openInventoryPanelGacha() {
     content.innerHTML = `<p style="color:#f88">No se pudo cargar el inventario.</p>`;
   }
 }
-
 
 // ===============================
 // MOSTRAR UI SI HAY SESIÓN
