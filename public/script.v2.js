@@ -209,7 +209,7 @@ async function openInventoryPanel() {
     const res = await fetch(`/api/inventario?user_id=${userId}`);
 
     const data = await res.json();
-    const items = data.items || [];
+    const items = data.inventario || [];
 
     if (!items.length) {
       content.innerHTML = `<p style="color:#ccc">No tenés skins todavía.</p>`;
