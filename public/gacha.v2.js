@@ -206,7 +206,6 @@ async function openInventoryPanelGacha() {
     }
 
     const res = await fetch(`/api/inventario?user_id=${userId}`);
-
     const data = await res.json();
     const items = data.inventario || [];
 
@@ -223,10 +222,13 @@ async function openInventoryPanelGacha() {
         rareza === "legendaria" ? "#ffcc00" : "#f7f3e9";
 
       return `
-        <div style="padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03)">
-          <div style="font-weight:600;color:${color}">${i.nombre}</div>
-          <div style="font-size:13px;opacity:0.8;margin-top:4px">
-            ${rareza.charAt(0).toUpperCase() + rareza.slice(1)} • x${i.cantidad}
+        <div class="inv-item">
+          <img src="${i.imagen_url || '/varios/placeholder.png'}" class="inv-img">
+          <div class="inv-info">
+            <div class="inv-nombre" style="color:${color}">${i.nombre}</div>
+            <div class="inv-detalle">
+              ${rareza.charAt(0).toUpperCase() + rareza.slice(1)} • x${i.cantidad}
+            </div>
           </div>
         </div>
       `;

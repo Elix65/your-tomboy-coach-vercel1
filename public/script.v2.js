@@ -157,9 +157,9 @@ if (sendBtn) {
 }
 
 // ===============================
-// INVENTARIO (VERSIÓN ESTABLE)
+// INVENTARIO LATERAL (VERSIÓN GACHA)
 // ===============================
-async function openInventoryPanel() {
+async function openInventoryPanelGacha() {
   let overlay = document.getElementById("inventory-overlay");
 
   if (!overlay) {
@@ -205,9 +205,12 @@ async function openInventoryPanel() {
   try {
     const { data: { user } } = await supabaseClient.auth.getUser();
     const userId = user?.id;
+    if (!userId) {
+      content.innerHTML = `<p style="color:#f88">No se pudo obtener tu sesión.</p>`;
+      return;
+    }
 
     const res = await fetch(`/api/inventario?user_id=${userId}`);
-
     const data = await res.json();
     const items = data.inventario || [];
 
@@ -216,16 +219,28 @@ async function openInventoryPanel() {
       return;
     }
 
-    content.innerHTML = items.map(i => `
-      <div style="padding:8px;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.03)">
-        <div style="font-weight:600;color:#f7f3e9">${i.nombre}</div>
-        <div style="font-size:13px;opacity:0.8;margin-top:4px">
-          ${i.rareza} • x${i.cantidad}
+    content.innerHTML = items.map(i => {
+      const rareza = i.rareza?.toLowerCase() || "comun";
+      const color =
+        rareza === "rara" ? "#4da6ff" :
+        rareza === "epica" || rareza === "épica" ? "#c77dff" :
+        rareza === "legendaria" ? "#ffcc00" : "#f7f3e9";
+
+      return `
+        <div class="inv-item">
+          <img src="${i.imagen_url || '/varios/placeholder.png'}" class="inv-img">
+          <div class="inv-info">
+            <div class="inv-nombre" style="color:${color}">${i.nombre}</div>
+            <div class="inv-detalle">
+              ${rareza.charAt(0).toUpperCase() + rareza.slice(1)} • x${i.cantidad}
+            </div>
+          </div>
         </div>
-      </div>
-    `).join("");
+      `;
+    }).join("");
 
   } catch (e) {
+    console.error(e);
     content.innerHTML = `<p style="color:#f88">No se pudo cargar el inventario.</p>`;
   }
 }
