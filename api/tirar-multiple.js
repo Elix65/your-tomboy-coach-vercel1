@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     // 1. Obtener skins activas
     const { data: skins, error: skinsError } = await supabase
       .from('skins')
-      .select('*')
+      .select('id, nombre, rareza, imagen_url, probabilidad')
       .eq('activa', true)
 
     if (skinsError) return res.status(500).json({ error: skinsError.message })
