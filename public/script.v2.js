@@ -20,7 +20,7 @@ if (btnGacha) {
 }
 
 if (btnInventario) {
-  btnInventario.onclick = () => openInventoryPanel();
+  btnInventario.onclick = () => openInventoryPanelGacha();
 }
 
 if (btnLogout) {
