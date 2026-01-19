@@ -189,11 +189,7 @@ async function openInventoryPanelGacha() {
       return;
     }
 
-    const res = await fetch("/api/inventario", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId })
-    });
+    const res = await fetch(`/api/inventario?user_id=${userId}`);
 
     const data = await res.json();
     const items = data.items || [];
