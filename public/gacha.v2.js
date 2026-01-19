@@ -121,17 +121,15 @@ if (btn10) {
     const data = await res.json();
 
     divRes.innerHTML = `
-      <h3>Resultados (${data.cantidad}):</h3>
-      <div class="gacha-grid">
-        ${data.resultados
-          .map(s => `
-            <p class="skin-${s.rareza} reveal">
-              ${s.nombre} (${s.rareza})
-            </p>
-          `)
-          .join("")}
-      </div>
+  <h3>Resultado:</h3>
+  <div class="skin-result">
+    <img src="${s.imagen_url}" class="skin-img">
+    <p class="skin-${s.rareza} reveal">
+      ${s.nombre} (${s.rareza})
+    </p>
+    </div>
     `;
+
   };
 }
 
