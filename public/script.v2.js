@@ -64,7 +64,7 @@ if (mInv) {
     mobileMenu.classList.add("hidden");
     mobileMenu.classList.remove("active");
     hamburgerBtn.classList.remove("open");
-    openInventoryPanel();
+    openInventoryPanelGacha();
   };
 }
 
