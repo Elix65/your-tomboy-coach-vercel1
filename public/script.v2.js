@@ -1,3 +1,13 @@
+supabaseClient.auth.getUser().then(({ data: { user } }) => {
+  if (!user) {
+    window.location.href = "/login.html";
+    return;
+  }
+
+  // mostrar UI
+});
+
+
 // ===============================
 // NAVEGACIÓN TOP BAR
 // ===============================
