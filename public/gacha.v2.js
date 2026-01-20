@@ -1,7 +1,6 @@
 // gacha.v2.js
 import supabaseClient from './supabase.js';
 
-
 // ===============================
 // SISTEMA GACHA
 // ===============================
@@ -169,4 +168,61 @@ async function openInventoryPanelGacha() {
     console.error(e);
     content.innerHTML = `<p style="color:#f88">No se pudo cargar el inventario.</p>`;
   }
+}
+
+// ===============================
+// BOTONES DE NAVEGACIÓN (GACHA)
+// ===============================
+
+// Desktop
+const btnInicio = document.getElementById("btn-inicio");
+const btnInventario = document.getElementById("btn-inventario");
+const btnLogout = document.getElementById("btn-logout");
+
+// Mobile
+const mInicio = document.getElementById("m-inicio");
+const mInventario = document.getElementById("m-inventario");
+const mLogout = document.getElementById("m-logout");
+
+// Ir al dojo (inicio)
+if (btnInicio) btnInicio.onclick = () => window.location.href = "index.html";
+if (mInicio) mInicio.onclick = () => window.location.href = "index.html";
+
+// Abrir inventario desde gacha
+if (btnInventario) btnInventario.onclick = () => openInventoryPanelGacha();
+if (mInventario) mInventario.onclick = () => openInventoryPanelGacha();
+
+// Logout
+if (btnLogout) {
+  btnLogout.onclick = async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = "login.html";
+  };
+}
+
+if (mLogout) {
+  mLogout.onclick = async () => {
+    await supabaseClient.auth.signOut();
+    window.location.href = "login.html";
+  };
+}
+
+// ===============================
+// MENÚ MOBILE (HAMBURGUESA)
+// ===============================
+const hamburgerBtn = document.getElementById("hamburger-btn");
+const mobileMenuOverlay = document.getElementById("mobile-menu-overlay");
+
+if (hamburgerBtn) {
+  hamburgerBtn.onclick = () => {
+    mobileMenuOverlay.classList.toggle("hidden");
+  };
+}
+
+if (mobileMenuOverlay) {
+  mobileMenuOverlay.onclick = (e) => {
+    if (e.target === mobileMenuOverlay) {
+      mobileMenuOverlay.classList.add("hidden");
+    }
+  };
 }
