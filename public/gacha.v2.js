@@ -118,6 +118,12 @@ if (btn1) {
     }
 
     const s = data.skin;
+    if (!data?.skin) {
+    divRes.innerHTML = `<p style="color:#ff8080">Error al tirar (1). Revisá logs.</p>`;
+    console.warn("Respuesta tirar-skin:", data);
+    return;
+    }
+
 
     divRes.innerHTML = `
       <h3>Resultado:</h3>
@@ -144,15 +150,30 @@ if (btn10) {
       body: JSON.stringify({ user_id: userId, cantidad: 10 })
     });
 
-    const data = await res.json();
+    let data = null;
+    try {
+      data = await res.json();
+    } catch (e) {
+      divRes.innerHTML = `<p style="color:#ff8080">Error leyendo respuesta del servidor.</p>`;
+      return;
+    }
+
     if (!res.ok) {
       if (modo === "premium" && handlePremiumError(data)) return;
-      console.warn(data);
+      divRes.innerHTML = `<p style="color:#ff8080">Error al tirar (x10).</p>`;
+      console.warn("tirar-multiple error:", data);
+      return;
+    }
+
+    // ✅ PARCHE DEFENSIVO
+    if (!data?.resultados || !Array.isArray(data.resultados)) {
+      divRes.innerHTML = `<p style="color:#ff8080">Error al tirar (x10): respuesta inválida.</p>`;
+      console.warn("Respuesta inválida tirar-multiple:", data);
       return;
     }
 
     divRes.innerHTML = `
-      <h3>Resultados (${data.cantidad}):</h3>
+      <h3>Resultados (${data.cantidad ?? data.resultados.length}):</h3>
       <div class="gacha-grid">
         ${data.resultados
           .map(s => `
