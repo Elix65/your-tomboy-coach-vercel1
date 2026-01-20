@@ -88,7 +88,40 @@ if (mLogout) {
 }
 
 // ===============================
-// CHAT YUMIKO (VERSIÓN ESTABLE)
+// CHAT YUMIKO (VERSIÓN ESTABLE + SUPABASE)
+// ===============================
+
+// 1) Función para guardar mensajes en Supabase
+async function saveMessageToSupabase({ userId, sender, content }) {
+  const { error } = await supabase
+    .from("messages")
+    .insert({
+      user_id: userId,
+      sender,
+      content
+    });
+
+  if (error) console.error("Error guardando mensaje:", error);
+}
+
+// 2) Función para cargar historial desde Supabase
+async function loadChatFromSupabase(userId) {
+  const { data, error } = await supabase
+    .from("messages")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Error cargando mensajes:", error);
+    return;
+  }
+
+  data.forEach(msg => addMessage(msg.content, msg.sender));
+}
+
+// ===============================
+// CHAT UI
 // ===============================
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
@@ -114,6 +147,9 @@ function addMessage(text, sender) {
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
+// ===============================
+// EVENTOS DE INPUT
+// ===============================
 if (userInput) {
   userInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
@@ -123,38 +159,67 @@ if (userInput) {
   });
 }
 
-if (sendBtn) {
-  sendBtn.onclick = async () => {
-    const text = userInput.value.trim();
-    if (!text) return;
+// ===============================
+// OBTENER USER Y CARGAR HISTORIAL
+// ===============================
+supabase.auth.getUser().then(async ({ data: { user } }) => {
+  if (!user) {
+    window.location.href = "/login.html";
+    return;
+  }
 
-    addMessage(text, "user");
-    userInput.value = "";
+  // Cargar historial del chat
+  await loadChatFromSupabase(user.id);
 
-    const typing = document.getElementById("typing");
-    typing.classList.remove("hidden");
+  // Activar botón de enviar
+  if (sendBtn) {
+    sendBtn.onclick = async () => {
+      const text = userInput.value.trim();
+      if (!text) return;
 
-    try {
-      const res = await fetch("/api/yumiko", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text })
+      addMessage(text, "user");
+
+      // Guardar mensaje del usuario
+      saveMessageToSupabase({
+        userId: user.id,
+        sender: "user",
+        content: text
       });
 
-      const data = await res.json();
-      addMessage(data.reply, "bot");
+      userInput.value = "";
 
-      const yumikoSound = document.getElementById("yumiko-sound");
-      yumikoSound.currentTime = 0;
-      yumikoSound.play();
+      const typing = document.getElementById("typing");
+      typing.classList.remove("hidden");
 
-    } catch (e) {
-      addMessage("Hubo un error al conectar con Yumiko.", "bot");
-    }
+      try {
+        const res = await fetch("/api/yumiko", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text })
+        });
 
-    typing.classList.add("hidden");
-  };
-}
+        const data = await res.json();
+        addMessage(data.reply, "bot");
+
+        // Guardar mensaje del bot
+        saveMessageToSupabase({
+          userId: user.id,
+          sender: "bot",
+          content: data.reply
+        });
+
+        const yumikoSound = document.getElementById("yumiko-sound");
+        yumikoSound.currentTime = 0;
+        yumikoSound.play();
+
+      } catch (e) {
+        addMessage("Hubo un error al conectar con Yumiko.", "bot");
+      }
+
+      typing.classList.add("hidden");
+    };
+  }
+});
 
 // ===============================
 // INVENTARIO LATERAL (VERSIÓN GACHA)
