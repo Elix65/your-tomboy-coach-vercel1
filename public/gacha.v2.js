@@ -1,4 +1,84 @@
 // ===============================
+// SISTEMA GACHA
+// ===============================
+
+let userId = null;
+
+// Obtener sesión
+supabaseClient.auth.getUser().then(({ data: { user } }) => {
+  if (user) userId = user.id;
+});
+
+const btn1 = document.getElementById("btn-tirar-1");
+const btn10 = document.getElementById("btn-tirar-10");
+const divRes = document.getElementById("gacha-resultados");
+
+// ===============================
+// TIRADA DE 1
+// ===============================
+if (btn1) {
+  btn1.onclick = async () => {
+    if (!userId) return;
+
+    const res = await fetch("/api/tirar-skin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId })
+    });
+
+    const data = await res.json();
+    const s = data.skin;
+
+    console.log("Skin recibida (1):", s);
+
+    divRes.innerHTML = `
+      <h3>Resultado:</h3>
+      <div class="skin-result">
+        <img src="${s.imagen_url}" class="skin-img">
+        <p class="skin-${s.rareza} reveal">
+          ${s.nombre} (${s.rareza})
+        </p>
+      </div>
+    `;
+  };
+}
+
+// ===============================
+// TIRADA X10
+// ===============================
+if (btn10) {
+  btn10.onclick = async () => {
+    if (!userId) return;
+
+    const res = await fetch("/api/tirar-multiple", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, cantidad: 10 })
+    });
+
+    const data = await res.json();
+
+    console.log("Resultados recibidos (x10):", data.resultados);
+
+    divRes.innerHTML = `
+      <h3>Resultados (${data.cantidad}):</h3>
+      <div class="gacha-grid">
+        ${data.resultados
+          .map(s => `
+            <div class="skin-result">
+              <img src="${s.imagen_url}" class="skin-img">
+              <p class="skin-${s.rareza} reveal">
+                ${s.nombre} (${s.rareza})
+              </p>
+            </div>
+          `)
+          .join("")}
+      </div>
+    `;
+  };
+}
+
+// ===============================
 // INVENTARIO LATERAL (VERSIÓN GACHA)
 // ===============================
 async function openInventoryPanelGacha() {
@@ -77,6 +157,7 @@ async function openInventoryPanelGacha() {
               ${rareza.charAt(0).toUpperCase() + rareza.slice(1)} • x${i.cantidad}
             </div>
           </div>
+        </div>
       `;
     }).join("");
 
