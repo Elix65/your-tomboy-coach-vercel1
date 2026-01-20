@@ -3,6 +3,7 @@
 // ===============================
 import supabaseClient from './supabase.js';
 
+
 // Detectar página actual
 const currentPage = window.location.pathname;
 
