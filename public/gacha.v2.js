@@ -1,3 +1,7 @@
+// gacha.v2.js
+import supabaseClient from './supabase.js';
+
+
 // ===============================
 // SISTEMA GACHA
 // ===============================
