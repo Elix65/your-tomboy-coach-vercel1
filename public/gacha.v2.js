@@ -332,3 +332,27 @@ if (mobileMenuOverlay) {
   };
 }
 setModo("comun");
+const btnRecharge = document.getElementById("btn-recharge");
+const packSelect = document.getElementById("pack-select");
+
+if (btnRecharge) {
+  btnRecharge.onclick = async () => {
+    if (!userId) return;
+
+    const pack = packSelect?.value || "55";
+
+    const res = await fetch("/api/create-checkout-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, pack })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data?.url) {
+      console.warn("Checkout error:", data);
+      return;
+    }
+
+    window.location.href = data.url;
+  };
+}

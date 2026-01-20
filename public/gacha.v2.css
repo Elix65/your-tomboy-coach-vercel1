@@ -306,6 +306,40 @@
   background: rgba(0,0,0,0.45);
   border: 1px solid rgba(255,255,255,0.12);
 }
+.recharge-row{
+  display:flex;
+  gap:10px;
+  justify-content:center;
+  align-items:center;
+  margin: 0 0 14px 0;
+  flex-wrap:wrap;
+}
+
+.pack-select{
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(0,0,0,0.55);
+  color: #f7f3e9;
+  font-weight: 700;
+  backdrop-filter: blur(6px);
+}
+
+.recharge-btn{
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(255, 77, 77, 0.9);
+  color: white;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.recharge-btn:hover{
+  transform: scale(1.03);
+  background: rgba(255, 120, 120, 1);
+}
 
 /* Responsive */
 @media (max-width: 480px) {
