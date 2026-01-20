@@ -158,7 +158,7 @@ if (chatBox && userInput && sendBtn) {
 }
 
 // ===============================
-// INVENTARIO GACHA
+// INVENTARIO LATERAL (VERSIÓN GACHA)
 // ===============================
 async function openInventoryPanelGacha() {
   let overlay = document.getElementById("inventory-overlay");
@@ -175,35 +175,91 @@ async function openInventoryPanelGacha() {
 
     const drawer = document.createElement("div");
     drawer.style.width = "360px";
+    drawer.style.maxWidth = "90%";
     drawer.style.background = "rgba(0,0,0,0.85)";
     drawer.style.padding = "18px";
+    drawer.style.overflowY = "auto";
+    drawer.style.borderLeft = "1px solid rgba(255,255,255,0.08)";
+    drawer.style.backdropFilter = "blur(6px)";
+    drawer.style.display = "flex";
+    drawer.style.flexDirection = "column";
+    drawer.style.gap = "12px";
 
     const closeBtn = document.createElement("button");
     closeBtn.textContent = "Cerrar";
-    closeBtn.onclick = () => overlay.remove();
+    closeBtn.className = "inventory-close-btn";
+    closeBtn.onclick = () => {
+      overlay.remove();
+      document.body.classList.remove("no-scroll");
+    };
 
     const content = document.createElement("div");
     content.id = "inventory-content";
-    content.innerHTML = "Cargando...";
+    content.innerHTML = `<p style="color:#ccc">Cargando...</p>`;
 
-    drawer.append(closeBtn, content);
+    drawer.appendChild(closeBtn);
+    drawer.appendChild(content);
     overlay.appendChild(drawer);
+
+    // Cerrar si clickean fuera del drawer
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) {
+        overlay.remove();
+        document.body.classList.remove("no-scroll");
+      }
+    });
+
     document.body.appendChild(overlay);
   }
 
+  // Bloquear scroll del fondo (aprovecha tu CSS body.no-scroll)
+  document.body.classList.add("no-scroll");
+
   const content = document.getElementById("inventory-content");
-  const { data: { user } } = await supabaseClient.auth.getUser();
-  if (!user) return;
+  if (!content) return;
 
-  const res = await fetch(`/api/inventario?user_id=${user.id}`);
-  const data = await res.json();
+  try {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    const userId = user?.id;
 
-  content.innerHTML = data.inventario?.map(i => `
-    <div class="inv-item">
-      <img src="${i.imagen_url}">
-      <div>${i.nombre} • x${i.cantidad}</div>
-    </div>
-  `).join("") || "No tenés items.";
+    if (!userId) {
+      content.innerHTML = `<p style="color:#f88">No se pudo obtener tu sesión.</p>`;
+      return;
+    }
+
+    const res = await fetch(`/api/inventario?user_id=${userId}`);
+    const data = await res.json();
+    const items = data.inventario || [];
+
+    if (!items.length) {
+      content.innerHTML = `<p style="color:#ccc">No tenés skins todavía.</p>`;
+      return;
+    }
+
+    content.innerHTML = items.map(i => {
+      const rareza = (i.rareza || "comun").toLowerCase();
+      const color =
+        rareza === "rara" ? "#4da6ff" :
+        rareza === "epica" || rareza === "épica" ? "#c77dff" :
+        rareza === "legendaria" ? "#ffcc00" : "#f7f3e9";
+
+      return `
+        <div class="inv-item">
+          <img src="${i.imagen_url || '/varios/placeholder.png'}" class="inv-img">
+          <div class="inv-info">
+            <div class="inv-nombre" style="color:${color}">${i.nombre || "Sin nombre"}</div>
+            <div class="inv-detalle">
+              ${rareza.charAt(0).toUpperCase() + rareza.slice(1)} • x${i.cantidad || 1}
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+  } catch (e) {
+    console.error(e);
+    content.innerHTML = `<p style="color:#f88">No se pudo cargar el inventario.</p>`;
+  }
 }
 
 // ===============================
@@ -214,7 +270,32 @@ async function initializeUI() {
   if (!user) return;
 
   const topBar = document.getElementById("top-bar");
-  if (topBar) topBar.classList.remove("hidden");
+  const hamburgerBtn = document.getElementById("hamburger-btn");
+  const mobileMenu = document.getElementById("mobile-menu-overlay");
+
+  const isMobile = window.innerWidth <= 768;
+
+  // Top bar solo desktop
+  if (topBar) {
+    if (isMobile) topBar.classList.add("hidden");
+    else topBar.classList.remove("hidden");
+  }
+
+  // Hamburguesa solo mobile
+  if (hamburgerBtn) {
+    if (isMobile) hamburgerBtn.classList.remove("hidden");
+    else hamburgerBtn.classList.add("hidden");
+  }
+
+  // Overlay mobile siempre empieza cerrado
+  if (mobileMenu) {
+    mobileMenu.classList.add("hidden");
+    mobileMenu.classList.remove("active");
+  }
 }
 
 window.addEventListener("DOMContentLoaded", initializeUI);
+
+// Extra pro: si rotan pantalla / resize, se ajusta solo
+window.addEventListener("resize", initializeUI);
+
