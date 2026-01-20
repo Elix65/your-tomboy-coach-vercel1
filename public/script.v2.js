@@ -1,135 +1,213 @@
 // ===============================
 // IMPORTAR SUPABASE
 // ===============================
-import supabaseClient from './supabase.js';
-// ===============================
-// CONTEXTO DE PÁGINA
-// ===============================
-const isGachaPage = window.location.pathname.includes("gacha.html");
+import supabaseClient from "./supabase.js";
 
 // ===============================
-// VERIFICAR SESIÓN
+// GUARD: SI NO HAY SESIÓN, LOGIN
 // ===============================
 supabaseClient.auth.getUser().then(({ data: { user } }) => {
-  if (!user) window.location.href = "/login.html";
+  if (!user) {
+    window.location.href = "/login.html";
+    return;
+  }
 });
 
 // ===============================
-// NAVEGACIÓN TOP BAR
+// NAVEGACIÓN TOP BAR (UNIVERSAL)
 // ===============================
-const btnGacha = document.getElementById("btn-gacha");
+const btnGacha = document.getElementById("btn-gacha");       // existe en index
+const btnInicio = document.getElementById("btn-inicio");     // existe en gacha
 const btnInventario = document.getElementById("btn-inventario");
 const btnLogout = document.getElementById("btn-logout");
 
 if (btnGacha) {
-  btnGacha.onclick = () => {
-    if (isGachaPage) {
-      window.location.href = "index.html";
-    } else {
-      window.location.href = "gacha.html";
-    }
-  };
+  btnGacha.onclick = () => (window.location.href = "gacha.html");
 }
 
+if (btnInicio) {
+  btnInicio.onclick = () => (window.location.href = "index.html");
+}
 
 if (btnInventario) {
   btnInventario.onclick = () => {
     if (typeof openInventoryPanelGacha === "function") {
       openInventoryPanelGacha();
+    } else if (typeof openInventoryPanel === "function") {
+      openInventoryPanel();
+    } else {
+      console.warn("No hay función de inventario disponible.");
     }
   };
 }
 
 if (btnLogout) {
   btnLogout.onclick = async () => {
-    await supabaseClient.auth.signOut();
+    try {
+      await supabaseClient.auth.signOut();
+    } catch (e) {
+      console.warn("Error al cerrar sesión:", e);
+    }
     window.location.href = "login.html";
   };
 }
 
 // ===============================
-// MENÚ HAMBURGUESA
+// MENÚ HAMBURGUESA (UNIVERSAL)
 // ===============================
 const hamburgerBtn = document.getElementById("hamburger-btn");
 const mobileMenu = document.getElementById("mobile-menu-overlay");
 
+function closeMobileMenu() {
+  if (!mobileMenu) return;
+  mobileMenu.classList.add("hidden");
+  mobileMenu.classList.remove("active");
+  if (hamburgerBtn) hamburgerBtn.classList.remove("open");
+  document.body.classList.remove("no-scroll");
+}
+
+function openMobileMenu() {
+  if (!mobileMenu) return;
+  mobileMenu.classList.remove("hidden");
+  mobileMenu.classList.add("active");
+  if (hamburgerBtn) hamburgerBtn.classList.add("open");
+  document.body.classList.add("no-scroll");
+}
+
 if (hamburgerBtn && mobileMenu) {
   hamburgerBtn.onclick = () => {
-    mobileMenu.classList.toggle("hidden");
-    mobileMenu.classList.toggle("active");
-    hamburgerBtn.classList.toggle("open");
+    const isHidden = mobileMenu.classList.contains("hidden");
+    if (isHidden) openMobileMenu();
+    else closeMobileMenu();
   };
+}
 
+if (mobileMenu) {
   mobileMenu.onclick = (e) => {
-    if (e.target === mobileMenu) {
-      mobileMenu.classList.add("hidden");
-      mobileMenu.classList.remove("active");
-      hamburgerBtn.classList.remove("open");
+    // cierra solo si clickean el overlay, no el drawer/botones
+    if (e.target === mobileMenu) closeMobileMenu();
+  };
+}
+
+// Botones internos del menú mobile
+const mInv = document.getElementById("m-inventario");
+const mGacha = document.getElementById("m-gacha");     // existe en index
+const mInicio = document.getElementById("m-inicio");   // existe en gacha
+const mLogout = document.getElementById("m-logout");
+
+if (mInv) {
+  mInv.onclick = () => {
+    closeMobileMenu();
+
+    if (typeof openInventoryPanelGacha === "function") {
+      openInventoryPanelGacha();
+    } else if (typeof openInventoryPanel === "function") {
+      openInventoryPanel();
+    } else {
+      console.warn("No hay función de inventario disponible.");
     }
   };
 }
 
-// Mobile botones
-const mInv = document.getElementById("m-inventario");
-const mGacha = document.getElementById("m-gacha");
-const mLogout = document.getElementById("m-logout");
+if (mGacha) {
+  mGacha.onclick = () => {
+    closeMobileMenu();
+    window.location.href = "gacha.html";
+  };
+}
 
-if (mInv) mInv.onclick = () => openInventoryPanelGacha();
-if (mGacha) mGacha.onclick = () => window.location.href = "gacha.html";
+if (mInicio) {
+  mInicio.onclick = () => {
+    closeMobileMenu();
+    window.location.href = "index.html";
+  };
+}
+
 if (mLogout) {
   mLogout.onclick = async () => {
-    await supabaseClient.auth.signOut();
+    closeMobileMenu();
+    try {
+      await supabaseClient.auth.signOut();
+    } catch (e) {
+      console.warn("Error al cerrar sesión:", e);
+    }
     window.location.href = "login.html";
   };
 }
 
 // ===============================
-// CHAT YUMIKO (solo si existe)
+// CHAT YUMIKO (VERSIÓN ESTABLE + SUPABASE)
 // ===============================
+
+// Guardar mensaje
+async function saveMessageToSupabase({ userId, sender, content }) {
+  if (!userId) return;
+
+  const { error } = await supabaseClient
+    .from("messages")
+    .insert({ user_id: userId, sender, content });
+
+  if (error) console.error("Error guardando mensaje:", error);
+}
+
+// Cargar historial
+async function loadChatFromSupabase(userId) {
+  const { data, error } = await supabaseClient
+    .from("messages")
+    .select("*")
+    .eq("user_id", userId.toString())
+    .order("created_at", { ascending: true });
+
+  if (error) return console.error("Error cargando historial:", error);
+  data.forEach((msg) => addMessage(msg.content, msg.sender));
+}
+
+// Render de mensajes
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
 const sendBtn = document.getElementById("send-btn");
 
+function addMessage(text, sender) {
+  if (!chatBox) return;
+
+  const msg = document.createElement("div");
+  msg.classList.add("message", sender);
+
+  if (sender === "bot") {
+    const avatar = document.createElement("img");
+    avatar.src = "varios/yumiko/yumiko-face-full-face.png";
+    avatar.classList.add("avatar-small");
+    msg.appendChild(avatar);
+  }
+
+  const bubble = document.createElement("div");
+  bubble.classList.add("bubble");
+  bubble.textContent = text;
+
+  msg.appendChild(bubble);
+  chatBox.appendChild(msg);
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+// Enter para enviar
+if (userInput && sendBtn) {
+  userInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      sendBtn.click();
+    }
+  });
+}
+
+// Inicializar chat solo si existe
 if (chatBox && userInput && sendBtn) {
-
-  function addMessage(text, sender) {
-    const msg = document.createElement("div");
-    msg.classList.add("message", sender);
-
-    if (sender === "bot") {
-      const avatar = document.createElement("img");
-      avatar.src = "varios/yumiko/yumiko-face-full-face.png";
-      avatar.classList.add("avatar-small");
-      msg.appendChild(avatar);
+  supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
+    if (!user) {
+      window.location.href = "/login.html";
+      return;
     }
 
-    const bubble = document.createElement("div");
-    bubble.classList.add("bubble");
-    bubble.textContent = text;
-
-    msg.appendChild(bubble);
-    chatBox.appendChild(msg);
-    chatBox.scrollTop = chatBox.scrollHeight;
-  }
-
-  async function saveMessage({ userId, sender, content }) {
-    if (!userId) return;
-    await supabaseClient.from("messages").insert({ user_id: userId, sender, content });
-  }
-
-  async function loadChat(userId) {
-    const { data } = await supabaseClient
-      .from("messages")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: true });
-
-    data?.forEach(m => addMessage(m.content, m.sender));
-  }
-
-  supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
-    if (!user) return;
-    await loadChat(user.id);
+    await loadChatFromSupabase(user.id);
 
     sendBtn.onclick = async () => {
       const text = userInput.value.trim();
@@ -137,22 +215,33 @@ if (chatBox && userInput && sendBtn) {
 
       addMessage(text, "user");
       userInput.value = "";
-      saveMessage({ userId: user.id, sender: "user", content: text });
+
+      await saveMessageToSupabase({ userId: user.id, sender: "user", content: text });
+
+      const typing = document.getElementById("typing");
+      if (typing) typing.classList.remove("hidden");
 
       try {
         const res = await fetch("/api/yumiko", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: text })
+          body: JSON.stringify({ message: text }),
         });
 
         const data = await res.json();
         addMessage(data.reply, "bot");
-        saveMessage({ userId: user.id, sender: "bot", content: data.reply });
+        await saveMessageToSupabase({ userId: user.id, sender: "bot", content: data.reply });
 
-      } catch {
+        const yumikoSound = document.getElementById("yumiko-sound");
+        if (yumikoSound) {
+          yumikoSound.currentTime = 0;
+          yumikoSound.play();
+        }
+      } catch (e) {
         addMessage("Hubo un error al conectar con Yumiko.", "bot");
       }
+
+      if (typing) typing.classList.add("hidden");
     };
   });
 }
@@ -201,7 +290,6 @@ async function openInventoryPanelGacha() {
     drawer.appendChild(content);
     overlay.appendChild(drawer);
 
-    // Cerrar si clickean fuera del drawer
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay) {
         overlay.remove();
@@ -212,7 +300,6 @@ async function openInventoryPanelGacha() {
     document.body.appendChild(overlay);
   }
 
-  // Bloquear scroll del fondo (aprovecha tu CSS body.no-scroll)
   document.body.classList.add("no-scroll");
 
   const content = document.getElementById("inventory-content");
@@ -236,26 +323,27 @@ async function openInventoryPanelGacha() {
       return;
     }
 
-    content.innerHTML = items.map(i => {
-      const rareza = (i.rareza || "comun").toLowerCase();
-      const color =
-        rareza === "rara" ? "#4da6ff" :
-        rareza === "epica" || rareza === "épica" ? "#c77dff" :
-        rareza === "legendaria" ? "#ffcc00" : "#f7f3e9";
+    content.innerHTML = items
+      .map((i) => {
+        const rareza = (i.rareza || "comun").toLowerCase();
+        const color =
+          rareza === "rara" ? "#4da6ff" :
+          rareza === "epica" || rareza === "épica" ? "#c77dff" :
+          rareza === "legendaria" ? "#ffcc00" : "#f7f3e9";
 
-      return `
-        <div class="inv-item">
-          <img src="${i.imagen_url || '/varios/placeholder.png'}" class="inv-img">
-          <div class="inv-info">
-            <div class="inv-nombre" style="color:${color}">${i.nombre || "Sin nombre"}</div>
-            <div class="inv-detalle">
-              ${rareza.charAt(0).toUpperCase() + rareza.slice(1)} • x${i.cantidad || 1}
+        return `
+          <div class="inv-item">
+            <img src="${i.imagen_url || "/varios/placeholder.png"}" class="inv-img">
+            <div class="inv-info">
+              <div class="inv-nombre" style="color:${color}">${i.nombre || "Sin nombre"}</div>
+              <div class="inv-detalle">
+                ${rareza.charAt(0).toUpperCase() + rareza.slice(1)} • x${i.cantidad || 1}
+              </div>
             </div>
           </div>
-        </div>
-      `;
-    }).join("");
-
+        `;
+      })
+      .join("");
   } catch (e) {
     console.error(e);
     content.innerHTML = `<p style="color:#f88">No se pudo cargar el inventario.</p>`;
@@ -263,39 +351,38 @@ async function openInventoryPanelGacha() {
 }
 
 // ===============================
-// UI
+// MOSTRAR UI SI HAY SESIÓN
 // ===============================
 async function initializeUI() {
   const { data: { user } = {} } = await supabaseClient.auth.getUser();
   if (!user) return;
 
   const topBar = document.getElementById("top-bar");
-  const hamburgerBtn = document.getElementById("hamburger-btn");
-  const mobileMenu = document.getElementById("mobile-menu-overlay");
+  const hamburger = document.getElementById("hamburger-btn");
+  const overlay = document.getElementById("mobile-menu-overlay");
 
   const isMobile = window.innerWidth <= 768;
 
-  // Top bar solo desktop
+  // Top bar: solo desktop
   if (topBar) {
     if (isMobile) topBar.classList.add("hidden");
     else topBar.classList.remove("hidden");
   }
 
-  // Hamburguesa solo mobile
-  if (hamburgerBtn) {
-    if (isMobile) hamburgerBtn.classList.remove("hidden");
-    else hamburgerBtn.classList.add("hidden");
+  // Hamburguesa: solo mobile
+  if (hamburger) {
+    if (isMobile) hamburger.classList.remove("hidden");
+    else hamburger.classList.add("hidden");
   }
 
-  // Overlay mobile siempre empieza cerrado
-  if (mobileMenu) {
-    mobileMenu.classList.add("hidden");
-    mobileMenu.classList.remove("active");
+  // Overlay siempre cerrado al init
+  if (overlay) {
+    overlay.classList.add("hidden");
+    overlay.classList.remove("active");
   }
+
+  document.body.classList.remove("no-scroll");
 }
 
 window.addEventListener("DOMContentLoaded", initializeUI);
-
-// Extra pro: si rotan pantalla / resize, se ajusta solo
 window.addEventListener("resize", initializeUI);
-

@@ -224,6 +224,7 @@
 .mobile-menu-btn:hover {
   background: rgba(255, 120, 120, 1);
 }
+
 /* ================================
    INVENTARIO LATERAL — ITEMS
 ================================ */
@@ -287,4 +288,11 @@
   .hamburger {
     display: flex;
   }
+}
+
+/* ============================================================
+   FIX EXTRA: si el overlay está abierto (no hidden), forzar drawer visible
+============================================================ */
+#mobile-menu-overlay:not(.hidden) .mobile-menu-drawer {
+  transform: translateX(0);
 }
