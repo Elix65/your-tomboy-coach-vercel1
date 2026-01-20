@@ -48,6 +48,8 @@
 
   <!-- CONTENIDO -->
   <div class="container">
+
+    <!-- DOJO UI (ya no hay login aquí) -->
     <div id="dojo-ui">
 
       <div class="header">
@@ -57,7 +59,9 @@
 
       <p class="subtitle">El Dojo Despierta Contigo</p>
 
-      <div id="chat-box" class="chat-box"></div>
+      <div id="chat-box" class="chat-box">
+        <div id="yumiko-bg"></div>
+      </div>
 
       <div id="typing" class="typing hidden">
         <img src="/varios/yumiko/yumiko-face-full-face.png" class="avatar-small">
@@ -66,8 +70,7 @@
 
       <!-- INPUT + BOTONES -->
       <div class="input-area">
-        <input id="user-input" type="text" name="chat-message" placeholder="Escribe aquí..."
-          autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <input id="user-input" type="text" name="chat-message" placeholder="Escribe aquí..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
         <button id="send-btn">Enviar</button>
 
         <div class="extra-buttons">
@@ -76,8 +79,9 @@
         </div>
       </div>
 
-    </div>
-  </div>
+    </div> <!-- cierre dojo-ui -->
+
+  </div> <!-- cierre container -->
 
   <!-- AUDIO -->
   <audio id="ambience-intro" src="/varios/musica/ambiente-inicial.mp3" preload="auto"></audio>
@@ -87,8 +91,9 @@
   <!-- SUPABASE -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <!-- CORE -->
-  <script type="module" src="/script.v2.js"></script>
+  <!-- LÓGICA PRINCIPAL DEL DOJO -->
+<script type="module" src="/auth.v2.js"></script>
+<script type="module" src="/script.v2.js"></script>
 
-  <!-- FX (audio/parallax) -->
-  <script sr
+
+</html>

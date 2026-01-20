@@ -12,11 +12,6 @@ body {
   background: #050505;
 }
 
-/* NUEVO: Evitar scroll de fondo cuando hay overlays abiertos */
-body.no-scroll {
-  overflow: hidden;
-}
-
 .hidden {
   display: none;
 }
@@ -238,11 +233,14 @@ body.no-scroll {
   z-index: 1;
 }
 
+
 /* ================================
    MENSAJES
 ================================ */
 
 .message {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: flex-start;
   margin-bottom: 14px;
@@ -296,6 +294,7 @@ body.no-scroll {
   font-size: 16px;
   box-sizing: border-box;
 }
+
 
 #send-btn {
   padding: 12px 20px;
@@ -479,7 +478,6 @@ body.no-scroll {
 .mobile-menu-btn:hover {
   background: rgba(255, 120, 120, 1);
 }
-
 .inventory-close-btn {
   padding: 10px 16px;
   background: #ff4d4d;
@@ -511,7 +509,6 @@ body.no-scroll {
     display: flex !important;
   }
 }
-
 /* ================================
    INVENTARIO LATERAL — ITEMS
 ================================ */
@@ -566,6 +563,7 @@ body.no-scroll {
     font-size: 12px;
   }
 }
+
 
 /* ================================
    RESPONSIVE — TABLET
@@ -636,4 +634,24 @@ body.no-scroll {
     width: 28px;
     height: 28px;
   }
+}
+
+
+/* ================================
+   INVENTARIO — BOTÓN USAR FONDO (solo index)
+================================ */
+.inv-use-btn{
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,77,77,0.85);
+  color: white;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+.inv-use-btn:hover{
+  transform: scale(1.02);
+  background: rgba(255,120,120,1);
 }
