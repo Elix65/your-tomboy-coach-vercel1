@@ -6,6 +6,62 @@ import supabaseClient from './supabase.js';
 // ===============================
 
 let userId = null;
+let modo = "comun"; // comun (ilimitado) | premium (consume saldo)
+// ===============================
+// UI MODO (COMUN / PREMIUM)
+// ===============================
+const btnModoComun = document.getElementById("mode-comun");
+const btnModoPremium = document.getElementById("mode-premium");
+const premiumBalanceEl = document.getElementById("premium-balance");
+
+function setModo(nuevo) {
+  modo = nuevo;
+
+  if (btnModoComun) btnModoComun.classList.toggle("active", modo === "comun");
+  if (btnModoPremium) btnModoPremium.classList.toggle("active", modo === "premium");
+
+  // Mostrar balance solo en premium
+  if (premiumBalanceEl) {
+    if (modo === "premium") premiumBalanceEl.classList.remove("hidden");
+    else premiumBalanceEl.classList.add("hidden");
+  }
+
+  // Mensajito rápido
+  if (divRes) {
+    divRes.innerHTML = `
+      <p style="opacity:.85;margin:0;">
+        Modo: <b>${modo === "premium" ? "Premium" : "Común"}</b>
+      </p>
+    `;
+  }
+
+  // Si eligen premium, intentamos mostrar saldo
+  if (modo === "premium") refreshPremiumBalance();
+}
+
+async function refreshPremiumBalance() {
+  if (!premiumBalanceEl || !userId) return;
+
+  // Lee saldo premium desde user_rolls (server-side sería mejor, pero hoy vale)
+  const { data, error } = await supabaseClient
+    .from("user_rolls")
+    .select("cantidad")
+    .eq("user_id", userId)
+    .eq("tipo", "premium")
+    .maybeSingle();
+
+  if (error) {
+    premiumBalanceEl.textContent = "Premium: --";
+    return;
+  }
+
+  const saldo = data?.cantidad ?? 0;
+  premiumBalanceEl.textContent = `Premium: ${saldo}`;
+}
+
+// clicks
+if (btnModoComun) btnModoComun.onclick = () => setModo("comun");
+if (btnModoPremium) btnModoPremium.onclick = () => setModo("premium");
 
 // Obtener sesión
 supabaseClient.auth.getUser().then(({ data: { user } }) => {
@@ -16,6 +72,31 @@ const btn1 = document.getElementById("btn-tirar-1");
 const btn10 = document.getElementById("btn-tirar-10");
 const divRes = document.getElementById("gacha-resultados");
 
+// (Opcional) si después agregás botones premium en UI, solo seteás modo="premium"
+// Ej: document.getElementById("btn-modo-premium").onclick = () => modo="premium";
+
+function endpointUno() {
+  return modo === "premium" ? "/api/tirar-skin-premium" : "/api/tirar-skin";
+}
+
+function endpointDiez() {
+  return modo === "premium" ? "/api/tirar-multiple-premium" : "/api/tirar-multiple";
+}
+
+function handlePremiumError(data) {
+  if (data?.error === "INSUFFICIENT_PREMIUM_ROLLS") {
+    divRes.innerHTML = `
+      <h3>Sin tiradas premium</h3>
+      <p style="opacity:.85">
+        Te quedan <b>${data.saldo ?? 0}</b> tiradas premium.
+        <br/>Recargá Yumiko Coins para seguir tirando premium.
+      </p>
+    `;
+    return true;
+  }
+  return false;
+}
+
 // ===============================
 // TIRADA DE 1
 // ===============================
@@ -23,16 +104,20 @@ if (btn1) {
   btn1.onclick = async () => {
     if (!userId) return;
 
-    const res = await fetch("/api/tirar-skin", {
+    const res = await fetch(endpointUno(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId })
     });
 
     const data = await res.json();
-    const s = data.skin;
+    if (!res.ok) {
+      if (modo === "premium" && handlePremiumError(data)) return;
+      console.warn(data);
+      return;
+    }
 
-    console.log("Skin recibida (1):", s);
+    const s = data.skin;
 
     divRes.innerHTML = `
       <h3>Resultado:</h3>
@@ -53,15 +138,18 @@ if (btn10) {
   btn10.onclick = async () => {
     if (!userId) return;
 
-    const res = await fetch("/api/tirar-multiple", {
+    const res = await fetch(endpointDiez(), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId, cantidad: 10 })
     });
 
     const data = await res.json();
-
-    console.log("Resultados recibidos (x10):", data.resultados);
+    if (!res.ok) {
+      if (modo === "premium" && handlePremiumError(data)) return;
+      console.warn(data);
+      return;
+    }
 
     divRes.innerHTML = `
       <h3>Resultados (${data.cantidad}):</h3>
@@ -184,22 +272,18 @@ const mInicio = document.getElementById("m-inicio");
 const mInventario = document.getElementById("m-inventario");
 const mLogout = document.getElementById("m-logout");
 
-// Ir al dojo (inicio)
 if (btnInicio) btnInicio.onclick = () => window.location.href = "index.html";
 if (mInicio) mInicio.onclick = () => window.location.href = "index.html";
 
-// Abrir inventario desde gacha
 if (btnInventario) btnInventario.onclick = () => openInventoryPanelGacha();
 if (mInventario) mInventario.onclick = () => openInventoryPanelGacha();
 
-// Logout
 if (btnLogout) {
   btnLogout.onclick = async () => {
     await supabaseClient.auth.signOut();
     window.location.href = "login.html";
   };
 }
-
 if (mLogout) {
   mLogout.onclick = async () => {
     await supabaseClient.auth.signOut();
@@ -226,3 +310,4 @@ if (mobileMenuOverlay) {
     }
   };
 }
+setModo("comun");

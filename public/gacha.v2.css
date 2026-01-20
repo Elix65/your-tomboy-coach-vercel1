@@ -263,6 +263,49 @@
   opacity: 0.8;
   margin-top: 4px;
 }
+/* ================================
+   SELECTOR DE MODO (COMUN / PREMIUM)
+================================ */
+.gacha-mode {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 12px 0 18px 0;
+  flex-wrap: wrap;
+}
+
+.mode-btn {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(0,0,0,0.55);
+  color: #f7f3e9;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+  backdrop-filter: blur(6px);
+}
+
+.mode-btn:hover {
+  transform: scale(1.03);
+  border-color: rgba(255,255,255,0.35);
+}
+
+.mode-btn.active {
+  background: rgba(255, 77, 77, 0.85);
+  border-color: rgba(255,255,255,0.35);
+  color: white;
+}
+
+.premium-balance {
+  font-size: 13px;
+  opacity: 0.9;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.45);
+  border: 1px solid rgba(255,255,255,0.12);
+}
 
 /* Responsive */
 @media (max-width: 480px) {
