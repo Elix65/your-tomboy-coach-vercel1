@@ -124,7 +124,7 @@ async function loadChatFromSupabase(userId) {
   const { data, error } = await supabaseClient
     .from("messages")
     .select("*")
-    .eq("user_id", userId)
+    .eq("user_id", userId.toString())
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -133,7 +133,7 @@ async function loadChatFromSupabase(userId) {
   }
 
   console.log("Historial cargado:", data);
-
+  console.log("userId:", userId, "tipo:", typeof userId);
   data.forEach(msg => addMessage(msg.content, msg.sender));
 }
 
