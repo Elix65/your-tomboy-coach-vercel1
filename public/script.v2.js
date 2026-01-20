@@ -93,19 +93,34 @@ if (mLogout) {
 
 // 1) Función para guardar mensajes en Supabase
 async function saveMessageToSupabase({ userId, sender, content }) {
-  const { error } = await supabaseClient
+  console.log("Intentando guardar mensaje:", { userId, sender, content });
+
+  if (!userId) {
+    console.error("❌ ERROR: userId está vacío. No se puede guardar.");
+    return;
+  }
+
+  const { data, error } = await supabaseClient
     .from("messages")
     .insert({
       user_id: userId,
       sender,
       content
-    });
+    })
+    .select();
 
-  if (error) console.error("Error guardando mensaje:", error);
+  if (error) {
+    console.error("❌ Supabase rechazó el insert:", error);
+  } else {
+    console.log("✅ Mensaje guardado correctamente:", data);
+  }
 }
+
 
 // 2) Función para cargar historial desde Supabase
 async function loadChatFromSupabase(userId) {
+  console.log("Cargando historial para userId:", userId);
+
   const { data, error } = await supabaseClient
     .from("messages")
     .select("*")
@@ -113,9 +128,11 @@ async function loadChatFromSupabase(userId) {
     .order("created_at", { ascending: true });
 
   if (error) {
-    console.error("Error cargando mensajes:", error);
+    console.error("❌ Error cargando historial:", error);
     return;
   }
+
+  console.log("Historial cargado:", data);
 
   data.forEach(msg => addMessage(msg.content, msg.sender));
 }
