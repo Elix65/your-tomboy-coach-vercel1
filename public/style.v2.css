@@ -12,6 +12,11 @@ body {
   background: #050505;
 }
 
+/* NUEVO: Evitar scroll de fondo cuando hay overlays abiertos */
+body.no-scroll {
+  overflow: hidden;
+}
+
 .hidden {
   display: none;
 }
@@ -233,7 +238,6 @@ body {
   z-index: 1;
 }
 
-
 /* ================================
    MENSAJES
 ================================ */
@@ -292,7 +296,6 @@ body {
   font-size: 16px;
   box-sizing: border-box;
 }
-
 
 #send-btn {
   padding: 12px 20px;
@@ -476,6 +479,7 @@ body {
 .mobile-menu-btn:hover {
   background: rgba(255, 120, 120, 1);
 }
+
 .inventory-close-btn {
   padding: 10px 16px;
   background: #ff4d4d;
@@ -507,6 +511,7 @@ body {
     display: flex !important;
   }
 }
+
 /* ================================
    INVENTARIO LATERAL — ITEMS
 ================================ */
@@ -561,7 +566,6 @@ body {
     font-size: 12px;
   }
 }
-
 
 /* ================================
    RESPONSIVE — TABLET

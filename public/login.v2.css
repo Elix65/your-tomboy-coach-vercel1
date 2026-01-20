@@ -10,6 +10,9 @@ body {
   height: 100vh;
 }
 
+/* NUEVO: para soportar class="hidden" sin depender de style.v2.css */
+.hidden { display: none; }
+
 /* CONTENEDOR PRINCIPAL */
 #login-container {
   width: 100%;
