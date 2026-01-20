@@ -1,3 +1,7 @@
+import supabaseClient from './supabase.js';
+
+
+
 supabaseClient.auth.getUser().then(({ data: { user } }) => {
   if (!user) {
     window.location.href = "/login.html";
