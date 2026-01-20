@@ -93,7 +93,7 @@ if (mLogout) {
 
 // 1) Función para guardar mensajes en Supabase
 async function saveMessageToSupabase({ userId, sender, content }) {
-  const { error } = await supabase
+  const { error } = await supabaseClient
     .from("messages")
     .insert({
       user_id: userId,
@@ -106,7 +106,7 @@ async function saveMessageToSupabase({ userId, sender, content }) {
 
 // 2) Función para cargar historial desde Supabase
 async function loadChatFromSupabase(userId) {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseClient
     .from("messages")
     .select("*")
     .eq("user_id", userId)
@@ -162,7 +162,7 @@ if (userInput) {
 // ===============================
 // OBTENER USER Y CARGAR HISTORIAL
 // ===============================
-supabase.auth.getUser().then(async ({ data: { user } }) => {
+supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
   if (!user) {
     window.location.href = "/login.html";
     return;
