@@ -200,6 +200,12 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
 
   // Cargar historial del chat
   await loadChatFromSupabase(user.id);
+  window.addEventListener("DOMContentLoaded", async () => {
+  await initializeUI();
+  await loadActiveSkinBackground();
+
+  // ... lo demás (audio/parallax) queda igual
+  });
 
   // Activar botón de enviar
   if (sendBtn) {
@@ -372,6 +378,11 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
 // ===============================
 // INVENTARIO LATERAL (VERSIÓN GACHA)
 // ===============================
+function isChatPage() {
+  const p = (window.location.pathname || "").toLowerCase();
+  return p.endsWith("/index.html") || p === "/" || p.includes("index");
+}
+
 async function openInventoryPanelGacha() {
   let overlay = document.getElementById("inventory-overlay");
 
@@ -432,25 +443,44 @@ async function openInventoryPanelGacha() {
       return;
     }
 
-    content.innerHTML = items.map(i => {
-      const rareza = i.rareza?.toLowerCase() || "comun";
-      const color =
-        rareza === "rara" ? "#4da6ff" :
-        rareza === "epica" || rareza === "épica" ? "#c77dff" :
-        rareza === "legendaria" ? "#ffcc00" : "#f7f3e9";
+  content.innerHTML = items.map(i => {
+    const rareza = i.rareza?.toLowerCase() || "comun";
+    const color =
+      rareza === "rara" ? "#4da6ff" :
+      rareza === "epica" || rareza === "épica" ? "#c77dff" :
+      rareza === "legendaria" ? "#ffcc00" : "#f7f3e9";
 
-      return `
-        <div class="inv-item">
-          <img src="${i.imagen_url || '/varios/placeholder.png'}" class="inv-img">
-          <div class="inv-info">
-            <div class="inv-nombre" style="color:${color}">${i.nombre}</div>
-            <div class="inv-detalle">
-              ${rareza.charAt(0).toUpperCase() + rareza.slice(1)} • x${i.cantidad}
-            </div>
+    return `
+      <div class="inv-item">
+        <img src="${i.imagen_url || '/varios/placeholder.png'}" class="inv-img">
+        <div class="inv-info">
+          <div class="inv-nombre" style="color:${color}">${i.nombre}</div>
+          <div class="inv-detalle">
+            ${rareza.charAt(0).toUpperCase() + rareza.slice(1)} • x${i.cantidad}
           </div>
+
+          ${isChatPage() ? `
+            <button class="inv-use-btn" data-skin-id="${i.skin_id}">
+              Usar como fondo
+            </button>
+          ` : ``}
         </div>
-      `;
-    }).join("");
+      </div>
+    `;
+  }).join("");
+
+// Hook de clicks (solo en index/chat)
+if (isChatPage()) {
+  content.querySelectorAll(".inv-use-btn").forEach(btn => {
+    btn.onclick = async () => {
+      const skinId = btn.getAttribute("data-skin-id");
+      await setActiveSkinBackground(skinId);
+      // opcional: cerrar inventario al elegir
+      // document.getElementById("inventory-overlay")?.remove();
+    };
+  });
+}
+
 
   } catch (e) {
     console.error(e);
