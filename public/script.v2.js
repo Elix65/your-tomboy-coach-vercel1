@@ -140,6 +140,10 @@ async function loadChatFromSupabase(userId) {
   console.log("Historial cargado:", data);
   console.log("userId:", userId, "tipo:", typeof userId);
   data.forEach(msg => addMessage(msg.content, msg.sender));
+
+  // Setear el último mensaje del usuario para que "Regenerar" funcione al cargar historial
+  const lastUser = [...data].reverse().find(m => m.sender === "user");
+  lastUserText = lastUser?.content ?? null;
 }
 
 // ===============================
@@ -148,6 +152,10 @@ async function loadChatFromSupabase(userId) {
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
 const sendBtn = document.getElementById("send-btn");
+const regenBtn = document.getElementById("regenerate-btn");
+const resetBtn = document.getElementById("reset-chat");
+
+let lastUserText = null;
 
 function addMessage(text, sender) {
   const msg = document.createElement("div");
@@ -180,184 +188,6 @@ if (userInput) {
     }
   });
 }
-// ===============================
-// REGENERAR + REINICIAR CHAT
-// ===============================
-
-// Soporta varios IDs por si en tu HTML cambian nombres
-const regenBtn =
-  document.getElementById("regen-btn") ||
-  document.getElementById("regenerate-btn") ||
-  document.getElementById("btn-regenerar") ||
-  document.getElementById("btn-regenerate");
-
-const resetBtn =
-  document.getElementById("reset-chat-btn") ||
-  document.getElementById("reiniciar-chat-btn") ||
-  document.getElementById("btn-reiniciar") ||
-  document.getElementById("btn-reset-chat");
-
-// Estado para regenerar
-let lastUserText = null;
-let lastBotMsgEl = null; // referencia al último mensaje del bot en UI
-
-// Helpers UI
-function setButtonsDisabled(disabled) {
-  if (sendBtn) sendBtn.disabled = disabled;
-  if (regenBtn) regenBtn.disabled = disabled;
-  if (resetBtn) resetBtn.disabled = disabled;
-}
-
-function showTyping(show) {
-  const typing = document.getElementById("typing");
-  if (!typing) return;
-  typing.classList.toggle("hidden", !show);
-}
-
-// Versión extendida: devuelve el elemento DOM del mensaje creado
-function addMessageWithRef(text, sender) {
-  const msg = document.createElement("div");
-  msg.classList.add("message", sender);
-
-  if (sender === "bot") {
-    const avatar = document.createElement("img");
-    avatar.src = "varios/yumiko/yumiko-face-full-face.png";
-    avatar.classList.add("avatar-small");
-    msg.appendChild(avatar);
-  }
-
-  const bubble = document.createElement("div");
-  bubble.classList.add("bubble");
-  bubble.textContent = text;
-
-  msg.appendChild(bubble);
-  chatBox.appendChild(msg);
-  chatBox.scrollTop = chatBox.scrollHeight;
-
-  return msg;
-}
-
-// En tu código ya existe addMessage(); lo dejamos.
-// Solo usamos addMessageWithRef para poder "reemplazar" el último bot.
-function removeLastBotFromUI() {
-  if (lastBotMsgEl && lastBotMsgEl.parentNode) {
-    lastBotMsgEl.parentNode.removeChild(lastBotMsgEl);
-  } else {
-    // fallback: buscar el último .message.bot
-    const bots = chatBox ? chatBox.querySelectorAll(".message.bot") : null;
-    const last = bots && bots.length ? bots[bots.length - 1] : null;
-    if (last && last.parentNode) last.parentNode.removeChild(last);
-  }
-  lastBotMsgEl = null;
-}
-
-// Borrar UI del chat
-function clearChatUI() {
-  if (!chatBox) return;
-  chatBox.innerHTML = "";
-}
-
-// --- REGENERAR ---
-async function regenerateLastReply(user) {
-  if (!chatBox || !lastUserText) {
-    // nada que regenerar
-    addMessage("No hay ningún mensaje para regenerar todavía.", "bot");
-    return;
-  }
-
-  setButtonsDisabled(true);
-  showTyping(true);
-
-  try {
-    const res = await fetch("/api/yumiko", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message: lastUserText })
-    });
-
-    const data = await res.json();
-    const reply = data?.reply || "…";
-
-    // Reemplazar la última respuesta del bot en UI (más natural)
-    removeLastBotFromUI();
-    lastBotMsgEl = addMessageWithRef(reply, "bot");
-
-    // Guardar NUEVA respuesta del bot en Supabase (no tocamos el historial viejo)
-    await saveMessageToSupabase({
-      userId: user.id,
-      sender: "bot",
-      content: reply
-    });
-
-    const yumikoSound = document.getElementById("yumiko-sound");
-    if (yumikoSound) {
-      yumikoSound.currentTime = 0;
-      yumikoSound.play();
-    }
-  } catch (e) {
-    console.warn(e);
-    addMessage("Hubo un error al regenerar la respuesta.", "bot");
-  } finally {
-    showTyping(false);
-    setButtonsDisabled(false);
-  }
-}
-
-// --- REINICIAR CHAT ---
-async function resetChat(user) {
-  if (!chatBox) return;
-
-  setButtonsDisabled(true);
-  showTyping(true);
-
-  try {
-    // 1) Borrar historial en Supabase (si RLS permite)
-    const { error } = await supabaseClient
-      .from("messages")
-      .delete()
-      .eq("user_id", user.id);
-
-    if (error) {
-      console.warn("No se pudo borrar en Supabase (probable RLS):", error);
-      // igual limpiamos UI para que el usuario sienta que funcionó
-    }
-
-    // 2) Limpiar UI y estado local
-    clearChatUI();
-    lastUserText = null;
-    lastBotMsgEl = null;
-
-    // 3) Mensaje inicial (opcional)
-    addMessage("Chat reiniciado. ¿Qué querés contarme ahora?", "bot");
-    await saveMessageToSupabase({
-      userId: user.id,
-      sender: "bot",
-      content: "Chat reiniciado. ¿Qué querés contarme ahora?"
-    });
-
-  } catch (e) {
-    console.warn(e);
-    addMessage("No pude reiniciar el chat por un error.", "bot");
-  } finally {
-    showTyping(false);
-    setButtonsDisabled(false);
-  }
-}
-
-// Hookear botones cuando ya hay user (para asegurar session)
-supabaseClient.auth.getUser().then(({ data: { user } }) => {
-  if (!user) return;
-
-  // regenerar
-  if (regenBtn) {
-    regenBtn.onclick = () => regenerateLastReply(user);
-  }
-
-  // reiniciar chat
-  if (resetBtn) {
-    resetBtn.onclick = () => resetChat(user);
-  }
-});
 
 // ===============================
 // OBTENER USER Y CARGAR HISTORIAL
@@ -370,108 +200,6 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
 
   // Cargar historial del chat
   await loadChatFromSupabase(user.id);
-  // ===============================
-// REGENERAR + REINICIAR (FIX)
-// ===============================
-const regenBtn = document.getElementById("regenerate-btn");
-const resetBtn = document.getElementById("reset-chat");
-
-let lastUserText = null;
-
-function clearChatUI() {
-  if (!chatBox) return;
-  chatBox.innerHTML = "";
-}
-
-function setLastUserFromUI() {
-  // Busca el último mensaje del usuario en el DOM y lo usa como base para regenerar
-  const userMsgs = chatBox.querySelectorAll(".message.user .bubble");
-  if (userMsgs && userMsgs.length) {
-    lastUserText = userMsgs[userMsgs.length - 1].textContent || null;
-  }
-}
-
-// al cargar historial, setear el lastUserText
-setLastUserFromUI();
-
-// ✅ Regenerar: vuelve a pedir respuesta para el último mensaje del usuario
-if (regenBtn) {
-  regenBtn.onclick = async () => {
-    if (!lastUserText) {
-      addMessage("No hay ningún mensaje para regenerar todavía.", "bot");
-      return;
-    }
-
-    const typing = document.getElementById("typing");
-    if (typing) typing.classList.remove("hidden");
-
-    try {
-      const res = await fetch("/api/yumiko", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: lastUserText })
-      });
-
-      const data = await res.json();
-
-      // borrar el último mensaje del bot en UI (si existe)
-      const botMsgs = chatBox.querySelectorAll(".message.bot");
-      const lastBot = botMsgs?.length ? botMsgs[botMsgs.length - 1] : null;
-      if (lastBot) lastBot.remove();
-
-      // mostrar nueva respuesta
-      addMessage(data.reply, "bot");
-
-      // guardar en supabase
-      await saveMessageToSupabase({ userId: user.id, sender: "bot", content: data.reply });
-
-    } catch (e) {
-      console.warn(e);
-      addMessage("Hubo un error al regenerar la respuesta.", "bot");
-    }
-
-    if (typing) typing.classList.add("hidden");
-  };
-}
-
-// ✅ Reiniciar Chat: limpia UI + intenta borrar en Supabase
-if (resetBtn) {
-  resetBtn.onclick = async () => {
-    const typing = document.getElementById("typing");
-    if (typing) typing.classList.remove("hidden");
-
-    try {
-      // 1) limpiar UI SIEMPRE (aunque falle DB)
-      clearChatUI();
-      lastUserText = null;
-
-      // 2) intentar borrar historial en supabase (si RLS lo permite)
-      const { error } = await supabaseClient
-        .from("messages")
-        .delete()
-        .eq("user_id", user.id);
-
-      if (error) {
-        console.warn("No se pudo borrar en Supabase (RLS probablemente):", error);
-      }
-
-      // 3) mensaje inicial
-      addMessage("Chat reiniciado. ¿Qué querés contarme ahora?", "bot");
-      await saveMessageToSupabase({
-        userId: user.id,
-        sender: "bot",
-        content: "Chat reiniciado. ¿Qué querés contarme ahora?"
-      });
-
-    } catch (e) {
-      console.warn(e);
-      addMessage("No pude reiniciar el chat por un error.", "bot");
-    }
-
-    if (typing) typing.classList.add("hidden");
-  };
-}
-
 
   // Activar botón de enviar
   if (sendBtn) {
@@ -480,9 +208,9 @@ if (resetBtn) {
       if (!text) return;
 
       addMessage(text, "user");
+
+      // Guardar el último mensaje del usuario (para regenerar)
       lastUserText = text;
-
-
 
       // Guardar mensaje del usuario
       saveMessageToSupabase({
@@ -504,7 +232,7 @@ if (resetBtn) {
         });
 
         const data = await res.json();
-        lastBotMsgEl = addMessageWithRef(data.reply, "bot");
+        addMessage(data.reply, "bot");
 
         // Guardar mensaje del bot
         saveMessageToSupabase({
@@ -523,67 +251,123 @@ if (resetBtn) {
 
       typing.classList.add("hidden");
     };
+
+
+    // ===============================
+    // REGENERAR / REINICIAR (PERSISTE AL F5)
+    // ===============================
+
+    // Helper: borra el último mensaje del bot en UI (para reemplazarlo al regenerar)
+    function removeLastBotFromUI() {
+      const bots = chatBox.querySelectorAll(".message.bot");
+      const lastBot = bots?.length ? bots[bots.length - 1] : null;
+      if (lastBot) lastBot.remove();
+    }
+
+    // REGENERAR: vuelve a pedir respuesta a /api/yumiko y actualiza DB via /api/regenerate-last
+    if (regenBtn) {
+      regenBtn.onclick = async () => {
+        if (!lastUserText) {
+          addMessage("No hay ningún mensaje para regenerar todavía.", "bot");
+          return;
+        }
+
+        const typing = document.getElementById("typing");
+        typing?.classList.remove("hidden");
+
+        try {
+          // 1) Generar nueva respuesta
+          const res = await fetch("/api/yumiko", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: lastUserText })
+          });
+
+          const data = await res.json();
+          const reply = data?.reply ?? "…";
+
+          // 2) Reemplazar último bot en UI
+          removeLastBotFromUI();
+          addMessage(reply, "bot");
+
+          // 3) Persistir: borrar último bot en DB y guardar el nuevo (endpoint admin)
+          const { data: { session } } = await supabaseClient.auth.getSession();
+          const token = session?.access_token;
+
+          const r2 = await fetch("/api/regenerate-last", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ user_id: user.id, new_reply: reply })
+          });
+
+          if (!r2.ok) {
+            const err = await r2.json().catch(() => ({}));
+            console.warn("regenerate-last falló:", err);
+            // fallback (duplica, pero no rompe)
+            await saveMessageToSupabase({ userId: user.id, sender: "bot", content: reply });
+          }
+
+          // sonido (si existe)
+          const yumikoSound = document.getElementById("yumiko-sound");
+          if (yumikoSound) {
+            yumikoSound.currentTime = 0;
+            yumikoSound.play();
+          }
+        } catch (e) {
+          console.warn(e);
+          addMessage("Hubo un error al regenerar la respuesta.", "bot");
+        } finally {
+          typing?.classList.add("hidden");
+        }
+      };
+    }
+
+    // REINICIAR CHAT: borra DB via /api/reset-chat y limpia UI
+    if (resetBtn) {
+      resetBtn.onclick = async () => {
+        const typing = document.getElementById("typing");
+        typing?.classList.remove("hidden");
+
+        try {
+          // 1) Borrado real en DB
+          const { data: { session } } = await supabaseClient.auth.getSession();
+          const token = session?.access_token;
+
+          const r = await fetch("/api/reset-chat", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${token}`
+            },
+            body: JSON.stringify({ user_id: user.id })
+          });
+
+          if (!r.ok) {
+            const err = await r.json().catch(() => ({}));
+            console.warn("reset-chat falló:", err);
+          }
+
+          // 2) Limpiar UI y estado local
+          chatBox.innerHTML = "";
+          lastUserText = null;
+
+          // 3) Mensaje inicial (opcional)
+          const hello = "Chat reiniciado. ¿Qué querés contarme ahora?";
+          addMessage(hello, "bot");
+          await saveMessageToSupabase({ userId: user.id, sender: "bot", content: hello });
+        } catch (e) {
+          console.warn(e);
+          addMessage("No pude reiniciar el chat por un error.", "bot");
+        } finally {
+          typing?.classList.add("hidden");
+        }
+      };
+    }
   }
 });
-
-// ===============================
-// FONDO DE CHAT (SKIN ACTIVA) — SOLO INDEX
-// ===============================
-function isChatPage() {
-  const path = (window.location.pathname || "").toLowerCase();
-  return path.endsWith("/index.html") || path === "/" || path.endsWith("/");
-}
-
-function applyChatBackground(url) {
-  const bg = document.getElementById("yumiko-bg");
-  if (!bg) return; // si no estás en index/chat, no hace nada
-
-  if (!url) {
-    bg.style.backgroundImage = "";
-    return;
-  }
-
-  bg.style.backgroundImage = `url("${url}")`;
-  bg.style.backgroundSize = "cover";
-  bg.style.backgroundRepeat = "no-repeat";
-  bg.style.backgroundPosition = "center";
-  bg.style.opacity = "0.18"; // ajustable
-}
-
-async function setActiveSkinBackground(skinId) {
-  const { data: { user } } = await supabaseClient.auth.getUser();
-  if (!user || !skinId) return;
-
-  const res = await fetch("/api/set-active-skin", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ user_id: user.id, skin_id: skinId })
-  });
-
-  let data = null;
-  try { data = await res.json(); } catch (e) { data = null; }
-
-  if (!res.ok) {
-    console.warn("set-active-skin error:", data);
-    return;
-  }
-
-  applyChatBackground(data?.imagen_url || "");
-}
-
-async function loadActiveSkinBackground() {
-  if (!isChatPage()) return;
-  const { data: { user } } = await supabaseClient.auth.getUser();
-  if (!user) return;
-
-  try {
-    const r = await fetch(`/api/get-active-skin?user_id=${user.id}`);
-    const d = await r.json();
-    applyChatBackground(d?.imagen_url || "");
-  } catch (e) {
-    console.warn("No se pudo cargar fondo activo");
-  }
-}
 
 // ===============================
 // INVENTARIO LATERAL (VERSIÓN GACHA)
@@ -648,44 +432,27 @@ async function openInventoryPanelGacha() {
       return;
     }
 
-    content.innerHTML = items
-  .map((i) => {
-    const rareza = (i.rareza || "comun").toLowerCase();
-    const color =
-      rareza === "rara" ? "#4da6ff" :
-      rareza === "epica" || rareza === "épica" ? "#c77dff" :
-      rareza === "legendaria" ? "#ffcc00" : "#f7f3e9";
+    content.innerHTML = items.map(i => {
+      const rareza = i.rareza?.toLowerCase() || "comun";
+      const color =
+        rareza === "rara" ? "#4da6ff" :
+        rareza === "epica" || rareza === "épica" ? "#c77dff" :
+        rareza === "legendaria" ? "#ffcc00" : "#f7f3e9";
 
-    return `
-      <div class="inv-item">
-        <img src="${i.imagen_url || '/varios/placeholder.png'}" class="inv-img">
-        <div class="inv-info">
-          <div class="inv-nombre" style="color:${color}">${i.nombre || "Sin nombre"}</div>
-          <div class="inv-detalle">
-            ${rareza.charAt(0).toUpperCase() + rareza.slice(1)} • x${i.cantidad || 1}
+      return `
+        <div class="inv-item">
+          <img src="${i.imagen_url || '/varios/placeholder.png'}" class="inv-img">
+          <div class="inv-info">
+            <div class="inv-nombre" style="color:${color}">${i.nombre}</div>
+            <div class="inv-detalle">
+              ${rareza.charAt(0).toUpperCase() + rareza.slice(1)} • x${i.cantidad}
+            </div>
           </div>
-
-          ${isChatPage() ? `
-            <button class="inv-use-btn" data-skin-id="${i.skin_id}">
-              Usar como fondo
-            </button>
-          ` : ``}
         </div>
-      </div>
-    `;
-  })
-  .join("");
+      `;
+    }).join("");
 
-// ✅ Activar clicks SOLO en index.html (chat)
-if (isChatPage()) {
-  content.querySelectorAll(".inv-use-btn").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const skinId = btn.getAttribute("data-skin-id");
-      await setActiveSkinBackground(skinId);
-    });
-  });
-}
-} catch (e) {
+  } catch (e) {
     console.error(e);
     content.innerHTML = `<p style="color:#f88">No se pudo cargar el inventario.</p>`;
   }
@@ -723,7 +490,6 @@ async function initializeUI() {
 // ===============================
 window.addEventListener("DOMContentLoaded", async () => {
   await initializeUI();
-  await loadActiveSkinBackground();
 
   const ambienceIntro = document.getElementById("ambience-intro");
   const ambienceLoop = document.getElementById("ambience-loop");
