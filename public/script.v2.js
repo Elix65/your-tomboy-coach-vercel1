@@ -370,6 +370,108 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
 
   // Cargar historial del chat
   await loadChatFromSupabase(user.id);
+  // ===============================
+// REGENERAR + REINICIAR (FIX)
+// ===============================
+const regenBtn = document.getElementById("regenerate-btn");
+const resetBtn = document.getElementById("reset-chat");
+
+let lastUserText = null;
+
+function clearChatUI() {
+  if (!chatBox) return;
+  chatBox.innerHTML = "";
+}
+
+function setLastUserFromUI() {
+  // Busca el último mensaje del usuario en el DOM y lo usa como base para regenerar
+  const userMsgs = chatBox.querySelectorAll(".message.user .bubble");
+  if (userMsgs && userMsgs.length) {
+    lastUserText = userMsgs[userMsgs.length - 1].textContent || null;
+  }
+}
+
+// al cargar historial, setear el lastUserText
+setLastUserFromUI();
+
+// ✅ Regenerar: vuelve a pedir respuesta para el último mensaje del usuario
+if (regenBtn) {
+  regenBtn.onclick = async () => {
+    if (!lastUserText) {
+      addMessage("No hay ningún mensaje para regenerar todavía.", "bot");
+      return;
+    }
+
+    const typing = document.getElementById("typing");
+    if (typing) typing.classList.remove("hidden");
+
+    try {
+      const res = await fetch("/api/yumiko", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: lastUserText })
+      });
+
+      const data = await res.json();
+
+      // borrar el último mensaje del bot en UI (si existe)
+      const botMsgs = chatBox.querySelectorAll(".message.bot");
+      const lastBot = botMsgs?.length ? botMsgs[botMsgs.length - 1] : null;
+      if (lastBot) lastBot.remove();
+
+      // mostrar nueva respuesta
+      addMessage(data.reply, "bot");
+
+      // guardar en supabase
+      await saveMessageToSupabase({ userId: user.id, sender: "bot", content: data.reply });
+
+    } catch (e) {
+      console.warn(e);
+      addMessage("Hubo un error al regenerar la respuesta.", "bot");
+    }
+
+    if (typing) typing.classList.add("hidden");
+  };
+}
+
+// ✅ Reiniciar Chat: limpia UI + intenta borrar en Supabase
+if (resetBtn) {
+  resetBtn.onclick = async () => {
+    const typing = document.getElementById("typing");
+    if (typing) typing.classList.remove("hidden");
+
+    try {
+      // 1) limpiar UI SIEMPRE (aunque falle DB)
+      clearChatUI();
+      lastUserText = null;
+
+      // 2) intentar borrar historial en supabase (si RLS lo permite)
+      const { error } = await supabaseClient
+        .from("messages")
+        .delete()
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.warn("No se pudo borrar en Supabase (RLS probablemente):", error);
+      }
+
+      // 3) mensaje inicial
+      addMessage("Chat reiniciado. ¿Qué querés contarme ahora?", "bot");
+      await saveMessageToSupabase({
+        userId: user.id,
+        sender: "bot",
+        content: "Chat reiniciado. ¿Qué querés contarme ahora?"
+      });
+
+    } catch (e) {
+      console.warn(e);
+      addMessage("No pude reiniciar el chat por un error.", "bot");
+    }
+
+    if (typing) typing.classList.add("hidden");
+  };
+}
+
 
   // Activar botón de enviar
   if (sendBtn) {
@@ -379,6 +481,7 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
 
       addMessage(text, "user");
       lastUserText = text;
+
 
 
       // Guardar mensaje del usuario
