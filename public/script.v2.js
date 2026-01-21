@@ -378,6 +378,8 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
       if (!text) return;
 
       addMessage(text, "user");
+      lastUserText = text;
+
 
       // Guardar mensaje del usuario
       saveMessageToSupabase({
@@ -399,7 +401,7 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
         });
 
         const data = await res.json();
-        addMessage(data.reply, "bot");
+        lastBotMsgEl = addMessageWithRef(data.reply, "bot");
 
         // Guardar mensaje del bot
         saveMessageToSupabase({
