@@ -468,6 +468,47 @@ async function openInventoryPanelGacha() {
       </div>
     `;
   }).join("");
+// ===============================
+// FONDO DE CHAT (SKINS)
+// ===============================
+function applyChatBackground(url) {
+  const bg = document.getElementById("yumiko-bg");
+  if (!bg) return;
+
+  if (!url) {
+    bg.style.backgroundImage = "";
+    return;
+  }
+
+  bg.style.backgroundImage = `url("${url}")`;
+  bg.style.backgroundSize = "cover";
+  bg.style.backgroundPosition = "center";
+  bg.style.opacity = "0.18";
+}
+
+async function setActiveSkinBackground(skinId) {
+  if (!skinId) return;
+
+  const { data: { user } } = await supabaseClient.auth.getUser();
+  if (!user) return;
+
+  const res = await fetch("/api/set-active-skin", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: user.id,
+      skin_id: skinId
+    })
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    console.warn("set-active-skin error:", data);
+    return;
+  }
+
+  applyChatBackground(data.imagen_url);
+}
 
 // Hook de clicks (solo en index/chat)
 if (isChatPage()) {
