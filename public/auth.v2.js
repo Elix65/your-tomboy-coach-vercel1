@@ -3,6 +3,17 @@
 // ===============================
 import supabaseClient from './supabase.js';
 
+const safeLocalStorage = (() => {
+  try {
+    const testKey = "__yumiko_storage_test__";
+    window.localStorage.setItem(testKey, "1");
+    window.localStorage.removeItem(testKey);
+    return window.localStorage;
+  } catch (error) {
+    return null;
+  }
+})();
+
 
 // Detectar página actual
 const currentPage = window.location.pathname;
@@ -84,6 +95,10 @@ if (registerBtn) {
     if (errorBox) {
       errorBox.textContent = "Registro exitoso. Revisa tu correo para confirmar.";
       errorBox.classList.remove("hidden");
+    }
+
+    if (safeLocalStorage) {
+      safeLocalStorage.setItem("yumiko_just_registered_at", String(Date.now()));
     }
   };
 }
