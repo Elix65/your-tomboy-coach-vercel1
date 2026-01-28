@@ -233,6 +233,70 @@ body {
   z-index: 1;
 }
 
+/* ===============================
+   YUMIKO RETURN NUDGES / TOASTS
+=============================== */
+.yumiko-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(17, 12, 26, 0.92);
+  color: #f7f3e9;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  border-radius: 16px;
+  padding: 14px 46px 14px 18px;
+  max-width: min(560px, calc(100vw - 32px));
+  font-size: 0.95rem;
+  line-height: 1.4;
+  z-index: 9999;
+  opacity: 0;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  cursor: pointer;
+}
+
+.yumiko-toast--show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.yumiko-toast--hide {
+  opacity: 0;
+  transform: translateX(-50%) translateY(20px);
+}
+
+.yumiko-toast__text {
+  white-space: pre-line;
+}
+
+.yumiko-toast__close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #f7f3e9;
+  font-size: 18px;
+  line-height: 28px;
+  cursor: pointer;
+}
+
+.yumiko-toast__close:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+@media (max-width: 640px) {
+  .yumiko-toast {
+    bottom: 16px;
+    padding: 12px 40px 12px 16px;
+    font-size: 0.9rem;
+  }
+}
+
 
 /* ================================
    MENSAJES

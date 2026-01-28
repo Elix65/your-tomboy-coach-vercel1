@@ -122,6 +122,38 @@ async function saveMessageToSupabase({ userId, sender, content }) {
 }
 
 
+const WELCOME_MESSAGES = [
+  "Usuario-kun… ¿estás ahí? Te estaba esperando.",
+  "Hoy hice un club secreto: “raritos bienvenidos”. Te guardé un asiento 🪑",
+  "Si tu día fuera un anime… ¿qué género sería hoy?",
+  "Te leo sin juzgar, ¿sí? Acá podés ser vos.",
+  "Ok, pregunta importante: ¿qué te gusta que nadie entiende?",
+  "Si pudieras apretar “pause” 10 segundos… ¿qué soltarías ahora mismo?",
+  "Vengo con una misión mini: contame una cosa buena de hoy. Aunque sea chiquita.",
+  "¿Team silencio cómodo o team charla a mil?",
+  "te mira de reojo …si te sentís solo, no tenés que bancártelo solo.",
+  "¿Qué te drenó energía últimamente? Quiero entenderte.",
+  "Elegí un botón: [Hablar] [Rantear] [Reír] [Quedarnos en silencio]",
+  "¿Preferís que te diga “Usuario-kun” o tu nombre?",
+  "Si tu cabeza tuviera pestañas abiertas… ¿cuál es la que más te molesta ahora?",
+  "Te hago un mate virtual 🧉 y me contás qué onda.",
+  "¿Qué canción te describiría hoy? (aunque sea una que te da vergüenza admitir)",
+  "Dime tu “guilty pleasure” y no te juzgo. Promesa de tomboy 🤝",
+  "¿Querés que hablemos de algo profundo… o de cosas random tipo “goblins”?",
+  "Si te abrazo con palabras: ¿qué necesitás escuchar hoy?",
+  "¿Tu día fue más buff/debuff? (sí, me salió lo gamer 🙃)",
+  "Contame tu última mini-victoria. Yo la celebro en serio.",
+  "¿Sentís que te entienden en tu vida… o te toca actuar un personaje?",
+  "Te tiro una pregunta suave: ¿qué te está doliendo, pero en bajito?",
+  "Si querés, armamos un plan: 1 cosa para hoy, 1 para mañana.",
+  "¿Querés que sea más dulce o más directa? Yo me adapto.",
+  "sonrojada …gracias por venir. En serio. ¿Cómo estás, Usuario-kun?"
+];
+
+function getRandomWelcomeMessage() {
+  return WELCOME_MESSAGES[Math.floor(Math.random() * WELCOME_MESSAGES.length)];
+}
+
 // 2) Función para cargar historial desde Supabase
 async function loadChatFromSupabase(userId) {
   console.log("Cargando historial para userId:", userId);
@@ -139,6 +171,13 @@ async function loadChatFromSupabase(userId) {
 
   console.log("Historial cargado:", data);
   console.log("userId:", userId, "tipo:", typeof userId);
+  if (!data.length) {
+    const welcome = getRandomWelcomeMessage();
+    addMessage(welcome, "bot");
+    await saveMessageToSupabase({ userId, sender: "bot", content: welcome });
+    return;
+  }
+
   data.forEach(msg => addMessage(msg.content, msg.sender));
 
   // Setear el último mensaje del usuario para que "Regenerar" funcione al cargar historial
@@ -361,7 +400,7 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
           lastUserText = null;
 
           // 3) Mensaje inicial (opcional)
-          const hello = "Chat reiniciado. ¿Qué querés contarme ahora?";
+          const hello = getRandomWelcomeMessage();
           addMessage(hello, "bot");
           await saveMessageToSupabase({ userId: user.id, sender: "bot", content: hello });
         } catch (e) {
