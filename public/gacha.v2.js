@@ -287,17 +287,22 @@ async function openInventoryPanelGacha() {
 const btnInicio = document.getElementById("btn-inicio");
 const btnInventario = document.getElementById("btn-inventario");
 const btnLogout = document.getElementById("btn-logout");
+const btnAudios = document.getElementById("btn-audios");
 
 // Mobile
 const mInicio = document.getElementById("m-inicio");
 const mInventario = document.getElementById("m-inventario");
 const mLogout = document.getElementById("m-logout");
+const mAudios = document.getElementById("m-audios");
 
 if (btnInicio) btnInicio.onclick = () => window.location.href = "index.html";
 if (mInicio) mInicio.onclick = () => window.location.href = "index.html";
 
 if (btnInventario) btnInventario.onclick = () => openInventoryPanelGacha();
 if (mInventario) mInventario.onclick = () => openInventoryPanelGacha();
+
+if (btnAudios) btnAudios.onclick = () => window.location.href = "/pacto-lunar-voz-triunfante.html";
+if (mAudios) mAudios.onclick = () => window.location.href = "/pacto-lunar-voz-triunfante.html";
 
 if (btnLogout) {
   btnLogout.onclick = async () => {

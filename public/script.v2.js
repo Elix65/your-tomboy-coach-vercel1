@@ -19,6 +19,7 @@ supabaseClient.auth.getUser().then(({ data: { user } }) => {
 const btnGacha = document.getElementById("btn-gacha");
 const btnInventario = document.getElementById("btn-inventario");
 const btnLogout = document.getElementById("btn-logout");
+const btnAudios = document.getElementById("btn-audios");
 
 if (btnGacha) {
   btnGacha.onclick = () => window.location.href = "gacha.html";
@@ -26,6 +27,10 @@ if (btnGacha) {
 
 if (btnInventario) {
   btnInventario.onclick = () => openInventoryPanelGacha();
+}
+
+if (btnAudios) {
+  btnAudios.onclick = () => window.location.href = "/pacto-lunar-voz-triunfante.html";
 }
 
 if (btnLogout) {
@@ -63,6 +68,7 @@ if (mobileMenu) {
 const mInv = document.getElementById("m-inventario");
 const mGacha = document.getElementById("m-gacha");
 const mLogout = document.getElementById("m-logout");
+const mAudios = document.getElementById("m-audios");
 
 if (mInv) {
   mInv.onclick = () => {
@@ -79,6 +85,15 @@ if (mGacha) {
     mobileMenu.classList.remove("active");
     hamburgerBtn.classList.remove("open");
     window.location.href = "gacha.html";
+  };
+}
+
+if (mAudios) {
+  mAudios.onclick = () => {
+    mobileMenu.classList.add("hidden");
+    mobileMenu.classList.remove("active");
+    hamburgerBtn.classList.remove("open");
+    window.location.href = "/pacto-lunar-voz-triunfante.html";
   };
 }
 
