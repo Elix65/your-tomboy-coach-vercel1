@@ -26,6 +26,18 @@
     </div>
   </div>
 
+  <div id="entry-choice-modal" class="choice-overlay hidden" aria-hidden="true">
+    <div class="choice-card" role="dialog" aria-modal="true" aria-labelledby="choice-title">
+      <button id="choice-close" class="choice-close" aria-label="Cerrar">×</button>
+      <h2 id="choice-title" class="choice-title">¿Qué querés hoy?</h2>
+      <p class="choice-subtitle">Elegí tu camino con Yumiko ✨</p>
+      <div class="choice-actions">
+        <button id="choice-chat" class="choice-btn choice-btn-primary">💬 Chatear con Yumiko</button>
+        <button id="choice-audios" class="choice-btn choice-btn-secondary">🎧 Audios (mañana, tarde y noche)</button>
+      </div>
+    </div>
+  </div>
+
   <!-- TOP BAR (DESKTOP) -->
   <div class="top-bar hidden" id="top-bar">
     <button id="btn-inventario" class="top-btn">Inventario</button>
@@ -100,6 +112,49 @@
 <script type="module" src="/auth.v2.js"></script>
 <script type="module" src="/script.v2.js"></script>
 <script src="/yumiko-return-nudges.js"></script>
+<script>
+  (function() {
+    const choiceModal = document.getElementById("entry-choice-modal");
+    const choiceClose = document.getElementById("choice-close");
+    const choiceChat = document.getElementById("choice-chat");
+    const choiceAudios = document.getElementById("choice-audios");
+
+    if (!choiceModal) {
+      return;
+    }
+
+    const closeChoiceModal = () => {
+      choiceModal.classList.add("hidden");
+      choiceModal.setAttribute("aria-hidden", "true");
+    };
+
+    if (sessionStorage.getItem("show_entry_choice") === "1") {
+      sessionStorage.removeItem("show_entry_choice");
+      choiceModal.classList.remove("hidden");
+      choiceModal.setAttribute("aria-hidden", "false");
+    }
+
+    if (choiceClose) {
+      choiceClose.addEventListener("click", closeChoiceModal);
+    }
+
+    if (choiceChat) {
+      choiceChat.addEventListener("click", closeChoiceModal);
+    }
+
+    if (choiceAudios) {
+      choiceAudios.addEventListener("click", () => {
+        window.location.href = "/pacto-lunar-voz-triunfante.html";
+      });
+    }
+
+    choiceModal.addEventListener("click", (event) => {
+      if (event.target === choiceModal) {
+        closeChoiceModal();
+      }
+    });
+  })();
+</script>
 
 </body>
 </html>

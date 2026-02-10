@@ -65,6 +65,7 @@ if (loginBtn) {
       return;
     }
 
+    sessionStorage.setItem("show_entry_choice", "1");
     window.location.href = "index.html";
   };
 }
