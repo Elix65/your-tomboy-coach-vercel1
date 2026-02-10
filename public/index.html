@@ -26,7 +26,7 @@
     </div>
   </div>
 
-  <div id="entry-choice-modal" class="choice-overlay hidden" aria-hidden="true">
+  <div id="entry-choice-modal" class="choice-overlay hidden" aria-hidden="true" inert>
     <div class="choice-card" role="dialog" aria-modal="true" aria-labelledby="choice-title">
       <button id="choice-close" class="choice-close" aria-label="Cerrar">×</button>
       <h2 id="choice-title" class="choice-title">¿Qué querés hoy?</h2>
@@ -113,7 +113,7 @@
 <script type="module" src="/script.v2.js"></script>
 <script src="/yumiko-return-nudges.js"></script>
 <script>
-  (function() {
+  document.addEventListener("DOMContentLoaded", () => {
     const choiceModal = document.getElementById("entry-choice-modal");
     const choiceClose = document.getElementById("choice-close");
     const choiceChat = document.getElementById("choice-chat");
@@ -123,37 +123,59 @@
       return;
     }
 
+    const focusSafeTarget = () => {
+      const safeTarget = document.getElementById("user-input") || document.body;
+
+      if (safeTarget === document.body) {
+        document.body.setAttribute("tabindex", "-1");
+      }
+
+      safeTarget.focus({ preventScroll: true });
+    };
+
+    const openChoiceModal = () => {
+      choiceModal.classList.remove("hidden");
+      choiceModal.inert = false;
+      choiceModal.setAttribute("aria-hidden", "false");
+      choiceChat?.focus({ preventScroll: true });
+    };
+
     const closeChoiceModal = () => {
+      const activeElement = document.activeElement;
+
+      if (activeElement && typeof activeElement.blur === "function") {
+        activeElement.blur();
+      }
+
       choiceModal.classList.add("hidden");
+      choiceModal.inert = true;
+
+      focusSafeTarget();
       choiceModal.setAttribute("aria-hidden", "true");
     };
 
     if (sessionStorage.getItem("show_entry_choice") === "1") {
       sessionStorage.removeItem("show_entry_choice");
-      choiceModal.classList.remove("hidden");
-      choiceModal.setAttribute("aria-hidden", "false");
+      openChoiceModal();
+    } else {
+      choiceModal.classList.add("hidden");
+      choiceModal.inert = true;
+      choiceModal.setAttribute("aria-hidden", "true");
     }
 
-    if (choiceClose) {
-      choiceClose.addEventListener("click", closeChoiceModal);
-    }
+    choiceClose?.addEventListener("click", closeChoiceModal);
+    choiceChat?.addEventListener("click", closeChoiceModal);
 
-    if (choiceChat) {
-      choiceChat.addEventListener("click", closeChoiceModal);
-    }
-
-    if (choiceAudios) {
-      choiceAudios.addEventListener("click", () => {
-        window.location.href = "/pacto-lunar-voz-triunfante.html";
-      });
-    }
+    choiceAudios?.addEventListener("click", () => {
+      window.location.href = "/pacto-lunar-voz-triunfante.html";
+    });
 
     choiceModal.addEventListener("click", (event) => {
       if (event.target === choiceModal) {
         closeChoiceModal();
       }
     });
-  })();
+  });
 </script>
 
 </body>

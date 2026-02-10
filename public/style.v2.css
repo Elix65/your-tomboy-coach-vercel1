@@ -752,6 +752,12 @@ body {
   backdrop-filter: blur(8px);
 }
 
+.choice-overlay.hidden {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 .choice-card {
   width: min(520px, 100%);
   position: relative;
