@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pacto Lunar: Voz Triunfante | 21-moon</title>
+  <style>
+    :root{
+      --bg:#070A12;
+      --card:#0D1223;
+      --muted:#AAB2D5;
+      --text:#EAF0FF;
+      --accent:#7C5CFF;
+      --accent2:#32E0FF;
+      --ok:#3DFFB5;
+      --warn:#FFD36E;
+      --border:rgba(255,255,255,.08);
+      --shadow:0 18px 60px rgba(0,0,0,.45);
+      --radius:18px;
+      --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:var(--font);
+      color:var(--text);
+      background:
+        radial-gradient(1100px 550px at 20% -10%, rgba(124,92,255,.28), transparent 60%),
+        radial-gradient(900px 450px at 90% 0%, rgba(50,224,255,.18), transparent 60%),
+        radial-gradient(900px 500px at 50% 115%, rgba(61,255,181,.12), transparent 60%),
+        var(--bg);
+      min-height:100vh;
+    }
+    .wrap{
+      max-width:980px;
+      padding:28px 16px 64px;
+      margin:0 auto;
+    }
+    .top{
+      display:flex;
+      flex-wrap:wrap;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:16px;
+      margin-bottom:18px;
+    }
+    .brand{
+      display:flex; gap:12px; align-items:center;
+    }
+    .logo{
+      width:44px;height:44px;border-radius:14px;
+      background: linear-gradient(135deg, rgba(124,92,255,.9), rgba(50,224,255,.8));
+      box-shadow: var(--shadow);
+      display:grid;place-items:center;
+      font-weight:800;
+    }
+    h1{
+      font-size:28px;
+      margin:0;
+      letter-spacing:.2px;
+    }
+    .subtitle{
+      margin:6px 0 0;
+      color:var(--muted);
+      line-height:1.35;
+      max-width:56ch;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:16px;
+      margin-top:16px;
+    }
+    @media (max-width: 880px){
+      .grid{grid-template-columns:1fr}
+    }
+    .card{
+      background: rgba(13,18,35,.88);
+      border:1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding:18px;
+      backdrop-filter: blur(10px);
+    }
+    .badge{
+      display:inline-flex;
+      gap:8px;align-items:center;
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid var(--border);
+      color:var(--muted);
+      background: rgba(255,255,255,.04);
+      font-size:13px;
+      margin-bottom:12px;
+    }
+    .badge .dot{
+      width:9px;height:9px;border-radius:50%;
+      background: linear-gradient(180deg, var(--accent), var(--accent2));
+      box-shadow:0 0 14px rgba(124,92,255,.6);
+    }
+    .list{
+      display:grid;
+      gap:10px;
+      margin:12px 0 0;
+      padding:0;
+      list-style:none;
+    }
+    .li{
+      display:flex;
+      gap:10px;
+      padding:10px 12px;
+      border:1px solid var(--border);
+      border-radius:14px;
+      background: rgba(255,255,255,.03);
+    }
+    .li .ic{
+      width:26px;height:26px;border-radius:10px;
+      display:grid;place-items:center;
+      background: rgba(124,92,255,.16);
+      border:1px solid rgba(124,92,255,.25);
+      flex:0 0 auto;
+    }
+    .li b{display:block}
+    .li span{display:block;color:var(--muted);font-size:13px;line-height:1.35;margin-top:2px}
+    .steps{
+      display:grid; gap:10px; margin-top:12px;
+    }
+    .step{
+      border:1px dashed rgba(255,255,255,.14);
+      border-radius:14px;
+      padding:12px;
+      background: rgba(255,255,255,.02);
+    }
+    .step .n{
+      display:inline-grid;place-items:center;
+      width:26px;height:26px;border-radius:10px;
+      background: rgba(50,224,255,.12);
+      border:1px solid rgba(50,224,255,.24);
+      margin-right:8px;
+      font-weight:700;
+    }
+    .muted{color:var(--muted)}
+    .ctaRow{
+      display:flex; flex-wrap:wrap;
+      gap:10px;
+      margin-top:14px;
+      align-items:center;
+    }
+    .btn{
+      appearance:none;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.06);
+      color:var(--text);
+      padding:11px 14px;
+      border-radius:14px;
+      cursor:pointer;
+      font-weight:700;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+    }
+    .btn.primary{
+      background: linear-gradient(135deg, rgba(124,92,255,.9), rgba(50,224,255,.85));
+      border-color: transparent;
+      box-shadow: 0 18px 50px rgba(124,92,255,.22);
+    }
+    .btn.secondary{
+      background: rgba(61,255,181,.10);
+      border-color: rgba(61,255,181,.22);
+    }
+    .btn:hover{transform: translateY(-1px)}
+    .btn:active{transform: translateY(0)}
+    .note{
+      margin-top:10px;
+      padding:12px 12px;
+      border-radius:14px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.45;
+    }
+    .small{font-size:12px;color:var(--muted)}
+    .hr{height:1px;background: rgba(255,255,255,.08); margin:14px 0}
+    .field{
+      display:grid; gap:6px; margin-top:10px;
+    }
+    label{font-size:12px;color:var(--muted)}
+    input, select{
+      width:100%;
+      padding:11px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: rgba(0,0,0,.25);
+      color: var(--text);
+      outline:none;
+    }
+    input::placeholder{color:rgba(234,240,255,.45)}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,211,110,.25);
+      background: rgba(255,211,110,.08);
+      color: #FFE7B0;
+      font-size:12px;
+      margin-top:10px;
+    }
+    .footer{
+      margin-top:18px;
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.45;
+    }
+    .mpBox{
+      border-radius:14px;
+      border:1px solid var(--border);
+      padding:12px;
+      background: rgba(255,255,255,.02);
+      overflow:hidden;
+    }
+  
+    /* --- Custom country dropdown (immersive, no native select) --- */
+    .dropdown{position:relative}
+    .ddBtn{
+      width:100%;
+      padding:11px 12px;
+      border-radius:12px;
+      border:1px solid var(--border);
+      background: rgba(0,0,0,.25);
+      color: var(--text);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      cursor:pointer;
+    }
+    .ddBtn:focus{
+      outline:none;
+      border-color: rgba(124,92,255,.45);
+      box-shadow: 0 0 0 4px rgba(124,92,255,.12);
+    }
+    .ddChevron{opacity:.8}
+    .ddMenu{
+      position:absolute;
+      top: calc(100% + 8px);
+      left:0;
+      right:0;
+      background: rgba(13,18,35,.98);
+      border:1px solid var(--border);
+      border-radius:14px;
+      box-shadow: var(--shadow);
+      padding:6px;
+      display:none;
+      z-index:50;
+      max-height: 240px;
+      overflow:auto;
+    }
+    .ddMenu.open{display:block}
+    .ddItem{
+      width:100%;
+      text-align:left;
+      padding:10px 10px;
+      border-radius:12px;
+      border:1px solid transparent;
+      background: transparent;
+      color: var(--text);
+      cursor:pointer;
+    }
+    .ddItem:hover{
+      background: rgba(255,255,255,.06);
+      border-color: rgba(124,92,255,.20);
+    }
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brand">
+        <div class="logo">🌘</div>
+        <div>
+          <h1>Pacto Lunar: Voz Triunfante</h1>
+          <p class="subtitle">Tu paquete de audios diarios de Yumiko: buenos días, empujón de tarde y buenas noches. Una mini rutina de compañía que te acompaña todos los días.</p>
+        </div>
+      </div>
+      <div class="badge"><span class="dot"></span> Activación por WhatsApp (rápida y humana)</div>
+    </div>
+
+    <div class="grid">
+      <!-- Left -->
+      <div class="card">
+        <div class="badge"><span class="dot"></span> ¿Qué incluye?</div>
+
+        <ul class="list">
+  <li class="li">
+    <div class="ic">🌅</div>
+    <div>
+      <b>Audio de buenos días</b>
+      <span>Yumiko te saluda para arrancar el día con energía (y una sonrisa).</span>
+    </div>
+  </li>
+  <li class="li">
+    <div class="ic">☀️</div>
+    <div>
+      <b>Audio de mitad de día</b>
+      <span>Un empujón corto para seguir con tu día cuando baja la batería.</span>
+    </div>
+  </li>
+  <li class="li">
+    <div class="ic">🌙</div>
+    <div>
+      <b>Audio de buenas noches</b>
+      <span>Cierre suave del día: calma, gratitud y foco para mañana.</span>
+    </div>
+  </li>
+  <li class="li">
+    <div class="ic">🪪</div>
+    <div>
+      <b>Personalizado con tu nombre</b>
+      <span>Te pedimos tu nombre/apodo para que se sienta más cercano.</span>
+    </div>
+  </li>
+</ul>
+
+        <div class="pill">✨ Hecho para sentirse real: entrega directa por WhatsApp (sin vueltas raras).</div>
+
+        <div class="hr"></div>
+
+        <div class="badge"><span class="dot"></span> ¿Cómo funciona?</div>
+        <div class="steps">
+          <div class="step"><span class="n">1</span>Pagás con Mercado Pago (se ajusta a pesos argentinos).</div>
+          <div class="step"><span class="n">2</span>Tocás “Activar por WhatsApp” y nos llega tu mensaje con tus datos.</div>
+          <div class="step"><span class="n">3</span>Nos mandás el comprobante y coordinamos el envío de los 3 audios diarios.</div>
+        </div>
+
+        <div class="note">
+          <b>¿Por qué no es automático?</b><br/>
+          Porque estamos en etapa temprana y preferimos que el servicio sea <b>humano y cuidado</b>.
+          Eso nos permite asegurar el envío correcto de los audios y darte atención real (sin bots ni caos).
+        </div>
+
+        <div class="footer">
+          Activación habitual: <b>dentro de 6h</b> (máximo 24h).<br/>
+          Si tenés dudas, escribinos igual y te guiamos.
+        </div>
+      </div>
+
+      <!-- Right -->
+      <div class="card">
+        <div class="badge"><span class="dot"></span> Pagar y activar</div>
+
+        <div class="mpBox">
+          <p class="muted" style="margin:0 0 10px">
+            1) Pagá con Mercado Pago (Argentina).<br/>
+            2) Luego tocá “Activar por WhatsApp” para coordinarnos.
+          </p>
+
+          <div class="ctaRow" style="margin-top:0">
+            <a class="btn primary" id="payBtn" href="https://mpago.la/2yN3fAP" target="_blank" rel="noreferrer">
+              💳 Pagar (Mercado Pago)
+            </a>
+          </div>
+
+          <div class="note" style="margin-top:10px">
+            <b>Importante:</b> después de pagar, volvé a esta página y tocá <b>“Activar por WhatsApp”</b> para enviarnos el mensaje con tus datos y el comprobante.
+          </div>
+
+          <details style="margin-top:12px">
+            <summary class="small" style="cursor:pointer">Alternativa: botón oficial de Mercado Pago</summary>
+            <div class="mpBox" style="margin-top:10px">
+              <script src="https://www.mercadopago.com.ar/integrations/v1/web-payment-checkout.js"
+data-preference-id="1263035368-abd224e3-5ee3-4f8e-8b95-6e09c251bb09" data-source="button">
+</script>
+            </div>
+          </details>
+        </div>
+
+        <div class="field">
+          <label for="userId">Tu email/usuario en 21-moon (para identificarte)</label>
+          <input id="userId"   inputmode="email" autocomplete="email" type="email" placeholder="ej: usuario-kun@gmail.com" required />
+        </div>
+
+
+<div class="field">
+  <label for="phone">Tu WhatsApp (con código de país)</label>
+  <input id="phone" inputmode="tel" autocomplete="tel" type="tel" placeholder="ej: +54 9 11 1234-5678" />
+</div>
+
+        <div class="field">
+          <label for="country">País</label>
+          <div class="dropdown" id="countryDropdown">
+            <button class="ddBtn" type="button" id="countryBtn" aria-haspopup="listbox" aria-expanded="false">
+              <span id="countryLabel">Argentina</span>
+              <span class="ddChevron">▾</span>
+            </button>
+            <div class="ddMenu" id="countryMenu" role="listbox" aria-label="País">
+              <button class="ddItem" type="button" data-value="Argentina">Argentina</button>
+              <button class="ddItem" type="button" data-value="México">México</button>
+              <button class="ddItem" type="button" data-value="Perú">Perú</button>
+              <button class="ddItem" type="button" data-value="Chile">Chile</button>
+              <button class="ddItem" type="button" data-value="Colombia">Colombia</button>
+              <button class="ddItem" type="button" data-value="Uruguay">Uruguay</button>
+              <button class="ddItem" type="button" data-value="Otro">Otro</button>
+            </div>
+
+            <!-- valor real para JS -->
+            <input type="hidden" id="country" value="Argentina"/>
+          </div>
+        </div>
+
+        <div class="ctaRow">
+          <a class="btn primary" id="waBtn" href="#" target="_blank" rel="noreferrer">
+            💬 Activar por WhatsApp
+          </a>
+          <button class="btn secondary" id="copyBtn" type="button">
+            📋 Copiar mensaje
+          </button>
+        </div>
+
+        <div class="note">
+          <b>Si WhatsApp no se abre:</b><br/>
+          Te dejamos nuestro número de soporte: <b>+54 11 4410-3647</b>.
+        </div>
+
+        <div class="hr"></div>
+
+        <div class="badge"><span class="dot"></span> Internacional</div>
+        <p class="small" style="margin:8px 0 0">
+          Si estás fuera de Argentina, escribinos igual: te pasamos un link alternativo.
+          (PayPal y otros métodos, próximamente.)
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ✅ Cambiá esto por tu número real, sin +, sin espacios.
+    // Argentina ejemplo: 54911XXXXXXXX
+    const WHATSAPP_NUMBER = "541144103647";
+
+    function buildMessage() {
+      const userId = document.getElementById("userId").value.trim() || "(sin usuario)";
+      const country = document.getElementById("country").value;
+      const phone = document.getElementById("phone").value.trim() || "(sin WhatsApp)";
+
+      return `Pacto Lunar: Voz Triunfante 🌘%0A` +
+             `Compré el pack y quiero activar mis audios diarios (mañana/tarde/noche).%0A%0A` +
+             `Usuario/Email 21-moon: ${encodeURIComponent(userId)}%0A` +
+             `País: ${encodeURIComponent(country)}%0AWhatsApp para recibir audios: ${encodeURIComponent(phone)}%0A` +
+             `Comprobante/ID de pago: (pegar aquí)%0A%0A` +
+             `Gracias!`;
+    }
+
+    function updateLinks() {
+      const msg = buildMessage();
+      const waLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`;
+      document.getElementById("waBtn").href = waLink;
+    }
+
+    document.getElementById("userId").addEventListener("input", updateLinks);
+    document.getElementById("phone").addEventListener("input", updateLinks);
+document.getElementById("copyBtn").addEventListener("click", async () => {
+      // Copiamos el mensaje "humano" (sin %0A) para que también sirva.
+      const userId = document.getElementById("userId").value.trim() || "(sin usuario)";
+      const country = document.getElementById("country").value;
+      const phone = document.getElementById("phone").value.trim() || "(sin WhatsApp)";
+
+      const plain =
+`Pacto Lunar: Voz Triunfante 🌘
+Compré el pack y quiero activar mis audios diarios (mañana/tarde/noche).
+
+Usuario/Email 21-moon: ${userId}
+País: ${country}
+WhatsApp para recibir audios: ${phone}
+Comprobante/ID de pago: (pegar aquí)
+
+Gracias!`;
+
+      try {
+        await navigator.clipboard.writeText(plain);
+        document.getElementById("copyBtn").textContent = "✅ Mensaje copiado";
+        setTimeout(()=> document.getElementById("copyBtn").textContent = "📋 Copiar mensaje", 1600);
+      } catch (e) {
+        alert("No pude copiar automáticamente. Seleccioná y copiá el texto manualmente.");
+      }
+    });
+    // --- Custom dropdown (País) ---
+    const dd = document.getElementById("countryDropdown");
+    const ddBtn = document.getElementById("countryBtn");
+    const ddMenu = document.getElementById("countryMenu");
+    const ddLabel = document.getElementById("countryLabel");
+    const countryHidden = document.getElementById("country");
+
+    ddBtn.addEventListener("click", () => {
+      const isOpen = ddMenu.classList.toggle("open");
+      ddBtn.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    });
+
+    ddMenu.querySelectorAll(".ddItem").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const val = btn.getAttribute("data-value");
+        ddLabel.textContent = val;
+        countryHidden.value = val;
+        ddMenu.classList.remove("open");
+        ddBtn.setAttribute("aria-expanded", "false");
+        updateLinks();
+      });
+    });
+
+    // Cerrar al click afuera
+    document.addEventListener("click", (e) => {
+      if (!dd.contains(e.target)) {
+        ddMenu.classList.remove("open");
+        ddBtn.setAttribute("aria-expanded", "false");
+      }
+    });
+
+    // Cerrar con ESC
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        ddMenu.classList.remove("open");
+        ddBtn.setAttribute("aria-expanded", "false");
+      }
+    });
+
+
+    // Init
+    updateLinks();
+</script>
+</body>
+</html>
