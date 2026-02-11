@@ -12,7 +12,7 @@ body {
   padding: 0;
   font-family: 'Segoe UI', sans-serif;
   color: white;
-  overflow: hidden;
+  overflow: auto;
   background: #050505;
 }
 
@@ -221,70 +221,24 @@ img.avatar-header {
 ================================ */
 
 .chat-frame-wrap {
-  height: 100%;
-  min-height: 0;
+  width: min(680px, 92vw);
+  margin: 0 auto 14px;
+  display: flex;
+  flex-direction: column;
   flex: 1 1 auto;
-  position: relative;
-  isolation: isolate;
-  z-index: 1;
-}
-
-.torii-stage {
-  position: relative;
-  height: 100dvh;
-  display: grid;
-  place-items: center;
-  padding: 12px;
-  box-sizing: border-box;
-}
-
-.torii-shell {
-  position: relative;
-  width: min(520px, 92vw, calc(92dvh * 768 / 1047));
-  aspect-ratio: 768 / 1047;
-  max-height: 92dvh;
-}
-
-.torii-frame {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  pointer-events: none;
-  z-index: 10;
-}
-
-.torii-chat {
-  position: absolute;
-  top: 16%;
-  left: 10%;
-  right: 10%;
-  bottom: 24%;
-  z-index: 20;
-  overflow: hidden;
-  box-sizing: border-box;
+  min-height: 0;
 }
 
 .chat-messages-area {
-  position: relative;
-  height: 100%;
-  overflow: hidden;
-  padding: 12px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: visible;
+  padding: 0;
   box-sizing: border-box;
 }
 
-.torii-composer {
-  position: absolute;
-  left: 10%;
-  right: 10%;
-  bottom: 6%;
-  z-index: 30;
-}
-
 .chat-composer-area {
-  position: relative;
-  z-index: 30;
+  flex: 0 0 auto;
   padding: 0;
 }
 
@@ -852,21 +806,6 @@ img.avatar-small {
 
   .extra-buttons button {
     width: 100%;
-  }
-}
-
-@media (max-width: 520px) {
-  .torii-chat {
-    top: 15%;
-    left: 8%;
-    right: 8%;
-    bottom: 26%;
-  }
-
-  .torii-composer {
-    left: 8%;
-    right: 8%;
-    bottom: 5%;
   }
 }
 

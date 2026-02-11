@@ -77,40 +77,27 @@
 
       <p class="subtitle">El Dojo Despierta Contigo</p>
 
-      <div class="chat-frame-wrap torii-stage">
-        <div class="torii-shell">
-          <img
-            class="torii-frame"
-            src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/Fondo-para%20-chat.png"
-            alt=""
-            aria-hidden="true"
-          >
+      <div class="chat-frame-wrap">
+        <div class="chat-messages-area">
+          <div id="chat-box" class="chat-box">
+            <div id="yumiko-bg"></div>
+          </div>
+        </div>
 
-          <div class="torii-chat">
-            <div class="chat-messages-area">
-              <div id="chat-box" class="chat-box">
-                <div id="yumiko-bg"></div>
-              </div>
-            </div>
+        <div class="chat-composer-area">
+          <div id="typing" class="typing hidden">
+            <img src="/varios/yumiko/yumiko-face-full-face.png" class="avatar-small">
+            <span>Yumiko está escribiendo…</span>
           </div>
 
-          <div class="torii-composer">
-            <div class="chat-composer-area">
-              <div id="typing" class="typing hidden">
-                <img src="/varios/yumiko/yumiko-face-full-face.png" class="avatar-small">
-                <span>Yumiko está escribiendo…</span>
-              </div>
+          <!-- INPUT + BOTONES -->
+          <div class="input-area">
+            <input id="user-input" type="text" name="chat-message" placeholder="Escribe aquí..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <button id="send-btn">Enviar</button>
 
-              <!-- INPUT + BOTONES -->
-              <div class="input-area">
-                <input id="user-input" type="text" name="chat-message" placeholder="Escribe aquí..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-                <button id="send-btn">Enviar</button>
-
-                <div class="extra-buttons">
-                  <button id="regenerate-btn" class="dojo-btn">Regenerar</button>
-                  <button id="reset-chat" class="dojo-btn">Reiniciar Chat</button>
-                </div>
-              </div>
+            <div class="extra-buttons">
+              <button id="regenerate-btn" class="dojo-btn">Regenerar</button>
+              <button id="reset-chat" class="dojo-btn">Reiniciar Chat</button>
             </div>
           </div>
         </div>
