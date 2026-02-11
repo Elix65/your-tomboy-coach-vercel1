@@ -341,6 +341,42 @@ img.avatar-small {
   border-bottom-left-radius: 4px;
 }
 
+.yumiko-bubble {
+  transform-origin: left center;
+  will-change: clip-path, transform, filter, opacity;
+}
+
+.yumiko-enter {
+  animation: yumikoReveal 3.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes yumikoReveal {
+  0% {
+    clip-path: inset(0 100% 0 0 round 12px);
+    transform: translateX(-10px);
+    filter: blur(4px);
+    opacity: 0.75;
+  }
+  70% {
+    clip-path: inset(0 8% 0 0 round 12px);
+    transform: translateX(0);
+    filter: blur(1px);
+    opacity: 0.95;
+  }
+  100% {
+    clip-path: inset(0 0 0 0 round 12px);
+    transform: translateX(0);
+    filter: blur(0);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .yumiko-enter {
+    animation-duration: 0.01s;
+  }
+}
+
 /* ================================
    INPUT DEL CHAT
 ================================ */

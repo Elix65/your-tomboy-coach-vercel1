@@ -193,7 +193,7 @@ async function loadChatFromSupabase(userId) {
     return;
   }
 
-  data.forEach(msg => addMessage(msg.content, msg.sender));
+  data.forEach(msg => addMessage(msg.content, msg.sender, { skipAnimation: true }));
 
   // Setear el último mensaje del usuario para que "Regenerar" funcione al cargar historial
   const lastUser = [...data].reverse().find(m => m.sender === "user");
@@ -211,12 +211,28 @@ const resetBtn = document.getElementById("reset-chat");
 
 let lastUserText = null;
 
-function addMessage(text, sender) {
+function addMessage(text, sender, options = {}) {
+  const { skipAnimation = false } = options;
   const msg = document.createElement("div");
   msg.classList.add("message", sender);
 
   const bubble = document.createElement("div");
-  bubble.classList.add("bubble");
+  bubble.classList.add("bubble", "chat-bubble");
+
+  if (sender === "bot") {
+    bubble.classList.add("yumiko-bubble");
+    if (!skipAnimation) {
+      bubble.classList.add("yumiko-enter");
+      bubble.addEventListener(
+        "animationend",
+        () => {
+          bubble.classList.remove("yumiko-enter");
+        },
+        { once: true }
+      );
+    }
+  }
+
   bubble.textContent = text;
 
   msg.appendChild(bubble);
