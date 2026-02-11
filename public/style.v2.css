@@ -208,6 +208,8 @@ img.avatar-header {
 
 .chat-frame-wrap {
   position: relative;
+  isolation: isolate;
+  z-index: 1;
   padding: clamp(18px, 2vw, 24px);
 }
 
@@ -220,12 +222,14 @@ img.avatar-header {
   background-position: center;
   background-size: contain;
   pointer-events: none;
-  z-index: 5;
+  z-index: 20;
 }
 
-.chat-app {
+.chat-frame-wrap .chat-app,
+.chat-frame-wrap .chat-container,
+.chat-frame-wrap .chat-panel {
   position: relative;
-  z-index: 6;
+  z-index: 10;
 }
 
 .chat-box {
