@@ -206,6 +206,28 @@ img.avatar-header {
    CHAT
 ================================ */
 
+.chat-frame-wrap {
+  position: relative;
+  padding: clamp(18px, 2vw, 24px);
+}
+
+.chat-frame-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/Fondo-para%20-chat.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.chat-app {
+  position: relative;
+  z-index: 6;
+}
+
 .chat-box {
   position: relative;
   background: rgba(0, 0, 0, 0.6);
@@ -733,6 +755,10 @@ img.avatar-small {
 
 @media (max-width: 768px) {
 
+  .chat-frame-wrap {
+    padding: 14px;
+  }
+
   .container {
     width: 92%;
     padding-top: 20px;
@@ -779,6 +805,10 @@ img.avatar-small {
 ================================ */
 
 @media (max-width: 480px) {
+
+  .chat-frame-wrap {
+    padding: 10px;
+  }
 
   .title {
     font-size: 1.5rem;
