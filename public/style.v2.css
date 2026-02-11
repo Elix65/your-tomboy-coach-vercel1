@@ -160,6 +160,11 @@ body {
    HEADER (AVATAR + TÍTULO)
 ================================ */
 
+img.avatar-header {
+  display: none !important;
+  pointer-events: none !important;
+}
+
 .header {
   display: flex;
   align-items: center;
