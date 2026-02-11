@@ -209,8 +209,9 @@ img.avatar-header {
 .chat-frame-wrap {
   position: relative;
   isolation: isolate;
+  overflow: hidden;
+  border-radius: 18px;
   z-index: 1;
-  padding: clamp(18px, 2vw, 24px);
 }
 
 .chat-frame-wrap::after {
@@ -219,8 +220,8 @@ img.avatar-header {
   inset: 0;
   background-image: url("https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/Fondo-para%20-chat.png");
   background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
+  background-position: center top;
+  background-size: 100% auto;
   pointer-events: none;
   z-index: 20;
 }
@@ -230,6 +231,8 @@ img.avatar-header {
 .chat-frame-wrap .chat-panel {
   position: relative;
   z-index: 10;
+  box-sizing: border-box;
+  padding: 110px 70px 80px;
 }
 
 .chat-box {
@@ -758,11 +761,6 @@ img.avatar-small {
 ================================ */
 
 @media (max-width: 768px) {
-
-  .chat-frame-wrap {
-    padding: 14px;
-  }
-
   .container {
     width: 92%;
     padding-top: 20px;
@@ -804,16 +802,19 @@ img.avatar-small {
   }
 }
 
+@media (max-width: 520px) {
+  .chat-frame-wrap .chat-app,
+  .chat-frame-wrap .chat-container,
+  .chat-frame-wrap .chat-panel {
+    padding: 90px 38px 70px;
+  }
+}
+
 /* ================================
    RESPONSIVE — MÓVILES PEQUEÑOS
 ================================ */
 
 @media (max-width: 480px) {
-
-  .chat-frame-wrap {
-    padding: 10px;
-  }
-
   .title {
     font-size: 1.5rem;
   }
