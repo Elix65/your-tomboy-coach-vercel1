@@ -215,13 +215,6 @@ function addMessage(text, sender) {
   const msg = document.createElement("div");
   msg.classList.add("message", sender);
 
-  if (sender === "bot") {
-    const avatar = document.createElement("img");
-    avatar.src = "varios/yumiko/yumiko-face-full-face.png";
-    avatar.classList.add("avatar-small");
-    msg.appendChild(avatar);
-  }
-
   const bubble = document.createElement("div");
   bubble.classList.add("bubble");
   bubble.textContent = text;
