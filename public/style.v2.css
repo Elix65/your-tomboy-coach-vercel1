@@ -446,26 +446,78 @@ body {
   top: 20px;
   right: 20px;
   display: flex;
-  gap: 10px;
   z-index: 9999;
+  padding: 4px;
+  border-radius: 20px;
+  background: rgba(10, 6, 12, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.nav-actions {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  max-width: min(92vw, 860px);
+  padding: 8px;
+  border-radius: 18px;
+}
+
+.nav-actions::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(20, 10, 20, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 0;
 }
 
 .top-btn {
+  position: relative;
+  z-index: 1;
   padding: 10px 16px;
-  background: rgba(255, 80, 80, 0.85);
-  color: white;
-  border: none;
-  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
   font-size: 14px;
-  font-weight: bold;
+  font-weight: 700;
   cursor: pointer;
   backdrop-filter: blur(4px);
-  transition: 0.2s ease;
+  -webkit-backdrop-filter: blur(4px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.top-btn-primary {
+  background: linear-gradient(180deg, #ff6f86, #ff5f79);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 10px 22px rgba(255, 95, 121, 0.2);
 }
 
 .top-btn:hover {
-  background: rgba(255, 120, 120, 1);
-  transform: scale(1.05);
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+}
+
+.top-btn:active {
+  transform: translateY(0);
+  filter: brightness(0.96);
+}
+
+.top-btn:focus-visible {
+  outline: 2px solid rgba(255, 136, 164, 0.92);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(255, 111, 134, 0.25), 0 10px 20px rgba(0, 0, 0, 0.28);
 }
 
 /* ================================
@@ -566,6 +618,12 @@ body {
   /* Ocultar top bar en mobile */
   .top-bar {
     display: none !important;
+  }
+
+  .nav-actions {
+    gap: 8px;
+    padding: 7px;
+    max-width: 100%;
   }
 
   /* Mostrar botón hamburguesa en mobile */
