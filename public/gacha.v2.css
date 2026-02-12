@@ -353,6 +353,144 @@
   background: rgba(255, 120, 120, 1);
 }
 
+/* ================================
+   RITUAL DE TIRADA
+================================ */
+.ritual {
+  position: fixed;
+  inset: 0;
+  z-index: 12000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at center, rgba(255, 120, 160, 0.14), rgba(10, 10, 14, 0.84)),
+    rgba(10, 8, 14, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: opacity 0.28s ease, visibility 0.28s ease;
+}
+
+.ritual.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.ritual.show {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.ritual-card {
+  min-width: 260px;
+  max-width: 92vw;
+  padding: 24px 22px;
+  border-radius: 16px;
+  text-align: center;
+  background: linear-gradient(145deg, rgba(28, 18, 40, 0.9), rgba(14, 12, 18, 0.9));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow:
+    0 0 20px rgba(255, 100, 140, 0.22),
+    0 0 38px rgba(186, 91, 255, 0.18);
+  transform: scale(0.95);
+  transition: transform 0.28s ease;
+}
+
+.ritual.show .ritual-card {
+  animation: ritualCardIn 0.32s ease forwards;
+}
+
+.ritual-title {
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+
+.ritual-sub {
+  opacity: 0.86;
+  margin-bottom: 16px;
+}
+
+.ritual-spinner {
+  width: 32px;
+  height: 32px;
+  margin: 0 auto;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  border-top-color: rgba(255, 145, 175, 0.95);
+  border-radius: 50%;
+  animation: ritualSpin 0.8s linear infinite;
+}
+
+@keyframes ritualSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes ritualCardIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ================================
+   CARTAS + REVEAL
+================================ */
+.skin-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.reveal-pop {
+  opacity: 0;
+  transform: scale(0.94) translateY(6px);
+  animation: revealPop 0.3s ease forwards;
+}
+
+@keyframes revealPop {
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.skin-placeholder {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  min-height: 168px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.rarity-common {
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.rarity-rare {
+  border-color: rgba(95, 171, 255, 0.45);
+  box-shadow: 0 0 16px rgba(95, 171, 255, 0.2);
+}
+
+.rarity-legendary {
+  border-color: rgba(255, 210, 78, 0.78);
+  box-shadow:
+    0 0 20px rgba(255, 206, 66, 0.33),
+    0 0 40px rgba(255, 169, 66, 0.24);
+}
+
 /* Responsive */
 @media (max-width: 480px) {
   .inv-img {

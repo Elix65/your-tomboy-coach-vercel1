@@ -8,6 +8,95 @@ import { initializeInventoryPanel } from './inventory-panel.v2.js';
 
 let userId = null;
 let modo = "comun"; // comun (ilimitado) | premium (consume saldo)
+const ritualEl = document.getElementById("gacha-ritual");
+const ritualFadeMs = 280;
+
+const btn1 = document.getElementById("btn-tirar-1");
+const btn10 = document.getElementById("btn-tirar-10");
+const btnRecharge = document.getElementById("btn-recharge");
+const packSelect = document.getElementById("pack-select");
+const divRes = document.getElementById("gacha-resultados");
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+function getRarityClass(rareza) {
+  if (rareza === "legendaria") return "rarity-legendary";
+  if (rareza === "epica" || rareza === "rara") return "rarity-rare";
+  return "rarity-common";
+}
+
+function renderSkinCard(skin, extraClass = "") {
+  return `
+    <div class="skin-card skin-result ${getRarityClass(skin.rareza)} ${extraClass}">
+      <img src="${skin.imagen_url}" class="skin-img" alt="${skin.nombre}">
+      <p class="skin-${skin.rareza}">
+        ${skin.nombre} (${skin.rareza})
+      </p>
+    </div>
+  `;
+}
+
+function setButtonsEnabled(enabled) {
+  const controls = [btn1, btn10, btnRecharge, packSelect, btnModoComun, btnModoPremium];
+  controls.forEach((el) => {
+    if (!el) return;
+    el.disabled = !enabled;
+    el.setAttribute("aria-disabled", String(!enabled));
+  });
+}
+
+async function showRitual(durationMs = 1000) {
+  if (!ritualEl) {
+    await delay(durationMs);
+    return;
+  }
+
+  ritualEl.classList.remove("hidden");
+  ritualEl.setAttribute("aria-hidden", "false");
+
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  ritualEl.classList.add("show");
+
+  await delay(durationMs);
+}
+
+async function hideRitual() {
+  if (!ritualEl) return;
+
+  ritualEl.classList.remove("show");
+  ritualEl.setAttribute("aria-hidden", "true");
+  await delay(ritualFadeMs);
+  ritualEl.classList.add("hidden");
+}
+
+function animateRevealSingle(skin) {
+  divRes.innerHTML = `
+    <h3>Resultado:</h3>
+    ${renderSkinCard(skin, "reveal-pop")}
+  `;
+}
+
+async function animateRevealTen(resultsArray) {
+  const placeholders = Array.from({ length: resultsArray.length }, (_, idx) => `
+    <div class="skin-card skin-placeholder" data-slot="${idx}">
+      ???
+    </div>
+  `).join("");
+
+  divRes.innerHTML = `
+    <h3>Resultados (${resultsArray.length}):</h3>
+    <div class="gacha-grid">${placeholders}</div>
+  `;
+
+  for (let i = 0; i < resultsArray.length; i += 1) {
+    const slot = divRes.querySelector(`[data-slot="${i}"]`);
+    if (slot) {
+      slot.outerHTML = renderSkinCard(resultsArray[i], "reveal-pop");
+    }
+    await delay(150);
+  }
+}
+
 // ===============================
 // UI MODO (COMUN / PREMIUM)
 // ===============================
@@ -69,13 +158,6 @@ supabaseClient.auth.getUser().then(({ data: { user } }) => {
   if (user) userId = user.id;
 });
 
-const btn1 = document.getElementById("btn-tirar-1");
-const btn10 = document.getElementById("btn-tirar-10");
-const divRes = document.getElementById("gacha-resultados");
-
-// (Opcional) si después agregás botones premium en UI, solo seteás modo="premium"
-// Ej: document.getElementById("btn-modo-premium").onclick = () => modo="premium";
-
 function endpointUno() {
   return modo === "premium" ? "/api/tirar-skin-premium" : "/api/tirar-skin";
 }
@@ -105,36 +187,42 @@ if (btn1) {
   btn1.onclick = async () => {
     if (!userId) return;
 
-    const res = await fetch(endpointUno(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId })
-    });
+    setButtonsEnabled(false);
 
-    const data = await res.json();
-    if (!res.ok) {
-      if (modo === "premium" && handlePremiumError(data)) return;
-      console.warn(data);
-      return;
+    try {
+      await showRitual(1000);
+
+      const res = await fetch(endpointUno(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId })
+      });
+
+      const data = await res.json();
+      await hideRitual();
+
+      if (!res.ok) {
+        if (modo === "premium" && handlePremiumError(data)) return;
+        divRes.innerHTML = `<p style="color:#ff8080">Error al tirar (1).</p>`;
+        console.warn(data);
+        return;
+      }
+
+      if (!data?.skin) {
+        divRes.innerHTML = `<p style="color:#ff8080">Error al tirar (1). Revisá logs.</p>`;
+        console.warn("Respuesta tirar-skin:", data);
+        return;
+      }
+
+      animateRevealSingle(data.skin);
+    } catch (error) {
+      await hideRitual();
+      divRes.innerHTML = `<p style="color:#ff8080">Error al tirar (1).</p>`;
+      console.warn("tirar 1 error:", error);
+    } finally {
+      setButtonsEnabled(true);
+      if (modo === "premium") refreshPremiumBalance();
     }
-
-    const s = data.skin;
-    if (!data?.skin) {
-    divRes.innerHTML = `<p style="color:#ff8080">Error al tirar (1). Revisá logs.</p>`;
-    console.warn("Respuesta tirar-skin:", data);
-    return;
-    }
-
-
-    divRes.innerHTML = `
-      <h3>Resultado:</h3>
-      <div class="skin-result">
-        <img src="${s.imagen_url}" class="skin-img">
-        <p class="skin-${s.rareza} reveal">
-          ${s.nombre} (${s.rareza})
-        </p>
-      </div>
-    `;
   };
 }
 
@@ -145,49 +233,50 @@ if (btn10) {
   btn10.onclick = async () => {
     if (!userId) return;
 
-    const res = await fetch(endpointDiez(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, cantidad: 10 })
-    });
+    setButtonsEnabled(false);
 
-    let data = null;
     try {
-      data = await res.json();
-    } catch (e) {
-      divRes.innerHTML = `<p style="color:#ff8080">Error leyendo respuesta del servidor.</p>`;
-      return;
-    }
+      await showRitual(1100);
 
-    if (!res.ok) {
-      if (modo === "premium" && handlePremiumError(data)) return;
+      const res = await fetch(endpointDiez(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, cantidad: 10 })
+      });
+
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (e) {
+        await hideRitual();
+        divRes.innerHTML = `<p style="color:#ff8080">Error leyendo respuesta del servidor.</p>`;
+        return;
+      }
+
+      await hideRitual();
+
+      if (!res.ok) {
+        if (modo === "premium" && handlePremiumError(data)) return;
+        divRes.innerHTML = `<p style="color:#ff8080">Error al tirar (x10).</p>`;
+        console.warn("tirar-multiple error:", data);
+        return;
+      }
+
+      if (!data?.resultados || !Array.isArray(data.resultados)) {
+        divRes.innerHTML = `<p style="color:#ff8080">Error al tirar (x10): respuesta inválida.</p>`;
+        console.warn("Respuesta inválida tirar-multiple:", data);
+        return;
+      }
+
+      await animateRevealTen(data.resultados);
+    } catch (error) {
+      await hideRitual();
       divRes.innerHTML = `<p style="color:#ff8080">Error al tirar (x10).</p>`;
-      console.warn("tirar-multiple error:", data);
-      return;
+      console.warn("tirar x10 error:", error);
+    } finally {
+      setButtonsEnabled(true);
+      if (modo === "premium") refreshPremiumBalance();
     }
-
-    // ✅ PARCHE DEFENSIVO
-    if (!data?.resultados || !Array.isArray(data.resultados)) {
-      divRes.innerHTML = `<p style="color:#ff8080">Error al tirar (x10): respuesta inválida.</p>`;
-      console.warn("Respuesta inválida tirar-multiple:", data);
-      return;
-    }
-
-    divRes.innerHTML = `
-      <h3>Resultados (${data.cantidad ?? data.resultados.length}):</h3>
-      <div class="gacha-grid">
-        ${data.resultados
-          .map(s => `
-            <div class="skin-result">
-              <img src="${s.imagen_url}" class="skin-img">
-              <p class="skin-${s.rareza} reveal">
-                ${s.nombre} (${s.rareza})
-              </p>
-            </div>
-          `)
-          .join("")}
-      </div>
-    `;
   };
 }
 
@@ -286,8 +375,6 @@ initializeInventoryPanel({
 });
 
 setModo("comun");
-const btnRecharge = document.getElementById("btn-recharge");
-const packSelect = document.getElementById("pack-select");
 
 if (btnRecharge) {
   btnRecharge.onclick = async () => {
