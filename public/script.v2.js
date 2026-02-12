@@ -1,5 +1,6 @@
 import supabaseClient from './supabase.js';
 import { initializeInventoryPanel } from './inventory-panel.v2.js';
+import { initTopBarAndMobileMenu } from './ui.v2.js';
 
 function goWithTransition(url) {
   if (typeof window.playPageTransitionAndGo === "function") {
@@ -570,25 +571,7 @@ if (btnInventario) {
 async function initializeUI() {
   const { data: { user } = {} } = await supabaseClient.auth.getUser();
   if (!user) return;
-
-  const topBar = document.getElementById("top-bar");
-  const hamburgerBtn = document.getElementById("hamburger-btn");
-  const mobileMenu = document.getElementById("mobile-menu-overlay");
-
-  if (topBar) topBar.classList.remove("hidden");
-
-  if (hamburgerBtn) {
-    if (window.innerWidth <= 768) {
-      hamburgerBtn.classList.remove("hidden");
-    } else {
-      hamburgerBtn.classList.add("hidden");
-    }
-  }
-
-  if (mobileMenu) {
-    mobileMenu.classList.add("hidden");
-    mobileMenu.classList.remove("active");
-  }
+  initTopBarAndMobileMenu();
 }
 
 // ===============================
