@@ -13,7 +13,25 @@ body {
   font-family: 'Segoe UI', sans-serif;
   color: white;
   overflow: auto;
-  background: #050505;
+  background:
+    radial-gradient(1200px 800px at 20% 10%, rgba(255, 170, 210, 0.22), transparent 60%),
+    radial-gradient(900px 700px at 80% 20%, rgba(170, 205, 255, 0.2), transparent 55%),
+    radial-gradient(900px 700px at 50% 90%, rgba(210, 190, 255, 0.18), transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(252, 248, 255, 1) 100%);
+  background-attachment: fixed;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.06;
+  mix-blend-mode: multiply;
+  background-image:
+    repeating-linear-gradient(0deg, rgba(0,0,0,0.015) 0px, rgba(0,0,0,0.015) 1px, transparent 1px, transparent 3px),
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.012) 0px, rgba(0,0,0,0.012) 1px, transparent 1px, transparent 4px);
+  z-index: -1;
 }
 
 .hidden {
@@ -70,10 +88,10 @@ body.inventory-open #dojo-ui {
 
   background: linear-gradient(
     180deg,
-    rgba(20, 10, 18, 0.92) 0%,
-    rgba(10, 6, 10, 0.88) 100%
+    rgba(18, 12, 22, 0.88) 0%,
+    rgba(10, 8, 12, 0.86) 100%
   );
-  border: 1px solid rgba(255, 105, 180, 0.35);
+  border: 1px solid rgba(255, 105, 180, 0.25);
   border-radius: 16px;
   box-shadow:
     0 18px 45px rgba(0, 0, 0, 0.55),
@@ -192,9 +210,7 @@ body.inventory-open .inventory-dropdown {
 }
 
 .layer-wood {
-  background-image: url("/varios/textures/hinoki-dark-e1.png");
-  opacity: 0.55;
-  filter: brightness(0.85) contrast(1.1);
+  display: none;
 }
 
 .layer-shoji {
@@ -441,14 +457,14 @@ img.avatar-header {
 
 .chat-box {
   position: relative;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(10, 8, 12, 0.86);
   flex: 1 1 auto;
   min-height: 0;
   padding: 15px;
   border-radius: 12px;
   overflow-y: auto;
   backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 105, 180, 0.25);
   box-shadow: 0 0 28px rgba(255, 0, 0, 0.28);
   scroll-behavior: smooth;
 }
