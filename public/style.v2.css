@@ -44,13 +44,23 @@ body.inventory-open #chatContainer {
   z-index: 1;
 }
 
+#top-bar {
+  z-index: 20000;
+}
+
+.nav-inventory #inventoryDropdown,
+.nav-inventory #inventory-dropdown {
+  top: calc(100% + 10px) !important;
+  z-index: 15000;
+}
+
 .inventory-dropdown {
   position: absolute;
-  top: calc(100% - 6px) !important;
+  top: calc(100% + 10px) !important;
   left: 0;
   width: 360px;
   max-width: 92vw;
-  z-index: 9999;
+  z-index: 15000;
 
   background: linear-gradient(
     180deg,
@@ -76,9 +86,9 @@ body.inventory-open #chatContainer {
   pointer-events: none;
 
   transition:
-    max-height 420ms cubic-bezier(0.2, 0.9, 0.2, 1),
-    opacity 180ms ease,
-    transform 260ms ease;
+    max-height 850ms cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 260ms ease,
+    transform 520ms ease;
 }
 
 .inventory-panel {
@@ -99,18 +109,31 @@ body.inventory-open #btn-inventario {
 }
 
 body.inventory-open .inventory-dropdown {
-  max-height: 70vh;
+  max-height: min(72vh, 640px);
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
 }
 
 .inventory-content {
-  max-height: 70vh;
+  max-height: calc(min(72vh, 640px) - 52px);
   overflow-y: auto;
   padding-right: 4px;
+  padding-bottom: 22px;
+  overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 105, 180, 0.35) rgba(255, 255, 255, 0.06);
+}
+
+.inventory-dropdown.is-loading .inventory-content {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.inventory-dropdown.is-loaded .inventory-content {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 320ms ease, transform 420ms ease;
 }
 
 .inventory-content::-webkit-scrollbar {
@@ -640,7 +663,7 @@ img.avatar-small {
   top: 20px;
   right: 20px;
   display: flex;
-  z-index: 9999;
+  z-index: 20000;
   padding: 4px;
   border-radius: 20px;
   background: rgba(10, 6, 12, 0.35);
@@ -833,7 +856,7 @@ img.avatar-small {
     right: 12px;
     width: auto;
     max-width: unset;
-    z-index: 10005;
+    z-index: 15000;
   }
 
   .inventory-panel {
