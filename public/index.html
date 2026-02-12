@@ -41,7 +41,17 @@
   <!-- TOP BAR (DESKTOP) -->
   <div class="top-bar hidden" id="top-bar">
     <div class="nav-actions">
-      <button id="btn-inventario" class="top-btn">Inventario</button>
+      <div class="nav-inventory">
+        <button id="btn-inventario" class="top-btn">Inventario</button>
+        <div id="inventoryDropdown" class="inventory-dropdown" aria-hidden="true">
+          <aside id="inventoryPanel" class="inventory-panel" aria-hidden="true">
+            <button id="inventory-close-btn" class="inventory-close-btn" type="button">Cerrar</button>
+            <div id="inventory-content" class="inventory-content">
+              <p style="color:#ccc">Cargando...</p>
+            </div>
+          </aside>
+        </div>
+      </div>
       <button id="btn-gacha" class="top-btn">Gacha</button>
       <button id="btn-audios" class="top-btn top-btn-primary">
         <span class="audios-label--desktop">N-no es que me importes… pero vení, b-baka 😳</span>
@@ -66,13 +76,6 @@
   <div class="aura-yumiko"></div>
 
   <div id="appLayout" class="layout">
-    <aside id="inventoryPanel" class="inventory-panel" aria-hidden="true">
-      <button id="inventory-close-btn" class="inventory-close-btn" type="button">Cerrar</button>
-      <div id="inventory-content" class="inventory-content">
-        <p style="color:#ccc">Cargando...</p>
-      </div>
-    </aside>
-
     <!-- CONTENIDO -->
     <main id="chatContainer" class="chat-container">
       <div class="container">
