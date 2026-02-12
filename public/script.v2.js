@@ -204,6 +204,14 @@ async function loadChatFromSupabase(userId) {
 // ===============================
 // CHAT UI
 // ===============================
+const YUMIKO_IDLE_URL = "https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png";
+const YUMIKO_THINK_URL = "https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-2.png";
+
+[YUMIKO_IDLE_URL, YUMIKO_THINK_URL].forEach((src) => {
+  const preloadImg = new Image();
+  preloadImg.src = src;
+});
+
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
 const sendBtn = document.getElementById("send-btn");
@@ -211,6 +219,22 @@ const regenBtn = document.getElementById("regenerate-btn");
 const resetBtn = document.getElementById("reset-chat");
 
 let lastUserText = null;
+
+function setYumikoState(state) {
+  const idle = document.getElementById("yumikoIdle");
+  const thinking = document.getElementById("yumikoThinking");
+
+  if (!idle || !thinking) return;
+
+  if (state === "thinking") {
+    idle.classList.remove("is-active");
+    thinking.classList.add("is-active");
+    return;
+  }
+
+  thinking.classList.remove("is-active");
+  idle.classList.add("is-active");
+}
 
 function addMessage(text, sender, options = {}) {
   const { skipAnimation = false } = options;
@@ -245,10 +269,25 @@ function addMessage(text, sender, options = {}) {
 // EVENTOS DE INPUT
 // ===============================
 if (userInput) {
+  setYumikoState("idle");
+
+  userInput.addEventListener("focus", () => setYumikoState("thinking"));
+
+  userInput.addEventListener("input", () => {
+    const hasText = String(userInput.value || "").trim().length > 0;
+    setYumikoState(hasText ? "thinking" : "idle");
+  });
+
+  userInput.addEventListener("blur", () => {
+    const hasText = String(userInput.value || "").trim().length > 0;
+    if (!hasText) setYumikoState("idle");
+  });
+
   userInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
       sendBtn.click();
+      setTimeout(() => setYumikoState("idle"), 60);
     }
   });
 }
@@ -290,6 +329,7 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
       });
 
       userInput.value = "";
+      setYumikoState("idle");
 
       const typing = document.getElementById("typing");
       typing.classList.remove("hidden");
@@ -320,6 +360,7 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
       }
 
       typing.classList.add("hidden");
+      setYumikoState("idle");
     };
 
 
