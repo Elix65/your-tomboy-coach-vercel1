@@ -65,11 +65,20 @@
   <div class="particles-anime"></div>
   <div class="aura-yumiko"></div>
 
-  <!-- CONTENIDO -->
-  <div class="container">
+  <div id="appLayout" class="layout">
+    <aside id="inventoryPanel" class="inventory-panel" aria-hidden="true">
+      <button id="inventory-close-btn" class="inventory-close-btn" type="button">Cerrar</button>
+      <div id="inventory-content" class="inventory-content">
+        <p style="color:#ccc">Cargando...</p>
+      </div>
+    </aside>
 
-    <!-- DOJO UI (ya no hay login aquí) -->
-    <div id="dojo-ui">
+    <!-- CONTENIDO -->
+    <main id="chatContainer" class="chat-container">
+      <div class="container">
+
+      <!-- DOJO UI (ya no hay login aquí) -->
+      <div id="dojo-ui">
 
       <div class="header">
         <h1 class="title title-cinematic">Your coach Yumiko</h1>
@@ -103,9 +112,11 @@
         </div>
       </div>
 
-    </div> <!-- cierre dojo-ui -->
+      </div> <!-- cierre dojo-ui -->
 
-  </div> <!-- cierre container -->
+      </div> <!-- cierre container -->
+    </main>
+  </div>
 
   <!-- AUDIO -->
   <audio id="ambience-intro" src="/varios/musica/ambiente-inicial.mp3" preload="auto"></audio>

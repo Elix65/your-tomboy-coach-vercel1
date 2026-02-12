@@ -191,69 +191,63 @@ if (btn10) {
 }
 
 // ===============================
-// INVENTARIO LATERAL (VERSIÓN GACHA)
+// INVENTARIO (PANEL ANIMADO)
 // ===============================
-async function openInventoryPanelGacha() {
-  let overlay = document.getElementById("inventory-overlay");
+const inventoryPanel = document.getElementById("inventoryPanel");
+const inventoryContent = document.getElementById("inventory-content");
+const inventoryCloseBtn = document.getElementById("inventory-close-btn");
 
-  if (!overlay) {
-    overlay = document.createElement("div");
-    overlay.id = "inventory-overlay";
-    overlay.style.position = "fixed";
-    overlay.style.inset = "0";
-    overlay.style.background = "rgba(0,0,0,0.6)";
-    overlay.style.zIndex = "10000";
-    overlay.style.display = "flex";
-    overlay.style.justifyContent = "flex-end";
+function syncInventoryButtonState(isOpen) {
+  btnInventario?.classList.toggle("active", isOpen);
+  btnInventario?.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  mInventario?.classList.toggle("active", isOpen);
+  mInventario?.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  inventoryPanel?.setAttribute("aria-hidden", isOpen ? "false" : "true");
+}
 
-    const drawer = document.createElement("div");
-    drawer.style.width = "360px";
-    drawer.style.maxWidth = "90%";
-    drawer.style.background = "rgba(0,0,0,0.85)";
-    drawer.style.padding = "18px";
-    drawer.style.overflowY = "auto";
-    drawer.style.borderLeft = "1px solid rgba(255,255,255,0.08)";
-    drawer.style.backdropFilter = "blur(6px)";
-    drawer.style.display = "flex";
-    drawer.style.flexDirection = "column";
-    drawer.style.gap = "12px";
+function openInventory() {
+  if (!inventoryPanel) return;
+  document.body.classList.add("inventory-open");
+  syncInventoryButtonState(true);
+  loadInventory();
+}
 
-    const closeBtn = document.createElement("button");
-    closeBtn.textContent = "Cerrar";
-    closeBtn.className = "inventory-close-btn";
-    closeBtn.onclick = () => overlay.remove();
+function closeInventory() {
+  document.body.classList.remove("inventory-open");
+  syncInventoryButtonState(false);
+}
 
-    const content = document.createElement("div");
-    content.id = "inventory-content";
-    content.innerHTML = `<p style="color:#ccc">Cargando...</p>`;
-
-    drawer.appendChild(closeBtn);
-    drawer.appendChild(content);
-    overlay.appendChild(drawer);
-    document.body.appendChild(overlay);
+function toggleInventory() {
+  if (document.body.classList.contains("inventory-open")) {
+    closeInventory();
+  } else {
+    openInventory();
   }
+}
 
-  const content = document.getElementById("inventory-content");
-  if (!content) return;
+async function loadInventory() {
+  if (!inventoryContent) return;
+
+  inventoryContent.innerHTML = `<p style="color:#ccc">Cargando...</p>`;
 
   try {
     const { data: { user } } = await supabaseClient.auth.getUser();
-    const userId = user?.id;
-    if (!userId) {
-      content.innerHTML = `<p style="color:#f88">No se pudo obtener tu sesión.</p>`;
+    const currentUserId = user?.id;
+    if (!currentUserId) {
+      inventoryContent.innerHTML = `<p style="color:#f88">No se pudo obtener tu sesión.</p>`;
       return;
     }
 
-    const res = await fetch(`/api/inventario?user_id=${userId}`);
+    const res = await fetch(`/api/inventario?user_id=${currentUserId}`);
     const data = await res.json();
     const items = data.inventario || [];
 
     if (!items.length) {
-      content.innerHTML = `<p style="color:#ccc">No tenés skins todavía.</p>`;
+      inventoryContent.innerHTML = `<p style="color:#ccc">No tenés skins todavía.</p>`;
       return;
     }
 
-    content.innerHTML = items.map(i => {
+    inventoryContent.innerHTML = items.map(i => {
       const rareza = i.rareza?.toLowerCase() || "comun";
       const color =
         rareza === "rara" ? "#4da6ff" :
@@ -272,12 +266,34 @@ async function openInventoryPanelGacha() {
         </div>
       `;
     }).join("");
-
   } catch (e) {
     console.error(e);
-    content.innerHTML = `<p style="color:#f88">No se pudo cargar el inventario.</p>`;
+    inventoryContent.innerHTML = `<p style="color:#f88">No se pudo cargar el inventario.</p>`;
   }
 }
+
+if (inventoryCloseBtn) {
+  inventoryCloseBtn.onclick = () => closeInventory();
+}
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && document.body.classList.contains("inventory-open")) {
+    closeInventory();
+  }
+});
+
+document.addEventListener("click", (event) => {
+  if (!document.body.classList.contains("inventory-open")) return;
+  if (window.innerWidth <= 768) return;
+
+  const target = event.target;
+  const clickedInsidePanel = inventoryPanel?.contains(target);
+  const clickedInventoryButton = btnInventario?.contains(target) || mInventario?.contains(target);
+
+  if (!clickedInsidePanel && !clickedInventoryButton) {
+    closeInventory();
+  }
+});
 
 // ===============================
 // BOTONES DE NAVEGACIÓN (GACHA)
@@ -298,8 +314,18 @@ const mAudios = document.getElementById("m-audios");
 if (btnInicio) btnInicio.onclick = () => window.location.href = "index.html";
 if (mInicio) mInicio.onclick = () => window.location.href = "index.html";
 
-if (btnInventario) btnInventario.onclick = () => openInventoryPanelGacha();
-if (mInventario) mInventario.onclick = () => openInventoryPanelGacha();
+if (btnInventario) {
+  btnInventario.setAttribute("aria-expanded", "false");
+  btnInventario.onclick = () => toggleInventory();
+}
+
+if (mInventario) {
+  mInventario.setAttribute("aria-expanded", "false");
+  mInventario.onclick = () => {
+    mobileMenuOverlay.classList.add("hidden");
+    toggleInventory();
+  };
+}
 
 if (btnAudios) btnAudios.onclick = () => window.location.href = "/pacto-lunar-voz-triunfante.html";
 if (mAudios) mAudios.onclick = () => window.location.href = "/pacto-lunar-voz-triunfante.html";
