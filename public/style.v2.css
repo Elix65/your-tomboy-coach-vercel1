@@ -13,15 +13,14 @@
 html,
 body {
   height: 100%;
-  overflow-x: hidden;
+  margin: 0;
+  overflow: hidden;
 }
 
 body {
-  margin: 0;
   padding: 0;
   font-family: 'Segoe UI', sans-serif;
   color: white;
-  overflow-y: auto;
   background:
     radial-gradient(1200px 700px at 65% 15%, var(--accentR), transparent 60%),
     radial-gradient(900px 700px at 20% 85%, var(--accentB), transparent 55%),
@@ -55,6 +54,15 @@ body::before {
 #appLayout {
   position: relative;
   z-index: 1;
+  height: 100%;
+}
+
+#chatStage,
+.chat-stage,
+#app,
+#root,
+main {
+  height: 100%;
 }
 
 #chatContainer {
@@ -70,6 +78,14 @@ body.inventory-open #dojo-ui {
   transform: translateX(calc(-1 * var(--chat-shift)));
   transition: transform 420ms cubic-bezier(0.2, 0.9, 0.2, 1);
   will-change: transform;
+}
+
+body.inventory-closing #dojo-ui {
+  transition: transform 720ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body:not(.inventory-open) #dojo-ui {
+  transform: none;
 }
 
 .nav-inventory {
@@ -477,6 +493,13 @@ img.avatar-header {
   border: 1px solid rgba(255, 105, 180, 0.25);
   box-shadow: 0 0 28px rgba(255, 0, 0, 0.28);
   scroll-behavior: smooth;
+}
+
+#chat-container,
+#chatMessages,
+.chat-messages,
+.chat-box {
+  overflow-y: auto;
 }
 
 /* Fondo fijo de Yumiko detrás del chat */

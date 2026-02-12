@@ -492,6 +492,7 @@ const inventoryPanel = document.getElementById("inventoryPanel");
 const inventoryDropdown = document.getElementById("inventoryDropdown");
 const inventoryContent = document.getElementById("inventory-content");
 const inventoryCloseBtn = document.getElementById("inventory-close-btn");
+let inventoryClosingTimer = null;
 
 function setLoadingUI(isLoading) {
   if (!inventoryDropdown) return;
@@ -523,6 +524,11 @@ function updateChatShiftForInventory() {
 
 function openInventory() {
   if (!inventoryPanel || !inventoryDropdown) return;
+  if (inventoryClosingTimer) {
+    clearTimeout(inventoryClosingTimer);
+    inventoryClosingTimer = null;
+  }
+  document.body.classList.remove("inventory-closing");
   document.body.classList.add("inventory-open");
   syncInventoryButtonState(true);
   setLoadingUI(true);
@@ -533,9 +539,17 @@ function openInventory() {
 }
 
 function closeInventory() {
+  if (inventoryClosingTimer) {
+    clearTimeout(inventoryClosingTimer);
+  }
+  document.body.classList.add("inventory-closing");
   document.body.classList.remove("inventory-open");
   syncInventoryButtonState(false);
   document.documentElement.style.removeProperty("--chat-shift");
+  inventoryClosingTimer = window.setTimeout(() => {
+    document.body.classList.remove("inventory-closing");
+    inventoryClosingTimer = null;
+  }, 780);
 }
 
 function toggleInventory() {
