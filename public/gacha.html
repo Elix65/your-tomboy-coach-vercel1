@@ -29,13 +29,25 @@
 
   <!-- TOP BAR (DESKTOP) -->
   <div class="top-bar hidden" id="top-bar">
-    <button id="btn-inventario" class="top-btn">Inventario</button>
-    <button id="btn-inicio" class="top-btn">Inicio</button>
-    <button id="btn-audios" class="top-btn">
-      <span class="audios-label--desktop">N-no es que me importes… pero vení, b-baka 😳</span>
-      <span class="audios-label--mobile">🎧 Audios tsundere 😳</span>
-    </button>
-    <button id="btn-logout" class="top-btn">Cerrar sesión</button>
+    <div class="nav-actions">
+      <div class="nav-inventory">
+        <button id="btn-inventario" class="top-btn">Inventario</button>
+        <div id="inventoryDropdown" class="inventory-dropdown" aria-hidden="true">
+          <aside id="inventoryPanel" class="inventory-panel" aria-hidden="true">
+            <button id="inventory-close-btn" class="inventory-close-btn" type="button">Cerrar</button>
+            <div id="inventory-content" class="inventory-content">
+              <p style="color:#ccc">Cargando...</p>
+            </div>
+          </aside>
+        </div>
+      </div>
+      <button id="btn-inicio" class="top-btn">Inicio</button>
+      <button id="btn-audios" class="top-btn">
+        <span class="audios-label--desktop">N-no es que me importes… pero vení, b-baka 😳</span>
+        <span class="audios-label--mobile">🎧 Audios tsundere 😳</span>
+      </button>
+      <button id="btn-logout" class="top-btn">Cerrar sesión</button>
+    </div>
   </div>
 
   <!-- CAPAS DE FONDO -->
@@ -44,13 +56,6 @@
   <div class="layer layer-pattern"></div>
 
   <div id="appLayout" class="layout">
-    <aside id="inventoryPanel" class="inventory-panel" aria-hidden="true">
-      <button id="inventory-close-btn" class="inventory-close-btn" type="button">Cerrar</button>
-      <div id="inventory-content" class="inventory-content">
-        <p style="color:#ccc">Cargando...</p>
-      </div>
-    </aside>
-
     <main id="chatContainer" class="chat-container">
       <div class="container" id="gacha-container">
 

@@ -1,5 +1,6 @@
 // gacha.v2.js
 import supabaseClient from './supabase.js';
+import { initializeInventoryPanel } from './inventory-panel.v2.js';
 
 // ===============================
 // SISTEMA GACHA
@@ -191,111 +192,6 @@ if (btn10) {
 }
 
 // ===============================
-// INVENTARIO (PANEL ANIMADO)
-// ===============================
-const inventoryPanel = document.getElementById("inventoryPanel");
-const inventoryContent = document.getElementById("inventory-content");
-const inventoryCloseBtn = document.getElementById("inventory-close-btn");
-
-function syncInventoryButtonState(isOpen) {
-  btnInventario?.classList.toggle("active", isOpen);
-  btnInventario?.setAttribute("aria-expanded", isOpen ? "true" : "false");
-  mInventario?.classList.toggle("active", isOpen);
-  mInventario?.setAttribute("aria-expanded", isOpen ? "true" : "false");
-  inventoryPanel?.setAttribute("aria-hidden", isOpen ? "false" : "true");
-}
-
-function openInventory() {
-  if (!inventoryPanel) return;
-  document.body.classList.add("inventory-open");
-  syncInventoryButtonState(true);
-  loadInventory();
-}
-
-function closeInventory() {
-  document.body.classList.remove("inventory-open");
-  syncInventoryButtonState(false);
-}
-
-function toggleInventory() {
-  if (document.body.classList.contains("inventory-open")) {
-    closeInventory();
-  } else {
-    openInventory();
-  }
-}
-
-async function loadInventory() {
-  if (!inventoryContent) return;
-
-  inventoryContent.innerHTML = `<p style="color:#ccc">Cargando...</p>`;
-
-  try {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    const currentUserId = user?.id;
-    if (!currentUserId) {
-      inventoryContent.innerHTML = `<p style="color:#f88">No se pudo obtener tu sesión.</p>`;
-      return;
-    }
-
-    const res = await fetch(`/api/inventario?user_id=${currentUserId}`);
-    const data = await res.json();
-    const items = data.inventario || [];
-
-    if (!items.length) {
-      inventoryContent.innerHTML = `<p style="color:#ccc">No tenés skins todavía.</p>`;
-      return;
-    }
-
-    inventoryContent.innerHTML = items.map(i => {
-      const rareza = i.rareza?.toLowerCase() || "comun";
-      const color =
-        rareza === "rara" ? "#4da6ff" :
-        rareza === "epica" || rareza === "épica" ? "#c77dff" :
-        rareza === "legendaria" ? "#ffcc00" : "#f7f3e9";
-
-      return `
-        <div class="inv-item">
-          <img src="${i.imagen_url || '/varios/placeholder.png'}" class="inv-img">
-          <div class="inv-info">
-            <div class="inv-nombre" style="color:${color}">${i.nombre}</div>
-            <div class="inv-detalle">
-              ${rareza.charAt(0).toUpperCase() + rareza.slice(1)} • x${i.cantidad}
-            </div>
-          </div>
-        </div>
-      `;
-    }).join("");
-  } catch (e) {
-    console.error(e);
-    inventoryContent.innerHTML = `<p style="color:#f88">No se pudo cargar el inventario.</p>`;
-  }
-}
-
-if (inventoryCloseBtn) {
-  inventoryCloseBtn.onclick = () => closeInventory();
-}
-
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && document.body.classList.contains("inventory-open")) {
-    closeInventory();
-  }
-});
-
-document.addEventListener("click", (event) => {
-  if (!document.body.classList.contains("inventory-open")) return;
-  if (window.innerWidth <= 768) return;
-
-  const target = event.target;
-  const clickedInsidePanel = inventoryPanel?.contains(target);
-  const clickedInventoryButton = btnInventario?.contains(target) || mInventario?.contains(target);
-
-  if (!clickedInsidePanel && !clickedInventoryButton) {
-    closeInventory();
-  }
-});
-
-// ===============================
 // BOTONES DE NAVEGACIÓN (GACHA)
 // ===============================
 
@@ -308,6 +204,10 @@ const btnAudios = document.getElementById("btn-audios");
 const mInicio = document.getElementById("m-inicio");
 const mInventario = document.getElementById("m-inventario");
 const mAudios = document.getElementById("m-audios");
+const inventoryPanel = document.getElementById("inventoryPanel");
+const inventoryDropdown = document.getElementById("inventoryDropdown");
+const inventoryContent = document.getElementById("inventory-content");
+const inventoryCloseBtn = document.getElementById("inventory-close-btn");
 
 if (btnInicio) {
   btnInicio.onclick = (event) => {
@@ -334,14 +234,18 @@ if (mInicio) {
 
 if (btnInventario) {
   btnInventario.setAttribute("aria-expanded", "false");
-  btnInventario.onclick = () => toggleInventory();
+  btnInventario.onclick = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    window.toggleInventoryPanel?.();
+  };
 }
 
 if (mInventario) {
   mInventario.setAttribute("aria-expanded", "false");
   mInventario.onclick = () => {
-    mobileMenuOverlay.classList.add("hidden");
-    toggleInventory();
+    mobileMenuOverlay?.classList.add("hidden");
+    window.toggleInventoryPanel?.();
   };
 }
 
@@ -368,6 +272,19 @@ if (mobileMenuOverlay) {
     }
   };
 }
+
+initializeInventoryPanel({
+  supabaseClient,
+  btnInventario,
+  mInventario,
+  inventoryPanel,
+  inventoryDropdown,
+  inventoryContent,
+  inventoryCloseBtn,
+  isChatPage: false,
+  desktopIgnoreSelector: ".nav-inventory"
+});
+
 setModo("comun");
 const btnRecharge = document.getElementById("btn-recharge");
 const packSelect = document.getElementById("pack-select");
