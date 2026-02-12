@@ -1,51 +1,12 @@
 import supabaseClient from './supabase.js';
 
-const RUN_FRAMES = [
-  "https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/run-1.png",
-  "https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/run-2.png",
-  "https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/run-3.png",
-  "https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/run-4.png"
-];
-
-function preloadRunFrames() {
-  RUN_FRAMES.forEach((src) => {
-    const img = new Image();
-    img.src = src;
-  });
-}
-
-function playPageTransitionAndGo(url) {
-  if (!url) return;
-
-  const overlay = document.getElementById("pageTransition");
-  const runner = document.getElementById("runner");
-
-  if (!overlay || !runner) {
-    window.location.href = url;
+function goWithTransition(url) {
+  if (typeof window.playPageTransitionAndGo === "function") {
+    window.playPageTransitionAndGo(url);
     return;
   }
-
-  preloadRunFrames();
-
-  overlay.classList.add("is-active");
-  overlay.setAttribute("aria-hidden", "false");
-  runner.src = RUN_FRAMES[0];
-
-  let idx = 0;
-  const fpsMs = 70;
-  const frameTimer = window.setInterval(() => {
-    idx = (idx + 1) % RUN_FRAMES.length;
-    runner.src = RUN_FRAMES[idx];
-  }, fpsMs);
-
-  const totalMs = 580;
-  window.setTimeout(() => {
-    window.clearInterval(frameTimer);
-    window.location.href = url;
-  }, totalMs);
+  window.location.href = url;
 }
-
-window.playPageTransitionAndGo = playPageTransitionAndGo;
 
 
 
@@ -64,13 +25,12 @@ supabaseClient.auth.getUser().then(({ data: { user } }) => {
 // ===============================
 const btnGacha = document.getElementById("btn-gacha");
 const btnInventario = document.getElementById("btn-inventario");
-const btnLogout = document.getElementById("btn-logout");
 const btnAudios = document.getElementById("btn-audios");
 
 if (btnGacha) {
   btnGacha.onclick = (event) => {
     event.preventDefault();
-    playPageTransitionAndGo("gacha.html");
+    goWithTransition("gacha.html");
   };
 }
 
@@ -80,13 +40,6 @@ if (btnInventario) {
 
 if (btnAudios) {
   btnAudios.onclick = () => window.location.href = "/pacto-lunar-voz-triunfante.html";
-}
-
-if (btnLogout) {
-  btnLogout.onclick = async () => {
-    await supabaseClient.auth.signOut();
-    window.location.href = "login.html";
-  };
 }
 
 // ===============================
@@ -116,7 +69,6 @@ if (mobileMenu) {
 // Botones internos del menú mobile
 const mInv = document.getElementById("m-inventario");
 const mGacha = document.getElementById("m-gacha");
-const mLogout = document.getElementById("m-logout");
 const mAudios = document.getElementById("m-audios");
 
 if (mInv) {
@@ -135,7 +87,7 @@ if (mGacha) {
     mobileMenu.classList.add("hidden");
     mobileMenu.classList.remove("active");
     hamburgerBtn.classList.remove("open");
-    playPageTransitionAndGo("gacha.html");
+    goWithTransition("gacha.html");
   };
 }
 
@@ -148,17 +100,6 @@ if (mAudios) {
   };
 }
 
-if (mLogout) {
-  mLogout.onclick = async () => {
-    mobileMenu.classList.add("hidden");
-    mobileMenu.classList.remove("active");
-    hamburgerBtn.classList.remove("open");
-    await supabaseClient.auth.signOut();
-    window.location.href = "login.html";
-  };
-}
-
-
 document.addEventListener("click", (event) => {
   const link = event.target.closest("a[data-transition='1']");
   if (!link) return;
@@ -167,7 +108,7 @@ document.addEventListener("click", (event) => {
   if (!href || href.startsWith("#")) return;
 
   event.preventDefault();
-  playPageTransitionAndGo(href);
+  goWithTransition(href);
 });
 
 // ===============================

@@ -302,13 +302,11 @@ document.addEventListener("click", (event) => {
 // Desktop
 const btnInicio = document.getElementById("btn-inicio");
 const btnInventario = document.getElementById("btn-inventario");
-const btnLogout = document.getElementById("btn-logout");
 const btnAudios = document.getElementById("btn-audios");
 
 // Mobile
 const mInicio = document.getElementById("m-inicio");
 const mInventario = document.getElementById("m-inventario");
-const mLogout = document.getElementById("m-logout");
 const mAudios = document.getElementById("m-audios");
 
 if (btnInicio) {
@@ -350,18 +348,6 @@ if (mInventario) {
 if (btnAudios) btnAudios.onclick = () => window.location.href = "/pacto-lunar-voz-triunfante.html";
 if (mAudios) mAudios.onclick = () => window.location.href = "/pacto-lunar-voz-triunfante.html";
 
-if (btnLogout) {
-  btnLogout.onclick = async () => {
-    await supabaseClient.auth.signOut();
-    window.location.href = "login.html";
-  };
-}
-if (mLogout) {
-  mLogout.onclick = async () => {
-    await supabaseClient.auth.signOut();
-    window.location.href = "login.html";
-  };
-}
 
 // ===============================
 // MENÚ MOBILE (HAMBURGUESA)

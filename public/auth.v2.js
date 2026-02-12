@@ -18,6 +18,14 @@ const safeLocalStorage = (() => {
 // Detectar página actual
 const currentPage = window.location.pathname;
 
+function goWithTransition(url) {
+  if (typeof window.playPageTransitionAndGo === "function") {
+    window.playPageTransitionAndGo(url);
+    return;
+  }
+  window.location.href = url;
+}
+
 // ===============================
 // LOGIN.HTML → si hay sesión, redirigir al dojo
 // ===============================
@@ -25,7 +33,7 @@ if (currentPage.includes("login")) {
   supabaseClient.auth.getUser().then((res) => {
     const user = res?.data?.user;
     if (user) {
-      window.location.href = "index.html";
+      goWithTransition("index.html");
     }
   });
 }
@@ -66,7 +74,7 @@ if (loginBtn) {
     }
 
     sessionStorage.setItem("show_entry_choice", "1");
-    window.location.href = "index.html";
+    goWithTransition("index.html");
   };
 }
 
@@ -107,10 +115,14 @@ if (registerBtn) {
 // ===============================
 // LOGOUT (para index y gacha)
 // ===============================
-const logoutBtn = document.getElementById("btn-logout");
-if (logoutBtn) {
+const logoutButtons = [
+  document.getElementById("btn-logout"),
+  document.getElementById("m-logout")
+].filter(Boolean);
+
+logoutButtons.forEach((logoutBtn) => {
   logoutBtn.onclick = async () => {
     await supabaseClient.auth.signOut();
-    window.location.href = "login.html";
+    goWithTransition("login.html");
   };
-}
+});
