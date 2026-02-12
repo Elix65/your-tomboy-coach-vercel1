@@ -451,6 +451,14 @@
   padding: 10px;
 }
 
+.skin-result {
+  transition: transform 0.18s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.skin-result:hover {
+  transform: translateY(-2px) scale(1.01);
+}
+
 .reveal-pop {
   opacity: 0;
   transform: scale(0.94) translateY(6px);
@@ -476,19 +484,72 @@
 }
 
 .rarity-common {
-  border-color: rgba(255, 255, 255, 0.18);
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.18);
 }
 
 .rarity-rare {
-  border-color: rgba(95, 171, 255, 0.45);
-  box-shadow: 0 0 16px rgba(95, 171, 255, 0.2);
+  border: 2px solid rgba(90, 180, 255, 0.85);
+  box-shadow: 0 0 18px rgba(90, 180, 255, 0.35);
 }
 
 .rarity-legendary {
-  border-color: rgba(255, 210, 78, 0.78);
+  position: relative;
+  overflow: hidden;
+  border: 2px solid rgba(255, 200, 80, 0.95);
   box-shadow:
-    0 0 20px rgba(255, 206, 66, 0.33),
-    0 0 40px rgba(255, 169, 66, 0.24);
+    0 0 26px rgba(255, 200, 80, 0.45),
+    0 0 40px rgba(255, 169, 66, 0.2);
+}
+
+.rarity-legendary::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background: linear-gradient(120deg, transparent 40%, rgba(255, 255, 255, 0.22) 50%, transparent 60%);
+  transform: translateX(-45%) rotate(8deg);
+  animation: legendaryShine 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+#confetti-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 15000;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.confetti-piece {
+  position: fixed;
+  top: -20px;
+  border-radius: 2px;
+  will-change: transform;
+  animation-name: confettiFall;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+
+@keyframes legendaryShine {
+  0% {
+    transform: translateX(-45%) rotate(8deg);
+  }
+  60% {
+    transform: translateX(55%) rotate(8deg);
+  }
+  100% {
+    transform: translateX(55%) rotate(8deg);
+  }
+}
+
+@keyframes confettiFall {
+  from {
+    transform: translate3d(0, -20px, 0) rotate(0deg);
+  }
+  to {
+    transform: translate3d(var(--drift, 0px), 110vh, 0) rotate(var(--spin, 540deg));
+    opacity: 0.9;
+  }
 }
 
 /* Responsive */

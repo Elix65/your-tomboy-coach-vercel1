@@ -20,9 +20,64 @@ const divRes = document.getElementById("gacha-resultados");
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function getRarityClass(rareza) {
-  if (rareza === "legendaria") return "rarity-legendary";
-  if (rareza === "epica" || rareza === "rara") return "rarity-rare";
+  const normalizedRarity = String(rareza || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+
+  if (normalizedRarity === "legendaria") return "rarity-legendary";
+  if (normalizedRarity === "rara" || normalizedRarity === "epica") return "rarity-rare";
+  if (normalizedRarity === "comun") return "rarity-common";
   return "rarity-common";
+}
+
+function isLegendary(rareza) {
+  return getRarityClass(rareza) === "rarity-legendary";
+}
+
+function launchConfetti(durationMs = 1200, pieces = 36) {
+  const existingLayer = document.getElementById("confetti-layer");
+  if (existingLayer) existingLayer.remove();
+
+  const layer = document.createElement("div");
+  layer.id = "confetti-layer";
+  document.body.appendChild(layer);
+
+  const colors = [
+    "rgba(255, 210, 90, 0.95)",
+    "rgba(255, 146, 191, 0.92)",
+    "rgba(255, 255, 255, 0.95)",
+    "rgba(255, 186, 133, 0.9)"
+  ];
+
+  for (let i = 0; i < pieces; i += 1) {
+    const piece = document.createElement("div");
+    piece.className = "confetti-piece";
+
+    const size = 6 + Math.random() * 8;
+    const left = Math.random() * 100;
+    const drift = -45 + Math.random() * 90;
+    const duration = 700 + Math.random() * 700;
+    const delay = Math.random() * 220;
+    const rotation = 260 + Math.random() * 420;
+
+    piece.style.left = `${left}vw`;
+    piece.style.width = `${size}px`;
+    piece.style.height = `${size * (0.6 + Math.random() * 0.9)}px`;
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.setProperty("--drift", `${drift}px`);
+    piece.style.setProperty("--spin", `${rotation}deg`);
+    piece.style.animationDuration = `${duration}ms`;
+    piece.style.animationDelay = `${delay}ms`;
+    piece.style.opacity = `${0.7 + Math.random() * 0.3}`;
+
+    layer.appendChild(piece);
+  }
+
+  setTimeout(() => {
+    layer.remove();
+  }, durationMs + 350);
 }
 
 function renderSkinCard(skin, extraClass = "") {
@@ -215,6 +270,9 @@ if (btn1) {
       }
 
       animateRevealSingle(data.skin);
+      if (isLegendary(data.skin.rareza)) {
+        launchConfetti();
+      }
     } catch (error) {
       await hideRitual();
       divRes.innerHTML = `<p style="color:#ff8080">Error al tirar (1).</p>`;
@@ -269,6 +327,12 @@ if (btn10) {
       }
 
       await animateRevealTen(data.resultados);
+
+      const legendaryCount = data.resultados.filter((skin) => isLegendary(skin?.rareza)).length;
+      if (legendaryCount > 0) {
+        const pieces = legendaryCount >= 2 ? 45 : 36;
+        launchConfetti(1200, pieces);
+      }
     } catch (error) {
       await hideRitual();
       divRes.innerHTML = `<p style="color:#ff8080">Error al tirar (x10).</p>`;
