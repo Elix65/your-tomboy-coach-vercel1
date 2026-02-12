@@ -1258,54 +1258,58 @@ img.avatar-small {
 }
 
 
-.page-transition{
+.page-transition {
   position: fixed;
   inset: 0;
   z-index: 999999;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 220ms ease;
+  transition: opacity 280ms ease;
 }
 
-.page-transition.is-active{
+.page-transition.is-active {
   opacity: 1;
 }
 
-.page-transition-bg{
+.page-transition-bg {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(1200px 800px at 20% 10%, rgba(255, 170, 210, 0.22), transparent 60%),
-    radial-gradient(900px 700px at 80% 20%, rgba(170, 205, 255, 0.20), transparent 55%),
-    radial-gradient(900px 700px at 50% 90%, rgba(210, 190, 255, 0.18), transparent 55%),
-    linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(252, 248, 255, 1) 100%);
-  filter: saturate(1.05);
+    radial-gradient(1200px 800px at 20% 10%, rgba(255,170,210,.22), transparent 60%),
+    radial-gradient(900px 700px at 80% 20%, rgba(170,205,255,.20), transparent 55%),
+    radial-gradient(900px 700px at 50% 90%, rgba(210,190,255,.18), transparent 55%),
+    linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(252,248,255,1) 100%);
 }
 
-.runner{
+.runner {
   position: absolute;
-  left: -180px;
-  bottom: 90px;
-  width: 260px;
+  left: 50%;
+  top: 55%;
+  transform: translate(-50%, -50%);
+  width: 240px;
   height: auto;
   opacity: 0;
-  transform: translate3d(0,0,0);
   will-change: transform, opacity;
-  filter: drop-shadow(0 18px 40px rgba(0,0,0,0.35));
+  filter: drop-shadow(0 18px 40px rgba(0,0,0,.30));
 }
 
-.page-transition.is-active .runner{
+.page-transition.is-active .runner {
   opacity: 1;
-  animation: runnerMove 560ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: runnerCenterToRight 1300ms cubic-bezier(.22,1,.36,1) forwards;
 }
 
-@keyframes runnerMove{
-  0%   { transform: translate3d(-40px, 12px, 0) scale(1); }
-  100% { transform: translate3d(calc(100vw + 260px), -22px, 0) scale(1); }
+@keyframes runnerCenterToRight {
+  0% { transform: translate(-50%, -50%) translate3d(0px, 10px, 0); }
+  100% { transform: translate(-50%, -50%) translate3d(760px, -22px, 0); }
 }
 
-@media (max-width: 768px){
-  .runner{ width: 190px; bottom: 80px; }
+@media (max-width: 768px) {
+  .runner { width: 180px; top: 60%; }
+
+  @keyframes runnerCenterToRight {
+    0% { transform: translate(-50%, -50%) translate3d(0px, 10px, 0); }
+    100% { transform: translate(-50%, -50%) translate3d(420px, -18px, 0); }
+  }
 }
 
 @media (prefers-reduced-motion: reduce){

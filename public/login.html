@@ -22,8 +22,18 @@
     <p id="login-error" class="login-error hidden"></p>
   </div>
 
+  <div id="pageTransition" class="page-transition" aria-hidden="true">
+    <div class="page-transition-bg"></div>
+    <img id="runner" class="runner"
+         src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/run-1.png"
+         alt="">
+  </div>
+
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Transición entre páginas -->
+  <script src="/transition.v2.js"></script>
 
   <!-- Lógica de autenticación -->
   <script type="module" src="/auth.v2.js"></script>
