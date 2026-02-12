@@ -311,8 +311,28 @@ const mInventario = document.getElementById("m-inventario");
 const mLogout = document.getElementById("m-logout");
 const mAudios = document.getElementById("m-audios");
 
-if (btnInicio) btnInicio.onclick = () => window.location.href = "index.html";
-if (mInicio) mInicio.onclick = () => window.location.href = "index.html";
+if (btnInicio) {
+  btnInicio.onclick = (event) => {
+    event.preventDefault();
+    if (typeof window.playPageTransitionAndGo === "function") {
+      window.playPageTransitionAndGo("index.html");
+      return;
+    }
+    window.location.href = "index.html";
+  };
+}
+
+if (mInicio) {
+  mInicio.onclick = (event) => {
+    event.preventDefault();
+    mobileMenuOverlay?.classList.add("hidden");
+    if (typeof window.playPageTransitionAndGo === "function") {
+      window.playPageTransitionAndGo("index.html");
+      return;
+    }
+    window.location.href = "index.html";
+  };
+}
 
 if (btnInventario) {
   btnInventario.setAttribute("aria-expanded", "false");

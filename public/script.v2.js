@@ -1,5 +1,51 @@
 import supabaseClient from './supabase.js';
 
+const RUN_FRAMES = [
+  "https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/run-1.png",
+  "https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/run-2.png",
+  "https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/run-3.png",
+  "https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/run-4.png"
+];
+
+function preloadRunFrames() {
+  RUN_FRAMES.forEach((src) => {
+    const img = new Image();
+    img.src = src;
+  });
+}
+
+function playPageTransitionAndGo(url) {
+  if (!url) return;
+
+  const overlay = document.getElementById("pageTransition");
+  const runner = document.getElementById("runner");
+
+  if (!overlay || !runner) {
+    window.location.href = url;
+    return;
+  }
+
+  preloadRunFrames();
+
+  overlay.classList.add("is-active");
+  overlay.setAttribute("aria-hidden", "false");
+  runner.src = RUN_FRAMES[0];
+
+  let idx = 0;
+  const fpsMs = 70;
+  const frameTimer = window.setInterval(() => {
+    idx = (idx + 1) % RUN_FRAMES.length;
+    runner.src = RUN_FRAMES[idx];
+  }, fpsMs);
+
+  const totalMs = 580;
+  window.setTimeout(() => {
+    window.clearInterval(frameTimer);
+    window.location.href = url;
+  }, totalMs);
+}
+
+window.playPageTransitionAndGo = playPageTransitionAndGo;
 
 
 
@@ -22,7 +68,10 @@ const btnLogout = document.getElementById("btn-logout");
 const btnAudios = document.getElementById("btn-audios");
 
 if (btnGacha) {
-  btnGacha.onclick = () => window.location.href = "gacha.html";
+  btnGacha.onclick = (event) => {
+    event.preventDefault();
+    playPageTransitionAndGo("gacha.html");
+  };
 }
 
 if (btnInventario) {
@@ -81,11 +130,12 @@ if (mInv) {
 }
 
 if (mGacha) {
-  mGacha.onclick = () => {
+  mGacha.onclick = (event) => {
+    event.preventDefault();
     mobileMenu.classList.add("hidden");
     mobileMenu.classList.remove("active");
     hamburgerBtn.classList.remove("open");
-    window.location.href = "gacha.html";
+    playPageTransitionAndGo("gacha.html");
   };
 }
 
@@ -107,6 +157,18 @@ if (mLogout) {
     window.location.href = "login.html";
   };
 }
+
+
+document.addEventListener("click", (event) => {
+  const link = event.target.closest("a[data-transition='1']");
+  if (!link) return;
+
+  const href = link.getAttribute("href");
+  if (!href || href.startsWith("#")) return;
+
+  event.preventDefault();
+  playPageTransitionAndGo(href);
+});
 
 // ===============================
 // CHAT YUMIKO (VERSIÓN ESTABLE + SUPABASE)
