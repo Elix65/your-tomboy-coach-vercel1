@@ -1,4 +1,5 @@
 import supabaseClient from './supabase.js';
+import { initializeInventoryPanel } from './inventory-panel.v2.js';
 
 function goWithTransition(url) {
   if (typeof window.playPageTransitionAndGo === "function") {
@@ -495,138 +496,22 @@ const inventoryPanel = document.getElementById("inventoryPanel");
 const inventoryDropdown = document.getElementById("inventoryDropdown");
 const inventoryContent = document.getElementById("inventory-content");
 const inventoryCloseBtn = document.getElementById("inventory-close-btn");
-let inventoryClosingTimer = null;
 
-function setLoadingUI(isLoading) {
-  if (!inventoryDropdown) return;
-  inventoryDropdown.classList.toggle("is-loading", isLoading);
-  inventoryDropdown.classList.toggle("is-loaded", !isLoading);
-}
-
-function syncInventoryButtonState(isOpen) {
-  btnInventario?.classList.toggle("active", isOpen);
-  btnInventario?.setAttribute("aria-expanded", isOpen ? "true" : "false");
-  mInv?.classList.toggle("active", isOpen);
-  mInv?.setAttribute("aria-expanded", isOpen ? "true" : "false");
-  inventoryPanel?.setAttribute("aria-hidden", isOpen ? "false" : "true");
-  inventoryDropdown?.setAttribute("aria-hidden", isOpen ? "false" : "true");
-}
-
-function updateChatShiftForInventory() {
-  const dropdown = inventoryDropdown || document.getElementById("inventory-dropdown");
-  const dojoUI = document.getElementById("dojo-ui");
-  if (!dropdown || !dojoUI) return;
-  if (window.innerWidth <= 1023) return;
-
-  const dropdownWidth = Math.ceil(dropdown.getBoundingClientRect().width);
-  const gap = 28;
-  const shift = dropdownWidth + gap;
-
-  document.documentElement.style.setProperty("--chat-shift", `${shift}px`);
-}
-
-function openInventory() {
-  if (!inventoryPanel || !inventoryDropdown) return;
-  if (inventoryClosingTimer) {
-    clearTimeout(inventoryClosingTimer);
-    inventoryClosingTimer = null;
-  }
-  document.body.classList.remove("inventory-closing");
-  document.body.classList.add("inventory-open");
-  syncInventoryButtonState(true);
-  setLoadingUI(true);
-  requestAnimationFrame(() => {
-    updateChatShiftForInventory();
-  });
-  loadInventory();
-}
-
-function closeInventory() {
-  if (inventoryClosingTimer) {
-    clearTimeout(inventoryClosingTimer);
-  }
-  document.body.classList.add("inventory-closing");
-  document.body.classList.remove("inventory-open");
-  syncInventoryButtonState(false);
-  document.documentElement.style.removeProperty("--chat-shift");
-  inventoryClosingTimer = window.setTimeout(() => {
-    document.body.classList.remove("inventory-closing");
-    inventoryClosingTimer = null;
-  }, 780);
-}
+const inventoryController = initializeInventoryPanel({
+  supabaseClient,
+  btnInventario,
+  mInventario: mInv,
+  inventoryPanel,
+  inventoryDropdown,
+  inventoryContent,
+  inventoryCloseBtn,
+  isChatPage: isChatPage(),
+  onUseSkin: setActiveSkinBackground,
+  desktopIgnoreSelector: ".nav-inventory"
+});
 
 function toggleInventory() {
-  if (document.body.classList.contains("inventory-open")) {
-    closeInventory();
-  } else {
-    openInventory();
-  }
-}
-
-syncInventoryButtonState(false);
-
-async function loadInventory() {
-  if (!inventoryContent) return;
-
-  inventoryContent.innerHTML = `<p style="color:#ccc">Cargando...</p>`;
-
-  try {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    const userId = user?.id;
-    if (!userId) {
-      inventoryContent.innerHTML = `<p style="color:#f88">No se pudo obtener tu sesión.</p>`;
-      return;
-    }
-
-    const res = await fetch(`/api/inventario?user_id=${userId}`);
-    const data = await res.json();
-    const items = data.inventario || [];
-
-    if (!items.length) {
-      inventoryContent.innerHTML = `<p style="color:#ccc">No tenés skins todavía.</p>`;
-      return;
-    }
-
-    inventoryContent.innerHTML = items.map(i => {
-      const rareza = i.rareza?.toLowerCase() || "comun";
-      const color =
-        rareza === "rara" ? "#4da6ff" :
-        rareza === "epica" || rareza === "épica" ? "#c77dff" :
-        rareza === "legendaria" ? "#ffcc00" : "#f7f3e9";
-
-      return `
-        <div class="inv-item">
-          <img src="${i.imagen_url || '/varios/placeholder.png'}" class="inv-img">
-          <div class="inv-info">
-            <div class="inv-nombre" style="color:${color}">${i.nombre}</div>
-            <div class="inv-detalle">
-              ${rareza.charAt(0).toUpperCase() + rareza.slice(1)} • x${i.cantidad}
-            </div>
-
-            ${isChatPage() ? `
-              <button class="inv-use-btn" data-skin-id="${i.skin_id}">
-                Usar como fondo
-              </button>
-            ` : ``}
-          </div>
-        </div>
-      `;
-    }).join("");
-
-    if (isChatPage()) {
-      inventoryContent.querySelectorAll(".inv-use-btn").forEach((btn) => {
-        btn.onclick = async () => {
-          const skinId = btn.getAttribute("data-skin-id");
-          await setActiveSkinBackground(skinId);
-        };
-      });
-    }
-  } catch (e) {
-    console.error(e);
-    inventoryContent.innerHTML = `<p style="color:#f88">No se pudo cargar el inventario.</p>`;
-  } finally {
-    requestAnimationFrame(() => setLoadingUI(false));
-  }
+  inventoryController?.toggleInventoryPanel();
 }
 
 // ===============================
@@ -678,29 +563,6 @@ if (btnInventario) {
     toggleInventory();
   });
 }
-
-if (inventoryCloseBtn) {
-  inventoryCloseBtn.onclick = () => closeInventory();
-}
-
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape" && document.body.classList.contains("inventory-open")) {
-    closeInventory();
-  }
-});
-
-document.addEventListener("click", (event) => {
-  if (!document.body.classList.contains("inventory-open")) return;
-  if (window.innerWidth <= 1023) return;
-  if (event.target.closest(".nav-inventory")) return;
-
-  closeInventory();
-});
-
-window.addEventListener("resize", () => {
-  if (!document.body.classList.contains("inventory-open")) return;
-  updateChatShiftForInventory();
-});
 
 // ===============================
 // MOSTRAR UI SI HAY SESIÓN
