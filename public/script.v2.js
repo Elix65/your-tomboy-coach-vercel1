@@ -508,17 +508,34 @@ function syncInventoryButtonState(isOpen) {
   inventoryDropdown?.setAttribute("aria-hidden", isOpen ? "false" : "true");
 }
 
+function updateChatShiftForInventory() {
+  const dropdown = inventoryDropdown || document.getElementById("inventory-dropdown");
+  const dojoUI = document.getElementById("dojo-ui");
+  if (!dropdown || !dojoUI) return;
+  if (window.innerWidth <= 1023) return;
+
+  const dropdownWidth = Math.ceil(dropdown.getBoundingClientRect().width);
+  const gap = 28;
+  const shift = dropdownWidth + gap;
+
+  document.documentElement.style.setProperty("--chat-shift", `${shift}px`);
+}
+
 function openInventory() {
   if (!inventoryPanel || !inventoryDropdown) return;
   document.body.classList.add("inventory-open");
   syncInventoryButtonState(true);
   setLoadingUI(true);
+  requestAnimationFrame(() => {
+    updateChatShiftForInventory();
+  });
   loadInventory();
 }
 
 function closeInventory() {
   document.body.classList.remove("inventory-open");
   syncInventoryButtonState(false);
+  document.documentElement.style.removeProperty("--chat-shift");
 }
 
 function toggleInventory() {
@@ -657,10 +674,15 @@ document.addEventListener("keydown", (event) => {
 
 document.addEventListener("click", (event) => {
   if (!document.body.classList.contains("inventory-open")) return;
-  if (window.innerWidth <= 768) return;
+  if (window.innerWidth <= 1023) return;
   if (event.target.closest(".nav-inventory")) return;
 
   closeInventory();
+});
+
+window.addEventListener("resize", () => {
+  if (!document.body.classList.contains("inventory-open")) return;
+  updateChatShiftForInventory();
 });
 
 // ===============================
