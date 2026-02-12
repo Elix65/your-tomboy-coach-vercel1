@@ -27,7 +27,6 @@ if (btnGacha) {
 
 if (btnInventario) {
   btnInventario.setAttribute("aria-expanded", "false");
-  btnInventario.onclick = () => toggleInventory();
 }
 
 if (btnAudios) {
@@ -449,6 +448,7 @@ function isChatPage() {
 }
 
 const inventoryPanel = document.getElementById("inventoryPanel");
+const inventoryDropdown = document.getElementById("inventoryDropdown");
 const inventoryContent = document.getElementById("inventory-content");
 const inventoryCloseBtn = document.getElementById("inventory-close-btn");
 
@@ -458,10 +458,11 @@ function syncInventoryButtonState(isOpen) {
   mInv?.classList.toggle("active", isOpen);
   mInv?.setAttribute("aria-expanded", isOpen ? "true" : "false");
   inventoryPanel?.setAttribute("aria-hidden", isOpen ? "false" : "true");
+  inventoryDropdown?.setAttribute("aria-hidden", isOpen ? "false" : "true");
 }
 
 function openInventory() {
-  if (!inventoryPanel) return;
+  if (!inventoryPanel || !inventoryDropdown) return;
   document.body.classList.add("inventory-open");
   syncInventoryButtonState(true);
   loadInventory();
@@ -479,6 +480,8 @@ function toggleInventory() {
     openInventory();
   }
 }
+
+syncInventoryButtonState(false);
 
 async function loadInventory() {
   if (!inventoryContent) return;
@@ -584,6 +587,14 @@ async function setActiveSkinBackground(skinId) {
   applyChatBackground(data.imagen_url);
 }
 
+if (btnInventario) {
+  btnInventario.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    toggleInventory();
+  });
+}
+
 if (inventoryCloseBtn) {
   inventoryCloseBtn.onclick = () => closeInventory();
 }
@@ -597,14 +608,9 @@ document.addEventListener("keydown", (event) => {
 document.addEventListener("click", (event) => {
   if (!document.body.classList.contains("inventory-open")) return;
   if (window.innerWidth <= 768) return;
+  if (event.target.closest(".nav-inventory")) return;
 
-  const target = event.target;
-  const clickedInsidePanel = inventoryPanel?.contains(target);
-  const clickedInventoryButton = btnInventario?.contains(target) || mInv?.contains(target);
-
-  if (!clickedInsidePanel && !clickedInventoryButton) {
-    closeInventory();
-  }
+  closeInventory();
 });
 
 // ===============================

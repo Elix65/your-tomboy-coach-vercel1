@@ -22,7 +22,7 @@ body {
 
 
 body {
-  --chat-shift: 380px;
+  --chat-shift: 220px;
 }
 
 #appLayout {
@@ -35,42 +35,56 @@ body {
 }
 
 body.inventory-open #chatContainer {
-  transform: translateX(var(--chat-shift));
+  transform: translateX(calc(-1 * var(--chat-shift)));
 }
 
-.inventory-panel {
+.nav-inventory {
+  position: relative;
+  z-index: 1;
+}
+
+.inventory-dropdown {
   position: absolute;
-  top: 84px;
-  left: 24px;
-  width: min(360px, 42vw);
+  top: calc(100% + 10px);
+  left: 0;
+  width: 360px;
+  max-width: 80vw;
+  z-index: 9999;
+
+  overflow: hidden;
   max-height: 0;
   opacity: 0;
   transform: translateY(-8px);
-  overflow: hidden;
   pointer-events: none;
-  padding: 0 18px;
+
+  transition:
+    max-height 420ms cubic-bezier(0.2, 0.9, 0.2, 1),
+    opacity 180ms ease,
+    transform 260ms ease;
+}
+
+.inventory-panel {
+  padding: 18px;
   background: rgba(0, 0, 0, 0.86);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 14px;
   box-shadow: 0 18px 45px rgba(0, 0, 0, 0.42);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  transition: max-height 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease, transform 320ms ease, padding 320ms ease;
-  z-index: 10002;
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-body.inventory-open .inventory-panel {
+body.inventory-open .inventory-dropdown {
   max-height: 70vh;
   opacity: 1;
   transform: translateY(0);
   pointer-events: auto;
-  padding: 18px;
 }
 
 .inventory-content {
+  max-height: 70vh;
   overflow-y: auto;
   padding-right: 4px;
 }
@@ -763,19 +777,21 @@ img.avatar-small {
   }
 
   body.inventory-open #chatContainer {
-    transform: translateX(0);
+    transform: none;
+  }
+
+  .inventory-dropdown {
+    position: fixed;
+    top: var(--header-height, 64px);
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-width: unset;
+    z-index: 10005;
   }
 
   .inventory-panel {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    max-width: none;
-    border-radius: 0 0 14px 14px;
-    border-left: none;
-    border-right: none;
+    border-radius: 14px;
     z-index: 10005;
   }
 
