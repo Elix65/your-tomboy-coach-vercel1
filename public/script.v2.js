@@ -452,6 +452,12 @@ const inventoryDropdown = document.getElementById("inventoryDropdown");
 const inventoryContent = document.getElementById("inventory-content");
 const inventoryCloseBtn = document.getElementById("inventory-close-btn");
 
+function setLoadingUI(isLoading) {
+  if (!inventoryDropdown) return;
+  inventoryDropdown.classList.toggle("is-loading", isLoading);
+  inventoryDropdown.classList.toggle("is-loaded", !isLoading);
+}
+
 function syncInventoryButtonState(isOpen) {
   btnInventario?.classList.toggle("active", isOpen);
   btnInventario?.setAttribute("aria-expanded", isOpen ? "true" : "false");
@@ -465,6 +471,7 @@ function openInventory() {
   if (!inventoryPanel || !inventoryDropdown) return;
   document.body.classList.add("inventory-open");
   syncInventoryButtonState(true);
+  setLoadingUI(true);
   loadInventory();
 }
 
@@ -542,6 +549,8 @@ async function loadInventory() {
   } catch (e) {
     console.error(e);
     inventoryContent.innerHTML = `<p style="color:#f88">No se pudo cargar el inventario.</p>`;
+  } finally {
+    requestAnimationFrame(() => setLoadingUI(false));
   }
 }
 
