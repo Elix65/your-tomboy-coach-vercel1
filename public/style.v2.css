@@ -20,6 +20,61 @@ body {
   display: none;
 }
 
+
+body {
+  --chat-shift: 380px;
+}
+
+#appLayout {
+  position: relative;
+}
+
+#chatContainer {
+  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+
+body.inventory-open #chatContainer {
+  transform: translateX(var(--chat-shift));
+}
+
+.inventory-panel {
+  position: absolute;
+  top: 84px;
+  left: 24px;
+  width: min(360px, 42vw);
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-8px);
+  overflow: hidden;
+  pointer-events: none;
+  padding: 0 18px;
+  background: rgba(0, 0, 0, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.42);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: max-height 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 220ms ease, transform 320ms ease, padding 320ms ease;
+  z-index: 10002;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+body.inventory-open .inventory-panel {
+  max-height: 70vh;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  padding: 18px;
+}
+
+.inventory-content {
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 /* Asegurar que elementos clave respeten .hidden aunque haya reglas posteriores */
 .top-bar.hidden,
 .mobile-menu-overlay.hidden,
@@ -602,6 +657,12 @@ img.avatar-small {
   box-shadow: 0 0 0 3px rgba(255, 111, 134, 0.25), 0 10px 20px rgba(0, 0, 0, 0.28);
 }
 
+.top-btn.active,
+.mobile-menu-btn.active {
+  background: rgba(255, 95, 121, 0.92);
+  box-shadow: 0 0 0 1px rgba(255, 190, 208, 0.35), 0 10px 24px rgba(255, 95, 121, 0.28);
+}
+
 /* ================================
    HAMBURGER BUTTON (MOBILE)
 ================================ */
@@ -697,6 +758,27 @@ img.avatar-small {
 ================================ */
 
 @media (max-width: 768px) {
+  body {
+    --chat-shift: 0px;
+  }
+
+  body.inventory-open #chatContainer {
+    transform: translateX(0);
+  }
+
+  .inventory-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-width: none;
+    border-radius: 0 0 14px 14px;
+    border-left: none;
+    border-right: none;
+    z-index: 10005;
+  }
+
   /* Ocultar top bar en mobile */
   .top-bar {
     display: none !important;
