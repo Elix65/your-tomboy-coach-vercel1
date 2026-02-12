@@ -1,3 +1,28 @@
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255, 202, 120, 0.11), transparent 45%),
+    radial-gradient(circle at 20% 20%, rgba(214, 87, 147, 0.1), transparent 35%),
+    linear-gradient(170deg, #090a11 0%, #131723 46%, #1f1320 100%);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  background:
+    radial-gradient(circle at center, transparent 34%, rgba(3, 4, 8, 0.78) 100%),
+    repeating-radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 3px);
+  opacity: 0.28;
+}
+
 /* ================================
    CONTENEDOR GENERAL DEL GACHA
 ================================ */
@@ -14,6 +39,15 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  padding-inline: 14px;
+}
+
+.gacha-ui {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 /* ================================
@@ -42,7 +76,9 @@
   display: flex;
   gap: 10px;
   justify-content: center;
-  margin-bottom: 20px;
+  align-items: stretch;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
 }
 
 .gacha-buttons button {
@@ -50,17 +86,84 @@
   background: rgba(255, 77, 77, 0.85);
   color: white;
   border: none;
-  border-radius: 8px;
+  border-radius: 14px;
   font-size: 15px;
   font-weight: bold;
   cursor: pointer;
-  transition: 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
   backdrop-filter: blur(6px);
+  position: relative;
+  isolation: isolate;
 }
 
 .gacha-buttons button:hover {
-  background: rgba(255, 120, 120, 1);
-  transform: scale(1.05);
+  transform: translateY(-1px);
+}
+
+.gacha-buttons button:active {
+  transform: translateY(0);
+}
+
+.gacha-buttons button:disabled,
+.mode-btn:disabled,
+.recharge-btn:disabled,
+.pack-select:disabled {
+  opacity: 0.52;
+  cursor: not-allowed;
+  box-shadow: none !important;
+}
+
+.gacha-buttons button::before,
+.recharge-btn::before,
+.mode-btn.is-active::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(120deg, rgba(255, 247, 208, 0.62), rgba(255, 170, 92, 0.85), rgba(255, 88, 112, 0.7));
+  z-index: -2;
+}
+
+.gacha-buttons button::after,
+.recharge-btn::after,
+.mode-btn.is-active::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(170deg, rgba(43, 17, 28, 0.96), rgba(28, 10, 14, 0.96));
+  z-index: -1;
+}
+
+.cta-primary {
+  min-width: 190px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  box-shadow: 0 10px 24px rgba(255, 150, 92, 0.25), inset 0 1px 0 rgba(255, 250, 215, 0.22);
+}
+
+.cta-secondary {
+  min-width: 120px;
+}
+
+.cta-title {
+  font-size: 17px;
+}
+
+.cost-chip {
+  border-radius: 999px;
+  padding: 3px 10px;
+  background: rgba(255, 236, 182, 0.15);
+  border: 1px solid rgba(255, 226, 156, 0.56);
+  font-size: 12px;
+}
+
+.guarantee-text {
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.86;
 }
 
 /* ================================
@@ -81,12 +184,12 @@
 }
 
 #gacha-resultados {
-  background: rgba(0,0,0,0.55);
+  background: rgba(5, 6, 12, 0.52);
   padding: 20px;
-  border-radius: 12px;
-  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 214, 160, 0.22);
   min-height: 180px;
-  max-height: 62vh;
+  max-height: 100%;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable both-edges;
@@ -94,6 +197,32 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 14px 30px rgba(0, 0, 0, 0.25);
+}
+
+.gacha-results {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.results-grid {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(223, 159, 178, 0.55) rgba(255, 255, 255, 0.06);
+}
+
+.results-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.results-grid::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 999px;
+}
+
+.results-grid::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(181, 190, 214, 0.65), rgba(201, 140, 162, 0.78));
+  border-radius: 999px;
 }
 
 /* ================================
@@ -142,14 +271,20 @@
 
 .gacha-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   min-height: 0;
 }
 
-@media (min-width: 480px) {
+@media (max-width: 980px) {
   .gacha-grid {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 560px) {
+  .gacha-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -282,20 +417,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  margin: 12px 0 18px 0;
+  gap: 6px;
+  margin: 0;
   flex-wrap: wrap;
+  padding: 5px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 206, 145, 0.5);
+  background: linear-gradient(180deg, rgba(18, 15, 24, 0.78), rgba(8, 8, 14, 0.9));
+  box-shadow: 0 0 18px rgba(255, 184, 92, 0.14);
 }
 
 .mode-btn {
   padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.18);
-  background: rgba(0,0,0,0.55);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: rgba(0, 0, 0, 0.35);
   color: #f7f3e9;
   font-weight: 700;
   cursor: pointer;
-  transition: 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   backdrop-filter: blur(6px);
 }
 
@@ -304,10 +444,12 @@
   border-color: rgba(255,255,255,0.35);
 }
 
-.mode-btn.active {
-  background: rgba(255, 77, 77, 0.85);
-  border-color: rgba(255,255,255,0.35);
+.mode-btn.active,
+.mode-btn.is-active {
+  background: transparent;
+  border-color: rgba(255, 214, 150, 0.6);
   color: white;
+  box-shadow: 0 0 12px rgba(255, 191, 103, 0.3);
 }
 
 .premium-balance {
@@ -323,7 +465,7 @@
   gap:10px;
   justify-content:center;
   align-items:center;
-  margin: 0 0 14px 0;
+  margin: 0;
   flex-wrap:wrap;
 }
 
@@ -340,7 +482,7 @@
 .recharge-btn{
   padding: 10px 14px;
   border-radius: 10px;
-  border: none;
+  border: 1px solid rgba(255, 216, 160, 0.6);
   background: rgba(255, 77, 77, 0.9);
   color: white;
   font-weight: 800;
@@ -349,8 +491,58 @@
 }
 
 .recharge-btn:hover{
-  transform: scale(1.03);
-  background: rgba(255, 120, 120, 1);
+  transform: translateY(-1px);
+}
+
+.gacha-top {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(4, 4, 10, 0.36);
+  border: 1px solid rgba(255, 238, 194, 0.16);
+}
+
+.coins-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: rgba(3, 4, 8, 0.65);
+  border: 1px solid rgba(255, 209, 132, 0.4);
+}
+
+.coin-icon {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 12px;
+  color: #3e2a04;
+  background: radial-gradient(circle at 30% 30%, #fff4ca, #fdb85c 70%);
+  box-shadow: 0 0 10px rgba(255, 194, 88, 0.5);
+}
+
+.coin-separator {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 214, 146, 0.35);
+}
+
+.coin-plus {
+  opacity: 0.8;
+}
+
+.gacha-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 /* ================================
@@ -445,10 +637,10 @@
    CARTAS + REVEAL
 ================================ */
 .skin-card {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 16px;
+  padding: 12px;
 }
 
 .skin-result {
@@ -481,6 +673,11 @@
   justify-content: center;
   text-align: center;
   color: rgba(255, 255, 255, 0.7);
+}
+
+.skin-card .skin-img {
+  margin-inline: auto;
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.38));
 }
 
 .rarity-common {
@@ -570,6 +767,14 @@
 
 /* RESPONSIVE — MOBILE */
 @media (max-width: 768px) {
+  .gacha-top {
+    grid-template-columns: 1fr;
+  }
+
+  .coins-pill {
+    justify-content: space-between;
+  }
+
   .top-bar {
     display: none;
   }
@@ -596,6 +801,15 @@
 
 @media (max-width: 768px) {
   #gacha-resultados {
-    max-height: 56vh;
+    max-height: 100%;
+  }
+  .recharge-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .pack-select,
+  .recharge-btn {
+    width: 100%;
   }
 }

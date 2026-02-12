@@ -58,41 +58,59 @@
   <div id="appLayout" class="layout">
     <main id="chatContainer" class="chat-container">
       <div class="container" id="gacha-container">
+        <div class="gacha-ui">
+          <!-- HEADER -->
+          <div class="header">
+            <h1 class="title">Gacha de Yumiko</h1>
+          </div>
 
-        <!-- HEADER -->
-        <div class="header">
-          <h1 class="title">Gacha de Yumiko</h1>
+          <p class="subtitle">Prueba tu suerte, discípulo</p>
+
+          <header class="gacha-top">
+            <!-- SELECTOR DE MODO -->
+            <div class="gacha-mode" role="tablist" aria-label="Modo gacha">
+              <button id="mode-comun" class="mode-btn active is-active" role="tab" aria-selected="true">Común</button>
+              <button id="mode-premium" class="mode-btn" role="tab" aria-selected="false">Premium</button>
+            </div>
+
+            <div class="coins-pill" aria-live="polite">
+              <span class="coin-icon" aria-hidden="true">◉</span>
+              <span id="coins-label">-- Yumiko Coins</span>
+              <span class="coin-separator" aria-hidden="true"></span>
+              <span class="coin-plus" aria-hidden="true">+</span>
+            </div>
+
+            <div class="recharge-row">
+              <select id="pack-select" class="pack-select">
+                <option value="55">55 Yumiko Coins</option>
+                <option value="111">111 Yumiko Coins</option>
+                <option value="333">333 Yumiko Coins</option>
+              </select>
+              <button id="btn-recharge" class="recharge-btn">Recargar</button>
+            </div>
+          </header>
+
+          <section class="gacha-actions">
+            <!-- BOTONES -->
+            <div class="gacha-buttons">
+              <button id="btn-tirar-1" class="cta-primary">
+                <span class="cta-title">🂠 Tirar 1</span>
+                <span class="cost-chip">5 ◉</span>
+              </button>
+              <button id="btn-tirar-10" class="cta-secondary">Tirar x10</button>
+            </div>
+
+            <p class="guarantee-text">¡10 invocaciones +1 lanzamiento garantizado raro!</p>
+            <span id="premium-balance" class="premium-balance hidden">Premium: --</span>
+          </section>
+
+          <section class="gacha-results">
+            <!-- RESULTADOS -->
+            <div id="gacha-resultados" class="results-grid">
+              <p style="opacity:0.7;">Aquí aparecerán tus resultados…</p>
+            </div>
+          </section>
         </div>
-
-        <p class="subtitle">Prueba tu suerte, discípulo</p>
-
-        <!-- SELECTOR DE MODO -->
-        <div class="gacha-mode">
-          <button id="mode-comun" class="mode-btn active">Común</button>
-          <button id="mode-premium" class="mode-btn">Premium</button>
-          <span id="premium-balance" class="premium-balance hidden">Premium: --</span>
-        </div>
-
-        <div class="recharge-row">
-          <select id="pack-select" class="pack-select">
-            <option value="55">55 Yumiko Coins</option>
-            <option value="111">111 Yumiko Coins</option>
-            <option value="333">333 Yumiko Coins</option>
-          </select>
-          <button id="btn-recharge" class="recharge-btn">Recargar</button>
-        </div>
-
-        <!-- BOTONES -->
-        <div class="gacha-buttons">
-          <button id="btn-tirar-1">Tirar 1</button>
-          <button id="btn-tirar-10">Tirar x10</button>
-        </div>
-
-        <!-- RESULTADOS -->
-        <div id="gacha-resultados">
-          <p style="opacity:0.7;">Aquí aparecerán tus resultados…</p>
-        </div>
-
       </div>
     </main>
   </div>

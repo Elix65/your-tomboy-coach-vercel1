@@ -158,12 +158,23 @@ async function animateRevealTen(resultsArray) {
 const btnModoComun = document.getElementById("mode-comun");
 const btnModoPremium = document.getElementById("mode-premium");
 const premiumBalanceEl = document.getElementById("premium-balance");
+const coinsLabelEl = document.getElementById("coins-label");
+
+function updateCoinsLabel(saldo) {
+  if (!coinsLabelEl) return;
+  const safeSaldo = Number.isFinite(Number(saldo)) ? Number(saldo) : "--";
+  coinsLabelEl.textContent = `${safeSaldo} Yumiko Coins`;
+}
 
 function setModo(nuevo) {
   modo = nuevo;
 
   if (btnModoComun) btnModoComun.classList.toggle("active", modo === "comun");
   if (btnModoPremium) btnModoPremium.classList.toggle("active", modo === "premium");
+  if (btnModoComun) btnModoComun.classList.toggle("is-active", modo === "comun");
+  if (btnModoPremium) btnModoPremium.classList.toggle("is-active", modo === "premium");
+  if (btnModoComun) btnModoComun.setAttribute("aria-selected", String(modo === "comun"));
+  if (btnModoPremium) btnModoPremium.setAttribute("aria-selected", String(modo === "premium"));
 
   // Mostrar balance solo en premium
   if (premiumBalanceEl) {
@@ -202,6 +213,7 @@ async function refreshPremiumBalance() {
 
   const saldo = data?.cantidad ?? 0;
   premiumBalanceEl.textContent = `Premium: ${saldo}`;
+  updateCoinsLabel(saldo);
 }
 
 // clicks
@@ -439,6 +451,7 @@ initializeInventoryPanel({
 });
 
 setModo("comun");
+updateCoinsLabel("--");
 
 if (btnRecharge) {
   btnRecharge.onclick = async () => {
