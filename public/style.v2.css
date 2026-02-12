@@ -40,16 +40,34 @@ body.inventory-open #chatContainer {
 
 .nav-inventory {
   position: relative;
+  display: inline-block;
   z-index: 1;
 }
 
 .inventory-dropdown {
   position: absolute;
-  top: calc(100% + 10px);
+  top: calc(100% - 6px) !important;
   left: 0;
   width: 360px;
-  max-width: 80vw;
+  max-width: 92vw;
   z-index: 9999;
+
+  background: linear-gradient(
+    180deg,
+    rgba(20, 10, 18, 0.92) 0%,
+    rgba(10, 6, 10, 0.88) 100%
+  );
+  border: 1px solid rgba(255, 105, 180, 0.35);
+  border-radius: 16px;
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+    0 0 24px rgba(255, 105, 180, 0.12);
+
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+
+  padding: 10px;
 
   overflow: hidden;
   max-height: 0;
@@ -64,16 +82,20 @@ body.inventory-open #chatContainer {
 }
 
 .inventory-panel {
-  padding: 18px;
-  background: rgba(0, 0, 0, 0.86);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.42);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  padding: 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 10px;
+  box-shadow: none;
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+body.inventory-open #btn-inventario {
+  box-shadow:
+    0 0 0 1px rgba(255, 105, 180, 0.35) inset,
+    0 10px 30px rgba(255, 105, 180, 0.12);
 }
 
 body.inventory-open .inventory-dropdown {
@@ -87,6 +109,27 @@ body.inventory-open .inventory-dropdown {
   max-height: 70vh;
   overflow-y: auto;
   padding-right: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 105, 180, 0.35) rgba(255, 255, 255, 0.06);
+}
+
+.inventory-content::-webkit-scrollbar {
+  width: 10px;
+}
+
+.inventory-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 999px;
+}
+
+.inventory-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 105, 180, 0.28);
+  border-radius: 999px;
+  border: 2px solid rgba(0, 0, 0, 0.35);
+}
+
+.inventory-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 105, 180, 0.4);
 }
 
 /* Asegurar que elementos clave respeten .hidden aunque haya reglas posteriores */
@@ -751,20 +794,23 @@ img.avatar-small {
 .mobile-menu-btn:hover {
   background: rgba(255, 120, 120, 1);
 }
-.inventory-close-btn {
+.inventory-close-btn,
+.inventory-close {
   padding: 10px 16px;
-  background: #ff4d4d;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-weight: bold;
+  background: rgba(255, 105, 180, 0.14);
+  border: 1px solid rgba(255, 105, 180, 0.25);
+  color: rgba(255, 255, 255, 0.9);
+  border-radius: 10px;
+  font-weight: 600;
   cursor: pointer;
   align-self: flex-end;
-  transition: 0.2s ease;
+  transition: transform 120ms ease, background 120ms ease;
 }
 
-.inventory-close-btn:hover {
-  background: #ff1a1a;
+.inventory-close-btn:hover,
+.inventory-close:hover {
+  background: rgba(255, 105, 180, 0.22);
+  transform: translateY(-1px);
 }
 
 /* ================================
