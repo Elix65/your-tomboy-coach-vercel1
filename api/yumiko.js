@@ -32,6 +32,13 @@ function calcularDia(startDate) {
   return diff;
 }
 
+function sanitizeMessages(messages = []) {
+  return messages
+    .filter((msg) => msg && (msg.role === "user" || msg.role === "assistant") && typeof msg.content === "string")
+    .slice(-20)
+    .map((msg) => ({ role: msg.role, content: msg.content }));
+}
+
 export default async function handler(req, res) {
   if (req.method === "GET") {
     return res.status(200).json({ status: "ok", message: "Yumiko API está viva" });
@@ -42,7 +49,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { message, profile } = req.body || {};
+    const { message, profile, messages: incomingMessages, summary, conversationId } = req.body || {};
 
     if (!message) {
       return res.status(400).json({ error: "Falta el campo 'message' en el cuerpo." });
@@ -92,6 +99,7 @@ export default async function handler(req, res) {
     // ===============================
     // CONSTRUIR MENSAJES PARA DEEPSEEK
     // ===============================
+    const contextMessages = sanitizeMessages(incomingMessages);
     const messages = [
       { role: "system", content: basePrompt }
     ];
@@ -117,7 +125,27 @@ export default async function handler(req, res) {
       });
     }
 
-    messages.push({ role: "user", content: message });
+    if (summary) {
+      messages.push({
+        role: "system",
+        content: `Resumen de memoria previa del chat: ${summary}`
+      });
+    }
+
+    if (contextMessages.length > 0) {
+      messages.push(...contextMessages);
+    } else {
+      messages.push({ role: "user", content: message });
+    }
+
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[yumiko] context payload", {
+        conversationId: conversationId || null,
+        summaryIncluded: Boolean(summary),
+        contextCount: contextMessages.length,
+        totalMessagesSent: messages.length
+      });
+    }
 
     // ===============================
     // LLAMADA A DEEPSEEK
