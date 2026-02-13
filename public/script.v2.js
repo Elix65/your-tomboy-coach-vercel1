@@ -1,6 +1,7 @@
 import supabaseClient from './supabase.js';
 import { initializeInventoryPanel } from './inventory-panel.v2.js';
 import { initTopBarAndMobileMenu } from './ui.v2.js';
+import { initRewardsWidget, updateStreakOnMessageSend } from './rewardsWidget.js';
 
 function goWithTransition(url) {
   if (typeof window.playPageTransitionAndGo === "function") {
@@ -322,6 +323,7 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
       if (!text) return;
 
       addMessage(text, "user");
+      updateStreakOnMessageSend();
 
       // Guardar el último mensaje del usuario (para regenerar)
       lastUserText = text;
@@ -578,6 +580,7 @@ async function initializeUI() {
 // AUDIO + PARALLAX + INICIALIZACIÓN
 // ===============================
 window.addEventListener("DOMContentLoaded", async () => {
+  initRewardsWidget();
   await initializeUI();
 
   const ambienceIntro = document.getElementById("ambience-intro");

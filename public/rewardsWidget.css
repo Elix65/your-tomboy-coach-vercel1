@@ -1,0 +1,189 @@
+/* Ajuste de posición principal del widget (desktop): modifica top/left según necesidad. */
+.daily-chat-rewards-widget {
+  position: fixed;
+  top: 88px;
+  left: 14px;
+  z-index: 10010;
+  pointer-events: none;
+}
+
+/* Ajuste de tamaño del panel: controla ancho/alto en desktop. */
+.daily-chat-rewards-panel {
+  width: clamp(280px, 25vw, 320px);
+  min-height: 126px;
+  max-height: 164px;
+  padding: 12px 12px 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 119, 155, 0.28);
+  background: linear-gradient(180deg, rgba(19, 14, 30, 0.86) 0%, rgba(9, 9, 18, 0.88) 100%);
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.42),
+    0 0 24px rgba(255, 107, 159, 0.12),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #f6eff8;
+}
+
+.daily-chat-rewards-title {
+  margin: 0 0 8px;
+  font-size: 1.45rem;
+  line-height: 1;
+  letter-spacing: 0.2px;
+}
+
+.daily-chat-rewards-content {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.daily-chat-rewards-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(4, 7, 18, 0.35);
+}
+
+.daily-chat-rewards-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 0.91rem;
+}
+
+.daily-chat-rewards-item:last-child {
+  border-bottom: 0;
+}
+
+.daily-chat-rewards-item-left {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.daily-chat-rewards-lock {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.16));
+}
+
+.daily-chat-rewards-day {
+  color: rgba(240, 244, 255, 0.93);
+  font-weight: 600;
+}
+
+.daily-chat-rewards-status {
+  width: 16px;
+  text-align: right;
+  color: transparent;
+  font-weight: 800;
+}
+
+.daily-chat-rewards-status.is-completed {
+  color: #71f59d;
+  text-shadow: 0 0 12px rgba(113, 245, 157, 0.45);
+}
+
+.daily-chat-reward-gift {
+  width: 90px;
+  min-width: 90px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(20, 12, 24, 0.7);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 2px;
+  box-shadow: inset 0 0 14px rgba(255, 118, 163, 0.08);
+}
+
+.daily-chat-reward-gift-image {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 8px rgba(255, 95, 152, 0.35));
+}
+
+.daily-chat-reward-gift-text {
+  font-weight: 700;
+  color: rgba(249, 238, 255, 0.96);
+}
+
+.daily-chat-reward-gift.is-unlocked {
+  border-color: rgba(121, 245, 170, 0.9);
+  box-shadow:
+    0 0 20px rgba(121, 245, 170, 0.32),
+    inset 0 0 14px rgba(121, 245, 170, 0.28);
+}
+
+.daily-chat-reward-gift.is-unlocked .daily-chat-reward-gift-text {
+  color: #8dffb7;
+}
+
+.daily-chat-rewards-helper {
+  margin: 8px 2px 0;
+  font-size: 0.75rem;
+  color: rgba(236, 198, 212, 0.86);
+}
+
+@media (max-width: 1100px) {
+  .daily-chat-rewards-widget {
+    top: 76px;
+    left: 10px;
+    transform: scale(0.92);
+    transform-origin: top left;
+  }
+}
+
+@media (max-width: 768px) {
+  .daily-chat-rewards-widget {
+    /* Ajuste de posición mobile: se mueve bajo la barra superior para no tapar controles. */
+    top: 62px;
+    left: 10px;
+    right: 10px;
+    transform: none;
+  }
+
+  .daily-chat-rewards-panel {
+    width: min(94vw, 340px);
+    min-height: 116px;
+    max-height: none;
+    padding: 10px;
+  }
+
+  .daily-chat-reward-gift {
+    width: 78px;
+    min-width: 78px;
+  }
+
+  .daily-chat-reward-gift-image {
+    width: 44px;
+    height: 44px;
+  }
+}
+
+@media (max-width: 520px) {
+  .daily-chat-rewards-widget {
+    top: 58px;
+    left: 8px;
+  }
+
+  .daily-chat-rewards-title {
+    font-size: 1.2rem;
+  }
+
+  .daily-chat-rewards-item {
+    padding: 4px 7px;
+    font-size: 0.82rem;
+  }
+}
