@@ -323,7 +323,6 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
       if (!text) return;
 
       addMessage(text, "user");
-      updateStreakOnMessageSend();
 
       // Guardar el último mensaje del usuario (para regenerar)
       lastUserText = text;
@@ -348,8 +347,13 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
           body: JSON.stringify({ message: text })
         });
 
+        if (!res.ok) {
+          throw new Error(`yumiko request failed with status ${res.status}`);
+        }
+
         const data = await res.json();
         addMessage(data.reply, "bot");
+        updateStreakOnMessageSend(text);
 
         // Guardar mensaje del bot
         saveMessageToSupabase({
