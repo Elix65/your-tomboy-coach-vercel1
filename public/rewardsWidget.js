@@ -1,6 +1,7 @@
 const REWARDS_STORAGE_KEYS = {
-  streakCount: "dailyChatRewards_streakCount",
-  lastChatDate: "dailyChatRewards_lastChatDate"
+  streakCount: "yumiko_streak_count",
+  lastChatDate: "yumiko_last_chat_date",
+  lastCountAttemptTs: "yumiko_last_count_attempt_ts"
 };
 
 // Ajuste rápido de assets del widget: cambia estas URLs si querés otros íconos.
@@ -11,30 +12,96 @@ const REWARDS_ASSETS = {
 };
 
 const MAX_STREAK_DAYS = 7;
+// Anti-trampa: umbrales editables.
+const MIN_VALID_MESSAGE_LENGTH = 8; // Cambiar este valor para ajustar largo mínimo.
+const COUNT_ATTEMPT_COOLDOWN_MS = 10_000; // Cambiar este valor para ajustar rate-limit de intentos.
 
-function getTodayISODate() {
-  return new Date().toISOString().slice(0, 10);
+// CTA día 5: personalizá número y texto aquí.
+const REWARD_CTA_DAY_THRESHOLD = 5;
+const REWARD_WHATSAPP_NUMBER = "541144103647"; // <-- Cambiar número de WhatsApp.
+const REWARD_WHATSAPP_MESSAGE = "Hola! Llegué al día 5 con Yumiko 😳 Quiero reclamar mi reward."; // <-- Cambiar texto del mensaje.
+
+export function getTodayLocalYYYYMMDD() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
-function getYesterdayISODate() {
-  const now = new Date();
-  now.setDate(now.getDate() - 1);
-  return now.toISOString().slice(0, 10);
+function parseLocalDateFromYYYYMMDD(dateStr) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr || ""));
+  if (!match) return null;
+
+  const year = Number.parseInt(match[1], 10);
+  const month = Number.parseInt(match[2], 10);
+  const day = Number.parseInt(match[3], 10);
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return null;
+  }
+
+  const localDate = new Date(year, month - 1, day);
+  if (
+    localDate.getFullYear() !== year
+    || localDate.getMonth() !== month - 1
+    || localDate.getDate() !== day
+  ) {
+    return null;
+  }
+
+  return localDate;
+}
+
+export function isYesterdayLocal(dateStr) {
+  const parsedDate = parseLocalDateFromYYYYMMDD(dateStr);
+  if (!parsedDate) return false;
+
+  const yesterday = new Date();
+  yesterday.setHours(0, 0, 0, 0);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  return (
+    parsedDate.getFullYear() === yesterday.getFullYear()
+    && parsedDate.getMonth() === yesterday.getMonth()
+    && parsedDate.getDate() === yesterday.getDate()
+  );
+}
+
+export function isValidChatMessage(text) {
+  const trimmed = String(text || "").trim();
+  if (trimmed.length < MIN_VALID_MESSAGE_LENGTH) {
+    return false;
+  }
+
+  // Debe contener al menos una letra o número (evita solo emojis/signos).
+  return /[\p{L}\p{N}]/u.test(trimmed);
 }
 
 function getStoredRewardsState() {
   const streakRaw = Number.parseInt(localStorage.getItem(REWARDS_STORAGE_KEYS.streakCount) || "0", 10);
   const lastChatDate = localStorage.getItem(REWARDS_STORAGE_KEYS.lastChatDate) || "";
+  const lastCountAttemptTsRaw = Number.parseInt(localStorage.getItem(REWARDS_STORAGE_KEYS.lastCountAttemptTs) || "0", 10);
 
   return {
     streakCount: Number.isFinite(streakRaw) && streakRaw > 0 ? Math.min(streakRaw, MAX_STREAK_DAYS) : 0,
-    lastChatDate
+    lastChatDate,
+    lastCountAttemptTs: Number.isFinite(lastCountAttemptTsRaw) && lastCountAttemptTsRaw > 0 ? lastCountAttemptTsRaw : 0
   };
 }
 
-function setStoredRewardsState(streakCount, lastChatDate) {
+function setStoredRewardsState(streakCount, lastChatDate, lastCountAttemptTs) {
   localStorage.setItem(REWARDS_STORAGE_KEYS.streakCount, String(Math.max(0, Math.min(streakCount, MAX_STREAK_DAYS))));
   localStorage.setItem(REWARDS_STORAGE_KEYS.lastChatDate, lastChatDate);
+  if (Number.isFinite(lastCountAttemptTs) && lastCountAttemptTs > 0) {
+    localStorage.setItem(REWARDS_STORAGE_KEYS.lastCountAttemptTs, String(lastCountAttemptTs));
+  }
+}
+
+function openRewardWhatsAppCTA() {
+  const encodedText = encodeURIComponent(REWARD_WHATSAPP_MESSAGE);
+  const url = `https://wa.me/${REWARD_WHATSAPP_NUMBER}?text=${encodedText}`;
+  window.open(url, "_blank", "noopener");
 }
 
 function ensureRewardsWidgetShell() {
@@ -98,13 +165,31 @@ export function renderRewardsWidget(streakCount = 0) {
   }
 
   gift.classList.toggle("is-unlocked", normalizedStreak >= MAX_STREAK_DAYS);
+  gift.classList.toggle("reward-cta-active", normalizedStreak >= REWARD_CTA_DAY_THRESHOLD);
+  gift.style.cursor = normalizedStreak >= REWARD_CTA_DAY_THRESHOLD ? "pointer" : "default";
+  gift.onclick = normalizedStreak >= REWARD_CTA_DAY_THRESHOLD ? openRewardWhatsAppCTA : null;
   gift.querySelector(".daily-chat-reward-gift-text").textContent = normalizedStreak >= MAX_STREAK_DAYS ? "Unlocked!" : "Reward!";
 }
 
-export function updateStreakOnMessageSend() {
-  const today = getTodayISODate();
-  const yesterday = getYesterdayISODate();
-  const { streakCount, lastChatDate } = getStoredRewardsState();
+export function updateStreakOnMessageSend(messageText) {
+  const nowTs = Date.now();
+  const today = getTodayLocalYYYYMMDD();
+  const {
+    streakCount,
+    lastChatDate,
+    lastCountAttemptTs
+  } = getStoredRewardsState();
+
+  if (lastCountAttemptTs && (nowTs - lastCountAttemptTs) < COUNT_ATTEMPT_COOLDOWN_MS) {
+    return streakCount;
+  }
+
+  setStoredRewardsState(streakCount, lastChatDate, nowTs);
+
+  if (!isValidChatMessage(messageText)) {
+    renderRewardsWidget(streakCount);
+    return streakCount;
+  }
 
   if (lastChatDate === today) {
     renderRewardsWidget(streakCount);
@@ -112,12 +197,12 @@ export function updateStreakOnMessageSend() {
   }
 
   let nextStreak = 1;
-  if (lastChatDate === yesterday) {
+  if (isYesterdayLocal(lastChatDate)) {
     nextStreak = streakCount + 1;
   }
 
   nextStreak = Math.min(nextStreak, MAX_STREAK_DAYS);
-  setStoredRewardsState(nextStreak, today);
+  setStoredRewardsState(nextStreak, today, nowTs);
   renderRewardsWidget(nextStreak);
 
   return nextStreak;
