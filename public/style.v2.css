@@ -487,12 +487,49 @@ img.avatar-header {
   flex: 1 1 auto;
   min-height: 0;
   padding: 15px;
+  padding-right: 21px;
   border-radius: 12px;
   overflow-y: auto;
   backdrop-filter: blur(14px);
   border: 1px solid rgba(255, 105, 180, 0.25);
   box-shadow: 0 0 28px rgba(255, 0, 0, 0.28);
   scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 90, 130, 0.75) rgba(0, 0, 0, 0.25);
+  scrollbar-gutter: stable;
+}
+
+.chat-box::-webkit-scrollbar {
+  width: 8px;
+}
+
+.chat-box::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+}
+
+.chat-box::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 120, 160, 0.95),
+    rgba(255, 60, 110, 0.75)
+  );
+  border-radius: 999px;
+  border: 2px solid rgba(0, 0, 0, 0.25);
+  box-shadow: 0 0 10px rgba(255, 90, 130, 0.25);
+}
+
+.chat-box::-webkit-scrollbar-thumb:hover {
+  box-shadow: 0 0 14px rgba(255, 90, 130, 0.45);
+  background: linear-gradient(
+    180deg,
+    rgba(255, 150, 185, 0.98),
+    rgba(255, 70, 125, 0.85)
+  );
+}
+
+.chat-box::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 #chat-container,
