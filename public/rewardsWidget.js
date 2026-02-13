@@ -20,6 +20,13 @@ const COUNT_ATTEMPT_COOLDOWN_MS = 10_000; // Cambiar este valor para ajustar rat
 const REWARD_CTA_DAY_THRESHOLD = 5;
 const REWARD_WHATSAPP_NUMBER = "541144103647"; // <-- Cambiar número de WhatsApp.
 const REWARD_WHATSAPP_MESSAGE = "Hola! Llegué al día 5 con Yumiko 😳 Quiero reclamar mi reward."; // <-- Cambiar texto del mensaje.
+const MOBILE_REWARDS_BREAKPOINT_QUERY = "(max-width: 768px)";
+
+let originalWidgetParent = null;
+let originalWidgetNextSibling = null;
+let mobileRewardsToggleBtn = null;
+let mobileRewardsCollapsible = null;
+let mobileMenuClassObserver = null;
 
 export function getTodayLocalYYYYMMDD() {
   const now = new Date();
@@ -133,6 +140,108 @@ function ensureRewardsWidgetShell() {
   document.body.appendChild(widget);
 }
 
+function collapseMobileRewardsPanel() {
+  if (!mobileRewardsToggleBtn || !mobileRewardsCollapsible) {
+    return;
+  }
+
+  mobileRewardsToggleBtn.setAttribute("aria-expanded", "false");
+  mobileRewardsCollapsible.classList.remove("is-open");
+}
+
+function ensureMobileRewardsSlot() {
+  const mobileMenuDrawer = document.querySelector("#mobile-menu-overlay .mobile-menu-drawer");
+  if (!mobileMenuDrawer) {
+    return null;
+  }
+
+  if (!mobileRewardsToggleBtn) {
+    mobileRewardsToggleBtn = document.createElement("button");
+    mobileRewardsToggleBtn.type = "button";
+    mobileRewardsToggleBtn.className = "mobile-menu-btn rewards-toggle";
+    mobileRewardsToggleBtn.textContent = "Recompensas😲💖";
+    mobileRewardsToggleBtn.setAttribute("aria-expanded", "false");
+  }
+
+  if (!mobileRewardsCollapsible) {
+    mobileRewardsCollapsible = document.createElement("div");
+    mobileRewardsCollapsible.className = "rewards-collapsible";
+  }
+
+  mobileRewardsToggleBtn.onclick = () => {
+    const isOpen = mobileRewardsCollapsible.classList.toggle("is-open");
+    mobileRewardsToggleBtn.setAttribute("aria-expanded", String(isOpen));
+  };
+
+  mobileMenuDrawer.appendChild(mobileRewardsToggleBtn);
+  mobileMenuDrawer.appendChild(mobileRewardsCollapsible);
+
+  return {
+    mobileMenuDrawer,
+    mobileRewardsCollapsible
+  };
+}
+
+function setupMobileMenuCollapseObserver() {
+  if (mobileMenuClassObserver) {
+    return;
+  }
+
+  const mobileMenuOverlay = document.getElementById("mobile-menu-overlay");
+  if (!mobileMenuOverlay) {
+    return;
+  }
+
+  mobileMenuClassObserver = new MutationObserver(() => {
+    const isMenuOpen = mobileMenuOverlay.classList.contains("active") && !mobileMenuOverlay.classList.contains("hidden");
+    if (!isMenuOpen) {
+      collapseMobileRewardsPanel();
+    }
+  });
+
+  mobileMenuClassObserver.observe(mobileMenuOverlay, {
+    attributes: true,
+    attributeFilter: ["class"]
+  });
+}
+
+function setupMobileRewardsInHamburger() {
+  const widget = document.getElementById("daily-chat-rewards-widget");
+  if (!widget) {
+    return;
+  }
+
+  if (!originalWidgetParent) {
+    originalWidgetParent = widget.parentNode;
+    originalWidgetNextSibling = widget.nextSibling;
+  }
+
+  const isMobile = window.matchMedia(MOBILE_REWARDS_BREAKPOINT_QUERY).matches;
+
+  if (isMobile) {
+    const mobileSlots = ensureMobileRewardsSlot();
+    if (!mobileSlots) {
+      return;
+    }
+
+    widget.classList.add("in-mobile-menu");
+    mobileSlots.mobileRewardsCollapsible.appendChild(widget);
+    setupMobileMenuCollapseObserver();
+    return;
+  }
+
+  collapseMobileRewardsPanel();
+  widget.classList.remove("in-mobile-menu");
+
+  if (originalWidgetParent) {
+    if (originalWidgetNextSibling && originalWidgetNextSibling.parentNode === originalWidgetParent) {
+      originalWidgetParent.insertBefore(widget, originalWidgetNextSibling);
+    } else {
+      originalWidgetParent.appendChild(widget);
+    }
+  }
+}
+
 export function renderRewardsWidget(streakCount = 0) {
   ensureRewardsWidgetShell();
 
@@ -212,4 +321,11 @@ export function initRewardsWidget() {
   ensureRewardsWidgetShell();
   const { streakCount } = getStoredRewardsState();
   renderRewardsWidget(streakCount);
+
+  if (!window.__mobileRewardsInHamburgerInitDone) {
+    window.addEventListener("resize", setupMobileRewardsInHamburger);
+    window.__mobileRewardsInHamburgerInitDone = true;
+  }
+
+  setupMobileRewardsInHamburger();
 }

@@ -185,6 +185,18 @@
   color: rgba(236, 198, 212, 0.86);
 }
 
+.rewards-collapsible {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 200ms ease, opacity 200ms ease;
+}
+
+.rewards-collapsible.is-open {
+  max-height: 600px;
+  opacity: 1;
+}
+
 @media (max-width: 1100px) {
   .daily-chat-rewards-widget {
     top: 76px;
@@ -195,16 +207,20 @@
 }
 
 @media (max-width: 768px) {
-  .daily-chat-rewards-widget {
-    /* Ajuste de posición mobile: se mueve bajo la barra superior para no tapar controles. */
-    top: 62px;
-    left: 10px;
-    right: 10px;
+  .daily-chat-rewards-widget.in-mobile-menu {
+    position: static;
+    top: auto;
+    left: auto;
+    right: auto;
     transform: none;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
-  .daily-chat-rewards-panel {
-    width: min(94vw, 340px);
+  .daily-chat-rewards-widget.in-mobile-menu .daily-chat-rewards-panel {
+    width: 100%;
+    max-width: 100%;
     min-height: 220px;
     padding: 10px;
   }
