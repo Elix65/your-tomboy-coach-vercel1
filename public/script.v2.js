@@ -118,6 +118,19 @@ document.addEventListener("click", (event) => {
 // CHAT YUMIKO (VERSIÓN ESTABLE + SUPABASE)
 // ===============================
 
+const MAX_MESSAGES_BEFORE_SUMMARY = 30;
+const CONTEXT_WINDOW_SIZE = 20;
+const STORAGE_KEYS = {
+  conversationId: "yumiko_conversation_id",
+  messages: "yumiko_messages",
+  summary: "yumiko_memory_summary"
+};
+
+let conversationId = null;
+let chatMessages = [];
+let memorySummary = "";
+const IS_DEV = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+
 // 1) Función para guardar mensajes en Supabase
 async function saveMessageToSupabase({ userId, sender, content }) {
   console.log("Intentando guardar mensaje:", { userId, sender, content });
@@ -176,6 +189,86 @@ function getRandomWelcomeMessage() {
   return WELCOME_MESSAGES[Math.floor(Math.random() * WELCOME_MESSAGES.length)];
 }
 
+function createConversationId() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `conv_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+}
+
+function roleFromSender(sender) {
+  return sender === "user" ? "user" : "assistant";
+}
+
+function senderFromRole(role) {
+  return role === "user" ? "user" : "bot";
+}
+
+function persistLocalChatState() {
+  try {
+    localStorage.setItem(STORAGE_KEYS.conversationId, conversationId || "");
+    localStorage.setItem(STORAGE_KEYS.messages, JSON.stringify(chatMessages));
+    localStorage.setItem(STORAGE_KEYS.summary, memorySummary || "");
+  } catch (error) {
+    console.warn("No se pudo persistir el chat en localStorage:", error);
+  }
+}
+
+function loadLocalChatState() {
+  try {
+    const storedConversationId = localStorage.getItem(STORAGE_KEYS.conversationId);
+    const storedMessages = localStorage.getItem(STORAGE_KEYS.messages);
+    const storedSummary = localStorage.getItem(STORAGE_KEYS.summary);
+
+    conversationId = storedConversationId || createConversationId();
+    chatMessages = storedMessages ? JSON.parse(storedMessages) : [];
+    memorySummary = storedSummary || "";
+  } catch (error) {
+    conversationId = createConversationId();
+    chatMessages = [];
+    memorySummary = "";
+    console.warn("No se pudo restaurar el chat local:", error);
+  }
+}
+
+function summarizeMessages(messages) {
+  return messages
+    .slice(-12)
+    .map((msg) => `${msg.role}: ${String(msg.content || "").slice(0, 180)}`)
+    .join("\n");
+}
+
+function trimChatContextIfNeeded() {
+  if (chatMessages.length <= MAX_MESSAGES_BEFORE_SUMMARY) return;
+
+  const overflowMessages = chatMessages.slice(0, chatMessages.length - CONTEXT_WINDOW_SIZE);
+  const overflowSummary = summarizeMessages(overflowMessages);
+
+  if (overflowSummary) {
+    memorySummary = memorySummary
+      ? `${memorySummary}\n${overflowSummary}`
+      : overflowSummary;
+  }
+
+  chatMessages = chatMessages.slice(-CONTEXT_WINDOW_SIZE);
+  persistLocalChatState();
+}
+
+function getRecentContextMessages() {
+  return chatMessages.slice(-CONTEXT_WINDOW_SIZE).map((msg) => ({
+    role: msg.role,
+    content: msg.content
+  }));
+}
+
+function addAndPersistMessage({ role, content, render = true, skipAnimation = false }) {
+  chatMessages.push({ role, content });
+  trimChatContextIfNeeded();
+  persistLocalChatState();
+
+  if (render) {
+    addMessage(content, senderFromRole(role), { skipAnimation });
+  }
+}
+
 // 2) Función para cargar historial desde Supabase
 async function loadChatFromSupabase(userId) {
   console.log("Cargando historial para userId:", userId);
@@ -191,19 +284,28 @@ async function loadChatFromSupabase(userId) {
     return;
   }
 
-  console.log("Historial cargado:", data);
-  console.log("userId:", userId, "tipo:", typeof userId);
+  if (chatMessages.length > 0) {
+    chatMessages.forEach((msg) => addMessage(msg.content, senderFromRole(msg.role), { skipAnimation: true }));
+    const lastUserLocal = [...chatMessages].reverse().find((m) => m.role === "user");
+    lastUserText = lastUserLocal?.content ?? null;
+    return;
+  }
+
   if (!data.length) {
     const welcome = getRandomWelcomeMessage();
-    addMessage(welcome, "bot");
+    addAndPersistMessage({ role: "assistant", content: welcome, render: true });
     await saveMessageToSupabase({ userId, sender: "bot", content: welcome });
     return;
   }
 
-  data.forEach(msg => addMessage(msg.content, msg.sender, { skipAnimation: true }));
+  chatMessages = data.map((msg) => ({ role: roleFromSender(msg.sender), content: msg.content }));
+  trimChatContextIfNeeded();
+  persistLocalChatState();
+
+  chatMessages.forEach((msg) => addMessage(msg.content, senderFromRole(msg.role), { skipAnimation: true }));
 
   // Setear el último mensaje del usuario para que "Regenerar" funcione al cargar historial
-  const lastUser = [...data].reverse().find(m => m.sender === "user");
+  const lastUser = [...chatMessages].reverse().find((m) => m.role === "user");
   lastUserText = lastUser?.content ?? null;
 }
 
@@ -307,6 +409,8 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
     return;
   }
 
+  loadLocalChatState();
+
   // Cargar historial del chat
   await loadChatFromSupabase(user.id);
   window.addEventListener("DOMContentLoaded", async () => {
@@ -322,7 +426,7 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
       const text = userInput.value.trim();
       if (!text) return;
 
-      addMessage(text, "user");
+      addAndPersistMessage({ role: "user", content: text, render: true });
 
       // Guardar el último mensaje del usuario (para regenerar)
       lastUserText = text;
@@ -341,10 +445,25 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
       typing.classList.remove("hidden");
 
       try {
+        const payload = {
+          conversationId,
+          message: text,
+          summary: memorySummary || null,
+          messages: getRecentContextMessages()
+        };
+
+        if (IS_DEV) {
+          console.log("[yumiko/front] enviando contexto", {
+            conversationId,
+            summaryIncluded: Boolean(payload.summary),
+            contextCount: payload.messages.length
+          });
+        }
+
         const res = await fetch("/api/yumiko", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: text })
+          body: JSON.stringify(payload)
         });
 
         if (!res.ok) {
@@ -352,7 +471,7 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
         }
 
         const data = await res.json();
-        addMessage(data.reply, "bot");
+        addAndPersistMessage({ role: "assistant", content: data.reply, render: true });
         updateStreakOnMessageSend(text);
 
         // Guardar mensaje del bot
@@ -367,7 +486,7 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
         yumikoSound.play();
 
       } catch (e) {
-        addMessage("Hubo un error al conectar con Yumiko.", "bot");
+        addAndPersistMessage({ role: "assistant", content: "Hubo un error al conectar con Yumiko.", render: true });
       }
 
       typing.classList.add("hidden");
@@ -390,7 +509,7 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
     if (regenBtn) {
       regenBtn.onclick = async () => {
         if (!lastUserText) {
-          addMessage("No hay ningún mensaje para regenerar todavía.", "bot");
+          addAndPersistMessage({ role: "assistant", content: "No hay ningún mensaje para regenerar todavía.", render: true });
           return;
         }
 
@@ -399,18 +518,39 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
 
         try {
           // 1) Generar nueva respuesta
+          const payload = {
+            conversationId,
+            message: lastUserText,
+            summary: memorySummary || null,
+            messages: getRecentContextMessages()
+          };
+
+          if (IS_DEV) {
+            console.log("[yumiko/front] regenerar contexto", {
+              conversationId,
+              summaryIncluded: Boolean(payload.summary),
+              contextCount: payload.messages.length
+            });
+          }
+
           const res = await fetch("/api/yumiko", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: lastUserText })
+            body: JSON.stringify(payload)
           });
 
           const data = await res.json();
           const reply = data?.reply ?? "…";
 
-          // 2) Reemplazar último bot en UI
+          // 2) Reemplazar último bot en UI y estado local
           removeLastBotFromUI();
-          addMessage(reply, "bot");
+          for (let i = chatMessages.length - 1; i >= 0; i -= 1) {
+            if (chatMessages[i].role === "assistant") {
+              chatMessages.splice(i, 1);
+              break;
+            }
+          }
+          addAndPersistMessage({ role: "assistant", content: reply, render: true });
 
           // 3) Persistir: borrar último bot en DB y guardar el nuevo (endpoint admin)
           const { data: { session } } = await supabaseClient.auth.getSession();
@@ -440,7 +580,7 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
           }
         } catch (e) {
           console.warn(e);
-          addMessage("Hubo un error al regenerar la respuesta.", "bot");
+          addAndPersistMessage({ role: "assistant", content: "Hubo un error al regenerar la respuesta.", render: true });
         } finally {
           typing?.classList.add("hidden");
         }
@@ -475,14 +615,18 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
           // 2) Limpiar UI y estado local
           chatBox.innerHTML = "";
           lastUserText = null;
+          chatMessages = [];
+          memorySummary = "";
+          conversationId = createConversationId();
+          persistLocalChatState();
 
           // 3) Mensaje inicial (opcional)
           const hello = getRandomWelcomeMessage();
-          addMessage(hello, "bot");
+          addAndPersistMessage({ role: "assistant", content: hello, render: true });
           await saveMessageToSupabase({ userId: user.id, sender: "bot", content: hello });
         } catch (e) {
           console.warn(e);
-          addMessage("No pude reiniciar el chat por un error.", "bot");
+          addAndPersistMessage({ role: "assistant", content: "No pude reiniciar el chat por un error.", render: true });
         } finally {
           typing?.classList.add("hidden");
         }
