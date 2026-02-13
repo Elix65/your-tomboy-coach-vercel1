@@ -11,8 +11,7 @@
 .daily-chat-rewards-panel {
   width: clamp(280px, 25vw, 320px);
   max-width: 320px;
-  min-height: 126px;
-  max-height: 210px;
+  min-height: 230px;
   padding: 12px 12px 10px;
   border-radius: 16px;
   border: 1px solid rgba(255, 119, 155, 0.28);
@@ -30,8 +29,8 @@
 
 .daily-chat-rewards-title {
   margin: 0 0 8px;
-  font-size: 1.45rem;
-  line-height: 1;
+  font-size: 1.3rem;
+  line-height: 1.1;
   letter-spacing: 0.2px;
 }
 
@@ -47,7 +46,6 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
 }
 
 .daily-chat-rewards-list {
@@ -55,10 +53,12 @@
   margin: 0;
   padding: 0;
   flex: 1;
-  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  overflow: hidden;
+  overflow: visible;
   background: rgba(4, 7, 18, 0.35);
 }
 
@@ -68,9 +68,9 @@
   justify-content: space-between;
   gap: 8px;
   min-height: 28px;
-  padding: 4px 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  font-size: 0.88rem;
+  padding: 6px 8px;
+  border-bottom: 0;
+  font-size: 14px;
   line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
@@ -90,6 +90,7 @@
 .daily-chat-rewards-lock {
   width: 16px;
   height: 16px;
+  display: block;
   object-fit: contain;
   filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.16));
 }
@@ -124,15 +125,16 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  align-self: stretch;
   gap: 2px;
   box-shadow: inset 0 0 14px rgba(255, 118, 163, 0.08);
   overflow: hidden;
 }
 
 .daily-chat-reward-gift-image {
-  width: 84px;
+  width: min(90px, 100%);
   height: auto;
-  max-width: 100%;
+  max-width: 90px;
   object-fit: contain;
   filter: drop-shadow(0 0 8px rgba(255, 95, 152, 0.35));
 }
@@ -180,8 +182,7 @@
 
   .daily-chat-rewards-panel {
     width: min(94vw, 340px);
-    min-height: 116px;
-    max-height: none;
+    min-height: 220px;
     padding: 10px;
   }
 }
