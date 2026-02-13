@@ -48,16 +48,18 @@ function ensureRewardsWidgetShell() {
 
   widget.innerHTML = `
     <div class="daily-chat-rewards-panel">
-      <h3 class="daily-chat-rewards-title">Daily Chat Rewards</h3>
       <div class="daily-chat-rewards-content">
-        <ul class="daily-chat-rewards-list" aria-live="polite"></ul>
+        <div class="daily-chat-rewards-main">
+          <h3 class="daily-chat-rewards-title">Daily Chat Rewards</h3>
+          <ul class="daily-chat-rewards-list" aria-live="polite"></ul>
+          <p class="daily-chat-rewards-helper">Chat for 7 days in a row to unlock a special reward!</p>
+        </div>
 
         <div class="daily-chat-reward-gift" id="daily-chat-reward-gift">
           <img src="${REWARDS_ASSETS.gift}" alt="Reward gift" class="daily-chat-reward-gift-image" />
           <span class="daily-chat-reward-gift-text">Reward!</span>
         </div>
       </div>
-      <p class="daily-chat-rewards-helper">Chat for 7 days in a row to unlock a special reward!</p>
     </div>
   `;
 
