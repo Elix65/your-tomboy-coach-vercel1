@@ -334,6 +334,7 @@ async function loadChatFromSupabase({ userId, conversationId: activeConversation
   if (error) {
     console.error("❌ Error cargando historial:", error);
     telemetryLog("load_messages_error", { userId, conversationId: activeConversationId, error: error.message });
+    addMessage("No pude sincronizar tus mensajes desde Supabase. Probá refrescar la página.", "bot", { skipAnimation: true });
     return;
   }
 
