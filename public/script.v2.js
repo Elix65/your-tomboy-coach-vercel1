@@ -188,6 +188,20 @@ const WELCOME_MESSAGES = [
 const TIME_COMMENT_COOLDOWN_MS = 6 * 60 * 60 * 1000;
 const TIME_COMMENT_PROBABILITY = 0.35;
 const SESSION_STORAGE_ID_KEY = "yumiko_time_session_id";
+const SESSION_NUDGE_STORAGE_KEY = "yumiko_session_nudges_v1";
+const LAST_ACTIVITY_STORAGE_KEY = "yumiko_last_activity_at";
+const GLOBAL_NUDGE_STORAGE_KEY = "yumiko_global_nudges_v1";
+const HELLO_NUDGE_COOLDOWN_MS = 12 * 60 * 60 * 1000;
+const REST_NUDGE_SOFT_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+const REST_NUDGE_STRONG_COOLDOWN_MS = 12 * 60 * 60 * 1000;
+const TOMORROW_FOLLOWUP_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const INACTIVITY_FOR_HELLO_MS = 2 * 60 * 60 * 1000;
+const HELLO_NUDGE_PROBABILITY = 0.25;
+const SOFT_REST_NUDGE_PROBABILITY = 0.35;
+const HELLO_NUDGE_TEXT = "Usuario-kun… ¿hacemos un reset de 60 segundos? 😳\nInhalá 4… exhalá 6… tres veces.\nAhora decime solo una cosa: ¿hoy estás más ‘tenso’ o más ‘cansado’? 🫧";
+const REST_NUDGE_SOFT_TEXT = "Usuario-kun… parece que ya llevamos un rato 😳 ¿Te sirve una pausa cortita de 10–15 min y volvemos? Yo me quedo aquí 🫶";
+const REST_NUDGE_STRONG_TEXT = "Usuario-kun… se siente muy tarde por allá… No te echo, solo me preocupo 😢\nSi quieres, hacemos un cierre suave y cuando vuelvas me dices ‘volví’, ¿sí?";
+const REST_NUDGE_REJECT_TEXT = "Está bien… me quedo contigo. Solo bajemos el ritmo: modo suave, ¿sí? 🫧";
 const TIME_SUGGESTIONS = {
   late_night: ["modo suave / respiración / baja brillo"],
   early_morning: ["un paso chiquito / agua / desayuno"],
@@ -222,6 +236,25 @@ const TIME_DIALOG_POOL = {
 };
 
 let timePersonalizationState = null;
+let currentUserId = null;
+let userSettingsCache = null;
+let sessionNudgeState = {
+  session_started_at: Date.now(),
+  messages_in_session: 0,
+  suppress_rest_nudges_for_session: false,
+  used_hello_nudge_this_session: false,
+  hello_nudge_pending_response: false,
+  rest_nudge_pending_response: false,
+  soft_rest_nudge_shown_this_session: false,
+  strong_rest_nudge_shown_this_session: false,
+  hello_nudge_eligible_by_activity: false,
+  initial_message_count: 0
+};
+
+function devNudgeLog(label, payload = {}) {
+  if (!IS_DEV) return;
+  console.log(`[yumiko/nudge] ${label}`, payload);
+}
 
 function getRandomWelcomeMessage() {
   return WELCOME_MESSAGES[Math.floor(Math.random() * WELCOME_MESSAGES.length)];
@@ -295,7 +328,190 @@ function getRandomItem(items = []) {
 
 function getTimeContextLine() {
   if (!timePersonalizationState) return null;
-  return `day_part: ${timePersonalizationState.dayPart}, time_bucket: ${timePersonalizationState.bucket}, timezone: ${timePersonalizationState.timezone}`;
+  return `day_part: ${timePersonalizationState.dayPart}, time_bucket: ${timePersonalizationState.bucket}`;
+}
+
+function persistSessionNudgeState() {
+  try {
+    sessionStorage.setItem(SESSION_NUDGE_STORAGE_KEY, JSON.stringify(sessionNudgeState));
+  } catch (error) {
+    devNudgeLog("session_state_persist_failed", { error: error?.message || error });
+  }
+}
+
+function loadSessionNudgeState() {
+  try {
+    const stored = sessionStorage.getItem(SESSION_NUDGE_STORAGE_KEY);
+    if (!stored) return;
+    const parsed = JSON.parse(stored);
+    sessionNudgeState = {
+      ...sessionNudgeState,
+      ...parsed
+    };
+  } catch (error) {
+    devNudgeLog("session_state_restore_failed", { error: error?.message || error });
+  }
+}
+
+function loadGlobalNudgeState() {
+  try {
+    return JSON.parse(localStorage.getItem(GLOBAL_NUDGE_STORAGE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function persistGlobalNudgeState(nextState) {
+  try {
+    localStorage.setItem(GLOBAL_NUDGE_STORAGE_KEY, JSON.stringify(nextState));
+  } catch (error) {
+    devNudgeLog("global_state_persist_failed", { error: error?.message || error });
+  }
+}
+
+function getLastActivityAt() {
+  const raw = Number(localStorage.getItem(LAST_ACTIVITY_STORAGE_KEY));
+  return Number.isFinite(raw) ? raw : null;
+}
+
+function markLastActivity(timestamp = Date.now()) {
+  try {
+    localStorage.setItem(LAST_ACTIVITY_STORAGE_KEY, String(timestamp));
+  } catch (error) {
+    devNudgeLog("last_activity_persist_failed", { error: error?.message || error });
+  }
+}
+
+function isGreetingMessage(text = "") {
+  const normalized = text.trim().toLowerCase();
+  return /^(hola+|holi+|hello+|buenas+|buen día|buen dia|hey+|hi+|qué onda|que onda|wenas+)\b/.test(normalized);
+}
+
+function isDeclineMessage(text = "") {
+  const normalized = text.trim().toLowerCase();
+  return /^(no|nop|nah|paso|ahora no|prefiero no|no quiero)\b/.test(normalized);
+}
+
+async function updateUserSettingsNudgeTimestamps(updates = {}) {
+  const hasKeys = Object.keys(updates).length > 0;
+  if (!hasKeys || !currentUserId) return;
+
+  const globalState = {
+    ...loadGlobalNudgeState(),
+    ...updates
+  };
+  persistGlobalNudgeState(globalState);
+
+  try {
+    await supabaseClient
+      .from("user_settings")
+      .upsert({ user_id: currentUserId, ...updates }, { onConflict: "user_id" });
+    userSettingsCache = {
+      ...(userSettingsCache || {}),
+      ...updates
+    };
+  } catch (error) {
+    devNudgeLog("user_settings_nudges_upsert_failed", { error: error?.message || error });
+  }
+}
+
+function canUseCooldown(isoTimestamp, cooldownMs) {
+  if (!isoTimestamp) return true;
+  const parsed = new Date(isoTimestamp).getTime();
+  if (!Number.isFinite(parsed)) return true;
+  return (Date.now() - parsed) >= cooldownMs;
+}
+
+function getMinutesInSession() {
+  return Math.floor((Date.now() - Number(sessionNudgeState.session_started_at || Date.now())) / 60000);
+}
+
+async function maybeSendHelloNudge({ text, userId }) {
+  const greeting = isGreetingMessage(text);
+  const isFirstMessage = sessionNudgeState.messages_in_session <= 1;
+  const eligibleByActivity = Boolean(sessionNudgeState.hello_nudge_eligible_by_activity);
+  const eligibleEntry = isFirstMessage || eligibleByActivity;
+  const lastHelloNudgeAt = userSettingsCache?.last_hello_nudge_at || loadGlobalNudgeState().last_hello_nudge_at;
+  const cooldownOk = canUseCooldown(lastHelloNudgeAt, HELLO_NUDGE_COOLDOWN_MS);
+  const probabilityOk = Math.random() < HELLO_NUDGE_PROBABILITY;
+
+  if (!greeting || !eligibleEntry || sessionNudgeState.used_hello_nudge_this_session || !cooldownOk || !probabilityOk) {
+    devNudgeLog("hello_nudge_skipped", { greeting, eligibleEntry, cooldownOk, probabilityOk });
+    return false;
+  }
+
+  addAndPersistMessage({ role: "assistant", content: HELLO_NUDGE_TEXT, render: true });
+  await saveMessageToSupabase({ userId, sender: "bot", content: HELLO_NUDGE_TEXT });
+
+  const nowIso = new Date().toISOString();
+  sessionNudgeState.used_hello_nudge_this_session = true;
+  sessionNudgeState.hello_nudge_pending_response = true;
+  persistSessionNudgeState();
+  await updateUserSettingsNudgeTimestamps({ last_hello_nudge_at: nowIso });
+  devNudgeLog("hello_nudge_sent", { nowIso, eligibleByActivity, isFirstMessage });
+  return true;
+}
+
+async function maybeSendRestNudge({ userId }) {
+  if (sessionNudgeState.suppress_rest_nudges_for_session) {
+    return;
+  }
+
+  const minutesInSession = getMinutesInSession();
+  const messageCount = Number(sessionNudgeState.messages_in_session || 0);
+  const dayPart = timePersonalizationState?.dayPart || "neutral";
+
+  const strongCandidate = dayPart === "madrugada" && (minutesInSession >= 60 || messageCount >= 80);
+  if (strongCandidate && !sessionNudgeState.strong_rest_nudge_shown_this_session) {
+    const globalNudgeState = loadGlobalNudgeState();
+    const lastStrongAt = userSettingsCache?.last_strong_rest_nudge_at || globalNudgeState.last_strong_rest_nudge_at;
+    const lastTomorrowAt = userSettingsCache?.last_tomorrow_followup_at || globalNudgeState.last_tomorrow_followup_at;
+    if (canUseCooldown(lastStrongAt, REST_NUDGE_STRONG_COOLDOWN_MS) && canUseCooldown(lastTomorrowAt, TOMORROW_FOLLOWUP_COOLDOWN_MS)) {
+      addAndPersistMessage({ role: "assistant", content: REST_NUDGE_STRONG_TEXT, render: true });
+      await saveMessageToSupabase({ userId, sender: "bot", content: REST_NUDGE_STRONG_TEXT });
+      sessionNudgeState.strong_rest_nudge_shown_this_session = true;
+      sessionNudgeState.rest_nudge_pending_response = true;
+      persistSessionNudgeState();
+      const nowIso = new Date().toISOString();
+      await updateUserSettingsNudgeTimestamps({
+        last_strong_rest_nudge_at: nowIso,
+        last_rest_nudge_at: nowIso,
+        last_tomorrow_followup_at: nowIso
+      });
+      devNudgeLog("rest_nudge_strong_sent", { minutesInSession, messageCount });
+      return;
+    }
+  }
+
+  if (sessionNudgeState.soft_rest_nudge_shown_this_session) {
+    return;
+  }
+
+  const signals = [
+    dayPart === "noche" || dayPart === "madrugada",
+    minutesInSession >= 25 || messageCount >= 30,
+    false
+  ];
+  const softSignals = signals.filter(Boolean).length;
+  const softCandidate = softSignals >= 2 && Math.random() < SOFT_REST_NUDGE_PROBABILITY;
+  if (!softCandidate) {
+    return;
+  }
+
+  const lastSoftAt = userSettingsCache?.last_rest_nudge_at || loadGlobalNudgeState().last_rest_nudge_at;
+  if (!canUseCooldown(lastSoftAt, REST_NUDGE_SOFT_COOLDOWN_MS)) {
+    return;
+  }
+
+  addAndPersistMessage({ role: "assistant", content: REST_NUDGE_SOFT_TEXT, render: true });
+  await saveMessageToSupabase({ userId, sender: "bot", content: REST_NUDGE_SOFT_TEXT });
+  sessionNudgeState.soft_rest_nudge_shown_this_session = true;
+  sessionNudgeState.rest_nudge_pending_response = true;
+  persistSessionNudgeState();
+
+  const nowIso = new Date().toISOString();
+  await updateUserSettingsNudgeTimestamps({ last_rest_nudge_at: nowIso });
+  devNudgeLog("rest_nudge_soft_sent", { minutesInSession, messageCount, dayPart, softSignals });
 }
 
 function refreshRuntimeTimeContext() {
@@ -329,7 +545,7 @@ async function refreshTimePersonalizationState(userId) {
   try {
     const { data: settingsRow, error } = await supabaseClient
       .from("user_settings")
-      .select("personalize_by_time,last_time_comment_at,last_time_comment_bucket,last_session_id")
+      .select("personalize_by_time,last_time_comment_at,last_time_comment_bucket,last_session_id,last_hello_nudge_at,last_rest_nudge_at,last_strong_rest_nudge_at,last_tomorrow_followup_at")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -359,6 +575,8 @@ async function refreshTimePersonalizationState(userId) {
       bucketChanged
     };
 
+    userSettingsCache = settingsRow || {};
+
     await supabaseClient
       .from("user_settings")
       .upsert({
@@ -378,6 +596,7 @@ async function refreshTimePersonalizationState(userId) {
       shouldCommentTime: false,
       bucketChanged: false
     };
+    userSettingsCache = loadGlobalNudgeState();
   }
 
   return timePersonalizationState;
@@ -439,6 +658,29 @@ function loadLocalChatSnapshot() {
     memorySummary = "";
     console.warn("No se pudo restaurar snapshot local:", error);
   }
+}
+
+function initializeSessionNudgeState() {
+  loadSessionNudgeState();
+  const now = Date.now();
+  const lastActivityAt = getLastActivityAt();
+  const inactiveLongEnough = Boolean(lastActivityAt && (now - lastActivityAt) > INACTIVITY_FOR_HELLO_MS);
+
+  sessionNudgeState.session_started_at = now;
+  sessionNudgeState.messages_in_session = 0;
+  sessionNudgeState.suppress_rest_nudges_for_session = false;
+  sessionNudgeState.used_hello_nudge_this_session = false;
+  sessionNudgeState.hello_nudge_pending_response = false;
+  sessionNudgeState.rest_nudge_pending_response = false;
+  sessionNudgeState.soft_rest_nudge_shown_this_session = false;
+  sessionNudgeState.strong_rest_nudge_shown_this_session = false;
+  sessionNudgeState.hello_nudge_eligible_by_activity = inactiveLongEnough;
+  sessionNudgeState.initial_message_count = chatMessages.length;
+  persistSessionNudgeState();
+  devNudgeLog("session_nudge_initialized", {
+    inactiveLongEnough,
+    initialMessageCount: chatMessages.length
+  });
 }
 
 function summarizeMessages(messages) {
@@ -649,8 +891,12 @@ async function sendMessage(user) {
   const text = userInput.value.trim();
   if (!text) return;
 
+  sessionNudgeState.messages_in_session += 1;
+  persistSessionNudgeState();
+
   addAndPersistMessage({ role: "user", content: text, render: true });
   lastUserText = text;
+  markLastActivity();
 
   await saveMessageToSupabase({
     userId: user.id,
@@ -658,6 +904,28 @@ async function sendMessage(user) {
     content: text
   });
   telemetryLog("message_saved", { userId: user.id, role: "user" });
+
+  if ((sessionNudgeState.hello_nudge_pending_response || sessionNudgeState.rest_nudge_pending_response) && isDeclineMessage(text)) {
+    sessionNudgeState.suppress_rest_nudges_for_session = true;
+    sessionNudgeState.hello_nudge_pending_response = false;
+    sessionNudgeState.rest_nudge_pending_response = false;
+    persistSessionNudgeState();
+    addAndPersistMessage({ role: "assistant", content: REST_NUDGE_REJECT_TEXT, render: true });
+    await saveMessageToSupabase({ userId: user.id, sender: "bot", content: REST_NUDGE_REJECT_TEXT });
+    devNudgeLog("rest_nudge_rejected_by_user", { reason: "declined_after_nudge" });
+  } else if (sessionNudgeState.hello_nudge_pending_response || sessionNudgeState.rest_nudge_pending_response) {
+    sessionNudgeState.hello_nudge_pending_response = false;
+    sessionNudgeState.rest_nudge_pending_response = false;
+    persistSessionNudgeState();
+  }
+
+  const helloNudgeSent = await maybeSendHelloNudge({ text, userId: user.id });
+  if (helloNudgeSent) {
+    markLastActivity();
+    userInput.value = "";
+    setYumikoState("idle");
+    return;
+  }
 
   userInput.value = "";
   setYumikoState("idle");
@@ -701,6 +969,8 @@ async function sendMessage(user) {
     });
     telemetryLog("message_saved", { userId: user.id, role: "assistant" });
 
+    await maybeSendRestNudge({ userId: user.id });
+
     const yumikoSound = document.getElementById("yumiko-sound");
     if (yumikoSound) {
       yumikoSound.currentTime = 0;
@@ -712,6 +982,7 @@ async function sendMessage(user) {
   } finally {
     typing?.classList.add("hidden");
     setYumikoState("idle");
+    markLastActivity();
   }
 }
 
@@ -882,15 +1153,18 @@ async function initializeChatSession() {
     return;
   }
 
+  currentUserId = user.id;
   await refreshTimePersonalizationState(user.id);
 
   loadLocalChatSnapshot();
+  initializeSessionNudgeState();
   if (chatMessages.length > 0) {
     renderChatMessagesFromState();
     telemetryLog("render_snapshot", { userId: user.id, loadedCount: chatMessages.length });
   }
 
   await loadChatFromSupabase({ userId: user.id });
+  markLastActivity();
   await loadActiveSkinBackground(user);
   bindChatEventListeners(user);
 }
