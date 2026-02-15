@@ -29,6 +29,12 @@ function showBackToLogin() {
   backToLogin?.classList.remove('hidden');
 }
 
+function setFormVisible(visible) {
+  newPasswordInput?.classList.toggle('hidden', !visible);
+  confirmPasswordInput?.classList.toggle('hidden', !visible);
+  saveBtn?.classList.toggle('hidden', !visible);
+}
+
 function setFormEnabled(enabled) {
   if (newPasswordInput) {
     newPasswordInput.disabled = !enabled;
@@ -44,6 +50,7 @@ function setFormEnabled(enabled) {
 function markFlowReady() {
   canResetPassword = true;
   expiredShown = false;
+  setFormVisible(true);
   setFormEnabled(true);
   messageBox?.classList.add('hidden');
 }
@@ -51,16 +58,51 @@ function markFlowReady() {
 function showExpiredState() {
   expiredShown = true;
   canResetPassword = false;
+  setFormVisible(false);
   setFormEnabled(false);
   showMessage(EXPIRED_MESSAGE);
   showBackToLogin();
 }
 
+function isOtpExpiredError(error) {
+  if (!error) {
+    return false;
+  }
+
+  const raw = `${error.code || ''} ${error.message || ''}`.toLowerCase();
+  return raw.includes('otp_expired');
+}
+
 async function initRecoveryFlow() {
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  const errorCode = params.get('error_code');
+  const errorDescription = params.get('error_description');
+
+  console.log('[reset] params', { code: !!code, error_code: errorCode, href: location.href });
+
+  setFormVisible(false);
   setFormEnabled(false);
+
+  if (errorCode) {
+    showMessage(errorDescription || EXPIRED_MESSAGE);
+    showBackToLogin();
+    return;
+  }
+
+  if (code) {
+    const { error } = await supabaseClient.auth.exchangeCodeForSession(code);
+
+    if (error) {
+      console.error('Reset password exchange code error:', error.message);
+      showExpiredState();
+      return;
+    }
+  }
 
   try {
     const { data, error } = await supabaseClient.auth.getSession();
+    console.log('[reset] session?', !!data?.session);
 
     if (error) {
       console.error('Reset password session error:', error.message);
@@ -73,22 +115,7 @@ async function initRecoveryFlow() {
     console.error('Reset password session error:', error?.message || error);
   }
 
-  supabaseClient.auth.onAuthStateChange((event, session) => {
-    if (event === 'PASSWORD_RECOVERY' || session) {
-      markFlowReady();
-      return;
-    }
-
-    if (!session && !canResetPassword && !expiredShown) {
-      showExpiredState();
-    }
-  });
-
-  window.setTimeout(() => {
-    if (!canResetPassword && !expiredShown) {
-      showExpiredState();
-    }
-  }, 1200);
+  showExpiredState();
 }
 
 saveBtn?.addEventListener('click', async () => {
@@ -119,17 +146,20 @@ saveBtn?.addEventListener('click', async () => {
 
     if (error) {
       console.error('Reset password update error:', error.message);
-      showMessage(EXPIRED_MESSAGE);
+      showMessage(isOtpExpiredError(error) ? EXPIRED_MESSAGE : error.message);
       showBackToLogin();
       return;
     }
 
     showMessage(SUCCESS_MESSAGE, 'success');
     showBackToLogin();
+    expiredShown = false;
+    canResetPassword = false;
+    setFormVisible(false);
     setFormEnabled(false);
   } catch (error) {
     console.error('Reset password update error:', error?.message || error);
-    showMessage(EXPIRED_MESSAGE);
+    showMessage(isOtpExpiredError(error) ? EXPIRED_MESSAGE : (error?.message || 'No se pudo actualizar la contraseña.'));
     showBackToLogin();
   } finally {
     saveBtn.textContent = originalLabel;
