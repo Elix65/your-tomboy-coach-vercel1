@@ -13,13 +13,19 @@
 <body>
 
   <div id="login-container">
-    <h2 class="login-title">Entrar al Dojo</h2>
+    <h2 id="login-title" class="login-title">Entrar al Dojo</h2>
+    <p id="recovery-copy" class="login-copy hidden">Pon tu email y te envío un enlace para crear una nueva. Yo te espero aquí… 😳</p>
 
     <input id="email" type="email" placeholder="Email" autocomplete="email">
     <input id="password" type="password" placeholder="Contraseña" autocomplete="current-password">
 
     <button id="btn-login" class="login-btn">Iniciar sesión</button>
     <button id="btn-register" class="login-btn secondary">Registrarse</button>
+
+    <button id="btn-send-reset" class="login-btn hidden" type="button">Enviar enlace</button>
+    <button id="btn-reset-back" class="login-btn secondary hidden" type="button">Volver</button>
+
+    <button id="forgot-password-link" class="text-link" type="button">¿Olvidaste tu contraseña…?</button>
 
     <p id="login-error" class="login-error hidden"></p>
   </div>
