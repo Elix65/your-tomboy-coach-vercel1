@@ -12,17 +12,6 @@ function goWithTransition(url) {
 }
 
 
-
-supabaseClient.auth.getUser().then(({ data: { user } }) => {
-  if (!user) {
-    window.location.href = "/login.html";
-    return;
-  }
-
-  // mostrar UI
-});
-
-
 // ===============================
 // NAVEGACIÓN TOP BAR
 // ===============================
@@ -273,6 +262,7 @@ function addAndPersistMessage({ role, content, render = true, skipAnimation = fa
 
 // 2) Función para cargar historial desde Supabase
 function renderChatMessagesFromState() {
+  if (!chatBox) return;
   chatBox.innerHTML = "";
   chatMessages.forEach((msg) => addMessage(msg.content, senderFromRole(msg.role), { skipAnimation: true }));
   const lastUserLocal = [...chatMessages].reverse().find((m) => m.role === "user");
@@ -329,11 +319,11 @@ const YUMIKO_THINK_URL = "https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/ob
   preloadImg.src = src;
 });
 
-const chatBox = document.getElementById("chat-box");
-const userInput = document.getElementById("user-input");
-const sendBtn = document.getElementById("send-btn");
-const regenBtn = document.getElementById("regenerate-btn");
-const resetBtn = document.getElementById("reset-chat");
+let chatBox;
+let userInput;
+let sendBtn;
+let regenBtn;
+let resetBtn;
 
 let lastUserText = null;
 
@@ -377,6 +367,8 @@ function addMessage(text, sender, options = {}) {
 
   bubble.textContent = text;
 
+  if (!chatBox) return;
+
   msg.appendChild(bubble);
   chatBox.appendChild(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
@@ -385,7 +377,20 @@ function addMessage(text, sender, options = {}) {
 // ===============================
 // EVENTOS DE INPUT
 // ===============================
-if (userInput) {
+function cacheChatDomElements() {
+  chatBox = document.getElementById("chat-box");
+  userInput = document.getElementById("user-input");
+  sendBtn = document.getElementById("send-btn");
+  regenBtn = document.getElementById("regenerate-btn");
+  resetBtn = document.getElementById("reset-chat");
+}
+
+function registerInputListeners() {
+  if (!userInput) {
+    console.warn("No se encontró #user-input. El envío por Enter no estará disponible.");
+    return;
+  }
+
   setYumikoState("idle");
 
   userInput.addEventListener("focus", () => setYumikoState("thinking"));
@@ -403,7 +408,7 @@ if (userInput) {
   userInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      sendBtn.click();
+      if (sendBtn) sendBtn.click();
       setTimeout(() => setYumikoState("idle"), 60);
     }
   });
@@ -412,7 +417,222 @@ if (userInput) {
 // ===============================
 // OBTENER USER Y CARGAR HISTORIAL
 // ===============================
-supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
+async function sendMessage(user) {
+  if (!userInput) {
+    console.warn("sendMessage: user-input no existe en el DOM.");
+    return;
+  }
+
+  const text = userInput.value.trim();
+  if (!text) return;
+
+  addAndPersistMessage({ role: "user", content: text, render: true });
+  lastUserText = text;
+
+  await saveMessageToSupabase({
+    userId: user.id,
+    sender: "user",
+    content: text
+  });
+  telemetryLog("message_saved", { userId: user.id, role: "user" });
+
+  userInput.value = "";
+  setYumikoState("idle");
+
+  const typing = document.getElementById("typing");
+  typing?.classList.remove("hidden");
+
+  try {
+    const payload = {
+      message: text,
+      summary: memorySummary || null,
+      messages: getRecentContextMessages()
+    };
+
+    if (IS_DEV) {
+      console.log("[yumiko/front] enviando contexto", {
+        summaryIncluded: Boolean(payload.summary),
+        contextCount: payload.messages.length
+      });
+    }
+
+    const res = await fetch("/api/yumiko", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      throw new Error(`yumiko request failed with status ${res.status}`);
+    }
+
+    const data = await res.json();
+    addAndPersistMessage({ role: "assistant", content: data.reply, render: true });
+    updateStreakOnMessageSend(text);
+
+    await saveMessageToSupabase({
+      userId: user.id,
+      sender: "bot",
+      content: data.reply
+    });
+    telemetryLog("message_saved", { userId: user.id, role: "assistant" });
+
+    const yumikoSound = document.getElementById("yumiko-sound");
+    if (yumikoSound) {
+      yumikoSound.currentTime = 0;
+      yumikoSound.play();
+    }
+  } catch (e) {
+    console.error("Error al conectar con Yumiko:", e?.message || e);
+    addAndPersistMessage({ role: "assistant", content: "Hubo un error al conectar con Yumiko.", render: true });
+  } finally {
+    typing?.classList.add("hidden");
+    setYumikoState("idle");
+  }
+}
+
+function removeLastBotFromUI() {
+  const bots = chatBox?.querySelectorAll(".message.bot") || [];
+  const lastBot = bots?.length ? bots[bots.length - 1] : null;
+  if (lastBot) lastBot.remove();
+}
+
+async function regenerateResponse(user) {
+  if (!lastUserText) {
+    addAndPersistMessage({ role: "assistant", content: "No hay ningún mensaje para regenerar todavía.", render: true });
+    return;
+  }
+
+  const typing = document.getElementById("typing");
+  typing?.classList.remove("hidden");
+
+  try {
+    const payload = {
+      message: lastUserText,
+      summary: memorySummary || null,
+      messages: getRecentContextMessages()
+    };
+
+    if (IS_DEV) {
+      console.log("[yumiko/front] regenerando contexto", {
+        summaryIncluded: Boolean(payload.summary),
+        contextCount: payload.messages.length
+      });
+    }
+
+    const r = await fetch("/api/yumiko", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    if (!r.ok) throw new Error(`yumiko request failed with status ${r.status}`);
+    const d = await r.json();
+    const reply = d?.reply || "Hmm… me quedé sin palabras. ¿Me repetís?";
+
+    removeLastBotFromUI();
+    for (let i = chatMessages.length - 1; i >= 0; i--) {
+      if (chatMessages[i].role === "assistant") {
+        chatMessages.splice(i, 1);
+        break;
+      }
+    }
+    addAndPersistMessage({ role: "assistant", content: reply, render: true });
+
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const token = session?.access_token;
+
+    const r2 = await fetch("/api/regenerate-last", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ user_id: user.id, new_reply: reply })
+    });
+
+    if (!r2.ok) {
+      const err = await r2.json().catch(() => ({}));
+      console.warn("regenerate-last falló:", err?.error || err);
+      await saveMessageToSupabase({ userId: user.id, sender: "bot", content: reply });
+      showChatFeedback("No pude regenerar en servidor, pero guardé la nueva respuesta localmente.");
+    }
+
+    const yumikoSound = document.getElementById("yumiko-sound");
+    if (yumikoSound) {
+      yumikoSound.currentTime = 0;
+      yumikoSound.play();
+    }
+  } catch (e) {
+    console.error("Error regenerando mensaje:", e?.message || e);
+    addAndPersistMessage({ role: "assistant", content: "Hubo un error al regenerar la respuesta.", render: true });
+  } finally {
+    typing?.classList.add("hidden");
+  }
+}
+
+async function resetChat(user) {
+  const typing = document.getElementById("typing");
+  typing?.classList.remove("hidden");
+
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const token = session?.access_token;
+
+    const r = await fetch("/api/reset-chat", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ user_id: user.id })
+    });
+
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      console.warn("reset-chat falló:", err?.error || err);
+      showChatFeedback("No pude reiniciar el chat en Supabase. Intentá nuevamente.");
+    }
+
+    if (chatBox) chatBox.innerHTML = "";
+    lastUserText = null;
+    chatMessages = [];
+    memorySummary = "";
+    persistLocalChatSnapshot();
+
+    const hello = getRandomWelcomeMessage();
+    addAndPersistMessage({ role: "assistant", content: hello, render: true });
+    await saveMessageToSupabase({ userId: user.id, sender: "bot", content: hello });
+  } catch (e) {
+    console.error("Error reiniciando chat:", e?.message || e);
+    addAndPersistMessage({ role: "assistant", content: "No pude reiniciar el chat por un error.", render: true });
+  } finally {
+    typing?.classList.add("hidden");
+  }
+}
+
+function bindChatEventListeners(user) {
+  if (sendBtn) {
+    sendBtn.addEventListener("click", () => sendMessage(user));
+  } else {
+    console.warn("No se encontró #send-btn. El envío por botón no estará disponible.");
+  }
+
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => resetChat(user));
+  } else {
+    console.warn("No se encontró #reset-chat. El reinicio por botón no estará disponible.");
+  }
+
+  if (regenBtn) {
+    regenBtn.addEventListener("click", () => regenerateResponse(user));
+  } else {
+    console.warn("No se encontró #regenerate-btn. La regeneración por botón no estará disponible.");
+  }
+}
+
+async function initializeChatSession() {
+  const { data: { user } } = await supabaseClient.auth.getUser();
   if (!user) {
     window.location.href = "/login.html";
     return;
@@ -424,224 +644,10 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
     telemetryLog("render_snapshot", { userId: user.id, loadedCount: chatMessages.length });
   }
 
-  // Revalidación contra DB (source of truth)
   await loadChatFromSupabase({ userId: user.id });
-  await loadActiveSkinBackground();
-
-  // Activar botón de enviar
-  if (sendBtn) {
-    sendBtn.onclick = async () => {
-      const text = userInput.value.trim();
-      if (!text) return;
-
-      addAndPersistMessage({ role: "user", content: text, render: true });
-
-      // Guardar el último mensaje del usuario (para regenerar)
-      lastUserText = text;
-
-      // Guardar mensaje del usuario
-      await saveMessageToSupabase({
-        userId: user.id,
-        sender: "user",
-        content: text
-      });
-      telemetryLog("message_saved", { userId: user.id, role: "user" });
-
-      userInput.value = "";
-      setYumikoState("idle");
-
-      const typing = document.getElementById("typing");
-      typing.classList.remove("hidden");
-
-      try {
-        const payload = {
-          message: text,
-          summary: memorySummary || null,
-          messages: getRecentContextMessages()
-        };
-
-        if (IS_DEV) {
-          console.log("[yumiko/front] enviando contexto", {
-            summaryIncluded: Boolean(payload.summary),
-            contextCount: payload.messages.length
-          });
-        }
-
-        const res = await fetch("/api/yumiko", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) {
-          throw new Error(`yumiko request failed with status ${res.status}`);
-        }
-
-        const data = await res.json();
-        addAndPersistMessage({ role: "assistant", content: data.reply, render: true });
-        updateStreakOnMessageSend(text);
-
-        // Guardar mensaje del bot
-        await saveMessageToSupabase({
-          userId: user.id,
-          sender: "bot",
-          content: data.reply
-        });
-        telemetryLog("message_saved", { userId: user.id, role: "assistant" });
-
-        const yumikoSound = document.getElementById("yumiko-sound");
-        yumikoSound.currentTime = 0;
-        yumikoSound.play();
-
-      } catch (e) {
-        console.error("Error al conectar con Yumiko:", e?.message || e);
-        addAndPersistMessage({ role: "assistant", content: "Hubo un error al conectar con Yumiko.", render: true });
-      }
-
-      typing.classList.add("hidden");
-      setYumikoState("idle");
-    };
-
-
-    // ===============================
-    // REGENERAR / REINICIAR (PERSISTE AL F5)
-    // ===============================
-
-    // Helper: borra el último mensaje del bot en UI (para reemplazarlo al regenerar)
-    function removeLastBotFromUI() {
-      const bots = chatBox.querySelectorAll(".message.bot");
-      const lastBot = bots?.length ? bots[bots.length - 1] : null;
-      if (lastBot) lastBot.remove();
-    }
-
-    // REGENERAR: vuelve a pedir respuesta a /api/yumiko y actualiza DB via /api/regenerate-last
-    if (regenBtn) {
-      regenBtn.onclick = async () => {
-        if (!lastUserText) {
-          addAndPersistMessage({ role: "assistant", content: "No hay ningún mensaje para regenerar todavía.", render: true });
-          return;
-        }
-
-        const typing = document.getElementById("typing");
-        typing?.classList.remove("hidden");
-
-        try {
-          // 1) Generar nueva respuesta
-          const payload = {
-            message: lastUserText,
-            summary: memorySummary || null,
-            messages: getRecentContextMessages()
-          };
-
-          if (IS_DEV) {
-            console.log("[yumiko/front] regenerar contexto", {
-              summaryIncluded: Boolean(payload.summary),
-              contextCount: payload.messages.length
-            });
-          }
-
-          const res = await fetch("/api/yumiko", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-          });
-
-          const data = await res.json();
-          const reply = data?.reply ?? "…";
-
-          // 2) Reemplazar último bot en UI y estado local
-          removeLastBotFromUI();
-          for (let i = chatMessages.length - 1; i >= 0; i -= 1) {
-            if (chatMessages[i].role === "assistant") {
-              chatMessages.splice(i, 1);
-              break;
-            }
-          }
-          addAndPersistMessage({ role: "assistant", content: reply, render: true });
-
-          // 3) Persistir: borrar último bot en DB y guardar el nuevo (endpoint admin)
-          const { data: { session } } = await supabaseClient.auth.getSession();
-          const token = session?.access_token;
-
-          const r2 = await fetch("/api/regenerate-last", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify({ user_id: user.id, new_reply: reply })
-          });
-
-          if (!r2.ok) {
-            const err = await r2.json().catch(() => ({}));
-            console.warn("regenerate-last falló:", err?.error || err);
-            // fallback (duplica, pero no rompe)
-            await saveMessageToSupabase({ userId: user.id, sender: "bot", content: reply });
-            showChatFeedback("No pude regenerar en servidor, pero guardé la nueva respuesta localmente.");
-          }
-
-          // sonido (si existe)
-          const yumikoSound = document.getElementById("yumiko-sound");
-          if (yumikoSound) {
-            yumikoSound.currentTime = 0;
-            yumikoSound.play();
-          }
-        } catch (e) {
-          console.error("Error regenerando mensaje:", e?.message || e);
-          addAndPersistMessage({ role: "assistant", content: "Hubo un error al regenerar la respuesta.", render: true });
-        } finally {
-          typing?.classList.add("hidden");
-        }
-      };
-    }
-
-    // REINICIAR CHAT: borra DB via /api/reset-chat y limpia UI
-    if (resetBtn) {
-      resetBtn.onclick = async () => {
-        const typing = document.getElementById("typing");
-        typing?.classList.remove("hidden");
-
-        try {
-          // 1) Borrado real en DB
-          const { data: { session } } = await supabaseClient.auth.getSession();
-          const token = session?.access_token;
-
-          const r = await fetch("/api/reset-chat", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`
-            },
-            body: JSON.stringify({ user_id: user.id })
-          });
-
-          if (!r.ok) {
-            const err = await r.json().catch(() => ({}));
-            console.warn("reset-chat falló:", err?.error || err);
-            showChatFeedback("No pude reiniciar el chat en Supabase. Intentá nuevamente.");
-          }
-
-          // 2) Limpiar UI y estado local
-          chatBox.innerHTML = "";
-          lastUserText = null;
-          chatMessages = [];
-          memorySummary = "";
-          persistLocalChatSnapshot();
-
-          // 3) Mensaje inicial (opcional)
-          const hello = getRandomWelcomeMessage();
-          addAndPersistMessage({ role: "assistant", content: hello, render: true });
-          await saveMessageToSupabase({ userId: user.id, sender: "bot", content: hello });
-        } catch (e) {
-          console.error("Error reiniciando chat:", e?.message || e);
-          addAndPersistMessage({ role: "assistant", content: "No pude reiniciar el chat por un error.", render: true });
-        } finally {
-          typing?.classList.add("hidden");
-        }
-      };
-    }
-  }
-});
+  await loadActiveSkinBackground(user);
+  bindChatEventListeners(user);
+}
 
 // ===============================
 // INVENTARIO (PANEL ANIMADO)
@@ -691,28 +697,91 @@ function applyChatBackground(url) {
   bg.style.opacity = "0.18";
 }
 
+async function loadActiveSkinBackground(user) {
+  if (!user) return;
+
+  try {
+    let activeSkinId = null;
+
+    const { data: settingsRow, error: settingsError } = await supabaseClient
+      .from("user_settings")
+      .select("active_skin_id")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (settingsError) {
+      console.warn("No se pudo leer user_settings para skin activa:", settingsError.message || settingsError);
+    } else {
+      activeSkinId = settingsRow?.active_skin_id || null;
+    }
+
+    if (!activeSkinId) {
+      const { data: fallbackSkin, error: fallbackError } = await supabaseClient
+        .from("user_skins")
+        .select("skin_id,is_active,updated_at")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (fallbackError) {
+        console.warn("No se pudo leer fallback de user_skins para skin activa:", fallbackError.message || fallbackError);
+      } else {
+        activeSkinId = fallbackSkin?.skin_id || null;
+      }
+    }
+
+    if (!activeSkinId) {
+      applyChatBackground(null);
+      return;
+    }
+
+    const { data: skinRow, error: skinError } = await supabaseClient
+      .from("skins")
+      .select("imagen_url")
+      .eq("id", activeSkinId)
+      .maybeSingle();
+
+    if (skinError) {
+      console.warn("No se pudo cargar la imagen de la skin activa:", skinError.message || skinError);
+      applyChatBackground(null);
+      return;
+    }
+
+    applyChatBackground(skinRow?.imagen_url || null);
+  } catch (error) {
+    console.warn("loadActiveSkinBackground falló; usando fondo default.", error);
+    applyChatBackground(null);
+  }
+}
+
 async function setActiveSkinBackground(skinId) {
   if (!skinId) return;
 
   const { data: { user } } = await supabaseClient.auth.getUser();
   if (!user) return;
 
-  const res = await fetch("/api/set-active-skin", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      user_id: user.id,
-      skin_id: skinId
-    })
-  });
+  try {
+    const res = await fetch("/api/set-active-skin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        user_id: user.id,
+        skin_id: skinId
+      })
+    });
 
-  const data = await res.json();
-  if (!res.ok) {
-    console.warn("set-active-skin error:", data);
-    return;
+    const data = await res.json();
+    if (!res.ok) {
+      console.warn("set-active-skin error:", data);
+      return;
+    }
+
+    applyChatBackground(data.imagen_url);
+  } catch (error) {
+    console.warn("setActiveSkinBackground falló; mantengo el chat operativo.", error);
   }
-
-  applyChatBackground(data.imagen_url);
 }
 
 if (btnInventario) {
@@ -736,8 +805,12 @@ async function initializeUI() {
 // AUDIO + PARALLAX + INICIALIZACIÓN
 // ===============================
 window.addEventListener("DOMContentLoaded", async () => {
+  cacheChatDomElements();
+  registerInputListeners();
+
   initRewardsWidget();
   await initializeUI();
+  await initializeChatSession();
 
   const ambienceIntro = document.getElementById("ambience-intro");
   const ambienceLoop = document.getElementById("ambience-loop");
