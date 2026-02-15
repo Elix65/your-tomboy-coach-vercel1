@@ -54,60 +54,178 @@ if (currentPage.includes("index") || currentPage.includes("gacha")) {
 // LOGIN
 // ===============================
 const loginBtn = document.getElementById("btn-login");
+const registerBtn = document.getElementById("btn-register");
+const passwordInput = document.getElementById("password");
+const emailInput = document.getElementById("email");
+const errorBox = document.getElementById("login-error");
+const forgotPasswordLink = document.getElementById("forgot-password-link");
+const sendResetBtn = document.getElementById("btn-send-reset");
+const resetBackBtn = document.getElementById("btn-reset-back");
+const loginTitle = document.getElementById("login-title");
+const recoveryCopy = document.getElementById("recovery-copy");
+
+let isRecoveryMode = false;
+
+function showAuthMessage(message, type = "error") {
+  if (!errorBox) {
+    return;
+  }
+
+  errorBox.textContent = message;
+  errorBox.classList.remove("hidden", "success");
+
+  if (type === "success") {
+    errorBox.classList.add("success");
+  }
+}
+
+function clearAuthMessage() {
+  if (!errorBox) {
+    return;
+  }
+
+  errorBox.textContent = "";
+  errorBox.classList.add("hidden");
+  errorBox.classList.remove("success");
+}
+
+function setRecoveryMode(enabled) {
+  isRecoveryMode = enabled;
+  clearAuthMessage();
+
+  if (passwordInput) {
+    passwordInput.classList.toggle("hidden", enabled);
+  }
+  if (loginBtn) {
+    loginBtn.classList.toggle("hidden", enabled);
+  }
+  if (registerBtn) {
+    registerBtn.classList.toggle("hidden", enabled);
+  }
+  if (forgotPasswordLink) {
+    forgotPasswordLink.classList.toggle("hidden", enabled);
+  }
+  if (sendResetBtn) {
+    sendResetBtn.classList.toggle("hidden", !enabled);
+  }
+  if (resetBackBtn) {
+    resetBackBtn.classList.toggle("hidden", !enabled);
+  }
+  if (loginTitle) {
+    loginTitle.textContent = enabled ? "Recuperar contraseña" : "Entrar al Dojo";
+  }
+  if (recoveryCopy) {
+    recoveryCopy.classList.toggle("hidden", !enabled);
+  }
+}
+
 if (loginBtn) {
   loginBtn.onclick = async () => {
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value.trim();
-    const errorBox = document.getElementById("login-error");
+    const email = emailInput?.value.trim() || "";
+    const password = passwordInput?.value.trim() || "";
 
-    const { error } = await supabaseClient.auth.signInWithPassword({
-      email,
-      password
-    });
+    try {
+      const { error } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
 
-    if (error) {
-      if (errorBox) {
-        errorBox.textContent = error.message;
-        errorBox.classList.remove("hidden");
+      if (error) {
+        console.error("Login error:", error.message);
+        showAuthMessage(error.message);
+        return;
       }
-      return;
-    }
 
-    sessionStorage.setItem("show_entry_choice", "1");
-    goWithTransition("index.html");
+      sessionStorage.setItem("show_entry_choice", "1");
+      goWithTransition("index.html");
+    } catch (error) {
+      console.error("Login error:", error?.message || error);
+      showAuthMessage(error?.message || "Uhm… algo falló. ¿Revisamos e intentamos de nuevo? 🥺");
+    }
   };
 }
 
 // ===============================
 // REGISTRO
 // ===============================
-const registerBtn = document.getElementById("btn-register");
 if (registerBtn) {
   registerBtn.onclick = async () => {
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value.trim();
-    const errorBox = document.getElementById("login-error");
+    const email = emailInput?.value.trim() || "";
+    const password = passwordInput?.value.trim() || "";
 
-    const { error } = await supabaseClient.auth.signUp({
-      email,
-      password
-    });
+    try {
+      const { error } = await supabaseClient.auth.signUp({
+        email,
+        password
+      });
 
-    if (error) {
-      if (errorBox) {
-        errorBox.textContent = error.message;
-        errorBox.classList.remove("hidden");
+      if (error) {
+        console.error("Register error:", error.message);
+        showAuthMessage(error.message);
+        return;
       }
+
+      showAuthMessage("Registro exitoso. Revisa tu correo para confirmar.", "success");
+
+      if (safeLocalStorage) {
+        safeLocalStorage.setItem("yumiko_just_registered_at", String(Date.now()));
+      }
+    } catch (error) {
+      console.error("Register error:", error?.message || error);
+      showAuthMessage(error?.message || "Uhm… algo falló. ¿Revisamos e intentamos de nuevo? 🥺");
+    }
+  };
+}
+
+if (forgotPasswordLink) {
+  forgotPasswordLink.onclick = () => {
+    setRecoveryMode(true);
+    emailInput?.focus();
+  };
+}
+
+if (resetBackBtn) {
+  resetBackBtn.onclick = () => {
+    setRecoveryMode(false);
+    passwordInput?.focus();
+  };
+}
+
+if (sendResetBtn) {
+  sendResetBtn.onclick = async () => {
+    if (!isRecoveryMode) {
+      setRecoveryMode(true);
+    }
+
+    const email = emailInput?.value.trim() || "";
+    const originalLabel = "Enviar enlace";
+
+    if (!email) {
+      showAuthMessage("Uhm… algo falló. ¿Revisamos el email e intentamos de nuevo? 🥺");
       return;
     }
 
-    if (errorBox) {
-      errorBox.textContent = "Registro exitoso. Revisa tu correo para confirmar.";
-      errorBox.classList.remove("hidden");
-    }
+    sendResetBtn.disabled = true;
+    sendResetBtn.textContent = "Enviando...";
 
-    if (safeLocalStorage) {
-      safeLocalStorage.setItem("yumiko_just_registered_at", String(Date.now()));
+    try {
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password.html`
+      });
+
+      if (error) {
+        console.error("Reset password email error:", error.message);
+        showAuthMessage("Uhm… algo falló. ¿Revisamos el email e intentamos de nuevo? 🥺");
+        return;
+      }
+
+      showAuthMessage("Listo. Revisa tu email para continuar… yo me quedo aquí 🫶", "success");
+    } catch (error) {
+      console.error("Reset password email error:", error?.message || error);
+      showAuthMessage("Uhm… algo falló. ¿Revisamos el email e intentamos de nuevo? 🥺");
+    } finally {
+      sendResetBtn.disabled = false;
+      sendResetBtn.textContent = originalLabel;
     }
   };
 }
