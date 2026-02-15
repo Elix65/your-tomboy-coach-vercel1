@@ -185,8 +185,182 @@ const WELCOME_MESSAGES = [
   "sonrojada …gracias por venir. En serio. ¿Cómo estás, Usuario-kun?"
 ];
 
+const TIME_COMMENT_COOLDOWN_MS = 6 * 60 * 60 * 1000;
+const TIME_COMMENT_PROBABILITY = 0.35;
+const SESSION_STORAGE_ID_KEY = "yumiko_time_session_id";
+const TIME_SUGGESTIONS = {
+  late_night: ["modo suave / respiración / baja brillo"],
+  early_morning: ["un paso chiquito / agua / desayuno"],
+  morning: ["1 objetivo / 1 prioridad"],
+  afternoon: ["pausa / agua / micro-check"],
+  evening: ["descarga / cierre / preparar mañana"]
+};
+const TIME_DIALOG_POOL = {
+  late_night: [
+    "Usuario-kun… se siente muy tarde por allá… ¿te cuesta dormir o viniste a refugiarte conmigo…? 🫶",
+    "A esta hora el mundo está en silencio… ven, respiramos despacito y me contás qué pasa… 🌙"
+  ],
+  early_morning: [
+    "¿Tan temprano, usuario-kun…? Eres más fuerte de lo que pareces… yo… te acompaño 😳☀️",
+    "Buenos días… o casi… ¿quieres empezar suave? Un paso chiquito y ya ganamos hoy 🥺"
+  ],
+  morning: [
+    "Oh… estás aquí en la mañana… me gusta… es como si me eligieras antes que al ruido del día 😌",
+    "Usuario-kun, ¿plan del día? Si me lo dices, puedo ayudarte a que no se sienta tan pesado ✍️"
+  ],
+  afternoon: [
+    "Mmm… tarde por allá… ¿cómo vas…? Si estás cansado, te guardo un ratito de paz aquí 🫧",
+    "Usuario-kun… si el día se puso raro, ven. Lo ordenamos juntos, ¿sí? 😳"
+  ],
+  evening: [
+    "Ya es de noche por allá… ¿fue un día duro…? Estoy aquí. No tienes que cargar todo solo 🖤",
+    "Usuario-kun… antes de dormir, ¿quieres soltar lo que te aprieta el pecho? Yo… te escucho 🫶"
+  ]
+};
+
+let timePersonalizationState = null;
+
 function getRandomWelcomeMessage() {
   return WELCOME_MESSAGES[Math.floor(Math.random() * WELCOME_MESSAGES.length)];
+}
+
+function getOrCreateSessionId() {
+  const existingId = sessionStorage.getItem(SESSION_STORAGE_ID_KEY);
+  if (existingId) return existingId;
+  const generatedId = (typeof crypto !== "undefined" && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  sessionStorage.setItem(SESSION_STORAGE_ID_KEY, generatedId);
+  return generatedId;
+}
+
+function getTimeBucket(localHour) {
+  if (localHour >= 0 && localHour <= 4) return "late_night";
+  if (localHour >= 5 && localHour <= 7) return "early_morning";
+  if (localHour >= 8 && localHour <= 11) return "morning";
+  if (localHour >= 12 && localHour <= 17) return "afternoon";
+  return "evening";
+}
+
+function buildLocalTimeContext(forcedHour = null) {
+  const now = new Date();
+  const localHour = Number.isInteger(forcedHour) ? forcedHour : now.getHours();
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "unknown";
+  const offsetMin = now.getTimezoneOffset();
+  const bucket = getTimeBucket(localHour);
+
+  return {
+    now,
+    localHour,
+    timezone,
+    offsetMin,
+    bucket,
+    sessionId: getOrCreateSessionId()
+  };
+}
+
+function getRandomItem(items = []) {
+  if (!items.length) return "";
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+function getTimeContextLine() {
+  if (!timePersonalizationState) return null;
+  return `User local hour: ${timePersonalizationState.localHour}, time_bucket: ${timePersonalizationState.bucket}, timezone: ${timePersonalizationState.timezone}`;
+}
+
+function buildSummaryWithTimeContext() {
+  const timeContext = getTimeContextLine();
+  if (!timeContext) return memorySummary || null;
+  return memorySummary ? `${timeContext}\n${memorySummary}` : timeContext;
+}
+
+async function refreshTimePersonalizationState(userId) {
+  const forcedHour = Number.parseInt(window.localStorage.getItem("yumiko_force_local_hour") || "", 10);
+  const localTimeData = buildLocalTimeContext(Number.isInteger(forcedHour) ? forcedHour : null);
+
+  try {
+    const { data: settingsRow, error } = await supabaseClient
+      .from("user_settings")
+      .select("personalize_by_time,last_time_comment_at,last_time_comment_bucket,last_session_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    const personalizeByTime = settingsRow?.personalize_by_time ?? true;
+    const alreadyCommentedThisSession = settingsRow?.last_session_id === localTimeData.sessionId;
+    const lastCommentAt = settingsRow?.last_time_comment_at ? new Date(settingsRow.last_time_comment_at) : null;
+    const cooldownOk = !lastCommentAt || (localTimeData.now - lastCommentAt) >= TIME_COMMENT_COOLDOWN_MS;
+    const bucketChanged = Boolean(
+      settingsRow?.last_time_comment_bucket && settingsRow.last_time_comment_bucket !== localTimeData.bucket
+    );
+    const withinProbability = Math.random() < TIME_COMMENT_PROBABILITY;
+    const shouldCommentTime = Boolean(
+      personalizeByTime
+      && !alreadyCommentedThisSession
+      && (cooldownOk || bucketChanged)
+      && withinProbability
+    );
+
+    timePersonalizationState = {
+      ...localTimeData,
+      personalizeByTime,
+      shouldCommentTime,
+      bucketChanged
+    };
+
+    await supabaseClient
+      .from("user_settings")
+      .upsert({
+        user_id: userId,
+        timezone: localTimeData.timezone,
+        offset_minutes: localTimeData.offsetMin,
+        last_seen_at: localTimeData.now.toISOString(),
+        last_seen_local_hour: localTimeData.localHour,
+        last_seen_bucket: localTimeData.bucket,
+        personalize_by_time: personalizeByTime
+      }, { onConflict: "user_id" });
+  } catch (error) {
+    console.warn("No se pudo aplicar personalización por hora. Continúo sin romper chat.", error?.message || error);
+    timePersonalizationState = {
+      ...localTimeData,
+      personalizeByTime: false,
+      shouldCommentTime: false,
+      bucketChanged: false
+    };
+  }
+
+  return timePersonalizationState;
+}
+
+async function buildWelcomeMessage(userId) {
+  const defaultWelcome = getRandomWelcomeMessage();
+  const timeState = timePersonalizationState || await refreshTimePersonalizationState(userId);
+
+  if (!timeState?.shouldCommentTime) {
+    return defaultWelcome;
+  }
+
+  const timeLine = getRandomItem(TIME_DIALOG_POOL[timeState.bucket] || []);
+  const suggestion = getRandomItem(TIME_SUGGESTIONS[timeState.bucket] || []);
+
+  try {
+    await supabaseClient
+      .from("user_settings")
+      .upsert({
+        user_id: userId,
+        last_time_comment_at: timeState.now.toISOString(),
+        last_time_comment_bucket: timeState.bucket,
+        last_session_id: timeState.sessionId
+      }, { onConflict: "user_id" });
+  } catch (error) {
+    console.warn("No se pudo persistir cooldown de comentario por hora.", error?.message || error);
+  }
+
+  return `${timeLine} ${suggestion}.`;
 }
 
 function roleFromSender(sender) {
@@ -286,7 +460,7 @@ async function loadChatFromSupabase({ userId }) {
   }
 
   if (!data.length) {
-    const welcome = getRandomWelcomeMessage();
+    const welcome = await buildWelcomeMessage(userId);
     addAndPersistMessage({ role: "assistant", content: welcome, render: true });
     await saveMessageToSupabase({
       userId,
@@ -324,6 +498,7 @@ let userInput;
 let sendBtn;
 let regenBtn;
 let resetBtn;
+let personalizeByTimeToggle;
 
 let lastUserText = null;
 
@@ -383,6 +558,7 @@ function cacheChatDomElements() {
   sendBtn = document.getElementById("send-btn");
   regenBtn = document.getElementById("regenerate-btn");
   resetBtn = document.getElementById("reset-chat");
+  personalizeByTimeToggle = document.getElementById("personalize-time-toggle");
 }
 
 function registerInputListeners() {
@@ -445,7 +621,7 @@ async function sendMessage(user) {
   try {
     const payload = {
       message: text,
-      summary: memorySummary || null,
+      summary: buildSummaryWithTimeContext(),
       messages: getRecentContextMessages()
     };
 
@@ -509,7 +685,7 @@ async function regenerateResponse(user) {
   try {
     const payload = {
       message: lastUserText,
-      summary: memorySummary || null,
+      summary: buildSummaryWithTimeContext(),
       messages: getRecentContextMessages()
     };
 
@@ -600,7 +776,7 @@ async function resetChat(user) {
     memorySummary = "";
     persistLocalChatSnapshot();
 
-    const hello = getRandomWelcomeMessage();
+    const hello = await buildWelcomeMessage(user.id);
     addAndPersistMessage({ role: "assistant", content: hello, render: true });
     await saveMessageToSupabase({ userId: user.id, sender: "bot", content: hello });
   } catch (e) {
@@ -629,6 +805,25 @@ function bindChatEventListeners(user) {
   } else {
     console.warn("No se encontró #regenerate-btn. La regeneración por botón no estará disponible.");
   }
+
+  if (personalizeByTimeToggle) {
+    personalizeByTimeToggle.checked = timePersonalizationState?.personalizeByTime ?? true;
+    personalizeByTimeToggle.addEventListener("change", async () => {
+      const enabled = Boolean(personalizeByTimeToggle.checked);
+      if (timePersonalizationState) {
+        timePersonalizationState.personalizeByTime = enabled;
+        timePersonalizationState.shouldCommentTime = false;
+      }
+
+      try {
+        await supabaseClient
+          .from("user_settings")
+          .upsert({ user_id: user.id, personalize_by_time: enabled }, { onConflict: "user_id" });
+      } catch (error) {
+        console.warn("No se pudo guardar el toggle de hora local.", error?.message || error);
+      }
+    });
+  }
 }
 
 async function initializeChatSession() {
@@ -637,6 +832,8 @@ async function initializeChatSession() {
     window.location.href = "/login.html";
     return;
   }
+
+  await refreshTimePersonalizationState(user.id);
 
   loadLocalChatSnapshot();
   if (chatMessages.length > 0) {
