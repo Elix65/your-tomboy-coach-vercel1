@@ -196,25 +196,28 @@ const TIME_SUGGESTIONS = {
   evening: ["descarga / cierre / preparar mañana"]
 };
 const TIME_DIALOG_POOL = {
-  late_night: [
-    "Usuario-kun… se siente muy tarde por allá… ¿te cuesta dormir o viniste a refugiarte conmigo…? 🫶",
-    "A esta hora el mundo está en silencio… ven, respiramos despacito y me contás qué pasa… 🌙"
+  madrugada: [
+    "Usuario-kun… ya es madrugada por allá… ¿te cuesta dormir o viniste a refugiarte conmigo…? 🫶",
+    "Ya estamos en madrugada… ven, respiramos despacito y me contás qué pasa… 🌙"
   ],
-  early_morning: [
-    "¿Tan temprano, usuario-kun…? Eres más fuerte de lo que pareces… yo… te acompaño 😳☀️",
-    "Buenos días… o casi… ¿quieres empezar suave? Un paso chiquito y ya ganamos hoy 🥺"
+  "mañana": [
+    "¿Ya es mañana por allá, usuario-kun…? Eres más fuerte de lo que pareces… yo… te acompaño 😳☀️",
+    "Buenos días… ¿querés empezar suave? Un paso chiquito y ya ganamos hoy 🥺"
   ],
-  morning: [
-    "Oh… estás aquí en la mañana… me gusta… es como si me eligieras antes que al ruido del día 😌",
-    "Usuario-kun, ¿plan del día? Si me lo dices, puedo ayudarte a que no se sienta tan pesado ✍️"
+  "mediodía": [
+    "Oh… ya es mediodía por allá… me gusta… es como si me eligieras antes del caos 😌",
+    "Usuario-kun, si ya es mediodía… ¿hacemos un mini plan para lo que queda del día? ✍️"
   ],
-  afternoon: [
-    "Mmm… tarde por allá… ¿cómo vas…? Si estás cansado, te guardo un ratito de paz aquí 🫧",
-    "Usuario-kun… si el día se puso raro, ven. Lo ordenamos juntos, ¿sí? 😳"
+  tarde: [
+    "Mmm… ya es tarde por allá… ¿cómo vas…? Si estás cansado, te guardo un ratito de paz aquí 🫧",
+    "Usuario-kun… si ya va la tarde y el día se puso raro, ven. Lo ordenamos juntos, ¿sí? 😳"
   ],
-  evening: [
-    "Ya es de noche por allá… ¿fue un día duro…? Estoy aquí. No tienes que cargar todo solo 🖤",
-    "Usuario-kun… antes de dormir, ¿quieres soltar lo que te aprieta el pecho? Yo… te escucho 🫶"
+  noche: [
+    "Ya es noche por allá… ¿fue un día duro…? Estoy aquí. No tienes que cargar todo solo 🖤",
+    "Usuario-kun… si ya es de noche, ¿querés soltar lo que te aprieta el pecho? Yo… te escucho 🫶"
+  ],
+  neutral: [
+    "Mmm… por ahí es tarde o temprano por allá… pero acá estoy contigo, ¿sí? 🫶"
   ]
 };
 
@@ -242,21 +245,47 @@ function getTimeBucket(localHour) {
   return "evening";
 }
 
-function buildLocalTimeContext(forcedHour = null) {
-  const now = new Date();
-  const localHour = Number.isInteger(forcedHour) ? forcedHour : now.getHours();
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "unknown";
-  const offsetMin = now.getTimezoneOffset();
-  const bucket = getTimeBucket(localHour);
+function getDayPart(hour) {
+  if (hour >= 0 && hour <= 5) return "madrugada";
+  if (hour >= 6 && hour <= 11) return "mañana";
+  if (hour >= 12 && hour <= 14) return "mediodía";
+  if (hour >= 15 && hour <= 18) return "tarde";
+  if (hour >= 19 && hour <= 23) return "noche";
+  return "neutral";
+}
 
-  return {
-    now,
-    localHour,
-    timezone,
-    offsetMin,
-    bucket,
-    sessionId: getOrCreateSessionId()
-  };
+function buildLocalTimeContext(forcedHour = null) {
+  try {
+    const now = new Date();
+    const hour = Number.isInteger(forcedHour) ? forcedHour : now.getHours();
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "unknown";
+    const offsetMin = now.getTimezoneOffset();
+    const bucket = getTimeBucket(hour);
+    const dayPart = getDayPart(hour);
+
+    return {
+      now,
+      hour,
+      dayPart,
+      timezone,
+      offsetMin,
+      bucket,
+      sessionId: getOrCreateSessionId(),
+      usedFallback: false
+    };
+  } catch (error) {
+    const now = new Date();
+    return {
+      now,
+      hour: null,
+      dayPart: "neutral",
+      timezone: "unknown",
+      offsetMin: 0,
+      bucket: "afternoon",
+      sessionId: getOrCreateSessionId(),
+      usedFallback: true
+    };
+  }
 }
 
 function getRandomItem(items = []) {
@@ -266,7 +295,25 @@ function getRandomItem(items = []) {
 
 function getTimeContextLine() {
   if (!timePersonalizationState) return null;
-  return `User local hour: ${timePersonalizationState.localHour}, time_bucket: ${timePersonalizationState.bucket}, timezone: ${timePersonalizationState.timezone}`;
+  return `day_part: ${timePersonalizationState.dayPart}, time_bucket: ${timePersonalizationState.bucket}, timezone: ${timePersonalizationState.timezone}`;
+}
+
+function refreshRuntimeTimeContext() {
+  const localTimeData = buildLocalTimeContext();
+  if (!timePersonalizationState) {
+    timePersonalizationState = {
+      ...localTimeData,
+      personalizeByTime: true,
+      shouldCommentTime: false,
+      bucketChanged: false
+    };
+    return;
+  }
+
+  timePersonalizationState = {
+    ...timePersonalizationState,
+    ...localTimeData
+  };
 }
 
 function buildSummaryWithTimeContext() {
@@ -319,7 +366,7 @@ async function refreshTimePersonalizationState(userId) {
         timezone: localTimeData.timezone,
         offset_minutes: localTimeData.offsetMin,
         last_seen_at: localTimeData.now.toISOString(),
-        last_seen_local_hour: localTimeData.localHour,
+        last_seen_local_hour: localTimeData.hour,
         last_seen_bucket: localTimeData.bucket,
         personalize_by_time: personalizeByTime
       }, { onConflict: "user_id" });
@@ -344,7 +391,7 @@ async function buildWelcomeMessage(userId) {
     return defaultWelcome;
   }
 
-  const timeLine = getRandomItem(TIME_DIALOG_POOL[timeState.bucket] || []);
+  const timeLine = getRandomItem(TIME_DIALOG_POOL[timeState.dayPart] || TIME_DIALOG_POOL.neutral || []);
   const suggestion = getRandomItem(TIME_SUGGESTIONS[timeState.bucket] || []);
 
   try {
@@ -619,6 +666,7 @@ async function sendMessage(user) {
   typing?.classList.remove("hidden");
 
   try {
+    refreshRuntimeTimeContext();
     const payload = {
       message: text,
       summary: buildSummaryWithTimeContext(),
@@ -683,6 +731,7 @@ async function regenerateResponse(user) {
   typing?.classList.remove("hidden");
 
   try {
+    refreshRuntimeTimeContext();
     const payload = {
       message: lastUserText,
       summary: buildSummaryWithTimeContext(),
