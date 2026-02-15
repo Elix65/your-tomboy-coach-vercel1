@@ -23,9 +23,9 @@ export default async function handler(req, res) {
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
-    const { user_id, conversation_id, new_reply } = req.body || {};
-    if (!token || !user_id || !conversation_id || !new_reply) {
-      return res.status(400).json({ error: "Missing token/user_id/conversation_id/new_reply" });
+    const { user_id, new_reply } = req.body || {};
+    if (!token || !user_id || !new_reply) {
+      return res.status(400).json({ error: "Missing token/user_id/new_reply" });
     }
 
     const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
@@ -36,13 +36,12 @@ export default async function handler(req, res) {
       .from("messages")
       .select("id")
       .eq("user_id", user_id)
-      .eq("conversation_id", conversation_id)
       .eq("sender", "bot")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (lastErr) return res.status(500).json({ error: "DB read failed" });
+    if (lastErr) return res.status(500).json({ error: lastErr.message || "DB read failed" });
 
     if (lastBot?.id) {
       const { error: delErr } = await supabaseAdmin
@@ -50,18 +49,18 @@ export default async function handler(req, res) {
         .delete()
         .eq("id", lastBot.id);
 
-      if (delErr) return res.status(500).json({ error: "DB delete last bot failed" });
+      if (delErr) return res.status(500).json({ error: delErr.message || "DB delete last bot failed" });
     }
 
     const { error: insErr } = await supabaseAdmin
       .from("messages")
-      .insert({ user_id, conversation_id, sender: "bot", content: new_reply });
+      .insert({ user_id, sender: "bot", content: new_reply });
 
-    if (insErr) return res.status(500).json({ error: "DB insert new bot failed" });
+    if (insErr) return res.status(500).json({ error: insErr.message || "DB insert new bot failed" });
 
     return res.status(200).json({ ok: true });
   } catch (e) {
-    console.error(e);
+    console.error("regenerate-last error:", e?.message || e);
     return res.status(500).json({ error: "Internal error" });
   }
 }

@@ -23,9 +23,9 @@ export default async function handler(req, res) {
     const authHeader = req.headers.authorization || "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
-    const { user_id, conversation_id } = req.body || {};
-    if (!token || !user_id || !conversation_id) {
-      return res.status(400).json({ error: "Missing token, user_id or conversation_id" });
+    const { user_id } = req.body || {};
+    if (!token || !user_id) {
+      return res.status(400).json({ error: "Missing token or user_id" });
     }
 
     const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
@@ -35,14 +35,13 @@ export default async function handler(req, res) {
     const { error: delErr } = await supabaseAdmin
       .from("messages")
       .delete()
-      .eq("user_id", user_id)
-      .eq("conversation_id", conversation_id);
+      .eq("user_id", user_id);
 
-    if (delErr) return res.status(500).json({ error: "DB delete failed" });
+    if (delErr) return res.status(500).json({ error: delErr.message || "DB delete failed" });
 
     return res.status(200).json({ ok: true });
   } catch (e) {
-    console.error(e);
+    console.error("reset-chat error:", e?.message || e);
     return res.status(500).json({ error: "Internal error" });
   }
 }
