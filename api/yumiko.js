@@ -49,7 +49,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { message, profile, messages: incomingMessages, summary, conversationId } = req.body || {};
+    const { message, profile, messages: incomingMessages, summary } = req.body || {};
 
     if (!message) {
       return res.status(400).json({ error: "Falta el campo 'message' en el cuerpo." });
@@ -140,7 +140,6 @@ export default async function handler(req, res) {
 
     if (process.env.NODE_ENV !== "production") {
       console.log("[yumiko] context payload", {
-        conversationId: conversationId || null,
         summaryIncluded: Boolean(summary),
         contextCount: contextMessages.length,
         totalMessagesSent: messages.length

@@ -121,12 +121,10 @@ document.addEventListener("click", (event) => {
 const MAX_MESSAGES_BEFORE_SUMMARY = 30;
 const CONTEXT_WINDOW_SIZE = 20;
 const STORAGE_KEYS = {
-  legacyConversationId: "yumiko_conversation_id",
   messagesSnapshot: "yumiko_messages",
   summarySnapshot: "yumiko_memory_summary"
 };
 
-let conversationId = null;
 let chatMessages = [];
 let memorySummary = "";
 const IS_DEV = ["localhost", "127.0.0.1"].includes(window.location.hostname);
@@ -140,11 +138,15 @@ function telemetryLog(eventName, payload = {}) {
 }
 
 // 1) Función para guardar mensajes en Supabase
-async function saveMessageToSupabase({ userId, conversationId: activeConversationId, sender, content }) {
-  console.log("Intentando guardar mensaje:", { userId, conversationId: activeConversationId, sender, content });
+function showChatFeedback(message) {
+  addMessage(message, "bot", { skipAnimation: true });
+}
 
-  if (!userId || !activeConversationId) {
-    console.error("❌ ERROR: userId/conversationId vacío. No se puede guardar.");
+async function saveMessageToSupabase({ userId, sender, content }) {
+  console.log("Intentando guardar mensaje:", { userId, sender, content });
+
+  if (!userId) {
+    console.error("❌ ERROR: userId vacío. No se puede guardar.");
     return;
   }
 
@@ -152,53 +154,17 @@ async function saveMessageToSupabase({ userId, conversationId: activeConversatio
     .from("messages")
     .insert({
       user_id: userId,
-      conversation_id: activeConversationId,
       sender,
       content
     })
     .select();
 
   if (error) {
-    console.error("❌ Supabase rechazó el insert:", error);
+    console.error("❌ Supabase rechazó el insert:", error.message);
+    showChatFeedback("No pude guardar este mensaje. Revisá tu conexión e intentá de nuevo.");
   } else {
     console.log("✅ Mensaje guardado correctamente:", data);
   }
-}
-
-async function ensureDefaultConversation(userId) {
-  const { data: existingConversation, error: existingErr } = await supabaseClient
-    .from("conversations")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("is_default", true)
-    .limit(1)
-    .maybeSingle();
-
-  if (existingErr) throw existingErr;
-  if (existingConversation?.id) return existingConversation.id;
-
-  const { data: insertedConversation, error: insertErr } = await supabaseClient
-    .from("conversations")
-    .insert({ user_id: userId, is_default: true })
-    .select("id")
-    .single();
-
-  if (!insertErr && insertedConversation?.id) {
-    return insertedConversation.id;
-  }
-
-  const { data: raceWinnerConversation, error: retryErr } = await supabaseClient
-    .from("conversations")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("is_default", true)
-    .limit(1)
-    .maybeSingle();
-
-  if (retryErr) throw retryErr;
-  if (!raceWinnerConversation?.id) throw insertErr || new Error("No default conversation available");
-
-  return raceWinnerConversation.id;
 }
 
 
@@ -248,14 +214,6 @@ function persistLocalChatSnapshot() {
     localStorage.setItem(STORAGE_KEYS.summarySnapshot, memorySummary || "");
   } catch (error) {
     console.warn("No se pudo persistir snapshot del chat:", error);
-  }
-}
-
-function clearLegacyConversationId() {
-  try {
-    localStorage.removeItem(STORAGE_KEYS.legacyConversationId);
-  } catch (error) {
-    console.warn("No se pudo limpiar el conversationId legacy:", error);
   }
 }
 
@@ -321,20 +279,19 @@ function renderChatMessagesFromState() {
   lastUserText = lastUserLocal?.content ?? null;
 }
 
-async function loadChatFromSupabase({ userId, conversationId: activeConversationId }) {
-  console.log("Cargando historial:", { userId, conversationId: activeConversationId });
+async function loadChatFromSupabase({ userId }) {
+  console.log("Cargando historial:", { userId });
 
   const { data, error } = await supabaseClient
     .from("messages")
-    .select("sender, content, created_at")
-    .eq("user_id", userId.toString())
-    .eq("conversation_id", activeConversationId)
+    .select("id,sender,content,created_at")
+    .eq("user_id", userId)
     .order("created_at", { ascending: true });
 
   if (error) {
-    console.error("❌ Error cargando historial:", error);
-    telemetryLog("load_messages_error", { userId, conversationId: activeConversationId, error: error.message });
-    addMessage("No pude sincronizar tus mensajes desde Supabase. Probá refrescar la página.", "bot", { skipAnimation: true });
+    console.error("❌ Error cargando historial:", error.message);
+    telemetryLog("load_messages_error", { userId, error: error.message });
+    showChatFeedback("No pude sincronizar tus mensajes desde Supabase. Probá refrescar la página.");
     return;
   }
 
@@ -343,11 +300,10 @@ async function loadChatFromSupabase({ userId, conversationId: activeConversation
     addAndPersistMessage({ role: "assistant", content: welcome, render: true });
     await saveMessageToSupabase({
       userId,
-      conversationId: activeConversationId,
       sender: "bot",
       content: welcome
     });
-    telemetryLog("load_messages_empty_seeded", { userId, conversationId: activeConversationId, loadedCount: 1 });
+    telemetryLog("load_messages_empty_seeded", { userId, loadedCount: 1 });
     return;
   }
 
@@ -358,7 +314,6 @@ async function loadChatFromSupabase({ userId, conversationId: activeConversation
 
   telemetryLog("load_messages_success", {
     userId,
-    conversationId: activeConversationId,
     loadedCount: chatMessages.length
   });
 }
@@ -463,18 +418,14 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
     return;
   }
 
-  clearLegacyConversationId();
   loadLocalChatSnapshot();
   if (chatMessages.length > 0) {
     renderChatMessagesFromState();
     telemetryLog("render_snapshot", { userId: user.id, loadedCount: chatMessages.length });
   }
 
-  conversationId = await ensureDefaultConversation(user.id);
-  telemetryLog("conversation_resolved", { userId: user.id, conversationId });
-
   // Revalidación contra DB (source of truth)
-  await loadChatFromSupabase({ userId: user.id, conversationId });
+  await loadChatFromSupabase({ userId: user.id });
   await loadActiveSkinBackground();
 
   // Activar botón de enviar
@@ -491,11 +442,10 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
       // Guardar mensaje del usuario
       await saveMessageToSupabase({
         userId: user.id,
-        conversationId,
         sender: "user",
         content: text
       });
-      telemetryLog("message_saved", { userId: user.id, conversationId, role: "user" });
+      telemetryLog("message_saved", { userId: user.id, role: "user" });
 
       userInput.value = "";
       setYumikoState("idle");
@@ -505,7 +455,6 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
 
       try {
         const payload = {
-          conversationId,
           message: text,
           summary: memorySummary || null,
           messages: getRecentContextMessages()
@@ -513,7 +462,6 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
 
         if (IS_DEV) {
           console.log("[yumiko/front] enviando contexto", {
-            conversationId,
             summaryIncluded: Boolean(payload.summary),
             contextCount: payload.messages.length
           });
@@ -536,17 +484,17 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
         // Guardar mensaje del bot
         await saveMessageToSupabase({
           userId: user.id,
-          conversationId,
           sender: "bot",
           content: data.reply
         });
-        telemetryLog("message_saved", { userId: user.id, conversationId, role: "assistant" });
+        telemetryLog("message_saved", { userId: user.id, role: "assistant" });
 
         const yumikoSound = document.getElementById("yumiko-sound");
         yumikoSound.currentTime = 0;
         yumikoSound.play();
 
       } catch (e) {
+        console.error("Error al conectar con Yumiko:", e?.message || e);
         addAndPersistMessage({ role: "assistant", content: "Hubo un error al conectar con Yumiko.", render: true });
       }
 
@@ -580,7 +528,6 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
         try {
           // 1) Generar nueva respuesta
           const payload = {
-            conversationId,
             message: lastUserText,
             summary: memorySummary || null,
             messages: getRecentContextMessages()
@@ -588,7 +535,6 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
 
           if (IS_DEV) {
             console.log("[yumiko/front] regenerar contexto", {
-              conversationId,
               summaryIncluded: Boolean(payload.summary),
               contextCount: payload.messages.length
             });
@@ -623,14 +569,15 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${token}`
             },
-            body: JSON.stringify({ user_id: user.id, conversation_id: conversationId, new_reply: reply })
+            body: JSON.stringify({ user_id: user.id, new_reply: reply })
           });
 
           if (!r2.ok) {
             const err = await r2.json().catch(() => ({}));
-            console.warn("regenerate-last falló:", err);
+            console.warn("regenerate-last falló:", err?.error || err);
             // fallback (duplica, pero no rompe)
-            await saveMessageToSupabase({ userId: user.id, conversationId, sender: "bot", content: reply });
+            await saveMessageToSupabase({ userId: user.id, sender: "bot", content: reply });
+            showChatFeedback("No pude regenerar en servidor, pero guardé la nueva respuesta localmente.");
           }
 
           // sonido (si existe)
@@ -640,7 +587,7 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
             yumikoSound.play();
           }
         } catch (e) {
-          console.warn(e);
+          console.error("Error regenerando mensaje:", e?.message || e);
           addAndPersistMessage({ role: "assistant", content: "Hubo un error al regenerar la respuesta.", render: true });
         } finally {
           typing?.classList.add("hidden");
@@ -665,12 +612,13 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${token}`
             },
-            body: JSON.stringify({ user_id: user.id, conversation_id: conversationId })
+            body: JSON.stringify({ user_id: user.id })
           });
 
           if (!r.ok) {
             const err = await r.json().catch(() => ({}));
-            console.warn("reset-chat falló:", err);
+            console.warn("reset-chat falló:", err?.error || err);
+            showChatFeedback("No pude reiniciar el chat en Supabase. Intentá nuevamente.");
           }
 
           // 2) Limpiar UI y estado local
@@ -683,9 +631,9 @@ supabaseClient.auth.getUser().then(async ({ data: { user } }) => {
           // 3) Mensaje inicial (opcional)
           const hello = getRandomWelcomeMessage();
           addAndPersistMessage({ role: "assistant", content: hello, render: true });
-          await saveMessageToSupabase({ userId: user.id, conversationId, sender: "bot", content: hello });
+          await saveMessageToSupabase({ userId: user.id, sender: "bot", content: hello });
         } catch (e) {
-          console.warn(e);
+          console.error("Error reiniciando chat:", e?.message || e);
           addAndPersistMessage({ role: "assistant", content: "No pude reiniciar el chat por un error.", render: true });
         } finally {
           typing?.classList.add("hidden");
