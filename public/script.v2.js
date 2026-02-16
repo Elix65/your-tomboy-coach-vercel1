@@ -1321,6 +1321,70 @@ async function initializeUI() {
   initTopBarAndMobileMenu();
 }
 
+function makeRewardsWidgetCollapsible() {
+  const widget = document.getElementById("daily-chat-rewards-widget");
+  if (!widget) return;
+
+  const COLLAPSED_STORAGE_KEY = "dailyRewardsCollapsed";
+  const MOBILE_BREAKPOINT_QUERY = "(max-width: 768px)";
+
+  let wrapper = widget.closest(".rewards-collapsible");
+  if (!wrapper) {
+    wrapper = document.createElement("div");
+    wrapper.className = "rewards-collapsible";
+    widget.parentNode.insertBefore(wrapper, widget);
+    wrapper.appendChild(widget);
+  }
+
+  let collapseBtn = wrapper.querySelector(".rewards-collapse-btn");
+  if (!collapseBtn) {
+    collapseBtn = document.createElement("button");
+    collapseBtn.type = "button";
+    collapseBtn.className = "rewards-collapse-btn";
+    collapseBtn.textContent = "✕";
+    wrapper.appendChild(collapseBtn);
+  }
+
+  let handleBtn = wrapper.querySelector(".rewards-handle-btn");
+  if (!handleBtn) {
+    handleBtn = document.createElement("button");
+    handleBtn.type = "button";
+    handleBtn.className = "rewards-handle-btn";
+    handleBtn.textContent = "🎁";
+    wrapper.appendChild(handleBtn);
+  }
+
+  const setCollapsed = (collapsed, { persist = true } = {}) => {
+    wrapper.classList.toggle("is-collapsed", collapsed);
+    widget.classList.toggle("is-hidden", collapsed);
+
+    collapseBtn.setAttribute("aria-controls", widget.id);
+    handleBtn.setAttribute("aria-controls", widget.id);
+    collapseBtn.setAttribute("aria-expanded", String(!collapsed));
+    handleBtn.setAttribute("aria-expanded", String(!collapsed));
+
+    if (persist) {
+      localStorage.setItem(COLLAPSED_STORAGE_KEY, collapsed ? "1" : "0");
+    }
+  };
+
+  const syncDesktopPlacement = () => {
+    const isMobile = window.matchMedia(MOBILE_BREAKPOINT_QUERY).matches;
+    if (!isMobile && widget.parentNode !== wrapper) {
+      wrapper.appendChild(widget);
+    }
+  };
+
+  collapseBtn.onclick = () => setCollapsed(true);
+  handleBtn.onclick = () => setCollapsed(false);
+
+  const savedState = localStorage.getItem(COLLAPSED_STORAGE_KEY);
+  setCollapsed(savedState === "1", { persist: false });
+
+  syncDesktopPlacement();
+  window.addEventListener("resize", syncDesktopPlacement);
+}
+
 // ===============================
 // AUDIO + PARALLAX + INICIALIZACIÓN
 // ===============================
@@ -1329,6 +1393,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   registerInputListeners();
 
   initRewardsWidget();
+  makeRewardsWidgetCollapsible();
   await initializeUI();
   await initializeChatSession();
 
