@@ -237,6 +237,7 @@ const TIME_DIALOG_POOL = {
 
 let timePersonalizationState = null;
 let currentUserId = null;
+let actionUser = null;
 let userSettingsCache = null;
 let sessionNudgeState = {
   session_started_at: Date.now(),
@@ -715,12 +716,17 @@ function getRecentContextMessages() {
 
 function addAndPersistMessage({ role, content, render = true, skipAnimation = false }) {
   chatMessages.push({ role, content });
+  if (role === "user") {
+    hasUserMessagedThisSession = true;
+  }
   trimChatContextIfNeeded();
   persistLocalChatSnapshot();
 
   if (render) {
     addMessage(content, senderFromRole(role), { skipAnimation });
   }
+
+  updateActionButtonsState();
 }
 
 // 2) Función para cargar historial desde Supabase
@@ -790,6 +796,68 @@ let resetBtn;
 let personalizeByTimeToggle;
 
 let lastUserText = null;
+let lastSendAt = 0;
+let lastRegenAt = 0;
+let lastResetAt = 0;
+let hasUserMessagedThisSession = false;
+let isSending = false;
+let isRegenerating = false;
+let isResetting = false;
+
+const SEND_COOLDOWN_MS = 1200;
+const RESET_COOLDOWN_MS = 2000;
+const REGEN_COOLDOWN_MS = 2000;
+
+const BUTTON_LABELS = {
+  send: "Enviar",
+  sendCooldown: "Espera…",
+  regen: "Regenerar",
+  regenCooldown: "Espera 2s…",
+  reset: "Reiniciar Chat",
+  resetCooldown: "Espera…"
+};
+
+function canRun(lastAt, cooldownMs) {
+  return Date.now() - lastAt >= cooldownMs;
+}
+
+function hasRegenerableAssistantMessage() {
+  if (!lastUserText) return false;
+  const lastMessage = chatMessages[chatMessages.length - 1];
+  return Boolean(lastMessage && lastMessage.role === "assistant");
+}
+
+function updateActionButtonsState() {
+  const now = Date.now();
+
+  if (sendBtn) {
+    const sendOnCooldown = now - lastSendAt < SEND_COOLDOWN_MS;
+    sendBtn.disabled = isSending || sendOnCooldown;
+    sendBtn.textContent = sendOnCooldown ? BUTTON_LABELS.sendCooldown : BUTTON_LABELS.send;
+  }
+
+  if (resetBtn) {
+    const resetOnCooldown = now - lastResetAt < RESET_COOLDOWN_MS;
+    const canReset = hasUserMessagedThisSession;
+    resetBtn.disabled = isResetting || resetOnCooldown || !canReset;
+    resetBtn.textContent = resetOnCooldown ? BUTTON_LABELS.resetCooldown : BUTTON_LABELS.reset;
+    if (!canReset) {
+      resetBtn.title = "Envía al menos 1 mensaje antes de reiniciar el chat.";
+    } else {
+      resetBtn.removeAttribute("title");
+    }
+  }
+
+  if (regenBtn) {
+    const regenOnCooldown = now - lastRegenAt < REGEN_COOLDOWN_MS;
+    regenBtn.disabled = isRegenerating || regenOnCooldown || !hasRegenerableAssistantMessage();
+    regenBtn.textContent = regenOnCooldown ? BUTTON_LABELS.regenCooldown : BUTTON_LABELS.regen;
+  }
+}
+
+function scheduleCooldownRefresh(cooldownMs) {
+  window.setTimeout(updateActionButtonsState, cooldownMs + 40);
+}
 
 function setYumikoState(state) {
   const idle = document.getElementById("yumikoIdle");
@@ -870,10 +938,14 @@ function registerInputListeners() {
     if (!hasText) setYumikoState("idle");
   });
 
-  userInput.addEventListener("keydown", (e) => {
+  userInput.addEventListener("keydown", async (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (sendBtn) sendBtn.click();
+      try {
+        await handleSendAction();
+      } catch (error) {
+        console.error("Error manejando Enter en envío:", error?.message || error);
+      }
       setTimeout(() => setYumikoState("idle"), 60);
     }
   });
@@ -890,6 +962,18 @@ async function sendMessage(user) {
 
   const text = userInput.value.trim();
   if (!text) return;
+
+  if (isSending) return;
+  if (!canRun(lastSendAt, SEND_COOLDOWN_MS)) {
+    console.log("[chat] envío bloqueado por cooldown");
+    updateActionButtonsState();
+    return;
+  }
+
+  isSending = true;
+  lastSendAt = Date.now();
+  updateActionButtonsState();
+  scheduleCooldownRefresh(SEND_COOLDOWN_MS);
 
   sessionNudgeState.messages_in_session += 1;
   persistSessionNudgeState();
@@ -924,6 +1008,8 @@ async function sendMessage(user) {
     markLastActivity();
     userInput.value = "";
     setYumikoState("idle");
+    isSending = false;
+    updateActionButtonsState();
     return;
   }
 
@@ -983,6 +1069,8 @@ async function sendMessage(user) {
     typing?.classList.add("hidden");
     setYumikoState("idle");
     markLastActivity();
+    isSending = false;
+    updateActionButtonsState();
   }
 }
 
@@ -993,10 +1081,22 @@ function removeLastBotFromUI() {
 }
 
 async function regenerateResponse(user) {
-  if (!lastUserText) {
+  if (!hasRegenerableAssistantMessage()) {
     addAndPersistMessage({ role: "assistant", content: "No hay ningún mensaje para regenerar todavía.", render: true });
     return;
   }
+
+  if (isRegenerating) return;
+  if (!canRun(lastRegenAt, REGEN_COOLDOWN_MS)) {
+    console.log("[chat] regenerar bloqueado por cooldown");
+    updateActionButtonsState();
+    return;
+  }
+
+  isRegenerating = true;
+  lastRegenAt = Date.now();
+  updateActionButtonsState();
+  scheduleCooldownRefresh(REGEN_COOLDOWN_MS);
 
   const typing = document.getElementById("typing");
   typing?.classList.remove("hidden");
@@ -1064,10 +1164,57 @@ async function regenerateResponse(user) {
     addAndPersistMessage({ role: "assistant", content: "Hubo un error al regenerar la respuesta.", render: true });
   } finally {
     typing?.classList.add("hidden");
+    isRegenerating = false;
+    updateActionButtonsState();
+  }
+}
+
+async function handleSendAction() {
+  if (!actionUser) return;
+  try {
+    await sendMessage(actionUser);
+  } catch (error) {
+    console.error("Error ejecutando envío:", error?.message || error);
+  }
+}
+
+async function handleResetAction() {
+  if (!actionUser) return;
+  try {
+    await resetChat(actionUser);
+  } catch (error) {
+    console.error("Error ejecutando reset:", error?.message || error);
+  }
+}
+
+async function handleRegenerateAction() {
+  if (!actionUser) return;
+  try {
+    await regenerateResponse(actionUser);
+  } catch (error) {
+    console.error("Error ejecutando regeneración:", error?.message || error);
   }
 }
 
 async function resetChat(user) {
+  if (!hasUserMessagedThisSession) {
+    console.log("[chat] reset bloqueado: no hay mensajes del usuario en esta sesión");
+    updateActionButtonsState();
+    return;
+  }
+
+  if (isResetting) return;
+  if (!canRun(lastResetAt, RESET_COOLDOWN_MS)) {
+    console.log("[chat] reset bloqueado por cooldown");
+    updateActionButtonsState();
+    return;
+  }
+
+  isResetting = true;
+  lastResetAt = Date.now();
+  updateActionButtonsState();
+  scheduleCooldownRefresh(RESET_COOLDOWN_MS);
+
   const typing = document.getElementById("typing");
   typing?.classList.remove("hidden");
 
@@ -1094,6 +1241,7 @@ async function resetChat(user) {
     lastUserText = null;
     chatMessages = [];
     memorySummary = "";
+    hasUserMessagedThisSession = false;
     persistLocalChatSnapshot();
 
     const hello = await buildWelcomeMessage(user.id);
@@ -1104,24 +1252,34 @@ async function resetChat(user) {
     addAndPersistMessage({ role: "assistant", content: "No pude reiniciar el chat por un error.", render: true });
   } finally {
     typing?.classList.add("hidden");
+    isResetting = false;
+    updateActionButtonsState();
   }
 }
 
 function bindChatEventListeners(user) {
+  actionUser = user;
+
   if (sendBtn) {
-    sendBtn.addEventListener("click", () => sendMessage(user));
+    sendBtn.addEventListener("click", async () => {
+      await handleSendAction();
+    });
   } else {
     console.warn("No se encontró #send-btn. El envío por botón no estará disponible.");
   }
 
   if (resetBtn) {
-    resetBtn.addEventListener("click", () => resetChat(user));
+    resetBtn.addEventListener("click", async () => {
+      await handleResetAction();
+    });
   } else {
     console.warn("No se encontró #reset-chat. El reinicio por botón no estará disponible.");
   }
 
   if (regenBtn) {
-    regenBtn.addEventListener("click", () => regenerateResponse(user));
+    regenBtn.addEventListener("click", async () => {
+      await handleRegenerateAction();
+    });
   } else {
     console.warn("No se encontró #regenerate-btn. La regeneración por botón no estará disponible.");
   }
@@ -1144,6 +1302,8 @@ function bindChatEventListeners(user) {
       }
     });
   }
+
+  updateActionButtonsState();
 }
 
 async function initializeChatSession() {
@@ -1391,6 +1551,7 @@ function makeRewardsWidgetCollapsible() {
 window.addEventListener("DOMContentLoaded", async () => {
   cacheChatDomElements();
   registerInputListeners();
+  updateActionButtonsState();
 
   initRewardsWidget();
   makeRewardsWidgetCollapsible();
