@@ -185,16 +185,84 @@
   color: rgba(236, 198, 212, 0.86);
 }
 
-.rewards-collapsible {
+#mobile-menu-overlay .rewards-collapsible {
   max-height: 0;
   opacity: 0;
   overflow: hidden;
   transition: max-height 200ms ease, opacity 200ms ease;
 }
 
-.rewards-collapsible.is-open {
+#mobile-menu-overlay .rewards-collapsible.is-open {
   max-height: 600px;
   opacity: 1;
+}
+
+.rewards-collapsible {
+  position: fixed;
+  top: 88px;
+  left: 14px;
+  z-index: 10010;
+  width: clamp(280px, 25vw, 320px);
+  transition: width 220ms ease, transform 220ms ease;
+}
+
+.rewards-collapsible > .daily-chat-rewards-widget {
+  position: static;
+  top: auto;
+  left: auto;
+  pointer-events: auto;
+  transition: opacity 200ms ease, transform 220ms ease;
+}
+
+.rewards-collapsible.is-collapsed {
+  width: 52px;
+}
+
+.rewards-collapsible > .daily-chat-rewards-widget.is-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-8px);
+}
+
+.rewards-collapse-btn,
+.rewards-handle-btn {
+  position: absolute;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(17, 15, 25, 0.92);
+  color: #fff;
+  cursor: pointer;
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.rewards-collapse-btn {
+  top: -10px;
+  right: -10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.rewards-handle-btn {
+  left: 0;
+  top: 8px;
+  width: 44px;
+  height: 44px;
+  border-radius: 0 12px 12px 0;
+  font-size: 20px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rewards-collapsible.is-collapsed .rewards-collapse-btn {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rewards-collapsible.is-collapsed .rewards-handle-btn {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 @media (max-width: 1100px) {
@@ -207,6 +275,18 @@
 }
 
 @media (max-width: 768px) {
+  .rewards-collapsible {
+    position: static;
+    top: auto;
+    left: auto;
+    width: 100%;
+  }
+
+  .rewards-collapse-btn,
+  .rewards-handle-btn {
+    display: none;
+  }
+
   .daily-chat-rewards-widget.in-mobile-menu {
     position: static;
     top: auto;
