@@ -128,7 +128,7 @@ function telemetryLog(eventName, payload = {}) {
 
 // 1) Función para guardar mensajes en Supabase
 function showChatFeedback(message) {
-  addMessage(message, "bot", { skipAnimation: true });
+  addMessage(message, "yumiko", { skipAnimation: true });
 }
 
 async function saveMessageToSupabase({ userId, sender, content }) {
@@ -442,7 +442,7 @@ async function maybeSendHelloNudge({ text, userId }) {
   }
 
   addAndPersistMessage({ role: "assistant", content: HELLO_NUDGE_TEXT, render: true });
-  await saveMessageToSupabase({ userId, sender: "bot", content: HELLO_NUDGE_TEXT });
+  await saveMessageToSupabase({ userId, sender: "yumiko", content: HELLO_NUDGE_TEXT });
 
   const nowIso = new Date().toISOString();
   sessionNudgeState.used_hello_nudge_this_session = true;
@@ -469,7 +469,7 @@ async function maybeSendRestNudge({ userId }) {
     const lastTomorrowAt = userSettingsCache?.last_tomorrow_followup_at || globalNudgeState.last_tomorrow_followup_at;
     if (canUseCooldown(lastStrongAt, REST_NUDGE_STRONG_COOLDOWN_MS) && canUseCooldown(lastTomorrowAt, TOMORROW_FOLLOWUP_COOLDOWN_MS)) {
       addAndPersistMessage({ role: "assistant", content: REST_NUDGE_STRONG_TEXT, render: true });
-      await saveMessageToSupabase({ userId, sender: "bot", content: REST_NUDGE_STRONG_TEXT });
+      await saveMessageToSupabase({ userId, sender: "yumiko", content: REST_NUDGE_STRONG_TEXT });
       sessionNudgeState.strong_rest_nudge_shown_this_session = true;
       sessionNudgeState.rest_nudge_pending_response = true;
       persistSessionNudgeState();
@@ -505,7 +505,7 @@ async function maybeSendRestNudge({ userId }) {
   }
 
   addAndPersistMessage({ role: "assistant", content: REST_NUDGE_SOFT_TEXT, render: true });
-  await saveMessageToSupabase({ userId, sender: "bot", content: REST_NUDGE_SOFT_TEXT });
+  await saveMessageToSupabase({ userId, sender: "yumiko", content: REST_NUDGE_SOFT_TEXT });
   sessionNudgeState.soft_rest_nudge_shown_this_session = true;
   sessionNudgeState.rest_nudge_pending_response = true;
   persistSessionNudgeState();
@@ -635,7 +635,11 @@ function roleFromSender(sender) {
 }
 
 function senderFromRole(role) {
-  return role === "user" ? "user" : "bot";
+  return role === "user" ? "user" : "yumiko";
+}
+
+function getUiSenderClass(sender) {
+  return sender === "yumiko" ? "bot" : sender;
 }
 
 function persistLocalChatSnapshot() {
@@ -759,7 +763,7 @@ async function loadChatFromSupabase({ userId }) {
     addAndPersistMessage({ role: "assistant", content: welcome, render: true });
     await saveMessageToSupabase({
       userId,
-      sender: "bot",
+      sender: "yumiko",
       content: welcome
     });
     telemetryLog("load_messages_empty_seeded", { userId, loadedCount: 1 });
@@ -791,9 +795,15 @@ const YUMIKO_THINK_URL = "https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/ob
 let chatBox;
 let userInput;
 let sendBtn;
+let recordBtn;
 let regenBtn;
 let resetBtn;
 let personalizeByTimeToggle;
+
+let mediaRecorder;
+let mediaStream;
+let audioChunks = [];
+let isRecording = false;
 
 let lastUserText = null;
 let lastSendAt = 0;
@@ -811,6 +821,8 @@ const REGEN_COOLDOWN_MS = 2000;
 const BUTTON_LABELS = {
   send: "Enviar",
   sendCooldown: "Espera…",
+  record: "🎙️ Mantener",
+  recording: "⏺ Grabando...",
   regen: "Regenerar",
   regenCooldown: "Espera 2s…",
   reset: "Reiniciar Chat",
@@ -834,6 +846,12 @@ function updateActionButtonsState() {
     const sendOnCooldown = now - lastSendAt < SEND_COOLDOWN_MS;
     sendBtn.disabled = isSending || sendOnCooldown;
     sendBtn.textContent = sendOnCooldown ? BUTTON_LABELS.sendCooldown : BUTTON_LABELS.send;
+  }
+
+  if (recordBtn) {
+    const sendOnCooldown = now - lastSendAt < SEND_COOLDOWN_MS;
+    recordBtn.disabled = isSending || sendOnCooldown;
+    recordBtn.textContent = isRecording ? BUTTON_LABELS.recording : BUTTON_LABELS.record;
   }
 
   if (resetBtn) {
@@ -876,14 +894,15 @@ function setYumikoState(state) {
 }
 
 function addMessage(text, sender, options = {}) {
-  const { skipAnimation = false } = options;
+  const { skipAnimation = false, audioUrl = null } = options;
   const msg = document.createElement("div");
-  msg.classList.add("message", sender);
+  const uiSenderClass = getUiSenderClass(sender);
+  msg.classList.add("message", uiSenderClass);
 
   const bubble = document.createElement("div");
   bubble.classList.add("bubble", "chat-bubble");
 
-  if (sender === "bot") {
+  if (uiSenderClass === "bot") {
     bubble.classList.add("yumiko-bubble");
     if (!skipAnimation) {
       bubble.classList.add("yumiko-enter");
@@ -897,7 +916,21 @@ function addMessage(text, sender, options = {}) {
     }
   }
 
-  bubble.textContent = text;
+  if (text) {
+    const textNode = document.createElement("div");
+    textNode.textContent = text;
+    bubble.appendChild(textNode);
+  }
+
+  if (audioUrl) {
+    const audioEl = document.createElement("audio");
+    audioEl.controls = true;
+    audioEl.src = audioUrl;
+    audioEl.preload = "metadata";
+    audioEl.style.display = "block";
+    audioEl.style.marginTop = text ? "8px" : "0";
+    bubble.appendChild(audioEl);
+  }
 
   if (!chatBox) return;
 
@@ -913,6 +946,7 @@ function cacheChatDomElements() {
   chatBox = document.getElementById("chat-box");
   userInput = document.getElementById("user-input");
   sendBtn = document.getElementById("send-btn");
+  recordBtn = document.getElementById("record-btn");
   regenBtn = document.getElementById("regenerate-btn");
   resetBtn = document.getElementById("reset-chat");
   personalizeByTimeToggle = document.getElementById("personalize-time-toggle");
@@ -954,7 +988,114 @@ function registerInputListeners() {
 // ===============================
 // OBTENER USER Y CARGAR HISTORIAL
 // ===============================
+async function startRecording() {
+  if (isSending || isRecording) return;
+
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(mediaStream, { mimeType: "audio/webm" });
+
+    mediaRecorder.addEventListener("dataavailable", (event) => {
+      if (event.data?.size) audioChunks.push(event.data);
+    });
+
+    mediaRecorder.start();
+    isRecording = true;
+    updateActionButtonsState();
+  } catch (error) {
+    console.error("No se pudo iniciar la grabación:", error?.message || error);
+    showChatFeedback("No pude acceder al micrófono. Revisá permisos del navegador.");
+  }
+}
+
+async function stopRecordingAndSend(user) {
+  if (!isRecording || !mediaRecorder) return;
+
+  const stoppedBlob = await new Promise((resolve) => {
+    mediaRecorder.addEventListener(
+      "stop",
+      () => {
+        const blob = new Blob(audioChunks, { type: "audio/webm" });
+        resolve(blob);
+      },
+      { once: true }
+    );
+    mediaRecorder.stop();
+  });
+
+  mediaStream?.getTracks()?.forEach((track) => track.stop());
+  mediaStream = null;
+  mediaRecorder = null;
+  isRecording = false;
+  updateActionButtonsState();
+
+  if (!stoppedBlob || stoppedBlob.size === 0) return;
+  await sendVoiceMessage(user, stoppedBlob);
+}
+
+async function sendVoiceMessage(user, audioBlob) {
+  if (isSending) return;
+
+  isSending = true;
+  lastSendAt = Date.now();
+  updateActionButtonsState();
+  scheduleCooldownRefresh(SEND_COOLDOWN_MS);
+
+  const typing = document.getElementById("typing");
+  typing?.classList.remove("hidden");
+
+  try {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const token = session?.access_token;
+
+    if (!token) {
+      throw new Error("No hay sesión activa para enviar audio.");
+    }
+
+    const formData = new FormData();
+    formData.append("audio", audioBlob, `voice-${Date.now()}.webm`);
+
+    const res = await fetch("/api/voice-message", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+      body: formData
+    });
+
+    if (!res.ok) {
+      throw new Error(`voice-message request failed with status ${res.status}`);
+    }
+
+    const data = await res.json();
+    const transcript = data?.transcript || "(audio)";
+    const replyText = data?.reply_text || "No pude responderte por audio ahora.";
+
+    sessionNudgeState.messages_in_session += 1;
+    persistSessionNudgeState();
+
+    addAndPersistMessage({ role: "user", content: transcript, render: false });
+    addMessage("", "user", { audioUrl: data?.audio_in_signed_url, skipAnimation: true });
+
+    addAndPersistMessage({ role: "assistant", content: replyText, render: false });
+    addMessage(replyText, "yumiko", { audioUrl: data?.audio_out_signed_url });
+
+    lastUserText = transcript;
+    hasUserMessagedThisSession = true;
+    markLastActivity();
+  } catch (error) {
+    console.error("Error enviando audio:", error?.message || error);
+    showChatFeedback("Hubo un error al enviar el audio. Intentá de nuevo.");
+  } finally {
+    typing?.classList.add("hidden");
+    isSending = false;
+    updateActionButtonsState();
+  }
+}
+
 async function sendMessage(user) {
+
   if (!userInput) {
     console.warn("sendMessage: user-input no existe en el DOM.");
     return;
@@ -995,7 +1136,7 @@ async function sendMessage(user) {
     sessionNudgeState.rest_nudge_pending_response = false;
     persistSessionNudgeState();
     addAndPersistMessage({ role: "assistant", content: REST_NUDGE_REJECT_TEXT, render: true });
-    await saveMessageToSupabase({ userId: user.id, sender: "bot", content: REST_NUDGE_REJECT_TEXT });
+    await saveMessageToSupabase({ userId: user.id, sender: "yumiko", content: REST_NUDGE_REJECT_TEXT });
     devNudgeLog("rest_nudge_rejected_by_user", { reason: "declined_after_nudge" });
   } else if (sessionNudgeState.hello_nudge_pending_response || sessionNudgeState.rest_nudge_pending_response) {
     sessionNudgeState.hello_nudge_pending_response = false;
@@ -1050,7 +1191,7 @@ async function sendMessage(user) {
 
     await saveMessageToSupabase({
       userId: user.id,
-      sender: "bot",
+      sender: "yumiko",
       content: data.reply
     });
     telemetryLog("message_saved", { userId: user.id, role: "assistant" });
@@ -1150,7 +1291,7 @@ async function regenerateResponse(user) {
     if (!r2.ok) {
       const err = await r2.json().catch(() => ({}));
       console.warn("regenerate-last falló:", err?.error || err);
-      await saveMessageToSupabase({ userId: user.id, sender: "bot", content: reply });
+      await saveMessageToSupabase({ userId: user.id, sender: "yumiko", content: reply });
       showChatFeedback("No pude regenerar en servidor, pero guardé la nueva respuesta localmente.");
     }
 
@@ -1246,7 +1387,7 @@ async function resetChat(user) {
 
     const hello = await buildWelcomeMessage(user.id);
     addAndPersistMessage({ role: "assistant", content: hello, render: true });
-    await saveMessageToSupabase({ userId: user.id, sender: "bot", content: hello });
+    await saveMessageToSupabase({ userId: user.id, sender: "yumiko", content: hello });
   } catch (e) {
     console.error("Error reiniciando chat:", e?.message || e);
     addAndPersistMessage({ role: "assistant", content: "No pude reiniciar el chat por un error.", render: true });
@@ -1266,6 +1407,29 @@ function bindChatEventListeners(user) {
     });
   } else {
     console.warn("No se encontró #send-btn. El envío por botón no estará disponible.");
+  }
+
+  if (recordBtn) {
+    recordBtn.addEventListener("mousedown", async (event) => {
+      event.preventDefault();
+      await startRecording();
+    });
+    recordBtn.addEventListener("touchstart", async (event) => {
+      event.preventDefault();
+      await startRecording();
+    }, { passive: false });
+
+    const stopHandler = async (event) => {
+      event.preventDefault();
+      await stopRecordingAndSend(user);
+    };
+
+    recordBtn.addEventListener("mouseup", stopHandler);
+    recordBtn.addEventListener("mouseleave", stopHandler);
+    recordBtn.addEventListener("touchend", stopHandler, { passive: false });
+    recordBtn.addEventListener("touchcancel", stopHandler, { passive: false });
+  } else {
+    console.warn("No se encontró #record-btn. El envío por audio no estará disponible.");
   }
 
   if (resetBtn) {
