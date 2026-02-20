@@ -32,31 +32,31 @@ export default async function handler(req, res) {
     if (userErr || !userData?.user) return res.status(401).json({ error: "Invalid token" });
     if (userData.user.id !== user_id) return res.status(403).json({ error: "User mismatch" });
 
-    const { data: lastBot, error: lastErr } = await supabaseAdmin
+    const { data: lastYumiko, error: lastErr } = await supabaseAdmin
       .from("messages")
       .select("id")
       .eq("user_id", user_id)
-      .eq("sender", "bot")
+      .eq("sender", "yumiko")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
     if (lastErr) return res.status(500).json({ error: lastErr.message || "DB read failed" });
 
-    if (lastBot?.id) {
+    if (lastYumiko?.id) {
       const { error: delErr } = await supabaseAdmin
         .from("messages")
         .delete()
-        .eq("id", lastBot.id);
+        .eq("id", lastYumiko.id);
 
-      if (delErr) return res.status(500).json({ error: delErr.message || "DB delete last bot failed" });
+      if (delErr) return res.status(500).json({ error: delErr.message || "DB delete last yumiko failed" });
     }
 
     const { error: insErr } = await supabaseAdmin
       .from("messages")
-      .insert({ user_id, sender: "bot", content: new_reply });
+      .insert({ user_id, sender: "yumiko", content: new_reply });
 
-    if (insErr) return res.status(500).json({ error: insErr.message || "DB insert new bot failed" });
+    if (insErr) return res.status(500).json({ error: insErr.message || "DB insert new yumiko failed" });
 
     return res.status(200).json({ ok: true });
   } catch (e) {
