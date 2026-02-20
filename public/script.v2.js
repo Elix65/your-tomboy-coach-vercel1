@@ -742,6 +742,7 @@ function renderChatMessagesFromState() {
     skipAnimation: true,
     audioUrl: msg.audioUrl || ""
   }));
+  initWAAudioPlayers(chatBox);
   const lastUserLocal = [...chatMessages].reverse().find((m) => m.role === "user");
   lastUserText = lastUserLocal?.content ?? null;
 }
@@ -904,6 +905,162 @@ function setYumikoState(state) {
   idle.classList.add("is-active");
 }
 
+function formatTime(seconds) {
+  const safeSeconds = Number.isFinite(seconds) && seconds >= 0 ? Math.floor(seconds) : 0;
+  const mins = Math.floor(safeSeconds / 60);
+  const secs = safeSeconds % 60;
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+}
+
+function hashSeed(value) {
+  const str = String(value || "yumiko-audio");
+  let hash = 2166136261;
+  for (let i = 0; i < str.length; i += 1) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function seededRandom(seed) {
+  let state = seed >>> 0;
+  return () => {
+    state = (Math.imul(1664525, state) + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
+
+function generateWaveHeights(seed, count = 36) {
+  const random = seededRandom(hashSeed(seed));
+  const heights = [];
+  for (let i = 0; i < count; i += 1) {
+    const sin = Math.sin((i / (count - 1 || 1)) * Math.PI);
+    const smoothBase = 0.2 + sin * 0.5;
+    const jitter = (random() - 0.5) * 0.25;
+    const value = Math.max(0.2, Math.min(1, smoothBase + jitter));
+    heights.push(Math.round(value * 100));
+  }
+  return heights;
+}
+
+function setAudioProgress(player, ratio) {
+  const clamped = Math.max(0, Math.min(1, Number.isFinite(ratio) ? ratio : 0));
+  const progress = player.querySelector(".wa-progress");
+  const knob = player.querySelector(".wa-knob");
+  if (progress) progress.style.width = `${clamped * 100}%`;
+  if (knob) knob.style.left = `${clamped * 100}%`;
+}
+
+function pauseOtherAudios(except) {
+  document.querySelectorAll(".wa-audio audio").forEach((audio) => {
+    if (audio !== except && !audio.paused) {
+      audio.pause();
+    }
+  });
+}
+
+function initWAAudioPlayers(root = document) {
+  const players = root.querySelectorAll(".wa-audio:not([data-wa-initialized='1'])");
+  players.forEach((player) => {
+    const audio = player.querySelector("audio");
+    const playBtn = player.querySelector(".wa-play");
+    const wave = player.querySelector(".wa-wave");
+    const bars = player.querySelector(".wa-bars");
+    const cur = player.querySelector(".wa-cur");
+    const dur = player.querySelector(".wa-dur");
+    if (!audio || !playBtn || !wave || !bars || !cur || !dur) return;
+
+    if (!bars.childElementCount) {
+      const waveSeed = player.dataset.seed || player.dataset.url || audio.currentSrc || audio.src;
+      const heights = generateWaveHeights(waveSeed, 36);
+      const frag = document.createDocumentFragment();
+      heights.forEach((height) => {
+        const bar = document.createElement("span");
+        bar.style.height = `${height}%`;
+        frag.appendChild(bar);
+      });
+      bars.appendChild(frag);
+    }
+
+    const syncPlayState = () => {
+      playBtn.textContent = audio.paused ? "▶" : "⏸";
+      playBtn.setAttribute("aria-label", audio.paused ? "Reproducir" : "Pausar");
+    };
+
+    const syncTime = () => {
+      const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+      const current = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
+      dur.textContent = formatTime(duration);
+      cur.textContent = formatTime(current);
+      setAudioProgress(player, duration > 0 ? current / duration : 0);
+    };
+
+    const seekWithClientX = (clientX) => {
+      const rect = wave.getBoundingClientRect();
+      if (!rect.width) return;
+      const ratio = (clientX - rect.left) / rect.width;
+      setAudioProgress(player, ratio);
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        audio.currentTime = Math.max(0, Math.min(audio.duration, ratio * audio.duration));
+      }
+    };
+
+    playBtn.addEventListener("click", () => {
+      if (audio.paused) {
+        pauseOtherAudios(audio);
+        audio.play().catch(() => {
+          audio.pause();
+          syncPlayState();
+        });
+      } else {
+        audio.pause();
+      }
+    });
+
+    wave.addEventListener("click", (event) => {
+      seekWithClientX(event.clientX);
+    });
+
+    let isTouchSeeking = false;
+    wave.addEventListener("touchstart", (event) => {
+      const touch = event.touches?.[0];
+      if (!touch) return;
+      isTouchSeeking = true;
+      seekWithClientX(touch.clientX);
+      event.preventDefault();
+    }, { passive: false });
+    wave.addEventListener("touchmove", (event) => {
+      if (!isTouchSeeking) return;
+      const touch = event.touches?.[0];
+      if (!touch) return;
+      seekWithClientX(touch.clientX);
+      event.preventDefault();
+    }, { passive: false });
+    wave.addEventListener("touchend", () => {
+      isTouchSeeking = false;
+    });
+    wave.addEventListener("touchcancel", () => {
+      isTouchSeeking = false;
+    });
+
+    audio.addEventListener("loadedmetadata", syncTime);
+    audio.addEventListener("timeupdate", syncTime);
+    audio.addEventListener("ended", () => {
+      syncTime();
+      syncPlayState();
+    });
+    audio.addEventListener("play", () => {
+      pauseOtherAudios(audio);
+      syncPlayState();
+    });
+    audio.addEventListener("pause", syncPlayState);
+
+    syncTime();
+    syncPlayState();
+    player.dataset.waInitialized = "1";
+  });
+}
+
 function addMessage(text, sender, options = {}) {
   const { skipAnimation = false, audioUrl = "" } = options;
   const msg = document.createElement("div");
@@ -932,20 +1089,46 @@ function addMessage(text, sender, options = {}) {
     textNode.style.margin = "0 0 8px 0";
     bubble.appendChild(textNode);
 
-    const audioEl = document.createElement("audio");
-    audioEl.controls = true;
-    audioEl.preload = "none";
-    audioEl.src = audioUrl;
-    bubble.appendChild(audioEl);
+    const player = document.createElement("div");
+    player.className = "wa-audio";
+    player.dataset.url = audioUrl;
+    player.dataset.seed = `${audioUrl}::${text}`;
 
-    const listenBtn = document.createElement("button");
-    listenBtn.type = "button";
-    listenBtn.textContent = "▶️ Escuchar";
-    listenBtn.style.marginTop = "8px";
-    listenBtn.addEventListener("click", () => {
-      audioEl.play().catch(() => {});
-    });
-    bubble.appendChild(listenBtn);
+    const playBtn = document.createElement("button");
+    playBtn.className = "wa-play";
+    playBtn.type = "button";
+    playBtn.setAttribute("aria-label", "Reproducir");
+    playBtn.textContent = "▶";
+
+    const wave = document.createElement("div");
+    wave.className = "wa-wave";
+    wave.setAttribute("role", "slider");
+    wave.setAttribute("aria-label", "Progreso de audio");
+
+    const bars = document.createElement("div");
+    bars.className = "wa-bars";
+    const progress = document.createElement("div");
+    progress.className = "wa-progress";
+    const knob = document.createElement("div");
+    knob.className = "wa-knob";
+    wave.append(bars, progress, knob);
+
+    const time = document.createElement("div");
+    time.className = "wa-time";
+    const cur = document.createElement("span");
+    cur.className = "wa-cur";
+    cur.textContent = "0:00";
+    const dur = document.createElement("span");
+    dur.className = "wa-dur";
+    dur.textContent = "0:00";
+    time.append(cur, dur);
+
+    const audioEl = document.createElement("audio");
+    audioEl.preload = "metadata";
+    audioEl.src = audioUrl;
+
+    player.append(playBtn, wave, time, audioEl);
+    bubble.appendChild(player);
   } else {
     bubble.textContent = text;
   }
@@ -954,6 +1137,7 @@ function addMessage(text, sender, options = {}) {
 
   msg.appendChild(bubble);
   chatBox.appendChild(msg);
+  initWAAudioPlayers(msg);
   chatBox.scrollTop = chatBox.scrollHeight;
 }
 
