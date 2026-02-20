@@ -243,7 +243,7 @@ async function regenerateLastHandler(req, res) {
       .from('messages')
       .select('id')
       .eq('user_id', user_id)
-      .eq('sender', 'bot')
+      .eq('sender', 'yumiko')
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -252,11 +252,11 @@ async function regenerateLastHandler(req, res) {
 
     if (lastBot?.id) {
       const { error: delErr } = await supabaseAdmin.from('messages').delete().eq('id', lastBot.id);
-      if (delErr) return res.status(500).json({ error: delErr.message || 'DB delete last bot failed' });
+      if (delErr) return res.status(500).json({ error: delErr.message || 'DB delete last yumiko failed' });
     }
 
-    const { error: insErr } = await supabaseAdmin.from('messages').insert({ user_id, sender: 'bot', content: new_reply });
-    if (insErr) return res.status(500).json({ error: insErr.message || 'DB insert new bot failed' });
+    const { error: insErr } = await supabaseAdmin.from('messages').insert({ user_id, sender: 'yumiko', content: new_reply });
+    if (insErr) return res.status(500).json({ error: insErr.message || 'DB insert new yumiko failed' });
 
     return res.status(200).json({ ok: true });
   } catch (e) {
@@ -737,20 +737,30 @@ async function voiceMessageHandler(req, res) {
   if (userErr || !userData?.user) return res.status(401).json({ error: 'Invalid token' });
 
   const userId = userData.user.id;
-  const { fields, files } = await parseMultipart(req);
+  const { files } = await parseMultipart(req);
   const audioFile = files.audio || files.file || Object.values(files)[0];
   const audio = Array.isArray(audioFile) ? audioFile[0] : audioFile;
 
   if (!audio?.filepath) return res.status(400).json({ error: 'Missing audio file in multipart/form-data.' });
 
-  const audioBuffer = await fsp.readFile(audio.filepath);
   const userMsgId = crypto.randomUUID();
-  const yumikoMsgId = crypto.randomUUID();
+
+  const { error: userInsertErr } = await supabaseAdmin.from('messages').insert({
+    id: userMsgId,
+    user_id: userId,
+    sender: 'user',
+    message_type: 'audio',
+    content: null
+  });
+
+  if (userInsertErr) return res.status(500).json({ error: userInsertErr.message || 'Error inserting user audio message.' });
+
+  const audioBuffer = await fsp.readFile(audio.filepath);
 
   const userAudioKey = `${userId}/${userMsgId}.webm`;
   const { error: userAudioUploadErr } = await supabaseAdmin.storage
     .from('user-audio')
-    .upload(userAudioKey, audioBuffer, { contentType: audio.mimetype || 'audio/webm', upsert: true });
+    .upload(userAudioKey, audioBuffer, { contentType: 'audio/webm', upsert: true });
 
   if (userAudioUploadErr) return res.status(500).json({ error: userAudioUploadErr.message || 'Error uploading user audio.' });
 
@@ -763,19 +773,63 @@ async function voiceMessageHandler(req, res) {
 
   const transcript = transcription?.text?.trim() || '';
 
+  const { error: userUpdateErr } = await supabaseAdmin
+    .from('messages')
+    .update({ transcript, audio_in_path: userAudioKey })
+    .eq('id', userMsgId)
+    .eq('user_id', userId);
+
+  if (userUpdateErr) return res.status(500).json({ error: userUpdateErr.message || 'Error updating user audio message.' });
+
+  const { data: recentMessages, error: recentMessagesErr } = await supabaseAdmin
+    .from('messages')
+    .select('sender,content,transcript')
+    .eq('user_id', userId)
+    .eq('sender', 'user')
+    .order('created_at', { ascending: false })
+    .limit(6);
+
+  if (recentMessagesErr) {
+    console.warn('Could not load recent messages context for voice-message:', recentMessagesErr.message);
+  }
+
+  const userContext = (recentMessages || [])
+    .map((msg) => msg?.content || msg?.transcript)
+    .filter(Boolean)
+    .slice(0, 6)
+    .reverse();
+
+  const contextBlock = userContext.length
+    ? `Contexto reciente del usuario:\n${userContext.map((m, i) => `${i + 1}. ${m}`).join('\n')}`
+    : 'Sin contexto reciente adicional.';
+
   const completion = await openai.chat.completions.create({
     model: 'gpt-4o-mini',
     messages: [
       {
         role: 'system',
         content:
-          'Sos Yumiko, una coach motivadora. Respondé siempre en español rioplatense, en tono cálido y directo, breve (1-3 frases), y cerrá exactamente con “Usuario-kun”.'
+          'Sos Yumiko, una coach motivadora. Respondé siempre en español rioplatense, en tono cálido y directo, breve (1-4 frases), y cerrá exactamente con “Usuario-kun”.'
       },
-      { role: 'user', content: transcript || 'No se pudo transcribir claramente el audio.' }
+      {
+        role: 'user',
+        content: `${contextBlock}\n\nAudio transcripto actual:\n${transcript || 'No se pudo transcribir claramente el audio.'}`
+      }
     ]
   });
 
   const replyText = completion.choices?.[0]?.message?.content?.trim() || 'Te escucho, Usuario-kun';
+  const yumikoMsgId = crypto.randomUUID();
+
+  const { error: yumikoInsertErr } = await supabaseAdmin.from('messages').insert({
+    id: yumikoMsgId,
+    user_id: userId,
+    sender: 'yumiko',
+    message_type: 'audio',
+    content: replyText
+  });
+
+  if (yumikoInsertErr) return res.status(500).json({ error: yumikoInsertErr.message || 'Error inserting Yumiko audio message.' });
 
   const ttsResponse = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${elevenVoiceId}`, {
     method: 'POST',
@@ -804,30 +858,15 @@ async function voiceMessageHandler(req, res) {
 
   if (yumikoAudioUploadErr) return res.status(500).json({ error: yumikoAudioUploadErr.message || 'Error uploading Yumiko audio.' });
 
-  const ttsSeconds = Math.max(1, Math.round(replyText.split(/\s+/).filter(Boolean).length / 2.6));
+  const ttsSeconds = Math.max(1, Math.round(replyText.split(/\s+/).filter(Boolean).length / 2.5));
 
-  const { error: userInsertErr } = await supabaseAdmin.from('messages').insert({
-    id: userMsgId,
-    user_id: userId,
-    sender: 'user',
-    message_type: 'audio',
-    audio_in_path: userAudioKey,
-    transcript
-  });
+  const { error: yumikoUpdateErr } = await supabaseAdmin
+    .from('messages')
+    .update({ audio_out_path: yumikoAudioKey, tts_seconds: ttsSeconds })
+    .eq('id', yumikoMsgId)
+    .eq('user_id', userId);
 
-  if (userInsertErr) return res.status(500).json({ error: userInsertErr.message || 'Error inserting user audio message.' });
-
-  const { error: yumikoInsertErr } = await supabaseAdmin.from('messages').insert({
-    id: yumikoMsgId,
-    user_id: userId,
-    sender: 'yumiko',
-    message_type: 'audio',
-    content: replyText,
-    audio_out_path: yumikoAudioKey,
-    tts_seconds: ttsSeconds
-  });
-
-  if (yumikoInsertErr) return res.status(500).json({ error: yumikoInsertErr.message || 'Error inserting Yumiko audio message.' });
+  if (yumikoUpdateErr) return res.status(500).json({ error: yumikoUpdateErr.message || 'Error updating Yumiko audio message.' });
 
   const { data: userSigned, error: userSignedErr } = await supabaseAdmin.storage.from('user-audio').createSignedUrl(userAudioKey, 3600);
   if (userSignedErr) return res.status(500).json({ error: userSignedErr.message || 'Error creating user audio signed URL.' });
@@ -836,18 +875,15 @@ async function voiceMessageHandler(req, res) {
   if (yumikoSignedErr) return res.status(500).json({ error: yumikoSignedErr.message || 'Error creating Yumiko audio signed URL.' });
 
   return res.status(200).json({
-    ok: true,
-    user_id: userId,
-    transcript,
-    reply_text: replyText,
     user_message_id: userMsgId,
     yumiko_message_id: yumikoMsgId,
-    user_audio_key: userAudioKey,
-    yumiko_audio_key: yumikoAudioKey,
-    user_audio_signed_url: userSigned.signedUrl,
-    yumiko_audio_signed_url: yumikoSigned.signedUrl,
-    tts_seconds: ttsSeconds,
-    fields
+    transcript,
+    reply_text: replyText,
+    audio_in_key: userAudioKey,
+    audio_out_key: yumikoAudioKey,
+    audio_in_signed_url: userSigned.signedUrl,
+    audio_out_signed_url: yumikoSigned.signedUrl,
+    tts_seconds: ttsSeconds
   });
 }
 
