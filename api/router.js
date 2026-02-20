@@ -406,6 +406,53 @@ async function resetChatHandler(req, res) {
   }
 }
 
+async function getMessagesHandler(req, res) {
+  try {
+    if (req.method !== 'GET') return res.status(405).send('Method Not Allowed');
+
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: 'Supabase env vars are missing (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).' });
+    }
+
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) return res.status(401).json({ error: 'Missing Bearer token' });
+
+    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
+    if (userErr || !userData?.user) return res.status(401).json({ error: 'Invalid token' });
+
+    const userId = userData.user.id;
+    const { data: rows, error: messagesErr } = await supabaseAdmin
+      .from('messages')
+      .select('id,sender,content,created_at,message_type,audio_out_path,tts_seconds')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
+      .limit(100);
+
+    if (messagesErr) return res.status(500).json({ error: messagesErr.message || 'Error reading messages.' });
+
+    const messages = [];
+    for (const row of rows || []) {
+      const message = { ...row };
+      if (row.audio_out_path) {
+        const { data: signedData, error: signedErr } = await supabaseAdmin.storage
+          .from('yumiko-audio')
+          .createSignedUrl(row.audio_out_path, 3600);
+
+        if (signedErr) return res.status(500).json({ error: signedErr.message || 'Error creating audio signed URL.' });
+        message.audio_url = signedData?.signedUrl || null;
+      }
+      messages.push(message);
+    }
+
+    return res.status(200).json({ messages });
+  } catch (e) {
+    console.error('get-messages error:', e?.message || e);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
 async function setActiveSkinHandler(req, res) {
   try {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
@@ -1011,6 +1058,8 @@ module.exports = async function handler(req, res) {
       case 'reset-chat':
         req.body = await getJsonBody(req);
         return resetChatHandler(req, res);
+      case 'get-messages':
+        return getMessagesHandler(req, res);
       case 'set-active-skin':
         req.body = await getJsonBody(req);
         return setActiveSkinHandler(req, res);
