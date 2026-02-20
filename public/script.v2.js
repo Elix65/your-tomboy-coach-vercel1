@@ -111,7 +111,8 @@ const MAX_MESSAGES_BEFORE_SUMMARY = 30;
 const CONTEXT_WINDOW_SIZE = 20;
 const STORAGE_KEYS = {
   messagesSnapshot: "yumiko_messages",
-  summarySnapshot: "yumiko_memory_summary"
+  summarySnapshot: "yumiko_memory_summary",
+  audioMode: "yumiko_audio_mode_enabled"
 };
 
 let chatMessages = [];
@@ -129,6 +130,10 @@ function telemetryLog(eventName, payload = {}) {
 // 1) Función para guardar mensajes en Supabase
 function showChatFeedback(message) {
   addMessage(message, "bot", { skipAnimation: true });
+}
+
+function isAudioModeEnabled() {
+  return localStorage.getItem(STORAGE_KEYS.audioMode) === "1";
 }
 
 async function saveMessageToSupabase({ userId, sender, content }) {
@@ -795,6 +800,7 @@ let recordBtn;
 let regenBtn;
 let resetBtn;
 let personalizeByTimeToggle;
+let audioModeToggle;
 
 let lastUserText = null;
 let lastSendAt = 0;
@@ -886,7 +892,7 @@ function setYumikoState(state) {
 }
 
 function addMessage(text, sender, options = {}) {
-  const { skipAnimation = false } = options;
+  const { skipAnimation = false, audioUrl = "" } = options;
   const msg = document.createElement("div");
   msg.classList.add("message", sender);
 
@@ -907,7 +913,29 @@ function addMessage(text, sender, options = {}) {
     }
   }
 
-  bubble.textContent = text;
+  if (audioUrl) {
+    const textNode = document.createElement("p");
+    textNode.textContent = text;
+    textNode.style.margin = "0 0 8px 0";
+    bubble.appendChild(textNode);
+
+    const audioEl = document.createElement("audio");
+    audioEl.controls = true;
+    audioEl.preload = "none";
+    audioEl.src = audioUrl;
+    bubble.appendChild(audioEl);
+
+    const listenBtn = document.createElement("button");
+    listenBtn.type = "button";
+    listenBtn.textContent = "▶️ Escuchar";
+    listenBtn.style.marginTop = "8px";
+    listenBtn.addEventListener("click", () => {
+      audioEl.play().catch(() => {});
+    });
+    bubble.appendChild(listenBtn);
+  } else {
+    bubble.textContent = text;
+  }
 
   if (!chatBox) return;
 
@@ -1066,6 +1094,7 @@ function cacheChatDomElements() {
   regenBtn = document.getElementById("regenerate-btn");
   resetBtn = document.getElementById("reset-chat");
   personalizeByTimeToggle = document.getElementById("personalize-time-toggle");
+  audioModeToggle = document.getElementById("audio-mode-toggle");
 }
 
 function registerInputListeners() {
@@ -1171,8 +1200,13 @@ async function sendMessage(user) {
 
   try {
     refreshRuntimeTimeContext();
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const token = session?.access_token;
+    const audioMode = Boolean(audioModeToggle?.checked);
+
     const payload = {
       message: text,
+      audio_mode: audioMode,
       summary: buildSummaryWithTimeContext(),
       messages: getRecentContextMessages()
     };
@@ -1186,7 +1220,10 @@ async function sendMessage(user) {
 
     const res = await fetch("/api/yumiko", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
       body: JSON.stringify(payload)
     });
 
@@ -1195,15 +1232,20 @@ async function sendMessage(user) {
     }
 
     const data = await res.json();
-    addAndPersistMessage({ role: "assistant", content: data.reply, render: true });
+    addAndPersistMessage({ role: "assistant", content: data.reply, render: false });
+    addMessage(data.reply, "bot", {
+      audioUrl: data.audio_out_signed_url || ""
+    });
     updateStreakOnMessageSend(text);
 
-    await saveMessageToSupabase({
-      userId: user.id,
-      sender: "yumiko",
-      content: data.reply
-    });
-    telemetryLog("message_saved", { userId: user.id, role: "assistant" });
+    if (!data?.yumiko_message_id) {
+      await saveMessageToSupabase({
+        userId: user.id,
+        sender: "yumiko",
+        content: data.reply
+      });
+      telemetryLog("message_saved", { userId: user.id, role: "assistant" });
+    }
 
     await maybeSendRestNudge({ userId: user.id });
 
@@ -1253,8 +1295,12 @@ async function regenerateResponse(user) {
 
   try {
     refreshRuntimeTimeContext();
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const token = session?.access_token;
+
     const payload = {
       message: lastUserText,
+      audio_mode: false,
       summary: buildSummaryWithTimeContext(),
       messages: getRecentContextMessages()
     };
@@ -1268,7 +1314,10 @@ async function regenerateResponse(user) {
 
     const r = await fetch("/api/yumiko", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
       body: JSON.stringify(payload)
     });
 
@@ -1283,10 +1332,9 @@ async function regenerateResponse(user) {
         break;
       }
     }
-    addAndPersistMessage({ role: "assistant", content: reply, render: true });
+    addAndPersistMessage({ role: "assistant", content: reply, render: false });
+    addMessage(reply, "bot", { audioUrl: d?.audio_out_signed_url || "" });
 
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    const token = session?.access_token;
 
     const r2 = await fetch("/api/regenerate-last", {
       method: "POST",
@@ -1471,6 +1519,13 @@ function bindChatEventListeners(user) {
       } catch (error) {
         console.warn("No se pudo guardar el toggle de hora local.", error?.message || error);
       }
+    });
+  }
+
+  if (audioModeToggle) {
+    audioModeToggle.checked = isAudioModeEnabled();
+    audioModeToggle.addEventListener("change", () => {
+      localStorage.setItem(STORAGE_KEYS.audioMode, audioModeToggle.checked ? "1" : "0");
     });
   }
 

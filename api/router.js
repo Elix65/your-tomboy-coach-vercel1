@@ -129,6 +129,34 @@ function isRarePlus(rareza) {
   return r === 'rara' || r === 'epica' || r === 'épica' || r === 'legendaria';
 }
 
+
+function estimateTtsSeconds(text) {
+  const words = String(text || '').trim().split(/\s+/).filter(Boolean).length;
+  return Math.max(1, Math.round(words / 2.5));
+}
+
+async function createElevenLabsMp3({ text, apiKey, voiceId }) {
+  const ttsResponse = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+    method: 'POST',
+    headers: {
+      'xi-api-key': apiKey,
+      'Content-Type': 'application/json',
+      Accept: 'audio/mpeg'
+    },
+    body: JSON.stringify({
+      text,
+      model_id: 'eleven_multilingual_v2'
+    })
+  });
+
+  if (!ttsResponse.ok) {
+    const ttsError = await ttsResponse.text();
+    throw new Error(`ElevenLabs TTS error: ${ttsError}`);
+  }
+
+  return Buffer.from(await ttsResponse.arrayBuffer());
+}
+
 async function yumikoHandler(req, res) {
   if (req.method === 'GET') {
     return res.status(200).json({ status: 'ok', message: 'Yumiko API está viva' });
@@ -139,7 +167,7 @@ async function yumikoHandler(req, res) {
   }
 
   try {
-    const { message, profile, messages: incomingMessages, summary } = req.body || {};
+    const { message, profile, messages: incomingMessages, summary, audio_mode: audioModeRaw } = req.body || {};
 
     if (!message) {
       return res.status(400).json({ error: "Falta el campo 'message' en el cuerpo." });
@@ -211,7 +239,89 @@ async function yumikoHandler(req, res) {
     }
 
     const reply = data?.choices?.[0]?.message?.content || 'Yumiko no generó respuesta.';
-    return res.status(200).json({ reply });
+    const audioMode = audioModeRaw === true;
+
+    if (!audioMode) {
+      return res.status(200).json({ reply });
+    }
+
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: 'Supabase env vars are missing (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).' });
+    }
+
+    const elevenKey = process.env.ELEVENLABS_API_KEY;
+    const elevenVoiceId = process.env.ELEVENLABS_VOICE_ID;
+    if (!elevenKey || !elevenVoiceId) {
+      return res.status(500).json({ error: 'Missing ELEVENLABS_API_KEY or ELEVENLABS_VOICE_ID.' });
+    }
+
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (!token) {
+      return res.status(401).json({ error: 'Missing Bearer token for audio mode.' });
+    }
+
+    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
+    if (userErr || !userData?.user) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    const userId = userData.user.id;
+    const { data: insertedMsg, error: yumikoInsertErr } = await supabaseAdmin
+      .from('messages')
+      .insert({
+        user_id: userId,
+        sender: 'yumiko',
+        content: reply,
+        message_type: 'text'
+      })
+      .select('id')
+      .single();
+
+    if (yumikoInsertErr || !insertedMsg?.id) {
+      return res.status(500).json({ error: yumikoInsertErr?.message || 'Error inserting Yumiko message.' });
+    }
+
+    const yumikoMessageId = insertedMsg.id;
+    const mp3Buffer = await createElevenLabsMp3({ text: reply, apiKey: elevenKey, voiceId: elevenVoiceId });
+    const audioOutKey = `${userId}/${yumikoMessageId}.mp3`;
+
+    const { error: uploadErr } = await supabaseAdmin.storage
+      .from('yumiko-audio')
+      .upload(audioOutKey, mp3Buffer, { contentType: 'audio/mpeg', upsert: true });
+
+    if (uploadErr) {
+      return res.status(500).json({ error: uploadErr.message || 'Error uploading Yumiko audio.' });
+    }
+
+    const ttsSeconds = estimateTtsSeconds(reply);
+    const { error: updateErr } = await supabaseAdmin
+      .from('messages')
+      .update({
+        audio_out_path: audioOutKey,
+        tts_seconds: ttsSeconds,
+        message_type: 'audio'
+      })
+      .eq('id', yumikoMessageId)
+      .eq('user_id', userId);
+
+    if (updateErr) {
+      return res.status(500).json({ error: updateErr.message || 'Error updating Yumiko audio metadata.' });
+    }
+
+    const { data: signedData, error: signedErr } = await supabaseAdmin.storage.from('yumiko-audio').createSignedUrl(audioOutKey, 3600);
+    if (signedErr) {
+      return res.status(500).json({ error: signedErr.message || 'Error creating Yumiko audio signed URL.' });
+    }
+
+    return res.status(200).json({
+      reply,
+      yumiko_message_id: yumikoMessageId,
+      audio_out_signed_url: signedData?.signedUrl,
+      audio_out_key: audioOutKey,
+      tts_seconds: ttsSeconds
+    });
   } catch (error) {
     console.error('Error en yumiko:', error);
     return res.status(500).json({ reply: 'Error interno en la API de Yumiko.' });
