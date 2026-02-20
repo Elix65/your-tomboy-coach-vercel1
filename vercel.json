@@ -1,6 +1,18 @@
 {
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/", "destination": "/index.html" }
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/api/yumiko", "destination": "/api/router?action=yumiko" },
+    { "source": "/api/regenerate-last", "destination": "/api/router?action=regenerate-last" },
+    { "source": "/api/reset-chat", "destination": "/api/router?action=reset-chat" },
+    { "source": "/api/set-active-skin", "destination": "/api/router?action=set-active-skin" },
+    { "source": "/api/get-active-skin", "destination": "/api/router?action=get-active-skin" },
+    { "source": "/api/inventario", "destination": "/api/router?action=inventario" },
+    { "source": "/api/gacha-pull", "destination": "/api/router?action=gacha-pull" },
+    { "source": "/api/tirar-skin", "destination": "/api/router?action=tirar-skin" },
+    { "source": "/api/tirar-skin-premium", "destination": "/api/router?action=tirar-skin-premium" },
+    { "source": "/api/tirar-multiple", "destination": "/api/router?action=tirar-multiple" },
+    { "source": "/api/tirar-multiple-premium", "destination": "/api/router?action=tirar-multiple-premium" },
+    { "source": "/api/voice-message", "destination": "/api/router?action=voice-message" }
   ]
 }
