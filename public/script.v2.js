@@ -819,7 +819,6 @@ const YUMIKO_THINK_URL = "https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/ob
 let chatBox;
 let userInput;
 let sendBtn;
-let recordBtn;
 let regenBtn;
 let resetBtn;
 let personalizeByTimeToggle;
@@ -833,10 +832,6 @@ let hasUserMessagedThisSession = false;
 let isSending = false;
 let isRegenerating = false;
 let isResetting = false;
-let isRecording = false;
-let mediaRecorder = null;
-let recordingStream = null;
-let recordedChunks = [];
 
 const SEND_COOLDOWN_MS = 1200;
 const RESET_COOLDOWN_MS = 2000;
@@ -866,13 +861,8 @@ function updateActionButtonsState() {
 
   if (sendBtn) {
     const sendOnCooldown = now - lastSendAt < SEND_COOLDOWN_MS;
-    sendBtn.disabled = isSending || isRecording || sendOnCooldown;
+    sendBtn.disabled = isSending || sendOnCooldown;
     sendBtn.textContent = sendOnCooldown ? BUTTON_LABELS.sendCooldown : BUTTON_LABELS.send;
-  }
-
-  if (recordBtn) {
-    recordBtn.disabled = isSending;
-    recordBtn.textContent = isRecording ? "🎙️ Grabando…" : "🎙️ Mantener";
   }
 
   if (resetBtn) {
@@ -968,144 +958,6 @@ function addMessage(text, sender, options = {}) {
 }
 
 
-function addAudioMessage({ sender = "user", text = "", audioUrl = "", skipAnimation = false }) {
-  const msg = document.createElement("div");
-  const visualSender = sender === "yumiko" ? "bot" : sender;
-  msg.classList.add("message", visualSender);
-
-  const bubble = document.createElement("div");
-  bubble.classList.add("bubble", "chat-bubble");
-
-  if (visualSender === "bot") {
-    bubble.classList.add("yumiko-bubble");
-    if (!skipAnimation) {
-      bubble.classList.add("yumiko-enter");
-      bubble.addEventListener("animationend", () => bubble.classList.remove("yumiko-enter"), { once: true });
-    }
-  }
-
-  if (text) {
-    const textNode = document.createElement("p");
-    textNode.textContent = text;
-    textNode.style.margin = "0 0 8px 0";
-    bubble.appendChild(textNode);
-  }
-
-  if (audioUrl) {
-    const audioEl = document.createElement("audio");
-    audioEl.controls = true;
-    audioEl.src = audioUrl;
-    audioEl.preload = "metadata";
-    bubble.appendChild(audioEl);
-  }
-
-  if (!chatBox) return;
-
-  msg.appendChild(bubble);
-  chatBox.appendChild(msg);
-  chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-async function startRecording() {
-  if (isSending || isRecording) return;
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    recordingStream = stream;
-    recordedChunks = [];
-    mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
-
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data && event.data.size > 0) {
-        recordedChunks.push(event.data);
-      }
-    };
-
-    mediaRecorder.start();
-    isRecording = true;
-    updateActionButtonsState();
-  } catch (error) {
-    console.error("No se pudo iniciar la grabación:", error?.message || error);
-    showChatFeedback("No pude acceder al micrófono. Revisá permisos.");
-  }
-}
-
-async function stopRecordingAndSend() {
-  if (!isRecording || !mediaRecorder) return;
-
-  await new Promise((resolve) => {
-    mediaRecorder.onstop = resolve;
-    mediaRecorder.stop();
-  });
-
-  recordingStream?.getTracks().forEach((track) => track.stop());
-  recordingStream = null;
-  isRecording = false;
-  updateActionButtonsState();
-
-  const blob = new Blob(recordedChunks, { type: "audio/webm" });
-  recordedChunks = [];
-
-  if (!blob.size || !actionUser) return;
-
-  await sendVoiceMessage(actionUser, blob);
-}
-
-async function sendVoiceMessage(user, audioBlob) {
-  if (isSending) return;
-
-  isSending = true;
-  updateActionButtonsState();
-  setYumikoState("thinking");
-
-  const typing = document.getElementById("typing");
-  typing?.classList.remove("hidden");
-
-  try {
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    const token = session?.access_token;
-    if (!token) throw new Error("No access token");
-
-    const formData = new FormData();
-    formData.append("audio", audioBlob, "voice-message.webm");
-
-    const response = await fetch("/api/voice-message", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData
-    });
-
-    if (!response.ok) {
-      throw new Error(`voice-message failed with status ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    addAndPersistMessage({ role: "user", content: data.transcript || "🎙️ Audio enviado", render: false });
-    addAudioMessage({ sender: "user", audioUrl: data.audio_in_signed_url, text: data.transcript || "" });
-
-    addAndPersistMessage({ role: "assistant", content: data.reply_text || "", render: false });
-    addAudioMessage({ sender: "yumiko", text: data.reply_text || "", audioUrl: data.audio_out_signed_url });
-
-    try {
-      const autoAudio = chatBox?.querySelector(".message.bot:last-child audio");
-      await autoAudio?.play();
-    } catch (err) {
-      console.warn("Autoplay bloqueado por el navegador.");
-    }
-
-    updateStreakOnMessageSend(data.transcript || "[voice]");
-  } catch (error) {
-    console.error("Error enviando audio:", error?.message || error);
-    showChatFeedback("Hubo un error enviando el audio.");
-  } finally {
-    typing?.classList.add("hidden");
-    setYumikoState("idle");
-    isSending = false;
-    updateActionButtonsState();
-  }
-}
-
 // ===============================
 // EVENTOS DE INPUT
 // ===============================
@@ -1113,7 +965,6 @@ function cacheChatDomElements() {
   chatBox = document.getElementById("chat-box");
   userInput = document.getElementById("user-input");
   sendBtn = document.getElementById("send-btn");
-  recordBtn = document.getElementById("record-btn");
   regenBtn = document.getElementById("regenerate-btn");
   resetBtn = document.getElementById("reset-chat");
   personalizeByTimeToggle = document.getElementById("personalize-time-toggle");
@@ -1503,27 +1354,6 @@ function bindChatEventListeners(user) {
     });
   } else {
     console.warn("No se encontró #regenerate-btn. La regeneración por botón no estará disponible.");
-  }
-
-  if (recordBtn) {
-    const startEvents = ["mousedown", "touchstart"];
-    const endEvents = ["mouseup", "mouseleave", "touchend", "touchcancel"];
-
-    startEvents.forEach((eventName) => {
-      recordBtn.addEventListener(eventName, async (event) => {
-        event.preventDefault();
-        await startRecording();
-      });
-    });
-
-    endEvents.forEach((eventName) => {
-      recordBtn.addEventListener(eventName, async (event) => {
-        event.preventDefault();
-        await stopRecordingAndSend();
-      });
-    });
-  } else {
-    console.warn("No se encontró #record-btn. La grabación no estará disponible.");
   }
 
   if (personalizeByTimeToggle) {
