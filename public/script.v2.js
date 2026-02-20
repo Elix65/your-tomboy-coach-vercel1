@@ -114,6 +114,8 @@ const STORAGE_KEYS = {
   summarySnapshot: "yumiko_memory_summary",
   audioMode: "yumiko_audio_mode_enabled"
 };
+const AUDIO_TEST_UID_FALLBACK = "a5429e17-43e2-4922-9560-ab914f63283e";
+const AUDIO_TEST_UID = window.AUDIO_TEST_UID || AUDIO_TEST_UID_FALLBACK;
 
 let chatMessages = [];
 let memorySummary = "";
@@ -824,6 +826,7 @@ let regenBtn;
 let resetBtn;
 let personalizeByTimeToggle;
 let audioModeToggle;
+let audioModeRow;
 
 let lastUserText = null;
 let lastSendAt = 0;
@@ -1153,6 +1156,7 @@ function cacheChatDomElements() {
   resetBtn = document.getElementById("reset-chat");
   personalizeByTimeToggle = document.getElementById("personalize-time-toggle");
   audioModeToggle = document.getElementById("audio-mode-toggle");
+  audioModeRow = document.getElementById("audio-mode-row");
 }
 
 function registerInputListeners() {
@@ -1513,6 +1517,20 @@ async function resetChat(user) {
   }
 }
 
+
+function enforceAudioModeAccess(userId) {
+  const canUseAudioMode = userId === AUDIO_TEST_UID;
+  if (!canUseAudioMode) {
+    if (audioModeRow) audioModeRow.style.display = "none";
+    if (audioModeToggle) audioModeToggle.checked = false;
+    localStorage.setItem(STORAGE_KEYS.audioMode, "0");
+    return false;
+  }
+
+  if (audioModeRow) audioModeRow.style.display = "";
+  return true;
+}
+
 function bindChatEventListeners(user) {
   actionUser = user;
 
@@ -1570,12 +1588,14 @@ function bindChatEventListeners(user) {
 }
 
 async function initializeChatSession() {
-  const { data: { user } } = await supabaseClient.auth.getUser();
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  const user = session?.user;
   if (!user) {
     window.location.href = "/login.html";
     return;
   }
 
+  enforceAudioModeAccess(user.id);
   currentUserId = user.id;
   await refreshTimePersonalizationState(user.id);
 

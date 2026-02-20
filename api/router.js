@@ -5,6 +5,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const AUDIO_TEST_UID_FALLBACK = 'a5429e17-43e2-4922-9560-ab914f63283e'; // En Vercel: AUDIO_TEST_UID=<uid> (Preview + Production).
 
 function getSupabaseAdmin() {
   if (!supabaseUrl || !supabaseServiceRoleKey) {
@@ -226,15 +227,38 @@ async function yumikoHandler(req, res) {
     }
 
     const reply = data?.choices?.[0]?.message?.content || 'Yumiko no generó respuesta.';
-    const audioMode = audioModeRaw === true;
-
-    if (!audioMode) {
-      return res.status(200).json({ reply });
-    }
+    let audioMode = audioModeRaw === true;
 
     const supabaseAdmin = getSupabaseAdmin();
-    if (!supabaseAdmin) {
+    if (audioMode && !supabaseAdmin) {
       return res.status(500).json({ error: 'Supabase env vars are missing (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).' });
+    }
+
+    let userId = null;
+    let audioAllowed = false;
+    if (audioMode && supabaseAdmin) {
+      const authHeader = req.headers.authorization || '';
+      const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+      if (token) {
+        const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
+        if (!userErr && userData?.user) {
+          userId = userData.user.id;
+          const allowedUid = process.env.AUDIO_TEST_UID || AUDIO_TEST_UID_FALLBACK;
+          audioAllowed = userId === allowedUid;
+          if (!audioAllowed) {
+            audioMode = false;
+          }
+        } else {
+          audioMode = false;
+        }
+      } else {
+        audioMode = false;
+      }
+    }
+
+    if (!audioMode) {
+      return res.status(200).json({ reply, audio_allowed: audioAllowed });
     }
 
     const elevenKey = process.env.ELEVENLABS_API_KEY;
@@ -242,19 +266,6 @@ async function yumikoHandler(req, res) {
     if (!elevenKey || !elevenVoiceId) {
       return res.status(500).json({ error: 'Missing ELEVENLABS_API_KEY or ELEVENLABS_VOICE_ID.' });
     }
-
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (!token) {
-      return res.status(401).json({ error: 'Missing Bearer token for audio mode.' });
-    }
-
-    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
-    if (userErr || !userData?.user) {
-      return res.status(401).json({ error: 'Invalid token' });
-    }
-
-    const userId = userData.user.id;
     const { data: insertedMsg, error: yumikoInsertErr } = await supabaseAdmin
       .from('messages')
       .insert({
@@ -307,7 +318,8 @@ async function yumikoHandler(req, res) {
       yumiko_message_id: yumikoMessageId,
       audio_out_signed_url: signedData?.signedUrl,
       audio_out_key: audioOutKey,
-      tts_seconds: ttsSeconds
+      tts_seconds: ttsSeconds,
+      audio_allowed: audioAllowed
     });
   } catch (error) {
     console.error('Error en yumiko:', error);
