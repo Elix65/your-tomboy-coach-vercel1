@@ -738,7 +738,10 @@ function addAndPersistMessage({ role, content, render = true, skipAnimation = fa
 function renderChatMessagesFromState() {
   if (!chatBox) return;
   chatBox.innerHTML = "";
-  chatMessages.forEach((msg) => addMessage(msg.content, senderFromRole(msg.role), { skipAnimation: true }));
+  chatMessages.forEach((msg) => addMessage(msg.content, senderFromRole(msg.role), {
+    skipAnimation: true,
+    audioUrl: msg.audioUrl || ""
+  }));
   const lastUserLocal = [...chatMessages].reverse().find((m) => m.role === "user");
   lastUserText = lastUserLocal?.content ?? null;
 }
@@ -746,18 +749,34 @@ function renderChatMessagesFromState() {
 async function loadChatFromSupabase({ userId }) {
   console.log("Cargando historial:", { userId });
 
-  const { data, error } = await supabaseClient
-    .from("messages")
-    .select("id,sender,content,created_at")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: true });
+  const {
+    data: { session }
+  } = await supabaseClient.auth.getSession();
+  const token = session?.access_token;
 
-  if (error) {
-    console.error("❌ Error cargando historial:", error.message);
-    telemetryLog("load_messages_error", { userId, error: error.message });
+  const response = await fetch("/api/get-messages", {
+    method: "GET",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {})
+    }
+  });
+
+  let payload = null;
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+
+  if (!response.ok) {
+    const errorMessage = payload?.error || `HTTP ${response.status}`;
+    console.error("❌ Error cargando historial:", errorMessage);
+    telemetryLog("load_messages_error", { userId, error: errorMessage });
     showChatFeedback("No pude sincronizar tus mensajes desde Supabase. Probá refrescar la página.");
     return;
   }
+
+  const data = payload?.messages || [];
 
   if (!data.length) {
     const welcome = await buildWelcomeMessage(userId);
@@ -771,7 +790,11 @@ async function loadChatFromSupabase({ userId }) {
     return;
   }
 
-  chatMessages = data.map((msg) => ({ role: roleFromSender(msg.sender), content: msg.content }));
+  chatMessages = data.map((msg) => ({
+    role: roleFromSender(msg.sender),
+    content: msg.content,
+    audioUrl: msg.audio_url || ""
+  }));
   trimChatContextIfNeeded();
   persistLocalChatSnapshot();
   renderChatMessagesFromState();
