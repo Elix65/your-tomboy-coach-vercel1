@@ -5,7 +5,8 @@ const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const AUDIO_TEST_UID_FALLBACK = 'a5429e17-43e2-4922-9560-ab914f63283e'; // En Vercel: AUDIO_TEST_UID=<uid> (Preview + Production).
+const mpAccessToken = process.env.MP_ACCESS_TOKEN;
+const mpPlanId = process.env.MP_PLAN_ID;
 
 function getSupabaseAdmin() {
   if (!supabaseUrl || !supabaseServiceRoleKey) {
@@ -19,6 +20,14 @@ function getAction(req) {
   if (req.query?.action) return req.query.action;
   const url = new URL(req.url, 'http://localhost');
   return url.searchParams.get('action');
+}
+
+function getMercadoPagoConfigError() {
+  if (!mpAccessToken || !mpPlanId) {
+    return 'Missing MP_ACCESS_TOKEN or MP_PLAN_ID.';
+  }
+
+  return null;
 }
 
 async function readRawBody(req) {
@@ -145,6 +154,110 @@ async function createElevenLabsMp3({ text, apiKey, voiceId }) {
   return Buffer.from(await ttsResponse.arrayBuffer());
 }
 
+async function mpInitPointHandler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  const mpConfigError = getMercadoPagoConfigError();
+  if (mpConfigError) {
+    return res.status(500).json({ error: mpConfigError });
+  }
+
+  const response = await fetch(`https://api.mercadopago.com/preapproval_plan/${mpPlanId}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${mpAccessToken}`
+    }
+  });
+
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    return res.status(500).json({ error: data?.message || 'Mercado Pago preapproval_plan fetch failed.' });
+  }
+
+  return res.status(200).json({ init_point: data?.init_point || null, plan_id: mpPlanId });
+}
+
+async function mpSyncVoiceHandler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  const mpConfigError = getMercadoPagoConfigError();
+  if (mpConfigError) {
+    return res.status(500).json({ error: mpConfigError });
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
+  if (!supabaseAdmin) {
+    return res.status(500).json({ error: 'Supabase env vars are missing (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).' });
+  }
+
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token) {
+    return res.status(401).json({ error: 'Missing Bearer token' });
+  }
+
+  const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
+  if (userErr || !userData?.user) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+
+  const body = req.body || {};
+  const isTestToken = mpAccessToken.startsWith('TEST-');
+  const hasBodyPayerEmail = typeof body.payer_email === 'string' && body.payer_email.trim().length > 0;
+  if (hasBodyPayerEmail && !isTestToken) {
+    return res.status(400).json({ error: 'payer_email is allowed only with TEST- Mercado Pago tokens.' });
+  }
+
+  const payerEmail = hasBodyPayerEmail ? body.payer_email.trim() : userData.user.email;
+  if (!payerEmail) {
+    return res.status(400).json({ error: 'Missing payer email.' });
+  }
+
+  const searchUrl = `https://api.mercadopago.com/preapproval/search?payer_email=${encodeURIComponent(payerEmail)}&preapproval_plan_id=${encodeURIComponent(mpPlanId)}`;
+  const mpResponse = await fetch(searchUrl, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${mpAccessToken}`
+    }
+  });
+
+  const mpData = await mpResponse.json().catch(() => ({}));
+  if (!mpResponse.ok) {
+    return res.status(500).json({ error: mpData?.message || 'Mercado Pago preapproval search failed.' });
+  }
+
+  const results = Array.isArray(mpData?.results) ? mpData.results : [];
+  const authorizedSub = results.find((item) => item?.status === 'authorized');
+  const statusFound = authorizedSub?.status || results[0]?.status || null;
+  const finalStatus = authorizedSub ? 'authorized' : (statusFound || 'none');
+
+  const { error: upsertErr } = await supabaseAdmin
+    .from('subscriptions')
+    .upsert({
+      user_id: userData.user.id,
+      plan: mpPlanId,
+      provider: 'mercadopago',
+      status: finalStatus,
+      current_period_start: null,
+      current_period_end: null
+    }, { onConflict: 'user_id' });
+
+  if (upsertErr) {
+    return res.status(500).json({ error: upsertErr.message || 'Error upserting subscriptions.' });
+  }
+
+  return res.status(200).json({
+    ok: true,
+    voice_enabled: finalStatus === 'authorized',
+    status_found: statusFound,
+    payer_email_used: payerEmail
+  });
+}
+
 async function yumikoHandler(req, res) {
   if (req.method === 'GET') {
     return res.status(200).json({ status: 'ok', message: 'Yumiko API está viva' });
@@ -244,10 +357,29 @@ async function yumikoHandler(req, res) {
         const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
         if (!userErr && userData?.user) {
           userId = userData.user.id;
-          const allowedUid = process.env.AUDIO_TEST_UID || AUDIO_TEST_UID_FALLBACK;
-          audioAllowed = userId === allowedUid;
+          const mpConfigError = getMercadoPagoConfigError();
+          if (mpConfigError) {
+            return res.status(500).json({ error: mpConfigError });
+          }
+
+          const { data: subscriptionRow, error: subErr } = await supabaseAdmin
+            .from('subscriptions')
+            .select('status,plan,provider')
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          if (subErr) {
+            return res.status(500).json({ error: subErr.message || 'Error validating voice subscription.' });
+          }
+
+          audioAllowed = Boolean(
+            subscriptionRow
+            && subscriptionRow.provider === 'mercadopago'
+            && subscriptionRow.plan === mpPlanId
+            && subscriptionRow.status === 'authorized'
+          );
           if (!audioAllowed) {
-            audioMode = false;
+            return res.status(402).json({ error: 'VOICE_NOT_ENTITLED' });
           }
         } else {
           audioMode = false;
@@ -909,6 +1041,11 @@ module.exports = async function handler(req, res) {
       case 'tirar-multiple-premium':
         req.body = await getJsonBody(req);
         return tirarMultiplePremiumHandler(req, res);
+      case 'mp-init-point':
+        return mpInitPointHandler(req, res);
+      case 'mp-sync-voice':
+        req.body = await getJsonBody(req);
+        return mpSyncVoiceHandler(req, res);
       default:
         return res.status(404).json({ error: 'Unknown action' });
     }
