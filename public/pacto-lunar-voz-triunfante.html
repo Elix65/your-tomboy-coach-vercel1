@@ -531,7 +531,6 @@ Gracias!`;
 <script type="module">
   import supabaseClient from "./supabase.js";
 
-  const FALLBACK_URL = "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=f96b95d128b347d08740206bc32efa70";
   const mpPayBtn = document.getElementById("payBtn");
   const mpVerifyBtn = document.getElementById("mpVerifyBtn");
   const mpStatus = document.getElementById("mpStatus");
@@ -541,21 +540,37 @@ Gracias!`;
     if (mpStatus) mpStatus.textContent = message;
   }
 
-  if (mpPayBtn) {
-    mpPayBtn.href = FALLBACK_URL;
+  mpPayBtn?.addEventListener("click", async (event) => {
+    event.preventDefault();
+
+    const { data } = await supabaseClient.auth.getSession();
+    const token = data?.session?.access_token;
+
+    if (!token) {
+      alert("Necesitás iniciar sesión para generar tu link de pago de Mercado Pago.");
+      return;
+    }
 
     try {
-      const response = await fetch("/api/router?action=mp-init-point");
-      if (response.ok) {
-        const data = await response.json();
-        if (data?.init_point) {
-          mpPayBtn.href = data.init_point;
-        }
+      const response = await fetch("/api/router?action=mp-create-subscription", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({})
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result?.init_point) {
+        throw new Error(result?.error || "No pudimos iniciar el pago en este momento.");
       }
-    } catch {
-      // Si el endpoint no existe o falla, queda el link fallback de suscripción.
+
+      window.location.href = result.init_point;
+    } catch (error) {
+      alert(error?.message || "Hubo un problema al crear tu suscripción. Probá de nuevo en unos segundos.");
     }
-  }
+  });
 
   mpVerifyBtn?.addEventListener("click", async () => {
     setMpStatus("Verificando suscripción...");
