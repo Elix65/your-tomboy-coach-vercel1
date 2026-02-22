@@ -275,7 +275,12 @@ async function mpWebhookHandler(req, res) {
     return res.status(200).json({ ok: true, alive: true });
   }
 
-  const sigHeader = String(req.headers['x-signature'] || '');
+  const u = new URL(req.url, 'https://dummy.local');
+  const dataIdUrlRaw = u.searchParams.get('data.id') || u.searchParams.get('id') || '';
+  const dataIdUrl = /^[a-z0-9]+$/i.test(dataIdUrlRaw) && !/^\d+$/.test(dataIdUrlRaw)
+    ? dataIdUrlRaw.toLowerCase()
+    : dataIdUrlRaw;
+  const xSignature = String(req.headers['x-signature'] || '');
   const xRequestId = String(req.headers['x-request-id'] || '');
   const webhookSecret = process.env.MP_WEBHOOK_SECRET;
 
@@ -285,20 +290,29 @@ async function mpWebhookHandler(req, res) {
   }
 
   const body = await getJsonBody(req);
-  const eventId = body?.data?.id || body?.id;
+  const bodyDataId = body?.data?.id || body?.id || '';
   const topic = body?.type || body?.topic || body?.entity || null;
-  const ts = sigHeader.match(/ts=([^, ]+)/)?.[1] || null;
-  const v1 = sigHeader.match(/v1=([^, ]+)/)?.[1] || null;
+  const signatureParts = xSignature
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const ts = signatureParts.find((part) => part.startsWith('ts='))?.split('=')[1] || '';
+  const v1 = signatureParts.find((part) => part.startsWith('v1='))?.split('=')[1] || '';
 
-  if (!ts || !v1 || !xRequestId) {
+  if (!ts || !v1) {
     return res.status(400).json({ error: 'MISSING_SIGNATURE_HEADERS' });
   }
 
-  if (!eventId) {
+  if (!dataIdUrl && !bodyDataId) {
     return res.status(400).json({ error: 'MISSING_EVENT_ID' });
   }
 
-  const template = `id:${eventId};request-id:${xRequestId};ts:${ts}`;
+  const templateParts = [];
+  if (dataIdUrl) templateParts.push(`id:${dataIdUrl}`);
+  if (xRequestId) templateParts.push(`request-id:${xRequestId}`);
+  if (ts) templateParts.push(`ts:${ts}`);
+  const template = `${templateParts.join(';')};`;
+
   const computed = crypto
     .createHmac('sha256', webhookSecret)
     .update(template)
@@ -306,26 +320,31 @@ async function mpWebhookHandler(req, res) {
   const v1Lower = v1.toLowerCase();
   const computedLower = computed.toLowerCase();
 
-  const providedDigest = Buffer.from(v1Lower);
-  const expectedDigest = Buffer.from(computedLower);
+  const providedDigest = Buffer.from(v1Lower, 'hex');
+  const expectedDigest = Buffer.from(computedLower, 'hex');
   const signatureOk = providedDigest.length === expectedDigest.length
     && crypto.timingSafeEqual(providedDigest, expectedDigest);
 
+  if (process.env.MP_WEBHOOK_DEBUG === 'true') {
+    console.log('mp webhook signature debug', {
+      url: req.url,
+      dataIdUrl,
+      bodyDataId,
+      xRequestId,
+      ts,
+      template,
+      v1: v1Lower,
+      computed: computedLower
+    });
+  }
+
   if (!signatureOk) {
     console.warn('mercadopago webhook invalid signature', {
-      id: eventId,
+      id: dataIdUrl || bodyDataId,
       topic,
       xRequestId,
       ts
     });
-    if (process.env.NODE_ENV !== 'production') {
-      console.warn('mp signature debug', {
-        sigHeader,
-        template,
-        v1: v1Lower,
-        computed: computedLower
-      });
-    }
 
     return res.status(401).json({ error: 'INVALID_SIGNATURE' });
   }
@@ -335,7 +354,7 @@ async function mpWebhookHandler(req, res) {
   void (async () => {
     try {
       console.log('mercadopago webhook accepted', {
-        id: eventId,
+        id: dataIdUrl || bodyDataId,
         topic,
         xRequestId,
         ts
@@ -344,14 +363,16 @@ async function mpWebhookHandler(req, res) {
       const isPreapprovalEvent = eventType.includes('preapproval') || eventType.includes('subscription');
 
       if (!isPreapprovalEvent) {
-        console.log('mercadopago webhook non-preapproval event payload', { topic, id: eventId, body });
+        console.log('mercadopago webhook non-preapproval event payload', { topic, id: dataIdUrl || bodyDataId, body });
         return;
       }
 
       if (!mpAccessToken) {
-        console.warn('mercadopago webhook missing MP_ACCESS_TOKEN, skipping confirm call', { id: eventId, topic });
+        console.warn('mercadopago webhook missing MP_ACCESS_TOKEN, skipping confirm call', { id: dataIdUrl || bodyDataId, topic });
         return;
       }
+
+      const eventId = dataIdUrl || bodyDataId;
 
       const mpResponse = await fetch(`https://api.mercadopago.com/preapproval/${encodeURIComponent(eventId)}`, {
         method: 'GET',
