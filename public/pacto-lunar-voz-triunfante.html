@@ -359,7 +359,7 @@
           </p>
 
           <div class="ctaRow" style="margin-top:0">
-            <a class="btn primary" id="mpPayBtn" href="https://mpago.la/2yN3fAP" target="_blank" rel="noreferrer">
+            <a class="btn primary" id="payBtn" href="https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=f96b95d128b347d08740206bc32efa70" target="_blank" rel="noreferrer">
               💳 Pagar (Mercado Pago)
             </a>
             <button class="btn secondary" id="mpVerifyBtn" type="button">
@@ -373,14 +373,6 @@
             <b>Importante:</b> después de pagar, volvé a esta página y tocá <b>“Activar por WhatsApp”</b> para enviarnos el mensaje con tus datos y el comprobante.
           </div>
 
-          <details style="margin-top:12px">
-            <summary class="small" style="cursor:pointer">Alternativa: botón oficial de Mercado Pago</summary>
-            <div class="mpBox" style="margin-top:10px">
-              <script src="https://www.mercadopago.com.ar/integrations/v1/web-payment-checkout.js"
-data-preference-id="1263035368-abd224e3-5ee3-4f8e-8b95-6e09c251bb09" data-source="button">
-</script>
-            </div>
-          </details>
         </div>
 
         <div class="field">
@@ -539,7 +531,8 @@ Gracias!`;
 <script type="module">
   import supabaseClient from "./supabase.js";
 
-  const mpPayBtn = document.getElementById("mpPayBtn");
+  const FALLBACK_URL = "https://www.mercadopago.com.ar/subscriptions/checkout?preapproval_plan_id=f96b95d128b347d08740206bc32efa70";
+  const mpPayBtn = document.getElementById("payBtn");
   const mpVerifyBtn = document.getElementById("mpVerifyBtn");
   const mpStatus = document.getElementById("mpStatus");
   const userIdInput = document.getElementById("userId");
@@ -548,23 +541,21 @@ Gracias!`;
     if (mpStatus) mpStatus.textContent = message;
   }
 
-  mpPayBtn?.addEventListener("click", async (event) => {
-    event.preventDefault();
-    setMpStatus("Generando link de pago...");
+  if (mpPayBtn) {
+    mpPayBtn.href = FALLBACK_URL;
 
     try {
       const response = await fetch("/api/router?action=mp-init-point");
-      const data = await response.json();
-
-      if (!response.ok || !data?.init_point) {
-        throw new Error(data?.error || "No se pudo obtener init_point.");
+      if (response.ok) {
+        const data = await response.json();
+        if (data?.init_point) {
+          mpPayBtn.href = data.init_point;
+        }
       }
-
-      window.location.href = data.init_point;
-    } catch (error) {
-      setMpStatus(`❌ ${error.message || "Error iniciando pago"}`);
+    } catch {
+      // Si el endpoint no existe o falla, queda el link fallback de suscripción.
     }
-  });
+  }
 
   mpVerifyBtn?.addEventListener("click", async () => {
     setMpStatus("Verificando suscripción...");
