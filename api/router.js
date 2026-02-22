@@ -12,6 +12,24 @@ const mpPreapprovalPlanId = process.env.MP_PREAPPROVAL_PLAN_ID;
 const VOICE_PLAN = 'pacto_voz_triunfante';
 const ACTIVE_VOICE_PLANS = ['voice_lite', 'voice_plus'];
 
+function getMpAccessTokenPrefix(token) {
+  if (!token) return 'MISSING';
+  if (token.startsWith('TEST')) return 'TEST';
+  if (token.startsWith('APP_USR')) return 'APP_USR';
+  return 'OTHER';
+}
+
+async function parseMpResponseBody(response) {
+  const raw = await response.text().catch(() => '');
+  if (!raw) return {};
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return { raw };
+  }
+}
+
 function getSupabaseAdmin() {
   if (!supabaseUrl || !supabaseServiceRoleKey) {
     return null;
@@ -400,6 +418,10 @@ async function mpWebhookHandler(req, res) {
     let eventId = null;
     let eventTopic = null;
     try {
+      console.log('mercadopago webhook diagnostic env', {
+        mp_access_token_prefix: getMpAccessTokenPrefix(mpAccessToken),
+        mp_plan_id: mpPlanId || null
+      });
       console.log('mercadopago webhook accepted', {
         id: dataIdUrl || bodyDataId,
         topic,
@@ -422,6 +444,30 @@ async function mpWebhookHandler(req, res) {
 
       eventId = dataIdUrl || bodyDataId;
 
+      if (!mpPlanId) {
+        console.warn('mercadopago webhook plan diagnostic skipped: missing MP_PLAN_ID');
+      } else {
+        const planResponse = await fetch(`https://api.mercadopago.com/preapproval_plan/${encodeURIComponent(mpPlanId)}`, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${mpAccessToken}`
+          }
+        });
+        const planData = await parseMpResponseBody(planResponse);
+        console.log('mercadopago webhook plan diagnostic result', {
+          status: planResponse.status,
+          requested_plan_id: mpPlanId,
+          returned_plan_id: planData?.id || null
+        });
+
+        if (!planResponse.ok) {
+          console.error('mercadopago webhook plan diagnostic failed', {
+            status: planResponse.status,
+            body: planData
+          });
+        }
+      }
+
       const mpResponse = await fetch(`https://api.mercadopago.com/preapproval/${encodeURIComponent(eventId)}`, {
         method: 'GET',
         headers: {
@@ -429,13 +475,13 @@ async function mpWebhookHandler(req, res) {
         }
       });
 
-      const mpData = await mpResponse.json().catch(() => ({}));
+      const mpData = await parseMpResponseBody(mpResponse);
       if (!mpResponse.ok) {
         console.error('mercadopago webhook preapproval fetch failed', {
           id: eventId,
           topic,
           status: mpResponse.status,
-          error: mpData
+          body: mpData
         });
         return;
       }
@@ -546,6 +592,36 @@ async function mpCreateSubscriptionHandler(req, res) {
     return res.status(500).json({ error: 'Missing MP_ACCESS_TOKEN or MP_PREAPPROVAL_PLAN_ID.' });
   }
 
+  console.log('mp create subscription diagnostic env', {
+    mp_access_token_prefix: getMpAccessTokenPrefix(mpAccessToken),
+    mp_plan_id: mpPlanId || null,
+    mp_preapproval_plan_id: mpPreapprovalPlanId || null
+  });
+
+  if (!mpPlanId) {
+    console.warn('mp create subscription plan diagnostic skipped: missing MP_PLAN_ID');
+  } else {
+    const planResponse = await fetch(`https://api.mercadopago.com/preapproval_plan/${encodeURIComponent(mpPlanId)}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${mpAccessToken}`
+      }
+    });
+    const planData = await parseMpResponseBody(planResponse);
+    console.log('mp create subscription plan diagnostic result', {
+      status: planResponse.status,
+      requested_plan_id: mpPlanId,
+      returned_plan_id: planData?.id || null
+    });
+
+    if (!planResponse.ok) {
+      console.error('mp create subscription plan diagnostic failed', {
+        status: planResponse.status,
+        body: planData
+      });
+    }
+  }
+
   const supabaseAdmin = getSupabaseAdmin();
   if (!supabaseAdmin) {
     return res.status(500).json({ error: 'Supabase env vars are missing (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).' });
@@ -574,9 +650,12 @@ async function mpCreateSubscriptionHandler(req, res) {
     })
   });
 
-  const mpData = await mpResponse.json().catch(() => ({}));
+  const mpData = await parseMpResponseBody(mpResponse);
   if (!mpResponse.ok) {
-    console.error('mp create subscription failed', { status: mpResponse.status, mpData });
+    console.error('mp create subscription failed', {
+      status: mpResponse.status,
+      body: mpData
+    });
     return res.status(500).json({ error: mpData?.message || 'Mercado Pago subscription creation failed.' });
   }
 
