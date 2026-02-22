@@ -259,17 +259,21 @@ async function mpSyncVoiceHandler(req, res) {
 }
 
 async function mpWebhookHandler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
+  if (req.method === 'GET' || req.method === 'HEAD') {
+    return res.status(200).json({ ok: true, alive: true });
   }
+
+  if (req.method !== 'POST') {
+    return res.status(200).json({ ok: true, alive: true });
+  }
+
+  res.status(200).json({ ok: true });
 
   const body = req.body && typeof req.body === 'object' ? req.body : {};
   const topic = req.query?.topic || req.query?.type || body.topic || body.type || body?.data?.type || null;
   const id = req.query?.id || body.id || body?.data?.id || null;
 
   console.log('mercadopago webhook received', { topic, id });
-
-  return res.status(200).json({ ok: true });
 }
 
 async function yumikoHandler(req, res) {
