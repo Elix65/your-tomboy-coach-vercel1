@@ -261,7 +261,14 @@ async function mpSyncVoiceHandler(req, res) {
 
 async function mpWebhookHandler(req, res) {
   if (req.method === 'GET' || req.method === 'HEAD') {
-    return res.status(200).json({ ok: true, alive: true });
+    const secret = process.env.MP_WEBHOOK_SECRET || '';
+    return res.status(200).json({
+      ok: true,
+      alive: true,
+      secret_present: Boolean(secret),
+      secret_len: secret.length,
+      secret_fp: crypto.createHash('sha256').update(secret).digest('hex').slice(0, 10)
+    });
   }
 
   if (req.method !== 'POST') {
