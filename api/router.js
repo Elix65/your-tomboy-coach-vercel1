@@ -10,6 +10,7 @@ const mpAccessToken = process.env.MP_ACCESS_TOKEN;
 const mpPlanId = process.env.MP_PLAN_ID;
 const mpPreapprovalPlanId = process.env.MP_PREAPPROVAL_PLAN_ID;
 const VOICE_PLAN = 'pacto_voz_triunfante';
+const ACTIVE_VOICE_PLANS = ['voice_lite', 'voice_plus'];
 
 function getSupabaseAdmin() {
   if (!supabaseUrl || !supabaseServiceRoleKey) {
@@ -31,26 +32,34 @@ async function getAuthUserOrNull(supabaseAdmin, token) {
   return userData.user;
 }
 
-async function isSubscriptionActive(supabaseAdmin, userId, plan) {
+function buildActiveSubscriptionQuery(supabaseAdmin, userId, { provider } = {}) {
   const nowIso = new Date().toISOString();
-  const { data: rows, error } = await supabaseAdmin
+
+  let query = supabaseAdmin
     .from('subscriptions')
-    .select('current_period_end')
+    .select('plan,status,provider,current_period_end')
     .eq('user_id', userId)
-    .eq('plan', plan)
-    .eq('status', 'active');
+    .eq('status', 'active')
+    .in('plan', ACTIVE_VOICE_PLANS)
+    .or(`current_period_end.is.null,current_period_end.gt.${nowIso}`)
+    .limit(1);
+
+  if (provider) {
+    query = query.in('provider', [provider, 'mercadopago']);
+  }
+
+  return query;
+}
+
+async function getActiveVoiceSubscription(supabaseAdmin, userId, options = {}) {
+  const { data: rows, error } = await buildActiveSubscriptionQuery(supabaseAdmin, userId, options);
 
   if (error) {
     throw new Error(error.message || 'Error checking subscription status.');
   }
 
   const subscriptions = Array.isArray(rows) ? rows : [];
-  return subscriptions.some((row) => {
-    if (!row?.current_period_end) return true;
-    const endMs = Date.parse(row.current_period_end);
-    if (!Number.isFinite(endMs)) return false;
-    return endMs > Date.now();
-  });
+  return subscriptions[0] || null;
 }
 
 function getAction(req) {
@@ -513,9 +522,19 @@ async function subscriptionStatusHandler(req, res) {
     return res.status(401).json({ error: 'Invalid token' });
   }
 
-  const plan = String(req.query?.plan || VOICE_PLAN);
-  const active = await isSubscriptionActive(supabaseAdmin, user.id, plan);
-  return res.status(200).json({ ok: true, active, plan, status: active ? 'active' : 'inactive' });
+  try {
+    const provider = req.query?.provider ? String(req.query.provider) : null;
+    const matchedSubscription = await getActiveVoiceSubscription(supabaseAdmin, user.id, { provider });
+    const active = Boolean(matchedSubscription);
+    return res.status(200).json({
+      ok: true,
+      active,
+      matched_plan: matchedSubscription?.plan,
+      status: matchedSubscription?.status || 'inactive'
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message || 'Error checking subscription status.' });
+  }
 }
 
 async function mpCreateSubscriptionHandler(req, res) {
@@ -663,7 +682,8 @@ async function yumikoHandler(req, res) {
         userId = user.id;
 
         try {
-          audioAllowed = await isSubscriptionActive(supabaseAdmin, userId, VOICE_PLAN);
+          const matchedSubscription = await getActiveVoiceSubscription(supabaseAdmin, userId);
+          audioAllowed = Boolean(matchedSubscription);
         } catch (subErr) {
           return res.status(500).json({ error: subErr.message || 'Error validating voice subscription.' });
         }

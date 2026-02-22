@@ -135,15 +135,14 @@ function isAudioModeEnabled() {
   return localStorage.getItem(STORAGE_KEYS.audioMode) === "1";
 }
 
-const VOICE_PLAN = "pacto_voz_triunfante";
 let audioEntitlementActive = false;
 
-async function fetchSubscriptionStatus(plan = VOICE_PLAN) {
+async function fetchSubscriptionStatus() {
   const { data: { session } } = await supabaseClient.auth.getSession();
   const token = session?.access_token;
-  if (!token) return { active: false, status: "inactive", plan };
+  if (!token) return { active: false, status: "inactive" };
 
-  const response = await fetch(`/api/router?action=subscription-status&plan=${encodeURIComponent(plan)}`, {
+  const response = await fetch(`/api/router?action=subscription-status`, {
     method: "GET",
     headers: {
       Authorization: `Bearer ${token}`
@@ -157,24 +156,27 @@ async function fetchSubscriptionStatus(plan = VOICE_PLAN) {
   return response.json();
 }
 
-function setAudioModeVisible(active) {
+function setAudioModeVisibilityState({ active, checking = false }) {
   audioEntitlementActive = Boolean(active);
   if (audioModeRow) audioModeRow.style.display = audioEntitlementActive ? "" : "none";
+  if (audioModeChecking) audioModeChecking.style.display = checking ? "block" : "none";
   if (audioModeToggle && !audioEntitlementActive) audioModeToggle.checked = false;
   if (!audioEntitlementActive) localStorage.setItem(STORAGE_KEYS.audioMode, "0");
 }
 
-async function refreshAudioEntitlement({ plan = VOICE_PLAN, withReturnPolling = false } = {}) {
-  setAudioModeVisible(false);
+async function refreshAudioEntitlement({ withReturnPolling = false } = {}) {
+  setAudioModeVisibilityState({ active: false, checking: true });
 
   const attemptRead = async () => {
     try {
-      const subscription = await fetchSubscriptionStatus(plan);
+      const subscription = await fetchSubscriptionStatus();
+      console.log("subscription-status response", subscription);
       const active = Boolean(subscription?.active);
-      setAudioModeVisible(active);
+      setAudioModeVisibilityState({ active, checking: false });
       return active;
     } catch (error) {
       console.warn("No se pudo leer subscription-status", error?.message || error);
+      setAudioModeVisibilityState({ active: false, checking: false });
       return false;
     }
   };
@@ -885,6 +887,7 @@ let resetBtn;
 let personalizeByTimeToggle;
 let audioModeToggle;
 let audioModeRow;
+let audioModeChecking;
 
 let lastUserText = null;
 let lastSendAt = 0;
@@ -1215,6 +1218,7 @@ function cacheChatDomElements() {
   personalizeByTimeToggle = document.getElementById("personalize-time-toggle");
   audioModeToggle = document.getElementById("audio-mode-toggle");
   audioModeRow = document.getElementById("audio-mode-row");
+  audioModeChecking = document.getElementById("audio-mode-checking");
 }
 
 function registerInputListeners() {
@@ -1349,7 +1353,7 @@ async function sendMessage(user) {
 
     if (!res.ok) {
       if (res.status === 402) {
-        setAudioModeVisible(false);
+        setAudioModeVisibilityState({ active: false, checking: false });
         showChatFeedback("Necesitás una suscripción activa para usar ‘Responder con audio’. ");
       }
       throw new Error(`yumiko request failed with status ${res.status}`);
@@ -1581,7 +1585,7 @@ async function resetChat(user) {
 
 
 function enforceAudioModeAccess() {
-  setAudioModeVisible(audioEntitlementActive);
+  setAudioModeVisibilityState({ active: audioEntitlementActive, checking: false });
   return audioEntitlementActive;
 }
 
@@ -1650,7 +1654,7 @@ async function initializeChatSession() {
   }
 
   const shouldPollActivation = new URLSearchParams(window.location.search).get("mp_return") === "1";
-  await refreshAudioEntitlement({ plan: VOICE_PLAN, withReturnPolling: shouldPollActivation });
+  await refreshAudioEntitlement({ withReturnPolling: shouldPollActivation });
   enforceAudioModeAccess();
   currentUserId = user.id;
   await refreshTimePersonalizationState(user.id);
