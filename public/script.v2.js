@@ -114,9 +114,6 @@ const STORAGE_KEYS = {
   summarySnapshot: "yumiko_memory_summary",
   audioMode: "yumiko_audio_mode_enabled"
 };
-const AUDIO_TEST_UID_FALLBACK = "a5429e17-43e2-4922-9560-ab914f63283e";
-const AUDIO_TEST_UID = window.AUDIO_TEST_UID || AUDIO_TEST_UID_FALLBACK;
-
 let chatMessages = [];
 let memorySummary = "";
 const IS_DEV = ["localhost", "127.0.0.1"].includes(window.location.hostname);
@@ -136,6 +133,67 @@ function showChatFeedback(message) {
 
 function isAudioModeEnabled() {
   return localStorage.getItem(STORAGE_KEYS.audioMode) === "1";
+}
+
+const VOICE_PLAN = "pacto_voz_triunfante";
+let audioEntitlementActive = false;
+
+async function fetchSubscriptionStatus(plan = VOICE_PLAN) {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  const token = session?.access_token;
+  if (!token) return { active: false, status: "inactive", plan };
+
+  const response = await fetch(`/api/router?action=subscription-status&plan=${encodeURIComponent(plan)}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`subscription-status failed with status ${response.status}`);
+  }
+
+  return response.json();
+}
+
+function setAudioModeVisible(active) {
+  audioEntitlementActive = Boolean(active);
+  if (audioModeRow) audioModeRow.style.display = audioEntitlementActive ? "" : "none";
+  if (audioModeToggle && !audioEntitlementActive) audioModeToggle.checked = false;
+  if (!audioEntitlementActive) localStorage.setItem(STORAGE_KEYS.audioMode, "0");
+}
+
+async function refreshAudioEntitlement({ plan = VOICE_PLAN, withReturnPolling = false } = {}) {
+  setAudioModeVisible(false);
+
+  const attemptRead = async () => {
+    try {
+      const subscription = await fetchSubscriptionStatus(plan);
+      const active = Boolean(subscription?.active);
+      setAudioModeVisible(active);
+      return active;
+    } catch (error) {
+      console.warn("No se pudo leer subscription-status", error?.message || error);
+      return false;
+    }
+  };
+
+  const activeNow = await attemptRead();
+  if (activeNow || !withReturnPolling) return activeNow;
+
+  showChatFeedback("Activando…");
+  const deadline = Date.now() + 45_000;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const active = await attemptRead();
+    if (active) {
+      showChatFeedback("✅ Audio activado. Ya podés usar ‘Responder con audio’. ");
+      break;
+    }
+  }
+
+  return audioEntitlementActive;
 }
 
 async function saveMessageToSupabase({ userId, sender, content }) {
@@ -1290,6 +1348,10 @@ async function sendMessage(user) {
     });
 
     if (!res.ok) {
+      if (res.status === 402) {
+        setAudioModeVisible(false);
+        showChatFeedback("Necesitás una suscripción activa para usar ‘Responder con audio’. ");
+      }
       throw new Error(`yumiko request failed with status ${res.status}`);
     }
 
@@ -1518,17 +1580,9 @@ async function resetChat(user) {
 }
 
 
-function enforceAudioModeAccess(userId) {
-  const canUseAudioMode = userId === AUDIO_TEST_UID;
-  if (!canUseAudioMode) {
-    if (audioModeRow) audioModeRow.style.display = "none";
-    if (audioModeToggle) audioModeToggle.checked = false;
-    localStorage.setItem(STORAGE_KEYS.audioMode, "0");
-    return false;
-  }
-
-  if (audioModeRow) audioModeRow.style.display = "";
-  return true;
+function enforceAudioModeAccess() {
+  setAudioModeVisible(audioEntitlementActive);
+  return audioEntitlementActive;
 }
 
 function bindChatEventListeners(user) {
@@ -1595,7 +1649,9 @@ async function initializeChatSession() {
     return;
   }
 
-  enforceAudioModeAccess(user.id);
+  const shouldPollActivation = new URLSearchParams(window.location.search).get("mp_return") === "1";
+  await refreshAudioEntitlement({ plan: VOICE_PLAN, withReturnPolling: shouldPollActivation });
+  enforceAudioModeAccess();
   currentUserId = user.id;
   await refreshTimePersonalizationState(user.id);
 
