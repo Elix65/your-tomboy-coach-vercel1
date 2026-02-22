@@ -359,10 +359,15 @@
           </p>
 
           <div class="ctaRow" style="margin-top:0">
-            <a class="btn primary" id="payBtn" href="https://mpago.la/2yN3fAP" target="_blank" rel="noreferrer">
+            <a class="btn primary" id="mpPayBtn" href="https://mpago.la/2yN3fAP" target="_blank" rel="noreferrer">
               💳 Pagar (Mercado Pago)
             </a>
+            <button class="btn secondary" id="mpVerifyBtn" type="button">
+              Verificar pago / Activar voz
+            </button>
           </div>
+
+          <div class="small" id="mpStatus" style="margin-top:10px"></div>
 
           <div class="note" style="margin-top:10px">
             <b>Importante:</b> después de pagar, volvé a esta página y tocá <b>“Activar por WhatsApp”</b> para enviarnos el mensaje con tus datos y el comprobante.
@@ -530,5 +535,76 @@ Gracias!`;
     // Init
     updateLinks();
 </script>
+
+<script type="module">
+  import supabaseClient from "./supabase.js";
+
+  const mpPayBtn = document.getElementById("mpPayBtn");
+  const mpVerifyBtn = document.getElementById("mpVerifyBtn");
+  const mpStatus = document.getElementById("mpStatus");
+  const userIdInput = document.getElementById("userId");
+
+  function setMpStatus(message) {
+    if (mpStatus) mpStatus.textContent = message;
+  }
+
+  mpPayBtn?.addEventListener("click", async (event) => {
+    event.preventDefault();
+    setMpStatus("Generando link de pago...");
+
+    try {
+      const response = await fetch("/api/router?action=mp-init-point");
+      const data = await response.json();
+
+      if (!response.ok || !data?.init_point) {
+        throw new Error(data?.error || "No se pudo obtener init_point.");
+      }
+
+      window.location.href = data.init_point;
+    } catch (error) {
+      setMpStatus(`❌ ${error.message || "Error iniciando pago"}`);
+    }
+  });
+
+  mpVerifyBtn?.addEventListener("click", async () => {
+    setMpStatus("Verificando suscripción...");
+
+    const { data } = await supabaseClient.auth.getSession();
+    const token = data?.session?.access_token;
+
+    if (!token) {
+      setMpStatus("Iniciá sesión para verificar");
+      return;
+    }
+
+    const payerEmail = userIdInput?.value?.trim();
+    const payload = payerEmail ? { payer_email: payerEmail } : {};
+
+    try {
+      const response = await fetch("/api/router?action=mp-sync-voice", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result?.error || "No se pudo verificar el pago.");
+      }
+
+      if (result.voice_enabled) {
+        setMpStatus("✅ Voz activada, volvé al chat");
+      } else {
+        setMpStatus("⚠️ Aún no figura activa, reintentá en 10-30s");
+      }
+    } catch (error) {
+      setMpStatus(`❌ ${error.message || "Error verificando"}`);
+    }
+  });
+</script>
+
 </body>
 </html>
