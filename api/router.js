@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const OpenAI = require('openai');
 const { createClient } = require('@supabase/supabase-js');
 
@@ -267,13 +268,121 @@ async function mpWebhookHandler(req, res) {
     return res.status(200).json({ ok: true, alive: true });
   }
 
+  const xSignature = req.headers['x-signature'];
+  const xRequestId = req.headers['x-request-id'];
+  const body = await getJsonBody(req);
+  const topic = req.query?.topic || req.query?.type || body.topic || body.type || body?.data?.type || null;
+  const id = req.query?.id || body?.data?.id || body.id || null;
+  const webhookSecret = process.env.MP_WEBHOOK_SECRET;
+
+  if (!webhookSecret) {
+    console.error('mercadopago webhook missing MP_WEBHOOK_SECRET');
+    return res.status(500).json({ error: 'Webhook secret is not configured.' });
+  }
+
+  if (!xSignature || !xRequestId || !id) {
+    console.warn('mercadopago webhook missing required signature fields', {
+      hasSignature: Boolean(xSignature),
+      hasRequestId: Boolean(xRequestId),
+      hasId: Boolean(id)
+    });
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
+  const parsedSignature = String(xSignature)
+    .split(',')
+    .map((part) => part.trim())
+    .reduce((acc, part) => {
+      const [key, value] = part.split('=');
+      if (key && value) acc[key.trim()] = value.trim();
+      return acc;
+    }, {});
+
+  const ts = parsedSignature.ts;
+  const v1 = parsedSignature.v1;
+  if (!ts || !v1) {
+    console.warn('mercadopago webhook signature parse failed', { xSignature });
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
+  const manifest = `id:${id};request-id:${xRequestId};ts:${ts}`;
+  const expectedV1 = crypto
+    .createHmac('sha256', webhookSecret)
+    .update(manifest)
+    .digest('hex');
+
+  const providedDigest = Buffer.from(String(v1), 'utf8');
+  const expectedDigest = Buffer.from(expectedV1, 'utf8');
+  const signatureOk = providedDigest.length === expectedDigest.length
+    && crypto.timingSafeEqual(providedDigest, expectedDigest);
+
+  if (!signatureOk) {
+    console.warn('mercadopago webhook invalid signature', {
+      id,
+      topic,
+      xRequestId,
+      ts
+    });
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
   res.status(200).json({ ok: true });
 
-  const body = req.body && typeof req.body === 'object' ? req.body : {};
-  const topic = req.query?.topic || req.query?.type || body.topic || body.type || body?.data?.type || null;
-  const id = req.query?.id || body.id || body?.data?.id || null;
+  void (async () => {
+    try {
+      console.log('mercadopago webhook accepted', { id, topic, xRequestId, ts });
+      const eventType = String(topic || '').toLowerCase();
+      const isPreapprovalEvent = eventType.includes('preapproval') || eventType.includes('subscription');
 
-  console.log('mercadopago webhook received', { topic, id });
+      if (!isPreapprovalEvent) {
+        console.log('mercadopago webhook non-preapproval event payload', { topic, id, body });
+        return;
+      }
+
+      if (!mpAccessToken) {
+        console.warn('mercadopago webhook missing MP_ACCESS_TOKEN, skipping confirm call', { id, topic });
+        return;
+      }
+
+      const mpResponse = await fetch(`https://api.mercadopago.com/preapproval/${encodeURIComponent(id)}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${mpAccessToken}`
+        }
+      });
+
+      const mpData = await mpResponse.json().catch(() => ({}));
+      if (!mpResponse.ok) {
+        console.error('mercadopago webhook preapproval fetch failed', {
+          id,
+          topic,
+          status: mpResponse.status,
+          error: mpData
+        });
+        return;
+      }
+
+      console.log('mercadopago webhook preapproval confirmed', {
+        id,
+        topic,
+        payer_email: mpData?.payer_email || null,
+        status: mpData?.status || null,
+        preapproval_plan_id: mpData?.preapproval_plan_id || null
+      });
+
+      console.log('mercadopago webhook MVP mode: payload logged without email-user mapping', {
+        id,
+        topic,
+        payload: body
+      });
+    } catch (error) {
+      console.error('mercadopago webhook async processing error', {
+        message: error?.message || error,
+        id,
+        topic
+      });
+    }
+  })();
 }
 
 async function yumikoHandler(req, res) {
