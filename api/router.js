@@ -323,19 +323,8 @@ async function mpSyncVoiceHandler(req, res) {
 }
 
 async function mpWebhookHandler(req, res) {
-  if (req.method === 'GET' || req.method === 'HEAD') {
-    const secret = process.env.MP_WEBHOOK_SECRET || '';
-    return res.status(200).json({
-      ok: true,
-      alive: true,
-      secret_present: Boolean(secret),
-      secret_len: secret.length,
-      secret_fp: crypto.createHash('sha256').update(secret).digest('hex').slice(0, 10)
-    });
-  }
-
   if (req.method !== 'POST') {
-    return res.status(200).json({ ok: true, alive: true });
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   const u = new URL(req.url, 'https://dummy.local');
@@ -349,12 +338,15 @@ async function mpWebhookHandler(req, res) {
 
   if (!webhookSecret) {
     console.error('MP_WEBHOOK_SECRET_MISSING');
-    return res.status(500).json({ error: 'MP_WEBHOOK_SECRET_MISSING' });
+    return res.status(401).json({ error: 'UNAUTHORIZED' });
   }
 
   const body = await getJsonBody(req);
+  const topic = body?.topic || null;
+  const type = body?.type || null;
+  const entity = body?.entity || null;
   const bodyDataId = body?.data?.id || body?.id || '';
-  const topic = body?.type || body?.topic || body?.entity || null;
+  const eventId = String(dataIdUrl || bodyDataId || '').trim();
   const signatureParts = xSignature
     .split(',')
     .map((part) => part.trim())
@@ -362,12 +354,8 @@ async function mpWebhookHandler(req, res) {
   const ts = signatureParts.find((part) => part.startsWith('ts='))?.split('=')[1] || '';
   const v1 = signatureParts.find((part) => part.startsWith('v1='))?.split('=')[1] || '';
 
-  if (!ts || !v1) {
-    return res.status(400).json({ error: 'MISSING_SIGNATURE_HEADERS' });
-  }
-
-  if (!dataIdUrl && !bodyDataId) {
-    return res.status(400).json({ error: 'MISSING_EVENT_ID' });
+  if (!ts || !v1 || !eventId) {
+    return res.status(401).json({ error: 'UNAUTHORIZED' });
   }
 
   const templateParts = [];
@@ -403,149 +391,107 @@ async function mpWebhookHandler(req, res) {
 
   if (!signatureOk) {
     console.warn('mercadopago webhook invalid signature', {
-      id: dataIdUrl || bodyDataId,
+      id: eventId,
       topic,
+      type,
+      entity,
       xRequestId,
       ts
     });
 
-    return res.status(401).json({ error: 'INVALID_SIGNATURE' });
+    return res.status(401).json({ error: 'UNAUTHORIZED' });
   }
 
-  res.status(200).json({ ok: true });
+  const normalizedId = String(eventId);
+  const isSimulation = normalizedId === '123456' || normalizedId.length < 7;
+  if (isSimulation) {
+    console.log('mp webhook simulation', { id: normalizedId, topic, type, entity });
+    return res.status(200).json({ ok: true, simulated: true });
+  }
 
-  void (async () => {
-    let eventId = null;
-    let eventTopic = null;
-    try {
-      console.log('mercadopago webhook diagnostic env', {
-        mp_access_token_prefix: getMpAccessTokenPrefix(mpAccessToken),
-        mp_plan_id: mpPlanId || null
-      });
-      console.log('mercadopago webhook accepted', {
-        id: dataIdUrl || bodyDataId,
-        topic,
-        xRequestId,
-        ts
-      });
-      eventTopic = topic;
-      const eventType = String(topic || '').toLowerCase();
-      const isPreapprovalEvent = eventType.includes('preapproval') || eventType.includes('subscription');
+  const eventHints = `${String(topic || '').toLowerCase()} ${String(type || '').toLowerCase()} ${String(entity || '').toLowerCase()}`;
+  const isPreapprovalEvent = eventHints.includes('subscription_preapproval') || eventHints.includes('preapproval');
+  if (!isPreapprovalEvent) {
+    return res.status(200).json({ ok: true, ignored: true });
+  }
 
-      if (!isPreapprovalEvent) {
-        console.log('mercadopago webhook non-preapproval event payload', { topic, id: dataIdUrl || bodyDataId, body });
-        return;
-      }
+  if (!mpAccessToken) {
+    return res.status(500).json({ error: 'Missing MP_ACCESS_TOKEN.' });
+  }
 
-      if (!mpAccessToken) {
-        console.warn('mercadopago webhook missing MP_ACCESS_TOKEN, skipping confirm call', { id: dataIdUrl || bodyDataId, topic });
-        return;
-      }
-
-      eventId = dataIdUrl || bodyDataId;
-
-      if (!mpPlanId) {
-        console.warn('mercadopago webhook plan diagnostic skipped: missing MP_PLAN_ID');
-      } else {
-        const planResponse = await fetch(`https://api.mercadopago.com/preapproval_plan/${encodeURIComponent(mpPlanId)}`, {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${mpAccessToken}`
-          }
-        });
-        const planData = await parseMpResponseBody(planResponse);
-        console.log('mercadopago webhook plan diagnostic result', {
-          status: planResponse.status,
-          requested_plan_id: mpPlanId,
-          returned_plan_id: planData?.id || null
-        });
-
-        if (!planResponse.ok) {
-          console.error('mercadopago webhook plan diagnostic failed', {
-            status: planResponse.status,
-            body: planData
-          });
-        }
-      }
-
-      const mpResponse = await fetch(`https://api.mercadopago.com/preapproval/${encodeURIComponent(eventId)}`, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${mpAccessToken}`
-        }
-      });
-
-      const mpData = await parseMpResponseBody(mpResponse);
-      if (!mpResponse.ok) {
-        console.error('mercadopago webhook preapproval fetch failed', {
-          id: eventId,
-          topic,
-          status: mpResponse.status,
-          body: mpData
-        });
-        return;
-      }
-
-      console.log('mercadopago webhook preapproval confirmed', {
-        id: eventId,
-        topic,
-        payer_email: mpData?.payer_email || null,
-        status: mpData?.status || null,
-        preapproval_plan_id: mpData?.preapproval_plan_id || null,
-        external_reference: mpData?.external_reference || null
-      });
-
-      const externalReference = String(mpData?.external_reference || '').trim();
-      if (!externalReference) {
-        console.warn('mercadopago webhook missing external_reference, skipping activation', { id: eventId, topic });
-        return;
-      }
-
-      const supabaseAdmin = getSupabaseAdmin();
-      if (!supabaseAdmin) {
-        console.warn('mercadopago webhook missing supabase env vars, skipping activation', { id: eventId, topic });
-        return;
-      }
-
-      const startAt = mpData?.date_created || mpData?.next_payment_date || null;
-      const endAt = mpData?.next_payment_date || null;
-      const { error: upsertErr } = await supabaseAdmin
-        .from('subscriptions')
-        .upsert({
-          user_id: externalReference,
-          plan: VOICE_PLAN,
-          provider: 'mercadopago',
-          status: 'active',
-          current_period_start: startAt,
-          current_period_end: endAt
-        }, { onConflict: 'user_id,plan' });
-
-      if (upsertErr) {
-        console.error('mercadopago webhook subscription upsert failed', {
-          id: eventId,
-          topic,
-          user_id: externalReference,
-          error: upsertErr.message
-        });
-        return;
-      }
-
-      console.log('mercadopago webhook subscription activated', {
-        id: eventId,
-        topic,
-        user_id: externalReference,
-        plan: VOICE_PLAN,
-        current_period_start: startAt,
-        current_period_end: endAt
-      });
-    } catch (error) {
-      console.error('mercadopago webhook async processing error', {
-        message: error?.message || error,
-        id: eventId,
-        topic: eventTopic
-      });
+  const mpResponse = await fetch(`https://api.mercadopago.com/preapproval/${encodeURIComponent(normalizedId)}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${mpAccessToken}`
     }
-  })();
+  });
+
+  const mpData = await parseMpResponseBody(mpResponse);
+  if (mpResponse.status === 400 || mpResponse.status === 404) {
+    console.log('mercadopago webhook ignored: preapproval not found/invalid', {
+      id: normalizedId,
+      status: mpResponse.status,
+      topic,
+      type,
+      entity
+    });
+    return res.status(200).json({ ok: true, ignored: true });
+  }
+
+  if (!mpResponse.ok) {
+    console.error('mercadopago webhook preapproval fetch failed', {
+      id: normalizedId,
+      status: mpResponse.status,
+      body: mpData
+    });
+    return res.status(500).json({ error: 'Mercado Pago preapproval fetch failed.' });
+  }
+
+  const externalReference = String(mpData?.external_reference || '').trim();
+  const payerEmail = String(mpData?.payer_email || '').trim();
+  const mpStatus = String(mpData?.status || '').toLowerCase();
+
+  let subscriptionStatus = 'past_due';
+  if (mpStatus === 'authorized' || mpStatus === 'active') subscriptionStatus = 'active';
+  if (mpStatus === 'cancelled' || mpStatus === 'canceled') subscriptionStatus = 'canceled';
+
+  if (!externalReference) {
+    console.log('mercadopago webhook missing external_reference', {
+      id: normalizedId,
+      payer_email: payerEmail || null,
+      status: mpStatus || null
+    });
+    return res.status(200).json({ ok: true, ignored: true });
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
+  if (!supabaseAdmin) {
+    return res.status(500).json({ error: 'Supabase env vars are missing (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).' });
+  }
+
+  const startAt = new Date();
+  const endAt = new Date(startAt.getTime() + (30 * 24 * 60 * 60 * 1000));
+  const { error: upsertErr } = await supabaseAdmin
+    .from('subscriptions')
+    .upsert({
+      user_id: externalReference,
+      plan: 'voice_plus',
+      provider: 'mercadopago',
+      status: subscriptionStatus,
+      current_period_start: startAt.toISOString(),
+      current_period_end: endAt.toISOString()
+    }, { onConflict: 'user_id,plan' });
+
+  if (upsertErr) {
+    console.error('mercadopago webhook subscription upsert failed', {
+      id: normalizedId,
+      user_id: externalReference,
+      error: upsertErr.message
+    });
+    return res.status(500).json({ error: upsertErr.message || 'Error upserting subscriptions.' });
+  }
+
+  return res.status(200).json({ ok: true });
 }
 
 async function subscriptionStatusHandler(req, res) {
@@ -588,38 +534,8 @@ async function mpCreateSubscriptionHandler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  if (!mpAccessToken || !mpPreapprovalPlanId) {
-    return res.status(500).json({ error: 'Missing MP_ACCESS_TOKEN or MP_PREAPPROVAL_PLAN_ID.' });
-  }
-
-  console.log('mp create subscription diagnostic env', {
-    mp_access_token_prefix: getMpAccessTokenPrefix(mpAccessToken),
-    mp_plan_id: mpPlanId || null,
-    mp_preapproval_plan_id: mpPreapprovalPlanId || null
-  });
-
-  if (!mpPlanId) {
-    console.warn('mp create subscription plan diagnostic skipped: missing MP_PLAN_ID');
-  } else {
-    const planResponse = await fetch(`https://api.mercadopago.com/preapproval_plan/${encodeURIComponent(mpPlanId)}`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${mpAccessToken}`
-      }
-    });
-    const planData = await parseMpResponseBody(planResponse);
-    console.log('mp create subscription plan diagnostic result', {
-      status: planResponse.status,
-      requested_plan_id: mpPlanId,
-      returned_plan_id: planData?.id || null
-    });
-
-    if (!planResponse.ok) {
-      console.error('mp create subscription plan diagnostic failed', {
-        status: planResponse.status,
-        body: planData
-      });
-    }
+  if (!mpAccessToken || !mpPlanId) {
+    return res.status(500).json({ error: 'Missing MP_ACCESS_TOKEN or MP_PLAN_ID.' });
   }
 
   const supabaseAdmin = getSupabaseAdmin();
@@ -644,9 +560,11 @@ async function mpCreateSubscriptionHandler(req, res) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      preapproval_plan_id: mpPreapprovalPlanId,
+      preapproval_plan_id: mpPlanId,
+      payer_email: user.email,
       external_reference: user.id,
-      back_url: 'https://21-moon.com/?mp_return=1'
+      back_url: 'https://21-moon.com/',
+      reason: 'Pacto Voz Triunfante'
     })
   });
 
@@ -659,7 +577,7 @@ async function mpCreateSubscriptionHandler(req, res) {
     return res.status(500).json({ error: mpData?.message || 'Mercado Pago subscription creation failed.' });
   }
 
-  return res.status(200).json({ init_point: mpData?.init_point || null, id: mpData?.id || null });
+  return res.status(200).json({ init_point: mpData?.init_point || null, preapproval_id: mpData?.id || null });
 }
 
 async function yumikoHandler(req, res) {
