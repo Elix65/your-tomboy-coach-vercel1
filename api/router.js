@@ -8,6 +8,8 @@ const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const mpAccessToken = process.env.MP_ACCESS_TOKEN;
 const mpPlanId = process.env.MP_PLAN_ID;
+const mpPreapprovalPlanId = process.env.MP_PREAPPROVAL_PLAN_ID;
+const VOICE_PLAN = 'pacto_voz_triunfante';
 
 function getSupabaseAdmin() {
   if (!supabaseUrl || !supabaseServiceRoleKey) {
@@ -15,6 +17,40 @@ function getSupabaseAdmin() {
   }
 
   return createClient(supabaseUrl, supabaseServiceRoleKey);
+}
+
+function getBearerToken(req) {
+  const authHeader = req.headers.authorization || '';
+  return authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+}
+
+async function getAuthUserOrNull(supabaseAdmin, token) {
+  if (!token) return null;
+  const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
+  if (userErr || !userData?.user) return null;
+  return userData.user;
+}
+
+async function isSubscriptionActive(supabaseAdmin, userId, plan) {
+  const nowIso = new Date().toISOString();
+  const { data: rows, error } = await supabaseAdmin
+    .from('subscriptions')
+    .select('current_period_end')
+    .eq('user_id', userId)
+    .eq('plan', plan)
+    .eq('status', 'active');
+
+  if (error) {
+    throw new Error(error.message || 'Error checking subscription status.');
+  }
+
+  const subscriptions = Array.isArray(rows) ? rows : [];
+  return subscriptions.some((row) => {
+    if (!row?.current_period_end) return true;
+    const endMs = Date.parse(row.current_period_end);
+    if (!Number.isFinite(endMs)) return false;
+    return endMs > Date.now();
+  });
 }
 
 function getAction(req) {
@@ -352,6 +388,8 @@ async function mpWebhookHandler(req, res) {
   res.status(200).json({ ok: true });
 
   void (async () => {
+    let eventId = null;
+    let eventTopic = null;
     try {
       console.log('mercadopago webhook accepted', {
         id: dataIdUrl || bodyDataId,
@@ -359,6 +397,7 @@ async function mpWebhookHandler(req, res) {
         xRequestId,
         ts
       });
+      eventTopic = topic;
       const eventType = String(topic || '').toLowerCase();
       const isPreapprovalEvent = eventType.includes('preapproval') || eventType.includes('subscription');
 
@@ -372,7 +411,7 @@ async function mpWebhookHandler(req, res) {
         return;
       }
 
-      const eventId = dataIdUrl || bodyDataId;
+      eventId = dataIdUrl || bodyDataId;
 
       const mpResponse = await fetch(`https://api.mercadopago.com/preapproval/${encodeURIComponent(eventId)}`, {
         method: 'GET',
@@ -397,22 +436,132 @@ async function mpWebhookHandler(req, res) {
         topic,
         payer_email: mpData?.payer_email || null,
         status: mpData?.status || null,
-        preapproval_plan_id: mpData?.preapproval_plan_id || null
+        preapproval_plan_id: mpData?.preapproval_plan_id || null,
+        external_reference: mpData?.external_reference || null
       });
 
-      console.log('mercadopago webhook MVP mode: payload logged without email-user mapping', {
+      const externalReference = String(mpData?.external_reference || '').trim();
+      if (!externalReference) {
+        console.warn('mercadopago webhook missing external_reference, skipping activation', { id: eventId, topic });
+        return;
+      }
+
+      const supabaseAdmin = getSupabaseAdmin();
+      if (!supabaseAdmin) {
+        console.warn('mercadopago webhook missing supabase env vars, skipping activation', { id: eventId, topic });
+        return;
+      }
+
+      const startAt = mpData?.date_created || mpData?.next_payment_date || null;
+      const endAt = mpData?.next_payment_date || null;
+      const { error: upsertErr } = await supabaseAdmin
+        .from('subscriptions')
+        .upsert({
+          user_id: externalReference,
+          plan: VOICE_PLAN,
+          provider: 'mercadopago',
+          status: 'active',
+          current_period_start: startAt,
+          current_period_end: endAt
+        }, { onConflict: 'user_id,plan' });
+
+      if (upsertErr) {
+        console.error('mercadopago webhook subscription upsert failed', {
+          id: eventId,
+          topic,
+          user_id: externalReference,
+          error: upsertErr.message
+        });
+        return;
+      }
+
+      console.log('mercadopago webhook subscription activated', {
         id: eventId,
         topic,
-        payload: body
+        user_id: externalReference,
+        plan: VOICE_PLAN,
+        current_period_start: startAt,
+        current_period_end: endAt
       });
     } catch (error) {
       console.error('mercadopago webhook async processing error', {
         message: error?.message || error,
         id: eventId,
-        topic
+        topic: eventTopic
       });
     }
   })();
+}
+
+async function subscriptionStatusHandler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
+  if (!supabaseAdmin) {
+    return res.status(500).json({ error: 'Supabase env vars are missing (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).' });
+  }
+
+  const token = getBearerToken(req);
+  if (!token) {
+    return res.status(401).json({ error: 'Missing Bearer token' });
+  }
+
+  const user = await getAuthUserOrNull(supabaseAdmin, token);
+  if (!user) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+
+  const plan = String(req.query?.plan || VOICE_PLAN);
+  const active = await isSubscriptionActive(supabaseAdmin, user.id, plan);
+  return res.status(200).json({ ok: true, active, plan, status: active ? 'active' : 'inactive' });
+}
+
+async function mpCreateSubscriptionHandler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  if (!mpAccessToken || !mpPreapprovalPlanId) {
+    return res.status(500).json({ error: 'Missing MP_ACCESS_TOKEN or MP_PREAPPROVAL_PLAN_ID.' });
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
+  if (!supabaseAdmin) {
+    return res.status(500).json({ error: 'Supabase env vars are missing (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).' });
+  }
+
+  const token = getBearerToken(req);
+  if (!token) {
+    return res.status(401).json({ error: 'Missing Bearer token' });
+  }
+
+  const user = await getAuthUserOrNull(supabaseAdmin, token);
+  if (!user) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+
+  const mpResponse = await fetch('https://api.mercadopago.com/preapproval', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${mpAccessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      preapproval_plan_id: mpPreapprovalPlanId,
+      external_reference: user.id,
+      back_url: 'https://21-moon.com/?mp_return=1'
+    })
+  });
+
+  const mpData = await mpResponse.json().catch(() => ({}));
+  if (!mpResponse.ok) {
+    console.error('mp create subscription failed', { status: mpResponse.status, mpData });
+    return res.status(500).json({ error: mpData?.message || 'Mercado Pago subscription creation failed.' });
+  }
+
+  return res.status(200).json({ init_point: mpData?.init_point || null, id: mpData?.id || null });
 }
 
 async function yumikoHandler(req, res) {
@@ -507,39 +656,20 @@ async function yumikoHandler(req, res) {
     let userId = null;
     let audioAllowed = false;
     if (audioMode && supabaseAdmin) {
-      const authHeader = req.headers.authorization || '';
-      const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      const token = getBearerToken(req);
+      const user = await getAuthUserOrNull(supabaseAdmin, token);
 
-      if (token) {
-        const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
-        if (!userErr && userData?.user) {
-          userId = userData.user.id;
-          const mpConfigError = getMercadoPagoConfigError();
-          if (mpConfigError) {
-            return res.status(500).json({ error: mpConfigError });
-          }
+      if (user) {
+        userId = user.id;
 
-          const { data: subscriptionRow, error: subErr } = await supabaseAdmin
-            .from('subscriptions')
-            .select('status,plan,provider')
-            .eq('user_id', userId)
-            .maybeSingle();
+        try {
+          audioAllowed = await isSubscriptionActive(supabaseAdmin, userId, VOICE_PLAN);
+        } catch (subErr) {
+          return res.status(500).json({ error: subErr.message || 'Error validating voice subscription.' });
+        }
 
-          if (subErr) {
-            return res.status(500).json({ error: subErr.message || 'Error validating voice subscription.' });
-          }
-
-          audioAllowed = Boolean(
-            subscriptionRow
-            && subscriptionRow.provider === 'mercadopago'
-            && subscriptionRow.plan === mpPlanId
-            && subscriptionRow.status === 'authorized'
-          );
-          if (!audioAllowed) {
-            return res.status(402).json({ error: 'VOICE_NOT_ENTITLED' });
-          }
-        } else {
-          audioMode = false;
+        if (!audioAllowed) {
+          return res.status(402).json({ error: 'subscription_required', plan: VOICE_PLAN });
         }
       } else {
         audioMode = false;
@@ -1203,6 +1333,11 @@ module.exports = async function handler(req, res) {
       case 'mp-sync-voice':
         req.body = await getJsonBody(req);
         return mpSyncVoiceHandler(req, res);
+      case 'subscription-status':
+        return subscriptionStatusHandler(req, res);
+      case 'mp-create-subscription':
+        req.body = await getJsonBody(req);
+        return mpCreateSubscriptionHandler(req, res);
       case 'mp-webhook':
         req.body = await getJsonBody(req);
         return mpWebhookHandler(req, res);
