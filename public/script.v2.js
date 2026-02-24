@@ -68,10 +68,14 @@ function closeAudioPopover() {
   }
 }
 
+function isMobileAudioViewport() {
+  return window.innerWidth < 768 || window.matchMedia("(max-width: 767px)").matches;
+}
+
 function openAudioPopover() {
   if (!audioPopover || !btnAudio) return;
 
-  const isMobileViewport = window.innerWidth < 768;
+  const isMobileViewport = isMobileAudioViewport();
   if (isMobileViewport) {
     audioPopover.classList.add("audio-popover--mobile");
     if (audioPopover.parentElement !== document.body) {
@@ -87,6 +91,7 @@ function openAudioPopover() {
   audioPopover.classList.remove("hidden");
   audioPopover.setAttribute("aria-hidden", "false");
   btnAudio.setAttribute("aria-expanded", "true");
+  console.log("Audio panel opened");
 }
 
 function toggleAudioPanel() {
@@ -100,6 +105,22 @@ function toggleAudioPanel() {
 }
 
 window.toggleAudioPanel = toggleAudioPanel;
+
+function handleAudioButtonClick(event, { fromMobile = false } = {}) {
+  event?.preventDefault?.();
+  event?.stopPropagation?.();
+
+  if (fromMobile) {
+    console.log("Audio button clicked (mobile)");
+    closeMobileMenu();
+    requestAnimationFrame(() => {
+      toggleAudioPanel();
+    });
+    return;
+  }
+
+  toggleAudioPanel();
+}
 
 function initAudioControls() {
   if (localStorage.getItem(MUSIC_VOLUME_STORAGE_KEY) === null) {
@@ -135,8 +156,7 @@ function initAudioControls() {
 
   if (btnAudio && audioPopover) {
     btnAudio.addEventListener("click", (event) => {
-      event.stopPropagation();
-      toggleAudioPanel();
+      handleAudioButtonClick(event);
     });
 
     audioPopover.addEventListener("click", (event) => {
@@ -145,6 +165,12 @@ function initAudioControls() {
 
     document.addEventListener("click", (event) => {
       if (!audioPopover.contains(event.target) && !btnAudio.contains(event.target)) {
+        closeAudioPopover();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !isMobileAudioViewport()) {
         closeAudioPopover();
       }
     });
@@ -179,6 +205,7 @@ if (hamburgerBtn) {
     mobileMenu.classList.toggle("hidden");
     mobileMenu.classList.toggle("active");
     hamburgerBtn.classList.toggle("open");
+    mobileMenu.style.pointerEvents = mobileMenu.classList.contains("active") ? "auto" : "none";
   };
 }
 
@@ -203,6 +230,7 @@ function closeMobileMenu() {
   mobileMenu.classList.add("hidden");
   mobileMenu.classList.remove("active");
   hamburgerBtn.classList.remove("open");
+  mobileMenu.style.pointerEvents = "none";
 }
 
 if (mInv) {
@@ -222,9 +250,8 @@ if (mGacha) {
 }
 
 if (mAudio) {
-  mAudio.onclick = () => {
-    closeMobileMenu();
-    toggleAudioPanel();
+  mAudio.onclick = (event) => {
+    handleAudioButtonClick(event, { fromMobile: true });
   };
 }
 
