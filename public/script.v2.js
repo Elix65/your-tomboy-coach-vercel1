@@ -20,6 +20,7 @@ const btnInventario = document.getElementById("btn-inventario");
 const btnAudios = document.getElementById("btn-audios");
 const btnAudio = document.getElementById("btn-audio");
 const audioPopover = document.getElementById("audioPopover");
+const navAudio = btnAudio?.closest(".nav-audio") || null;
 const musicVolumeSlider = document.getElementById("music-volume-slider");
 const voiceVolumeSlider = document.getElementById("voice-volume-slider");
 
@@ -58,16 +59,47 @@ function updateMusicElementsVolume() {
 function closeAudioPopover() {
   if (!audioPopover || !btnAudio) return;
   audioPopover.classList.add("hidden");
+  audioPopover.classList.remove("audio-popover--mobile");
   audioPopover.setAttribute("aria-hidden", "true");
   btnAudio.setAttribute("aria-expanded", "false");
+
+  if (navAudio && audioPopover.parentElement !== navAudio) {
+    navAudio.appendChild(audioPopover);
+  }
 }
 
 function openAudioPopover() {
   if (!audioPopover || !btnAudio) return;
+
+  const isMobileViewport = window.innerWidth < 768;
+  if (isMobileViewport) {
+    audioPopover.classList.add("audio-popover--mobile");
+    if (audioPopover.parentElement !== document.body) {
+      document.body.appendChild(audioPopover);
+    }
+  } else {
+    audioPopover.classList.remove("audio-popover--mobile");
+    if (navAudio && audioPopover.parentElement !== navAudio) {
+      navAudio.appendChild(audioPopover);
+    }
+  }
+
   audioPopover.classList.remove("hidden");
   audioPopover.setAttribute("aria-hidden", "false");
   btnAudio.setAttribute("aria-expanded", "true");
 }
+
+function toggleAudioPanel() {
+  if (!audioPopover) return;
+  const isOpen = !audioPopover.classList.contains("hidden");
+  if (isOpen) {
+    closeAudioPopover();
+  } else {
+    openAudioPopover();
+  }
+}
+
+window.toggleAudioPanel = toggleAudioPanel;
 
 function initAudioControls() {
   if (localStorage.getItem(MUSIC_VOLUME_STORAGE_KEY) === null) {
@@ -104,12 +136,7 @@ function initAudioControls() {
   if (btnAudio && audioPopover) {
     btnAudio.addEventListener("click", (event) => {
       event.stopPropagation();
-      const isOpen = !audioPopover.classList.contains("hidden");
-      if (isOpen) {
-        closeAudioPopover();
-      } else {
-        openAudioPopover();
-      }
+      toggleAudioPanel();
     });
 
     audioPopover.addEventListener("click", (event) => {
@@ -168,14 +195,20 @@ if (mobileMenu) {
 // Botones internos del menú mobile
 const mInv = document.getElementById("m-inventario");
 const mGacha = document.getElementById("m-gacha");
+const mAudio = document.getElementById("m-audio");
 const mAudios = document.getElementById("m-audios");
+
+function closeMobileMenu() {
+  if (!mobileMenu || !hamburgerBtn) return;
+  mobileMenu.classList.add("hidden");
+  mobileMenu.classList.remove("active");
+  hamburgerBtn.classList.remove("open");
+}
 
 if (mInv) {
   mInv.setAttribute("aria-expanded", "false");
   mInv.onclick = () => {
-    mobileMenu.classList.add("hidden");
-    mobileMenu.classList.remove("active");
-    hamburgerBtn.classList.remove("open");
+    closeMobileMenu();
     toggleInventory();
   };
 }
@@ -183,18 +216,21 @@ if (mInv) {
 if (mGacha) {
   mGacha.onclick = (event) => {
     event.preventDefault();
-    mobileMenu.classList.add("hidden");
-    mobileMenu.classList.remove("active");
-    hamburgerBtn.classList.remove("open");
+    closeMobileMenu();
     goWithTransition("gacha.html");
+  };
+}
+
+if (mAudio) {
+  mAudio.onclick = () => {
+    closeMobileMenu();
+    toggleAudioPanel();
   };
 }
 
 if (mAudios) {
   mAudios.onclick = () => {
-    mobileMenu.classList.add("hidden");
-    mobileMenu.classList.remove("active");
-    hamburgerBtn.classList.remove("open");
+    closeMobileMenu();
     window.location.href = "/pacto-lunar-voz-triunfante.html";
   };
 }

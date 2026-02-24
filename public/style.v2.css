@@ -132,6 +132,18 @@ body:not(.inventory-open) #dojo-ui {
   accent-color: #ff6f86;
 }
 
+
+.audio-popover--mobile {
+  position: fixed;
+  top: 76px;
+  left: 12px;
+  right: 12px;
+  width: auto;
+  max-width: 520px;
+  margin: 0 auto;
+  z-index: 10020;
+}
+
 #top-bar {
   z-index: 20000;
 }
