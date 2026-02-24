@@ -265,6 +265,19 @@
   pointer-events: auto;
 }
 
+
+.daily-chat-rewards-widget.in-mobile-panel {
+  position: fixed !important;
+  top: auto !important;
+  left: 12px !important;
+  right: 12px !important;
+  bottom: 12px !important;
+  width: min(520px, calc(100vw - 24px)) !important;
+  max-width: 520px !important;
+  margin: 0 auto !important;
+  z-index: 99999 !important;
+}
+
 @media (max-width: 1100px) {
   .daily-chat-rewards-widget {
     top: 76px;
