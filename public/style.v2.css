@@ -135,13 +135,15 @@ body:not(.inventory-open) #dojo-ui {
 
 .audio-popover--mobile {
   position: fixed;
-  top: 76px;
   left: 12px;
   right: 12px;
+  bottom: 12px;
   width: auto;
   max-width: 520px;
   margin: 0 auto;
-  z-index: 10020;
+  z-index: 9999;
+  border-radius: 16px;
+  background: rgba(16, 10, 20, 0.94);
 }
 
 #top-bar {
