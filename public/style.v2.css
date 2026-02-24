@@ -94,6 +94,44 @@ body:not(.inventory-open) #dojo-ui {
   z-index: 1;
 }
 
+.nav-audio {
+  position: relative;
+  display: inline-block;
+  z-index: 1;
+}
+
+.audio-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  width: min(260px, 72vw);
+  padding: 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(16, 10, 20, 0.82);
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.audio-control {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.audio-control + .audio-control {
+  margin-top: 10px;
+}
+
+.audio-control input[type="range"] {
+  width: 100%;
+  accent-color: #ff6f86;
+}
+
 #top-bar {
   z-index: 20000;
 }

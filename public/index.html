@@ -55,6 +55,19 @@
           </aside>
         </div>
       </div>
+      <div class="nav-audio">
+        <button id="btn-audio" class="top-btn" type="button" aria-expanded="false" aria-controls="audioPopover">🎚️ Audio</button>
+        <div id="audioPopover" class="audio-popover hidden" aria-hidden="true">
+          <label class="audio-control" for="music-volume-slider">
+            <span>Música</span>
+            <input id="music-volume-slider" type="range" min="0" max="100" value="30" step="1">
+          </label>
+          <label class="audio-control" for="voice-volume-slider">
+            <span>Voz Yumiko</span>
+            <input id="voice-volume-slider" type="range" min="0" max="100" value="100" step="1">
+          </label>
+        </div>
+      </div>
       <button id="btn-gacha" class="top-btn">Gacha</button>
       <button id="btn-audios" class="top-btn top-btn-primary">
         <span class="audios-label--desktop">N-no es que me importes… pero vení, b-baka 😳</span>
