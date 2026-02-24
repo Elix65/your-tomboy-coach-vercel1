@@ -83,8 +83,13 @@ async function getActiveVoiceSubscription(supabaseAdmin, userId, options = {}) {
 
 function getAction(req) {
   if (req.query?.action) return req.query.action;
-  const url = new URL(req.url, 'http://localhost');
+  const url = getRequestUrl(req);
   return url.searchParams.get('action');
+}
+
+function getRequestUrl(req) {
+  const host = getFirstHeaderValue(req.headers.host) || 'localhost';
+  return new URL(req.url, `https://${host}`);
 }
 
 function getMercadoPagoConfigError() {
@@ -178,6 +183,20 @@ async function upsertMpPreapprovalStatus(supabaseAdmin, { preapprovalId, userId,
   if (error) {
     throw new Error(error.message || 'Error upserting mp_preapprovals.');
   }
+}
+
+async function findUserIdByPreapprovalId(supabaseAdmin, preapprovalId) {
+  const { data, error } = await supabaseAdmin
+    .from('mp_preapprovals')
+    .select('user_id')
+    .eq('preapproval_id', preapprovalId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message || 'Error reading mp_preapprovals mapping.');
+  }
+
+  return data?.user_id ? String(data.user_id) : null;
 }
 
 async function readRawBody(req) {
@@ -415,14 +434,14 @@ async function mpWebhookHandler(req, res) {
 
   try {
     const body = await getJsonBody(req);
-    const u = new URL(req.url, 'https://dummy.local');
+    const u = getRequestUrl(req);
     const signatureHeader = getFirstHeaderValue(req.headers['x-signature']);
     const requestIdHeader = getFirstHeaderValue(req.headers['x-request-id']);
     const { ts, v1 } = parseMpSignatureHeader(signatureHeader);
 
     const idForManifest = String(u.searchParams.get('data.id') || body?.data?.id || '').trim();
     const manifest = buildMpWebhookManifest({ idFromUrl: idForManifest, requestId: requestIdHeader, ts });
-    if (!isMpWebhookSignatureValid({
+    if (mpWebhookSecret && !isMpWebhookSignatureValid({
       secret: mpWebhookSecret,
       manifest,
       signatureV1: v1
@@ -455,18 +474,18 @@ async function mpWebhookHandler(req, res) {
     }
 
     if (!mpAccessToken) {
-      console.error('mercadopago webhook missing MP_ACCESS_TOKEN');
+      console.warn('mercadopago webhook missing MP_ACCESS_TOKEN');
       return res.status(200).json({ ok: true });
     }
 
     const { response: mpResponse, data: mpData } = await fetchMpPreapproval(eventId);
     if (!mpResponse.ok) {
-      console.error('mercadopago webhook preapproval fetch failed', { id: eventId, status: mpResponse.status, body: mpData });
-      return res.status(200).json({ ok: true });
+      console.warn('mercadopago webhook preapproval verification skipped', { id: eventId, status: mpResponse.status, body: mpData });
+      return res.status(200).json({ ok: true, verified: false });
     }
 
     const status = String(mpData?.status || '').toLowerCase() || null;
-    const externalReference = String(mpData?.external_reference || '').trim();
+    let userId = String(mpData?.external_reference || '').trim();
     const supabaseAdmin = getSupabaseAdmin();
 
     if (!supabaseAdmin) {
@@ -474,24 +493,29 @@ async function mpWebhookHandler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    if (!externalReference) {
-      console.log('mercadopago webhook preapproval has no external_reference, skipped DB upsert', {
-        id: eventId,
-        status
-      });
-      return res.status(200).json({ ok: true });
+    if (!userId) {
+      userId = await findUserIdByPreapprovalId(supabaseAdmin, eventId);
     }
 
-    await upsertVoiceEnabledSetting(supabaseAdmin, externalReference, status === 'active');
+    if (!userId) {
+      console.warn('mercadopago webhook preapproval has no user mapping', {
+        id: eventId,
+        status,
+        external_reference: mpData?.external_reference || null
+      });
+      return res.status(200).json({ ok: true, verified: true });
+    }
+
     await upsertMpPreapprovalStatus(supabaseAdmin, {
       preapprovalId: eventId,
-      userId: externalReference,
+      userId,
       status
     });
+    await upsertVoiceEnabledSetting(supabaseAdmin, userId, status === 'active');
 
-    return res.status(200).json({ ok: true });
+    return res.status(200).json({ ok: true, verified: true });
   } catch (error) {
-    console.error('mercadopago webhook fatal', { message: error?.message || String(error) });
+    console.warn('mercadopago webhook fatal', { message: error?.message || String(error) });
     return res.status(200).json({ ok: true });
   }
 }
@@ -520,7 +544,8 @@ async function mpVerifyHandler(req, res) {
     return res.status(401).json({ error: 'Invalid token' });
   }
 
-  const preapprovalId = String(req.body?.preapproval_id || '').trim();
+  const body = await getJsonBody(req);
+  const preapprovalId = String(body?.preapproval_id || '').trim();
   if (!preapprovalId) {
     return res.status(400).json({ error: 'Missing preapproval_id' });
   }
@@ -532,17 +557,16 @@ async function mpVerifyHandler(req, res) {
   }
 
   const status = String(mpData?.status || '').toLowerCase() || 'unknown';
+  const mappedUserId = String(mpData?.external_reference || user.id || '').trim() || user.id;
   const voiceEnabled = status === 'active';
 
   await upsertMpPreapprovalStatus(supabaseAdmin, {
     preapprovalId,
-    userId: user.id,
+    userId: mappedUserId,
     status
   });
 
-  if (voiceEnabled) {
-    await upsertVoiceEnabledSetting(supabaseAdmin, user.id, true);
-  }
+  await upsertVoiceEnabledSetting(supabaseAdmin, mappedUserId, voiceEnabled);
 
   return res.status(200).json({ status, voice_enabled: voiceEnabled });
 }
@@ -630,20 +654,22 @@ async function mpCreateSubscriptionHandler(req, res) {
     return res.status(500).json({ error: mpData?.message || 'Mercado Pago subscription creation failed.' });
   }
 
+  const preapprovalId = String(mpData?.id || '').trim();
+  const status = mpData?.status || null;
+
   console.log('[MP preapproval created]', {
-    id: mpData?.id || null,
-    status: mpData?.status || null,
-    external_reference: mpData?.external_reference || null,
-    init_point: mpData?.init_point || mpData?.sandbox_init_point || null
+    preapproval_id: preapprovalId || null,
+    user_id: user.id,
+    status,
+    external_reference: mpData?.external_reference || String(user.id)
   });
 
-  const preapprovalId = String(mpData?.id || '').trim();
   if (preapprovalId) {
     try {
       await upsertMpPreapprovalStatus(supabaseAdmin, {
         preapprovalId,
         userId: user.id,
-        status: mpData?.status || null
+        status
       });
     } catch (error) {
       console.error('mp create subscription failed to persist preapproval', {
@@ -654,7 +680,11 @@ async function mpCreateSubscriptionHandler(req, res) {
     }
   }
 
-  return res.status(200).json({ init_point: mpData?.init_point || null, preapproval_id: mpData?.id || null });
+  return res.status(200).json({
+    init_point: mpData?.init_point || mpData?.sandbox_init_point || null,
+    link: mpData?.init_point || mpData?.sandbox_init_point || null,
+    preapproval_id: preapprovalId || null
+  });
 }
 
 async function yumikoHandler(req, res) {
