@@ -534,7 +534,6 @@ Gracias!`;
   const mpPayBtn = document.getElementById("payBtn");
   const mpVerifyBtn = document.getElementById("mpVerifyBtn");
   const mpStatus = document.getElementById("mpStatus");
-  const userIdInput = document.getElementById("userId");
 
   function setMpStatus(message) {
     if (mpStatus) mpStatus.textContent = message;
@@ -572,7 +571,7 @@ Gracias!`;
     }
   });
 
-  mpVerifyBtn?.addEventListener("click", async () => {
+  async function verifyPreapproval(preapprovalId) {
     setMpStatus("Verificando suscripción...");
 
     const { data } = await supabaseClient.auth.getSession();
@@ -583,17 +582,19 @@ Gracias!`;
       return;
     }
 
-    const payerEmail = userIdInput?.value?.trim();
-    const payload = payerEmail ? { payer_email: payerEmail } : {};
+    if (!preapprovalId) {
+      setMpStatus("Falta preapproval_id para verificar");
+      return;
+    }
 
     try {
-      const response = await fetch("/api/router?action=mp-sync-voice", {
+      const response = await fetch("/api/router?action=mp-verify", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ preapproval_id: preapprovalId })
       });
 
       const result = await response.json();
@@ -602,14 +603,25 @@ Gracias!`;
       }
 
       if (result.voice_enabled) {
-        setMpStatus("✅ Voz activada, volvé al chat");
+        setMpStatus("✅ Listo, voz activada");
       } else {
-        setMpStatus("⚠️ Aún no figura activa, reintentá en 10-30s");
+        setMpStatus(`⚠️ Estado de suscripción: ${result.status || "desconocido"}. Reintentá en 10-30s.`);
       }
     } catch (error) {
       setMpStatus(`❌ ${error.message || "Error verificando"}`);
     }
+  }
+
+  mpVerifyBtn?.addEventListener("click", async () => {
+    const queryId = new URLSearchParams(window.location.search).get("preapproval_id") || "";
+    const preapprovalId = queryId;
+    verifyPreapproval(preapprovalId);
   });
+
+  const preapprovalFromQuery = new URLSearchParams(window.location.search).get("preapproval_id");
+  if (preapprovalFromQuery) {
+    verifyPreapproval(preapprovalFromQuery);
+  }
 </script>
 
 </body>

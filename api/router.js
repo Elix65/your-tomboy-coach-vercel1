@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 const OpenAI = require('openai');
 const { createClient } = require('@supabase/supabase-js');
 
@@ -87,11 +86,52 @@ function getAction(req) {
 }
 
 function getMercadoPagoConfigError() {
-  if (!mpAccessToken || !mpPlanId) {
-    return 'Missing MP_ACCESS_TOKEN or MP_PLAN_ID.';
+  if (!mpAccessToken) {
+    return 'Missing MP_ACCESS_TOKEN.';
+  }
+
+  if (!mpPlanId) {
+    return 'Missing MP_PLAN_ID.';
   }
 
   return null;
+}
+
+function isPreapprovalEventType({ topic, type, entity }) {
+  const hints = `${String(topic || '').toLowerCase()} ${String(type || '').toLowerCase()} ${String(entity || '').toLowerCase()}`;
+  return hints.includes('subscription_preapproval') || hints.includes('preapproval');
+}
+
+async function fetchMpPreapproval(preapprovalId) {
+  const response = await fetch(`https://api.mercadopago.com/preapproval/${encodeURIComponent(preapprovalId)}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${mpAccessToken}`
+    }
+  });
+
+  const data = await parseMpResponseBody(response);
+  return { response, data };
+}
+
+async function upsertVoiceEnabledSetting(supabaseAdmin, userId, voiceEnabled) {
+  const { error } = await supabaseAdmin
+    .from('user_settings')
+    .upsert({ user_id: userId, voice_enabled: Boolean(voiceEnabled) }, { onConflict: 'user_id' });
+
+  if (error) {
+    throw new Error(error.message || 'Error upserting user_settings.voice_enabled.');
+  }
+}
+
+async function upsertMpPreapprovalStatus(supabaseAdmin, { preapprovalId, userId, status }) {
+  const { error } = await supabaseAdmin
+    .from('mp_preapprovals')
+    .upsert({ preapproval_id: preapprovalId, user_id: userId, status: status || null }, { onConflict: 'preapproval_id' });
+
+  if (error) {
+    throw new Error(error.message || 'Error upserting mp_preapprovals.');
+  }
 }
 
 async function readRawBody(req) {
@@ -327,141 +367,79 @@ async function mpWebhookHandler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const u = new URL(req.url, 'https://dummy.local');
-  const dataIdUrlRaw = u.searchParams.get('data.id') || u.searchParams.get('id') || '';
-  const dataIdUrl = /^[a-z0-9]+$/i.test(dataIdUrlRaw) && !/^\d+$/.test(dataIdUrlRaw)
-    ? dataIdUrlRaw.toLowerCase()
-    : dataIdUrlRaw;
-  const xSignature = String(req.headers['x-signature'] || '');
-  const xRequestId = String(req.headers['x-request-id'] || '');
-  const webhookSecret = process.env.MP_WEBHOOK_SECRET;
+  try {
+    const body = await getJsonBody(req);
+    const u = new URL(req.url, 'https://dummy.local');
 
-  if (!webhookSecret) {
-    console.error('MP_WEBHOOK_SECRET_MISSING');
-    return res.status(401).json({ error: 'UNAUTHORIZED' });
-  }
+    const eventId = String(
+      body?.preapproval_id
+      || body?.data?.id
+      || body?.id
+      || u.searchParams.get('preapproval_id')
+      || u.searchParams.get('data.id')
+      || u.searchParams.get('id')
+      || ''
+    ).trim();
 
-  const body = await getJsonBody(req);
-  const topic = body?.topic || null;
-  const type = body?.type || null;
-  const entity = body?.entity || null;
-  const bodyDataId = body?.data?.id || body?.id || '';
-  const eventId = String(dataIdUrl || bodyDataId || '').trim();
-  const signatureParts = xSignature
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean);
-  const ts = signatureParts.find((part) => part.startsWith('ts='))?.split('=')[1] || '';
-  const v1 = signatureParts.find((part) => part.startsWith('v1='))?.split('=')[1] || '';
+    const topic = body?.topic || u.searchParams.get('topic') || null;
+    const type = body?.type || u.searchParams.get('type') || null;
+    const entity = body?.entity || u.searchParams.get('entity') || null;
 
-  if (!ts || !v1 || !eventId) {
-    return res.status(401).json({ error: 'UNAUTHORIZED' });
-  }
-
-  const templateParts = [];
-  if (dataIdUrl) templateParts.push(`id:${dataIdUrl}`);
-  if (xRequestId) templateParts.push(`request-id:${xRequestId}`);
-  if (ts) templateParts.push(`ts:${ts}`);
-  const template = `${templateParts.join(';')};`;
-
-  const computed = crypto
-    .createHmac('sha256', webhookSecret)
-    .update(template)
-    .digest('hex');
-  const v1Lower = v1.toLowerCase();
-  const computedLower = computed.toLowerCase();
-
-  const providedDigest = Buffer.from(v1Lower, 'hex');
-  const expectedDigest = Buffer.from(computedLower, 'hex');
-  const signatureOk = providedDigest.length === expectedDigest.length
-    && crypto.timingSafeEqual(providedDigest, expectedDigest);
-
-  if (process.env.MP_WEBHOOK_DEBUG === 'true') {
-    console.log('mp webhook signature debug', {
-      url: req.url,
-      dataIdUrl,
-      bodyDataId,
-      xRequestId,
-      ts,
-      template,
-      v1: v1Lower,
-      computed: computedLower
-    });
-  }
-
-  if (!signatureOk) {
-    console.warn('mercadopago webhook invalid signature', {
-      id: eventId,
-      topic,
-      type,
-      entity,
-      xRequestId,
-      ts
-    });
-
-    return res.status(401).json({ error: 'UNAUTHORIZED' });
-  }
-
-  const normalizedId = String(eventId);
-  const isSimulation = normalizedId === '123456' || normalizedId.length < 7;
-  if (isSimulation) {
-    console.log('mp webhook simulation', { id: normalizedId, topic, type, entity });
-    return res.status(200).json({ ok: true, simulated: true });
-  }
-
-  const eventHints = `${String(topic || '').toLowerCase()} ${String(type || '').toLowerCase()} ${String(entity || '').toLowerCase()}`;
-  const isPreapprovalEvent = eventHints.includes('subscription_preapproval') || eventHints.includes('preapproval');
-  if (!isPreapprovalEvent) {
-    return res.status(200).json({ ok: true, ignored: true });
-  }
-
-  if (!mpAccessToken) {
-    return res.status(500).json({ error: 'Missing MP_ACCESS_TOKEN.' });
-  }
-
-  const mpResponse = await fetch(`https://api.mercadopago.com/preapproval/${encodeURIComponent(normalizedId)}`, {
-    method: 'GET',
-    headers: {
-      Authorization: `Bearer ${mpAccessToken}`
+    if (!isPreapprovalEventType({ topic, type, entity })) {
+      console.log('mercadopago webhook ignored non-preapproval event', { topic, type, entity, id: eventId || null });
+      return res.status(200).json({ ok: true });
     }
-  });
 
-  const mpData = await parseMpResponseBody(mpResponse);
-  if (mpResponse.status === 400 || mpResponse.status === 404) {
-    console.log('mercadopago webhook ignored: preapproval not found/invalid', {
-      id: normalizedId,
-      status: mpResponse.status,
-      topic,
-      type,
-      entity
+    if (!eventId) {
+      console.warn('mercadopago webhook missing preapproval id', { topic, type, entity, body });
+      return res.status(200).json({ ok: true });
+    }
+
+    if (!mpAccessToken) {
+      console.error('mercadopago webhook missing MP_ACCESS_TOKEN');
+      return res.status(200).json({ ok: true });
+    }
+
+    const { response: mpResponse, data: mpData } = await fetchMpPreapproval(eventId);
+    if (!mpResponse.ok) {
+      console.error('mercadopago webhook preapproval fetch failed', { id: eventId, status: mpResponse.status, body: mpData });
+      return res.status(200).json({ ok: true });
+    }
+
+    const status = String(mpData?.status || '').toLowerCase() || null;
+    const externalReference = String(mpData?.external_reference || '').trim();
+    const supabaseAdmin = getSupabaseAdmin();
+
+    if (!supabaseAdmin) {
+      console.error('mercadopago webhook missing Supabase env vars');
+      return res.status(200).json({ ok: true });
+    }
+
+    if (!externalReference) {
+      console.log('mercadopago webhook preapproval has no external_reference, skipped DB upsert', {
+        id: eventId,
+        status
+      });
+      return res.status(200).json({ ok: true });
+    }
+
+    await upsertVoiceEnabledSetting(supabaseAdmin, externalReference, status === 'active');
+    await upsertMpPreapprovalStatus(supabaseAdmin, {
+      preapprovalId: eventId,
+      userId: externalReference,
+      status
     });
-    return res.status(200).json({ ok: true, ignored: true });
+
+    return res.status(200).json({ ok: true });
+  } catch (error) {
+    console.error('mercadopago webhook fatal', { message: error?.message || String(error) });
+    return res.status(200).json({ ok: true });
   }
+}
 
-  if (!mpResponse.ok) {
-    console.error('mercadopago webhook preapproval fetch failed', {
-      id: normalizedId,
-      status: mpResponse.status,
-      body: mpData
-    });
-    return res.status(500).json({ error: 'Mercado Pago preapproval fetch failed.' });
-  }
-
-  const externalReference = String(mpData?.external_reference || '').trim();
-  const payerEmail = String(mpData?.payer_email || '').trim();
-  const mpStatus = String(mpData?.status || '').toLowerCase();
-
-  let subscriptionStatus = 'past_due';
-  if (mpStatus === 'authorized' || mpStatus === 'active') subscriptionStatus = 'active';
-  if (mpStatus === 'cancelled' || mpStatus === 'canceled') subscriptionStatus = 'canceled';
-
-  if (!externalReference) {
-    console.log('mercadopago webhook missing external_reference', {
-      id: normalizedId,
-      payer_email: payerEmail || null,
-      status: mpStatus || null
-    });
-    return res.status(200).json({ ok: true, ignored: true });
+async function mpVerifyHandler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
   const supabaseAdmin = getSupabaseAdmin();
@@ -469,29 +447,45 @@ async function mpWebhookHandler(req, res) {
     return res.status(500).json({ error: 'Supabase env vars are missing (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).' });
   }
 
-  const startAt = new Date();
-  const endAt = new Date(startAt.getTime() + (30 * 24 * 60 * 60 * 1000));
-  const { error: upsertErr } = await supabaseAdmin
-    .from('subscriptions')
-    .upsert({
-      user_id: externalReference,
-      plan: 'voice_plus',
-      provider: 'mercadopago',
-      status: subscriptionStatus,
-      current_period_start: startAt.toISOString(),
-      current_period_end: endAt.toISOString()
-    }, { onConflict: 'user_id,plan' });
-
-  if (upsertErr) {
-    console.error('mercadopago webhook subscription upsert failed', {
-      id: normalizedId,
-      user_id: externalReference,
-      error: upsertErr.message
-    });
-    return res.status(500).json({ error: upsertErr.message || 'Error upserting subscriptions.' });
+  if (!mpAccessToken) {
+    return res.status(500).json({ error: 'Missing MP_ACCESS_TOKEN.' });
   }
 
-  return res.status(200).json({ ok: true });
+  const token = getBearerToken(req);
+  if (!token) {
+    return res.status(401).json({ error: 'Missing Bearer token' });
+  }
+
+  const user = await getAuthUserOrNull(supabaseAdmin, token);
+  if (!user) {
+    return res.status(401).json({ error: 'Invalid token' });
+  }
+
+  const preapprovalId = String(req.body?.preapproval_id || '').trim();
+  if (!preapprovalId) {
+    return res.status(400).json({ error: 'Missing preapproval_id' });
+  }
+
+  const { response: mpResponse, data: mpData } = await fetchMpPreapproval(preapprovalId);
+  if (!mpResponse.ok) {
+    console.error('mp verify preapproval fetch failed', { preapproval_id: preapprovalId, status: mpResponse.status, body: mpData });
+    return res.status(500).json({ error: mpData?.message || 'Mercado Pago preapproval fetch failed.' });
+  }
+
+  const status = String(mpData?.status || '').toLowerCase() || 'unknown';
+  const voiceEnabled = status === 'active';
+
+  await upsertMpPreapprovalStatus(supabaseAdmin, {
+    preapprovalId,
+    userId: user.id,
+    status
+  });
+
+  if (voiceEnabled) {
+    await upsertVoiceEnabledSetting(supabaseAdmin, user.id, true);
+  }
+
+  return res.status(200).json({ status, voice_enabled: voiceEnabled });
 }
 
 async function subscriptionStatusHandler(req, res) {
@@ -1358,6 +1352,9 @@ module.exports = async function handler(req, res) {
       case 'mp-webhook':
         req.body = await getJsonBody(req);
         return mpWebhookHandler(req, res);
+      case 'mp-verify':
+        req.body = await getJsonBody(req);
+        return mpVerifyHandler(req, res);
       default:
         return res.status(404).json({ error: 'Unknown action' });
     }
