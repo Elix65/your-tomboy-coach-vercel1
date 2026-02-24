@@ -10,8 +10,24 @@ const mpAccessToken = process.env.MP_ACCESS_TOKEN;
 const mpWebhookSecret = process.env.MP_WEBHOOK_SECRET;
 const mpPlanId = process.env.MP_PLAN_ID;
 const mpPreapprovalPlanId = process.env.MP_PREAPPROVAL_PLAN_ID;
+const mpAdminBypassEnabled = process.env.MP_ADMIN_BYPASS === '1';
+const MP_ADMIN_TEST_USER_ID = 'a5429e17-43e2-4922-9560-ab914f63283e';
 const VOICE_PLAN = 'pacto_voz_triunfante';
 const ACTIVE_VOICE_PLANS = ['voice_lite', 'voice_plus'];
+
+function normalizeMpErrorMessage(mpData) {
+  return String(mpData?.message || mpData?.error || '').trim().toLowerCase();
+}
+
+function isPayerEqualsCollectorError({ status, mpData }) {
+  if (status !== 400) return false;
+  const normalized = normalizeMpErrorMessage(mpData);
+  return normalized.includes('payer and collector cannot be the same user');
+}
+
+function canUseMpAdminBypass(userId) {
+  return Boolean(mpAdminBypassEnabled && userId === MP_ADMIN_TEST_USER_ID);
+}
 
 function getMpAccessTokenPrefix(token) {
   if (!token) return 'MISSING';
@@ -545,6 +561,19 @@ async function mpVerifyHandler(req, res) {
   }
 
   const body = await getJsonBody(req);
+  if (body?.admin_bypass_activate === true) {
+    if (!canUseMpAdminBypass(user.id)) {
+      return res.status(403).json({ error: 'Admin bypass is not available for this user.' });
+    }
+
+    await upsertVoiceEnabledSetting(supabaseAdmin, user.id, true);
+    return res.status(200).json({
+      status: 'active',
+      voice_enabled: true,
+      bypass_mode: true
+    });
+  }
+
   const preapprovalId = String(body?.preapproval_id || '').trim();
   if (!preapprovalId) {
     return res.status(400).json({ error: 'Missing preapproval_id' });
@@ -661,6 +690,14 @@ async function mpCreateSubscriptionHandler(req, res) {
       status: mpResponse.status,
       body: mpData
     });
+
+    if (isPayerEqualsCollectorError({ status: mpResponse.status, mpData })) {
+      return res.status(400).json({
+        error_code: 'PAYER_EQUALS_COLLECTOR',
+        user_message: 'No podés suscribirte con la misma cuenta de Mercado Pago que cobra. Abrí el link con otra cuenta (comprador) o usá un usuario de prueba.'
+      });
+    }
+
     return res.status(400).json({
       error: mpData?.message || mpData?.error || 'Mercado Pago preapproval creation failed.',
       details: mpData

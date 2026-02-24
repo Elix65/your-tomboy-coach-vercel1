@@ -269,10 +269,45 @@
       color: var(--text);
       cursor:pointer;
     }
+
     .ddItem:hover{
       background: rgba(255,255,255,.06);
       border-color: rgba(124,92,255,.20);
     }
+
+    .mpErrorModal{
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 100;
+      background: rgba(7,10,18,.72);
+      backdrop-filter: blur(4px);
+    }
+    .mpErrorModal.open{display:flex}
+    .mpErrorCard{
+      width: min(520px, 100%);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: rgba(13,18,35,.98);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    .mpErrorTitle{margin:0 0 8px;font-size:20px}
+    .mpErrorBody{margin:0;color:var(--muted);line-height:1.45}
+    .mpErrorTip{
+      margin-top:12px;
+      border:1px solid rgba(255,211,110,.28);
+      background: rgba(255,211,110,.10);
+      color:#FFE7B0;
+      border-radius:12px;
+      padding:10px 12px;
+      font-size:13px;
+      line-height:1.4;
+    }
+    .mpErrorActions{margin-top:14px;display:flex;justify-content:flex-end}
 
   </style>
 </head>
@@ -536,10 +571,32 @@ Gracias!`;
   const mpPayBtn = document.getElementById("payBtn");
   const mpVerifyBtn = document.getElementById("mpVerifyBtn");
   const mpStatus = document.getElementById("mpStatus");
+  const mpErrorModal = document.getElementById("mpErrorModal");
+  const mpErrorBody = document.getElementById("mpErrorBody");
+  const mpErrorCloseBtn = document.getElementById("mpErrorCloseBtn");
 
   function setMpStatus(message) {
     if (mpStatus) mpStatus.textContent = message;
   }
+
+  function showMpErrorModal(message) {
+    if (!mpErrorModal || !mpErrorBody) {
+      alert(message);
+      return;
+    }
+
+    mpErrorBody.textContent = message;
+    mpErrorModal.classList.add("open");
+  }
+
+  function closeMpErrorModal() {
+    mpErrorModal?.classList.remove("open");
+  }
+
+  mpErrorCloseBtn?.addEventListener("click", closeMpErrorModal);
+  mpErrorModal?.addEventListener("click", (event) => {
+    if (event.target === mpErrorModal) closeMpErrorModal();
+  });
 
   mpPayBtn?.addEventListener("click", async (event) => {
     event.preventDefault();
@@ -564,12 +621,17 @@ Gracias!`;
 
       const result = await response.json();
       if (!response.ok || !result?.init_point) {
-        throw new Error("No pude generar el link de pago.");
+        if (result?.error_code === "PAYER_EQUALS_COLLECTOR") {
+          showMpErrorModal(result?.user_message || "No podés suscribirte con la misma cuenta que cobra.");
+          return;
+        }
+
+        throw new Error(result?.error || "No pude generar el link de pago.");
       }
 
       window.location.href = result.init_point;
     } catch (error) {
-      alert(error?.message || "No pude generar el link de pago.");
+      showMpErrorModal(error?.message || "No pude generar el link de pago.");
     }
   });
 
@@ -625,6 +687,18 @@ Gracias!`;
     verifyPreapproval(preapprovalFromQuery);
   }
 </script>
+
+  <div class="mpErrorModal" id="mpErrorModal" role="dialog" aria-modal="true" aria-labelledby="mpErrorTitle" aria-describedby="mpErrorBody">
+    <div class="mpErrorCard">
+      <h3 class="mpErrorTitle" id="mpErrorTitle">No se pudo iniciar el pago</h3>
+      <p class="mpErrorBody" id="mpErrorBody"></p>
+      <div class="mpErrorTip">Sugerencia: Abrí Mercado Pago en incógnito e iniciá sesión con otra cuenta para pagar.</div>
+      <div class="mpErrorActions">
+        <button class="btn secondary" type="button" id="mpErrorCloseBtn">Entendido</button>
+      </div>
+    </div>
+  </div>
+
 
 </body>
 </html>
