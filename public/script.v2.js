@@ -18,6 +18,113 @@ function goWithTransition(url) {
 const btnGacha = document.getElementById("btn-gacha");
 const btnInventario = document.getElementById("btn-inventario");
 const btnAudios = document.getElementById("btn-audios");
+const btnAudio = document.getElementById("btn-audio");
+const audioPopover = document.getElementById("audioPopover");
+const musicVolumeSlider = document.getElementById("music-volume-slider");
+const voiceVolumeSlider = document.getElementById("voice-volume-slider");
+
+const MUSIC_VOLUME_STORAGE_KEY = "music_volume";
+const VOICE_VOLUME_STORAGE_KEY = "voice_volume";
+const DEFAULT_MUSIC_VOLUME = 0.3;
+const DEFAULT_VOICE_VOLUME = 1;
+
+let musicVolumeValue = DEFAULT_MUSIC_VOLUME;
+let voiceVolumeValue = DEFAULT_VOICE_VOLUME;
+let ambienceIntroRef = null;
+let ambienceLoopRef = null;
+
+window.yumikoVoiceVolume = DEFAULT_VOICE_VOLUME;
+
+function clampVolume(value, fallback) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.min(1, Math.max(0, parsed));
+}
+
+function applyVoiceVolumeToExistingAudios() {
+  document.querySelectorAll(".wa-audio audio").forEach((audio) => {
+    audio.volume = window.yumikoVoiceVolume;
+  });
+}
+
+function updateMusicElementsVolume() {
+  if (ambienceIntroRef) ambienceIntroRef.volume = musicVolumeValue;
+  if (ambienceLoopRef) ambienceLoopRef.volume = musicVolumeValue;
+  if (window.bgMusic instanceof HTMLMediaElement) {
+    window.bgMusic.volume = musicVolumeValue;
+  }
+}
+
+function closeAudioPopover() {
+  if (!audioPopover || !btnAudio) return;
+  audioPopover.classList.add("hidden");
+  audioPopover.setAttribute("aria-hidden", "true");
+  btnAudio.setAttribute("aria-expanded", "false");
+}
+
+function openAudioPopover() {
+  if (!audioPopover || !btnAudio) return;
+  audioPopover.classList.remove("hidden");
+  audioPopover.setAttribute("aria-hidden", "false");
+  btnAudio.setAttribute("aria-expanded", "true");
+}
+
+function initAudioControls() {
+  if (localStorage.getItem(MUSIC_VOLUME_STORAGE_KEY) === null) {
+    localStorage.setItem(MUSIC_VOLUME_STORAGE_KEY, String(DEFAULT_MUSIC_VOLUME));
+  }
+  if (localStorage.getItem(VOICE_VOLUME_STORAGE_KEY) === null) {
+    localStorage.setItem(VOICE_VOLUME_STORAGE_KEY, String(DEFAULT_VOICE_VOLUME));
+  }
+
+  musicVolumeValue = clampVolume(localStorage.getItem(MUSIC_VOLUME_STORAGE_KEY), DEFAULT_MUSIC_VOLUME);
+  voiceVolumeValue = clampVolume(localStorage.getItem(VOICE_VOLUME_STORAGE_KEY), DEFAULT_VOICE_VOLUME);
+  window.yumikoVoiceVolume = voiceVolumeValue;
+
+  if (musicVolumeSlider) musicVolumeSlider.value = String(Math.round(musicVolumeValue * 100));
+  if (voiceVolumeSlider) voiceVolumeSlider.value = String(Math.round(voiceVolumeValue * 100));
+
+  if (musicVolumeSlider) {
+    musicVolumeSlider.addEventListener("input", () => {
+      musicVolumeValue = clampVolume(Number(musicVolumeSlider.value) / 100, DEFAULT_MUSIC_VOLUME);
+      localStorage.setItem(MUSIC_VOLUME_STORAGE_KEY, String(musicVolumeValue));
+      updateMusicElementsVolume();
+    });
+  }
+
+  if (voiceVolumeSlider) {
+    voiceVolumeSlider.addEventListener("input", () => {
+      voiceVolumeValue = clampVolume(Number(voiceVolumeSlider.value) / 100, DEFAULT_VOICE_VOLUME);
+      window.yumikoVoiceVolume = voiceVolumeValue;
+      localStorage.setItem(VOICE_VOLUME_STORAGE_KEY, String(voiceVolumeValue));
+      applyVoiceVolumeToExistingAudios();
+    });
+  }
+
+  if (btnAudio && audioPopover) {
+    btnAudio.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const isOpen = !audioPopover.classList.contains("hidden");
+      if (isOpen) {
+        closeAudioPopover();
+      } else {
+        openAudioPopover();
+      }
+    });
+
+    audioPopover.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!audioPopover.contains(event.target) && !btnAudio.contains(event.target)) {
+        closeAudioPopover();
+      }
+    });
+  }
+
+  applyVoiceVolumeToExistingAudios();
+}
 
 if (btnGacha) {
   btnGacha.onclick = (event) => {
@@ -1034,6 +1141,8 @@ function initWAAudioPlayers(root = document) {
     const dur = player.querySelector(".wa-dur");
     if (!audio || !playBtn || !wave || !bars || !cur || !dur) return;
 
+    audio.volume = window.yumikoVoiceVolume;
+
     if (!bars.childElementCount) {
       const waveSeed = player.dataset.seed || player.dataset.url || audio.currentSrc || audio.src;
       const heights = generateWaveHeights(waveSeed, 36);
@@ -1190,6 +1299,7 @@ function addMessage(text, sender, options = {}) {
     const audioEl = document.createElement("audio");
     audioEl.preload = "metadata";
     audioEl.src = audioUrl;
+    audioEl.volume = window.yumikoVoiceVolume;
 
     player.append(playBtn, wave, time, audioEl);
     bubble.appendChild(player);
@@ -1892,6 +2002,7 @@ function makeRewardsWidgetCollapsible() {
 // AUDIO + PARALLAX + INICIALIZACIÓN
 // ===============================
 window.addEventListener("DOMContentLoaded", async () => {
+  initAudioControls();
   cacheChatDomElements();
   registerInputListeners();
   updateActionButtonsState();
@@ -1903,14 +2014,25 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   const ambienceIntro = document.getElementById("ambience-intro");
   const ambienceLoop = document.getElementById("ambience-loop");
+  const bgMusicById = document.getElementById("bg-music");
+
+  ambienceIntroRef = ambienceIntro;
+  ambienceLoopRef = ambienceLoop;
+  if (bgMusicById instanceof HTMLMediaElement) {
+    window.bgMusic = bgMusicById;
+  } else if (ambienceLoop instanceof HTMLMediaElement) {
+    window.bgMusic = ambienceLoop;
+  }
+
+  updateMusicElementsVolume();
 
   if (ambienceIntro) {
     ambienceIntro.volume = 0;
-    ambienceIntro.play().then(() => fadeIn(ambienceIntro, 0.12));
+    ambienceIntro.play().then(() => fadeIn(ambienceIntro, musicVolumeValue));
     ambienceIntro.onended = () => {
       ambienceLoop.volume = 0;
       ambienceLoop.play();
-      fadeIn(ambienceLoop, 0.18);
+      fadeIn(ambienceLoop, musicVolumeValue);
     };
   }
 
