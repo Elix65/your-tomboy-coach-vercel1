@@ -18,6 +18,7 @@ function goWithTransition(url) {
 const btnGacha = document.getElementById("btn-gacha");
 const btnInventario = document.getElementById("btn-inventario");
 const btnAudios = document.getElementById("btn-audios");
+const btnRewards = document.getElementById("btn-rewards");
 const btnAudio = document.getElementById("btn-audio");
 const audioPopover = document.getElementById("audioPopover");
 const navAudio = btnAudio?.closest(".nav-audio") || null;
@@ -282,6 +283,10 @@ if (btnAudios) {
   btnAudios.onclick = () => window.location.href = "/pacto-lunar-voz-triunfante.html";
 }
 
+if (btnRewards) {
+  btnRewards.setAttribute("data-action", "rewards");
+}
+
 // ===============================
 // MENÚ HAMBURGUESA (MOBILE)
 // ===============================
@@ -311,6 +316,7 @@ if (mobileMenu) {
 const mInv = document.getElementById("m-inventario");
 const mGacha = document.getElementById("m-gacha");
 const mAudio = document.getElementById("m-audio");
+const mRewards = document.getElementById("m-rewards");
 const mAudios = document.getElementById("m-audios");
 
 function closeMobileMenu() {
@@ -320,6 +326,120 @@ function closeMobileMenu() {
   hamburgerBtn.classList.remove("open");
   mobileMenu.style.pointerEvents = "none";
 }
+
+const REWARDS_OVERLAY_ID = "rewards-overlay";
+let rewardsMobileRestoreContext = null;
+
+function isMobileRewardsViewport() {
+  return window.innerWidth <= 768 || window.matchMedia("(max-width: 768px)").matches;
+}
+
+function getRewardsWidget() {
+  return document.getElementById("daily-chat-rewards-widget");
+}
+
+function getRewardsWrapper() {
+  const widget = getRewardsWidget();
+  return widget?.closest(".rewards-collapsible") || null;
+}
+
+function removeRewardsOverlay() {
+  const overlay = document.getElementById(REWARDS_OVERLAY_ID);
+  if (overlay) overlay.remove();
+}
+
+function resetRewardsMobileStyles() {
+  const widget = getRewardsWidget();
+  if (!widget) return;
+
+  widget.classList.remove("in-mobile-panel");
+  ["position", "left", "right", "bottom", "top", "margin", "width", "maxWidth", "zIndex", "display"].forEach((prop) => {
+    widget.style[prop] = "";
+  });
+}
+
+function restoreRewardsWidgetToOriginalParent() {
+  const widget = getRewardsWidget();
+  if (!widget || !rewardsMobileRestoreContext) return;
+
+  const { parent, nextSibling } = rewardsMobileRestoreContext;
+  if (parent && parent.isConnected) {
+    if (nextSibling && nextSibling.parentNode === parent) {
+      parent.insertBefore(widget, nextSibling);
+    } else {
+      parent.appendChild(widget);
+    }
+  }
+
+  rewardsMobileRestoreContext = null;
+}
+
+function closeRewardsPanel() {
+  removeRewardsOverlay();
+  resetRewardsMobileStyles();
+  restoreRewardsWidgetToOriginalParent();
+}
+
+function ensureRewardsOverlay() {
+  let overlay = document.getElementById(REWARDS_OVERLAY_ID);
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = REWARDS_OVERLAY_ID;
+    overlay.addEventListener("click", () => {
+      closeRewardsPanel();
+    });
+  }
+
+  overlay.style.position = "fixed";
+  overlay.style.inset = "0";
+  overlay.style.background = "rgba(0,0,0,0.4)";
+  overlay.style.zIndex = "99990";
+
+  if (!overlay.parentElement) {
+    document.body.appendChild(overlay);
+  }
+}
+
+function openRewardsPanel() {
+  const widget = getRewardsWidget();
+  if (!widget) return;
+
+  const wrapper = getRewardsWrapper();
+  wrapper?.classList.remove("is-collapsed");
+  widget.classList.remove("is-hidden");
+
+  if (isMobileRewardsViewport()) {
+    closeMobileMenu();
+
+    if (widget.parentElement !== document.body) {
+      rewardsMobileRestoreContext = {
+        parent: widget.parentElement,
+        nextSibling: widget.nextSibling
+      };
+      document.body.appendChild(widget);
+    }
+
+    ensureRewardsOverlay();
+    widget.classList.add("in-mobile-panel");
+    widget.style.position = "fixed";
+    widget.style.left = "12px";
+    widget.style.right = "12px";
+    widget.style.bottom = "12px";
+    widget.style.top = "auto";
+    widget.style.margin = "0 auto";
+    widget.style.width = "min(520px, calc(100vw - 24px))";
+    widget.style.maxWidth = "520px";
+    widget.style.zIndex = "99999";
+    widget.style.display = "block";
+  } else {
+    closeRewardsPanel();
+    wrapper?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  console.log("Rewards panel opened");
+}
+
+window.openRewardsPanel = openRewardsPanel;
 
 if (mInv) {
   mInv.setAttribute("aria-expanded", "false");
@@ -343,12 +463,24 @@ if (mAudio) {
   };
 }
 
+if (mRewards) {
+  mRewards.setAttribute("data-action", "rewards");
+}
+
 if (mAudios) {
   mAudios.onclick = () => {
     closeMobileMenu();
     window.location.href = "/pacto-lunar-voz-triunfante.html";
   };
 }
+
+document.addEventListener("click", (event) => {
+  const rewardsBtn = event.target.closest('[data-action="rewards"]');
+  if (!rewardsBtn) return;
+
+  console.log("Rewards clicked");
+  openRewardsPanel();
+});
 
 document.addEventListener("click", (event) => {
   const link = event.target.closest("a[data-transition='1']");
@@ -2147,6 +2279,17 @@ function makeRewardsWidgetCollapsible() {
 
   syncDesktopPlacement();
   window.addEventListener("resize", syncDesktopPlacement);
+  window.addEventListener("resize", () => {
+    if (!isMobileRewardsViewport()) {
+      closeRewardsPanel();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeRewardsPanel();
+    }
+  });
 }
 
 // ===============================

@@ -155,12 +155,18 @@ function ensureMobileRewardsSlot() {
     return null;
   }
 
+  const existingRewardsBtn = mobileMenuDrawer.querySelector('[data-action="rewards"]');
+  if (existingRewardsBtn instanceof HTMLButtonElement) {
+    mobileRewardsToggleBtn = existingRewardsBtn;
+  }
+
   if (!mobileRewardsToggleBtn) {
     mobileRewardsToggleBtn = document.createElement("button");
     mobileRewardsToggleBtn.type = "button";
     mobileRewardsToggleBtn.className = "mobile-menu-btn rewards-toggle";
     mobileRewardsToggleBtn.textContent = "Recompensas😲💖";
     mobileRewardsToggleBtn.setAttribute("aria-expanded", "false");
+    mobileRewardsToggleBtn.setAttribute("data-action", "rewards");
   }
 
   if (!mobileRewardsCollapsible) {
