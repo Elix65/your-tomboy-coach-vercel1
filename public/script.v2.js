@@ -28,6 +28,8 @@ const MUSIC_VOLUME_STORAGE_KEY = "music_volume";
 const VOICE_VOLUME_STORAGE_KEY = "voice_volume";
 const DEFAULT_MUSIC_VOLUME = 0.3;
 const DEFAULT_VOICE_VOLUME = 1;
+const AUDIO_OVERLAY_ID = "audio-overlay";
+const AUDIO_PANEL_DEBUG = Boolean(window.__AUDIO_PANEL_DEBUG__);
 
 let musicVolumeValue = DEFAULT_MUSIC_VOLUME;
 let voiceVolumeValue = DEFAULT_VOICE_VOLUME;
@@ -60,6 +62,8 @@ function closeAudioPopover() {
   if (!audioPopover || !btnAudio) return;
   audioPopover.classList.add("hidden");
   audioPopover.classList.remove("audio-popover--mobile");
+  removeMobileAudioOverlay();
+  resetMobileAudioInlineStyles();
   audioPopover.setAttribute("aria-hidden", "true");
   btnAudio.setAttribute("aria-expanded", "false");
 
@@ -69,7 +73,82 @@ function closeAudioPopover() {
 }
 
 function isMobileAudioViewport() {
-  return window.innerWidth < 768 || window.matchMedia("(max-width: 767px)").matches;
+  return window.innerWidth <= 768 || window.matchMedia("(max-width: 768px)").matches;
+}
+
+function removeMobileAudioOverlay() {
+  const overlay = document.getElementById(AUDIO_OVERLAY_ID);
+  if (overlay) overlay.remove();
+}
+
+function resetMobileAudioInlineStyles() {
+  if (!audioPopover) return;
+
+  [
+    "position",
+    "left",
+    "right",
+    "bottom",
+    "top",
+    "maxWidth",
+    "margin",
+    "zIndex",
+    "display",
+    "visibility",
+    "opacity",
+    "transform",
+    "width"
+  ].forEach((prop) => {
+    audioPopover.style[prop] = "";
+  });
+}
+
+function ensureMobileAudioOverlay() {
+  if (!audioPopover) return;
+
+  let overlay = document.getElementById(AUDIO_OVERLAY_ID);
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = AUDIO_OVERLAY_ID;
+    overlay.addEventListener("click", () => {
+      closeAudioPopover();
+    });
+  }
+
+  overlay.style.position = "fixed";
+  overlay.style.inset = "0";
+  overlay.style.background = "rgba(0,0,0,0.35)";
+  overlay.style.zIndex = "99998";
+
+  if (!overlay.parentElement) {
+    document.body.appendChild(overlay);
+  }
+}
+
+function applyMobileAudioInlineStyles() {
+  if (!audioPopover) return;
+
+  audioPopover.style.position = "fixed";
+  audioPopover.style.left = "12px";
+  audioPopover.style.right = "12px";
+  audioPopover.style.bottom = "12px";
+  audioPopover.style.top = "auto";
+  audioPopover.style.maxWidth = "520px";
+  audioPopover.style.margin = "0 auto";
+  audioPopover.style.zIndex = "99999";
+  audioPopover.style.display = "block";
+  audioPopover.style.visibility = "visible";
+  audioPopover.style.opacity = "1";
+  audioPopover.style.transform = "translateY(0)";
+}
+
+function hideMobileMenuOverlayForAudio() {
+  if (!mobileMenu) return;
+  closeMobileMenu();
+  mobileMenu.classList.add("hidden");
+  mobileMenu.classList.remove("active");
+  mobileMenu.style.pointerEvents = "none";
+  mobileMenu.style.zIndex = "99997";
 }
 
 function openAudioPopover() {
@@ -77,11 +156,16 @@ function openAudioPopover() {
 
   const isMobileViewport = isMobileAudioViewport();
   if (isMobileViewport) {
+    hideMobileMenuOverlayForAudio();
+    ensureMobileAudioOverlay();
     audioPopover.classList.add("audio-popover--mobile");
     if (audioPopover.parentElement !== document.body) {
       document.body.appendChild(audioPopover);
     }
+    applyMobileAudioInlineStyles();
   } else {
+    removeMobileAudioOverlay();
+    resetMobileAudioInlineStyles();
     audioPopover.classList.remove("audio-popover--mobile");
     if (navAudio && audioPopover.parentElement !== navAudio) {
       navAudio.appendChild(audioPopover);
@@ -91,6 +175,10 @@ function openAudioPopover() {
   audioPopover.classList.remove("hidden");
   audioPopover.setAttribute("aria-hidden", "false");
   btnAudio.setAttribute("aria-expanded", "true");
+  if (AUDIO_PANEL_DEBUG) {
+    console.log("Audio panel rect", audioPopover.getBoundingClientRect());
+    console.log("Audio panel computed zIndex", getComputedStyle(audioPopover).zIndex);
+  }
   console.log("Audio panel opened");
 }
 
