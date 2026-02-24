@@ -630,6 +630,30 @@ async function mpCreateSubscriptionHandler(req, res) {
     return res.status(500).json({ error: mpData?.message || 'Mercado Pago subscription creation failed.' });
   }
 
+  console.log('[MP preapproval created]', {
+    id: mpData?.id || null,
+    status: mpData?.status || null,
+    external_reference: mpData?.external_reference || null,
+    init_point: mpData?.init_point || mpData?.sandbox_init_point || null
+  });
+
+  const preapprovalId = String(mpData?.id || '').trim();
+  if (preapprovalId) {
+    try {
+      await upsertMpPreapprovalStatus(supabaseAdmin, {
+        preapprovalId,
+        userId: user.id,
+        status: mpData?.status || null
+      });
+    } catch (error) {
+      console.error('mp create subscription failed to persist preapproval', {
+        preapproval_id: preapprovalId,
+        user_id: user.id,
+        message: error?.message || String(error)
+      });
+    }
+  }
+
   return res.status(200).json({ init_point: mpData?.init_point || null, preapproval_id: mpData?.id || null });
 }
 
