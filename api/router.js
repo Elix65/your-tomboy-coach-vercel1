@@ -611,8 +611,8 @@ async function mpCreateSubscriptionHandler(req, res) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  if (!mpAccessToken || !mpPlanId) {
-    return res.status(500).json({ error: 'Missing MP_ACCESS_TOKEN or MP_PLAN_ID.' });
+  if (!mpAccessToken) {
+    return res.status(500).json({ error: 'Missing MP_ACCESS_TOKEN.' });
   }
 
   const supabaseAdmin = getSupabaseAdmin();
@@ -630,19 +630,29 @@ async function mpCreateSubscriptionHandler(req, res) {
     return res.status(401).json({ error: 'Invalid token' });
   }
 
+  const mpPayload = {
+    reason: 'Pacto Voz Triunfante',
+    external_reference: String(user.id),
+    auto_recurring: {
+      frequency: 1,
+      frequency_type: 'months',
+      transaction_amount: 7000,
+      currency_id: 'ARS'
+    },
+    back_url: 'https://21-moon.com/pacto-lunar-voz-triunfante.html?mp=success'
+  };
+
+  if (user.email) {
+    mpPayload.payer_email = user.email;
+  }
+
   const mpResponse = await fetch('https://api.mercadopago.com/preapproval', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${mpAccessToken}`,
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({
-      preapproval_plan_id: mpPlanId,
-      payer_email: user.email,
-      external_reference: String(user.id),
-      back_url: 'https://21-moon.com/',
-      reason: 'Pacto Voz Triunfante'
-    })
+    body: JSON.stringify(mpPayload)
   });
 
   const mpData = await parseMpResponseBody(mpResponse);
@@ -651,15 +661,17 @@ async function mpCreateSubscriptionHandler(req, res) {
       status: mpResponse.status,
       body: mpData
     });
-    return res.status(500).json({ error: mpData?.message || 'Mercado Pago subscription creation failed.' });
+    return res.status(400).json({
+      error: mpData?.message || mpData?.error || 'Mercado Pago preapproval creation failed.',
+      details: mpData
+    });
   }
 
   const preapprovalId = String(mpData?.id || '').trim();
   const status = mpData?.status || null;
 
   console.log('[MP preapproval created]', {
-    preapproval_id: preapprovalId || null,
-    user_id: user.id,
+    id: preapprovalId || null,
     status,
     external_reference: mpData?.external_reference || String(user.id)
   });
@@ -682,8 +694,8 @@ async function mpCreateSubscriptionHandler(req, res) {
 
   return res.status(200).json({
     init_point: mpData?.init_point || mpData?.sandbox_init_point || null,
-    link: mpData?.init_point || mpData?.sandbox_init_point || null,
-    preapproval_id: preapprovalId || null
+    preapproval_id: preapprovalId || null,
+    status
   });
 }
 

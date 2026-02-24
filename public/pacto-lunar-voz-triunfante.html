@@ -564,12 +564,12 @@ Gracias!`;
 
       const result = await response.json();
       if (!response.ok || !result?.init_point) {
-        throw new Error(result?.error || "No pudimos iniciar el pago en este momento.");
+        throw new Error("No pude generar el link de pago.");
       }
 
       window.location.href = result.init_point;
     } catch (error) {
-      alert(error?.message || "Hubo un problema al crear tu suscripción. Probá de nuevo en unos segundos.");
+      alert(error?.message || "No pude generar el link de pago.");
     }
   });
 
