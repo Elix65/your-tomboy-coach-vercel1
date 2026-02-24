@@ -1,11 +1,13 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const OpenAI = require('openai');
 const { createClient } = require('@supabase/supabase-js');
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const mpAccessToken = process.env.MP_ACCESS_TOKEN;
+const mpWebhookSecret = process.env.MP_WEBHOOK_SECRET;
 const mpPlanId = process.env.MP_PLAN_ID;
 const mpPreapprovalPlanId = process.env.MP_PREAPPROVAL_PLAN_ID;
 const VOICE_PLAN = 'pacto_voz_triunfante';
@@ -100,6 +102,37 @@ function getMercadoPagoConfigError() {
 function isPreapprovalEventType({ topic, type, entity }) {
   const hints = `${String(topic || '').toLowerCase()} ${String(type || '').toLowerCase()} ${String(entity || '').toLowerCase()}`;
   return hints.includes('subscription_preapproval') || hints.includes('preapproval');
+}
+
+function parseMpSignatureHeader(signatureHeader) {
+  if (!signatureHeader) return {};
+
+  return String(signatureHeader)
+    .split(',')
+    .map((chunk) => chunk.trim())
+    .filter(Boolean)
+    .reduce((acc, chunk) => {
+      const [rawKey, ...valueParts] = chunk.split('=');
+      const key = String(rawKey || '').trim().toLowerCase();
+      const value = valueParts.join('=').trim();
+      if (key) acc[key] = value;
+      return acc;
+    }, {});
+}
+
+function isMpWebhookSignatureValid({ secret, manifest, signatureV1 }) {
+  if (!secret || !manifest || !signatureV1) return false;
+
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(manifest)
+    .digest('hex');
+
+  const expectedBuffer = Buffer.from(expected, 'utf8');
+  const actualBuffer = Buffer.from(String(signatureV1).toLowerCase(), 'utf8');
+
+  if (expectedBuffer.length !== actualBuffer.length) return false;
+  return crypto.timingSafeEqual(expectedBuffer, actualBuffer);
 }
 
 async function fetchMpPreapproval(preapprovalId) {
@@ -370,6 +403,34 @@ async function mpWebhookHandler(req, res) {
   try {
     const body = await getJsonBody(req);
     const u = new URL(req.url, 'https://dummy.local');
+    const signatureHeader = req.headers['x-signature'];
+    const requestIdHeader = req.headers['x-request-id'];
+    const { ts, v1 } = parseMpSignatureHeader(signatureHeader);
+
+    const idForManifest = String(
+      body?.data?.id_url
+      || body?.data?.id
+      || u.searchParams.get('data.id_url')
+      || u.searchParams.get('data.id')
+      || ''
+    ).trim();
+
+    const manifest = `id:${idForManifest};request-id:${String(requestIdHeader || '').trim()};ts:${String(ts || '').trim()};`;
+    if (!isMpWebhookSignatureValid({
+      secret: mpWebhookSecret,
+      manifest,
+      signatureV1: v1
+    })) {
+      console.warn('mercadopago webhook invalid signature', {
+        hasSecret: Boolean(mpWebhookSecret),
+        hasSignatureHeader: Boolean(signatureHeader),
+        hasRequestIdHeader: Boolean(requestIdHeader),
+        hasTs: Boolean(ts),
+        hasV1: Boolean(v1),
+        manifest
+      });
+      return res.status(200).json({ ok: false });
+    }
 
     const eventId = String(
       body?.preapproval_id
