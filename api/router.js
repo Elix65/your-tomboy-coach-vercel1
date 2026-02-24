@@ -100,8 +100,17 @@ function getMercadoPagoConfigError() {
 }
 
 function isPreapprovalEventType({ topic, type, entity }) {
-  const hints = `${String(topic || '').toLowerCase()} ${String(type || '').toLowerCase()} ${String(entity || '').toLowerCase()}`;
-  return hints.includes('subscription_preapproval') || hints.includes('preapproval');
+  const normalized = [topic, type, entity]
+    .map((value) => String(value || '').trim().toLowerCase())
+    .filter(Boolean);
+  return normalized.some((value) => value === 'subscription_preapproval' || value === 'preapproval');
+}
+
+function getFirstHeaderValue(headerValue) {
+  if (Array.isArray(headerValue)) {
+    return String(headerValue[0] || '').trim();
+  }
+  return String(headerValue || '').trim();
 }
 
 function parseMpSignatureHeader(signatureHeader) {
@@ -133,6 +142,10 @@ function isMpWebhookSignatureValid({ secret, manifest, signatureV1 }) {
 
   if (expectedBuffer.length !== actualBuffer.length) return false;
   return crypto.timingSafeEqual(expectedBuffer, actualBuffer);
+}
+
+function buildMpWebhookManifest({ idFromUrl, requestId, ts }) {
+  return `id:${String(idFromUrl || '').trim()};request-id:${String(requestId || '').trim()};ts:${String(ts || '').trim()};`;
 }
 
 async function fetchMpPreapproval(preapprovalId) {
@@ -403,19 +416,12 @@ async function mpWebhookHandler(req, res) {
   try {
     const body = await getJsonBody(req);
     const u = new URL(req.url, 'https://dummy.local');
-    const signatureHeader = req.headers['x-signature'];
-    const requestIdHeader = req.headers['x-request-id'];
+    const signatureHeader = getFirstHeaderValue(req.headers['x-signature']);
+    const requestIdHeader = getFirstHeaderValue(req.headers['x-request-id']);
     const { ts, v1 } = parseMpSignatureHeader(signatureHeader);
 
-    const idForManifest = String(
-      body?.data?.id_url
-      || body?.data?.id
-      || u.searchParams.get('data.id_url')
-      || u.searchParams.get('data.id')
-      || ''
-    ).trim();
-
-    const manifest = `id:${idForManifest};request-id:${String(requestIdHeader || '').trim()};ts:${String(ts || '').trim()};`;
+    const idForManifest = String(u.searchParams.get('data.id') || body?.data?.id || '').trim();
+    const manifest = buildMpWebhookManifest({ idFromUrl: idForManifest, requestId: requestIdHeader, ts });
     if (!isMpWebhookSignatureValid({
       secret: mpWebhookSecret,
       manifest,
@@ -432,15 +438,7 @@ async function mpWebhookHandler(req, res) {
       return res.status(200).json({ ok: false });
     }
 
-    const eventId = String(
-      body?.preapproval_id
-      || body?.data?.id
-      || body?.id
-      || u.searchParams.get('preapproval_id')
-      || u.searchParams.get('data.id')
-      || u.searchParams.get('id')
-      || ''
-    ).trim();
+    const eventId = String(body?.data?.id || u.searchParams.get('data.id') || '').trim();
 
     const topic = body?.topic || u.searchParams.get('topic') || null;
     const type = body?.type || u.searchParams.get('type') || null;
@@ -617,7 +615,7 @@ async function mpCreateSubscriptionHandler(req, res) {
     body: JSON.stringify({
       preapproval_plan_id: mpPlanId,
       payer_email: user.email,
-      external_reference: user.id,
+      external_reference: String(user.id),
       back_url: 'https://21-moon.com/',
       reason: 'Pacto Voz Triunfante'
     })
