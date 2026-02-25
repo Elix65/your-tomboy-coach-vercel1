@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run quality checks
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          has_script() {
+            node -e "const p=require('./package.json'); process.exit(p.scripts && p.scripts['$1'] ? 0 : 1)"
+          }
+
+          ran_any=0
+          for script in lint typecheck test build; do
+            if has_script "$script"; then
+              echo "Running npm run $script"
+              npm run "$script"
+              ran_any=1
+            else
+              echo "Skipping '$script' (script not found)"
+            fi
+          done
+
+          if [ "$ran_any" -eq 0 ]; then
+            echo "No lint/typecheck/test/build scripts found; running basic dependency check."
+            npm ls >/dev/null
+          fi
