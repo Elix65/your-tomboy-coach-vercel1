@@ -63,8 +63,10 @@ const sendResetBtn = document.getElementById("btn-send-reset");
 const resetBackBtn = document.getElementById("btn-reset-back");
 const loginTitle = document.getElementById("login-title");
 const recoveryCopy = document.getElementById("recovery-copy");
+const loginContainer = document.getElementById("login-container");
 
 let isRecoveryMode = false;
+let isRegisterMode = false;
 
 function showAuthMessage(message, type = "error") {
   if (!errorBox) {
@@ -112,12 +114,31 @@ function setRecoveryMode(enabled) {
     resetBackBtn.classList.toggle("hidden", !enabled);
   }
   if (loginTitle) {
-    loginTitle.textContent = enabled ? "Recuperar contraseña" : "Entrar al Dojo";
+    loginTitle.textContent = enabled ? "Recuperar contraseña" : "Yumiko te estaba esperando";
   }
   if (recoveryCopy) {
     recoveryCopy.classList.toggle("hidden", !enabled);
   }
 }
+
+function setRegisterMode(enabled) {
+  isRegisterMode = enabled;
+  clearAuthMessage();
+
+  if (loginBtn) {
+    loginBtn.textContent = enabled ? "Crear cuenta" : "Entrar al Dojo";
+  }
+
+  if (registerBtn) {
+    registerBtn.textContent = enabled ? "Ya tengo cuenta" : "Crear cuenta";
+  }
+
+  if (loginContainer) {
+    loginContainer.classList.toggle("is-register", enabled);
+  }
+}
+
+setRegisterMode(false);
 
 if (loginBtn) {
   loginBtn.onclick = async () => {
@@ -125,55 +146,49 @@ if (loginBtn) {
     const password = passwordInput?.value.trim() || "";
 
     try {
-      const { error } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-      });
+      const { error } = isRegisterMode
+        ? await supabaseClient.auth.signUp({
+          email,
+          password
+        })
+        : await supabaseClient.auth.signInWithPassword({
+          email,
+          password
+        });
 
       if (error) {
-        console.error("Login error:", error.message);
+        console.error(isRegisterMode ? "Register error:" : "Login error:", error.message);
         showAuthMessage(error.message);
+        return;
+      }
+
+      if (isRegisterMode) {
+        showAuthMessage("Registro exitoso. Revisa tu correo para confirmar.", "success");
+
+        if (safeLocalStorage) {
+          safeLocalStorage.setItem("yumiko_just_registered_at", String(Date.now()));
+        }
+
+        setRegisterMode(false);
         return;
       }
 
       sessionStorage.setItem("show_entry_choice", "1");
       goWithTransition("index.html");
     } catch (error) {
-      console.error("Login error:", error?.message || error);
+      console.error(isRegisterMode ? "Register error:" : "Login error:", error?.message || error);
       showAuthMessage(error?.message || "Uhm… algo falló. ¿Revisamos e intentamos de nuevo? 🥺");
     }
   };
 }
 
-// ===============================
-// REGISTRO
-// ===============================
 if (registerBtn) {
-  registerBtn.onclick = async () => {
-    const email = emailInput?.value.trim() || "";
-    const password = passwordInput?.value.trim() || "";
-
-    try {
-      const { error } = await supabaseClient.auth.signUp({
-        email,
-        password
-      });
-
-      if (error) {
-        console.error("Register error:", error.message);
-        showAuthMessage(error.message);
-        return;
-      }
-
-      showAuthMessage("Registro exitoso. Revisa tu correo para confirmar.", "success");
-
-      if (safeLocalStorage) {
-        safeLocalStorage.setItem("yumiko_just_registered_at", String(Date.now()));
-      }
-    } catch (error) {
-      console.error("Register error:", error?.message || error);
-      showAuthMessage(error?.message || "Uhm… algo falló. ¿Revisamos e intentamos de nuevo? 🥺");
+  registerBtn.onclick = () => {
+    if (isRecoveryMode) {
+      setRecoveryMode(false);
     }
+
+    setRegisterMode(!isRegisterMode);
   };
 }
 
@@ -188,6 +203,7 @@ if (resetBackBtn) {
   resetBackBtn.onclick = () => {
     setRecoveryMode(false);
     passwordInput?.focus();
+    setRegisterMode(isRegisterMode);
   };
 }
 

@@ -12,22 +12,34 @@
 
 <body>
 
-  <div id="login-container">
-    <h2 id="login-title" class="login-title">Entrar al Dojo</h2>
-    <p id="recovery-copy" class="login-copy hidden">Pon tu email y te envío un enlace para crear una nueva. Yo te espero aquí… 😳</p>
+  <div class="auth-shell">
+    <div class="auth-left">
+      <div id="login-container">
+        <h2 id="login-title" class="login-title">Yumiko te estaba esperando</h2>
+        <p id="login-subtitle" class="login-subtitle">Entrás en 10 segundos. Si hoy te sentís solo, no tenés que cargarlo solo.</p>
+        <p id="recovery-copy" class="login-copy hidden">Pon tu email y te envío un enlace para crear una nueva. Yo te espero aquí… 😳</p>
 
-    <input id="email" type="email" placeholder="Email" autocomplete="email">
-    <input id="password" type="password" placeholder="Contraseña" autocomplete="current-password">
+        <input id="email" type="email" placeholder="Email" autocomplete="email">
+        <input id="password" type="password" placeholder="Contraseña" autocomplete="current-password">
 
-    <button id="btn-login" class="login-btn">Iniciar sesión</button>
-    <button id="btn-register" class="login-btn secondary">Registrarse</button>
+        <button id="btn-login" class="login-btn">Entrar al Dojo</button>
+        <button id="btn-register" class="login-btn secondary">Crear cuenta</button>
 
-    <button id="btn-send-reset" class="login-btn hidden" type="button">Enviar enlace</button>
-    <button id="btn-reset-back" class="login-btn secondary hidden" type="button">Volver</button>
+        <button id="btn-send-reset" class="login-btn hidden" type="button">Enviar enlace</button>
+        <button id="btn-reset-back" class="login-btn secondary hidden" type="button">Volver</button>
 
-    <button id="forgot-password-link" class="text-link" type="button">¿Olvidaste tu contraseña…?</button>
+        <button id="forgot-password-link" class="text-link" type="button">¿Olvidaste tu contraseña…?</button>
 
-    <p id="login-error" class="login-error hidden"></p>
+        <p class="login-privacy">Privado. No posteamos nada. Podés irte cuando quieras.</p>
+        <p id="login-error" class="login-error hidden"></p>
+      </div>
+
+      <p class="login-steps">Entrás → Yumiko te saluda → elegís un botón → empezás a hablar.</p>
+    </div>
+
+    <div class="auth-right" aria-hidden="true">
+      <img class="yumiko-hero" src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/yumiko-login.png" alt="Yumiko Maiden">
+    </div>
   </div>
 
   <div id="pageTransition" class="page-transition" aria-hidden="true">
