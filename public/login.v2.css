@@ -11,18 +11,48 @@ body {
   min-height: 100vh;
   font-family: 'Segoe UI', 'Trebuchet MS', sans-serif;
   color: #fffaf7;
-  background-image: var(--bg-mobile);
-  background-size: cover;
-  background-position: 70% 35%;
-  background-repeat: no-repeat;
-  background-attachment: scroll;
-  position: relative;
+  background: #0f0a17;
+}
+
+.login-page {
   overflow-x: hidden;
 }
 
-body::before {
+.login-root {
+  position: relative;
+  min-height: 100dvh;
+  overflow: hidden;
+}
+
+.bg-scene {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--bg-mobile);
+  background-size: cover;
+  background-position: 36% 34%;
+  background-repeat: no-repeat;
+}
+
+.yumiko-layer {
+  position: absolute;
+  z-index: 1;
+  right: clamp(8px, 3vw, 56px);
+  bottom: 0;
+  width: min(40vw, 620px);
+  height: min(92dvh, 920px);
+  background-image: var(--bg-desktop);
+  background-repeat: no-repeat;
+  background-size: auto 100%;
+  background-position: right bottom;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 12px 35px rgba(0, 0, 0, 0.25));
+}
+
+.login-page::before {
   content: "";
-  position: fixed;
+  position: absolute;
   inset: 0;
   pointer-events: none;
   background:
@@ -37,7 +67,7 @@ body::before {
 
 .auth-shell {
   position: relative;
-  z-index: 1;
+  z-index: 2;
   min-height: 100vh;
   width: min(1200px, 100%);
   margin: 0 auto;
@@ -58,6 +88,7 @@ body::before {
 
 #login-container {
   position: relative;
+  z-index: 2;
   isolation: isolate;
   width: min(100%, 430px);
   box-sizing: border-box;
@@ -389,22 +420,32 @@ body::before {
 }
 
 @media (max-width: 899px) {
+  .yumiko-layer {
+    right: -10px;
+    height: 62dvh;
+    width: min(56vw, 340px);
+    opacity: 0.95;
+    background-image: var(--bg-mobile);
+    background-size: auto 100%;
+    background-position: right bottom;
+  }
+
   .auth-shell {
     min-height: 100svh;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
-    padding: 24vh 16px 24px;
+    padding: 22dvh 16px 24px;
   }
 
   #login-container {
     width: min(430px, 92vw);
-    margin: 0 auto;
+    margin: 24dvh auto 0;
     max-height: calc(100svh - 24px);
     overflow: auto;
   }
 
-  body::before {
+  .login-page::before {
     background:
       linear-gradient(180deg, rgba(0, 0, 0, 0.37) 0%, rgba(0, 0, 0, 0.18) 43%, rgba(0, 0, 0, 0.52) 100%),
       radial-gradient(circle at 10% 20%, rgba(255, 164, 135, 0.2), transparent 46%);
@@ -416,10 +457,17 @@ body::before {
 }
 
 @media (min-width: 900px) {
-  body {
+  .bg-scene {
     background-image: var(--bg-desktop);
-    background-attachment: fixed;
-    background-position: center right;
+    background-position: 26% center;
+  }
+}
+
+
+@media (min-width: 1200px) {
+  .yumiko-layer {
+    height: min(95dvh, 980px);
+    width: min(38vw, 660px);
   }
 }
 
