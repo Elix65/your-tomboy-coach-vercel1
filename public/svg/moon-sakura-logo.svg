@@ -1,27 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 56" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 64" fill="none">
   <defs>
-    <radialGradient id="moonGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(23 21) rotate(90) scale(22)">
-      <stop stop-color="#FFEEC7"/>
-      <stop offset="1" stop-color="#FFC87F"/>
+    <radialGradient id="moon-fill" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(36 28) rotate(90) scale(23)">
+      <stop offset="0" stop-color="var(--logo-moon, #F6E6A8)" stop-opacity="1"/>
+      <stop offset="1" stop-color="var(--logo-moon, #F6E6A8)" stop-opacity="0.82"/>
     </radialGradient>
-    <linearGradient id="petalFill" x1="0" y1="0" x2="1" y2="1">
-      <stop stop-color="#FFD7E8"/>
-      <stop offset="1" stop-color="#FFB5D3"/>
-    </linearGradient>
+    <radialGradient id="sakura-petal" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(0 -6) rotate(90) scale(8)">
+      <stop offset="0" stop-color="var(--logo-sakura, #F7B7C9)" stop-opacity="0.68"/>
+      <stop offset="1" stop-color="var(--logo-sakura, #F7B7C9)"/>
+    </radialGradient>
+    <filter id="soft-glow" x="-30%" y="-40%" width="160%" height="180%">
+      <feGaussianBlur stdDeviation="1.8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <g id="sparkle" stroke="var(--logo-sparkle, rgba(255, 255, 255, .75))" stroke-width="1.7" stroke-linecap="round" opacity="0.88">
+      <path d="M0 -3.6V3.6"/>
+      <path d="M-3.6 0H3.6"/>
+    </g>
+
+    <g id="sakura" fill="url(#sakura-petal)">
+      <path d="M0 -8.8C2.9 -8.1 4.2 -5.5 3.6 -3.1C2.8 -0.1 1.1 1.5 0 2.2C-1.1 1.5 -2.8 -0.1 -3.6 -3.1C-4.2 -5.5 -2.9 -8.1 0 -8.8Z"/>
+      <path d="M0 -8.8C2.9 -8.1 4.2 -5.5 3.6 -3.1C2.8 -0.1 1.1 1.5 0 2.2C-1.1 1.5 -2.8 -0.1 -3.6 -3.1C-4.2 -5.5 -2.9 -8.1 0 -8.8Z" transform="rotate(72)"/>
+      <path d="M0 -8.8C2.9 -8.1 4.2 -5.5 3.6 -3.1C2.8 -0.1 1.1 1.5 0 2.2C-1.1 1.5 -2.8 -0.1 -3.6 -3.1C-4.2 -5.5 -2.9 -8.1 0 -8.8Z" transform="rotate(144)"/>
+      <path d="M0 -8.8C2.9 -8.1 4.2 -5.5 3.6 -3.1C2.8 -0.1 1.1 1.5 0 2.2C-1.1 1.5 -2.8 -0.1 -3.6 -3.1C-4.2 -5.5 -2.9 -8.1 0 -8.8Z" transform="rotate(216)"/>
+      <path d="M0 -8.8C2.9 -8.1 4.2 -5.5 3.6 -3.1C2.8 -0.1 1.1 1.5 0 2.2C-1.1 1.5 -2.8 -0.1 -3.6 -3.1C-4.2 -5.5 -2.9 -8.1 0 -8.8Z" transform="rotate(288)"/>
+      <circle r="2.2" fill="var(--logo-sakura-center, #FFD6A5)"/>
+      <circle cx="0.7" cy="-0.9" r="0.35" fill="rgba(255, 255, 255, 0.75)"/>
+    </g>
+
+    <path id="petal" d="M0 0C2.8 -0.5 4.5 0.8 4.9 2.4C5.3 3.9 4.5 5.8 2.2 6.5C0.3 7.1 -2 6.5 -3 5C-3.9 3.5 -3.5 0.8 0 0Z" fill="var(--logo-sakura, #F7B7C9)"/>
   </defs>
-  <path d="M28.6 7C21.46 7 15.67 12.79 15.67 19.93C15.67 27.07 21.46 32.86 28.6 32.86C31.95 32.86 34.99 31.58 37.29 29.5C33.42 29.05 30.42 25.76 30.42 21.77C30.42 17.78 33.42 14.49 37.29 14.03C34.99 11.95 31.95 10.67 28.6 10.67V7Z" fill="url(#moonGlow)"/>
-  <g transform="translate(45 10)" fill="url(#petalFill)">
-    <path d="M8 1.2C9.5 3.5 9.2 5.8 8 7C6.8 5.8 6.5 3.5 8 1.2Z"/>
-    <path d="M14.8 8C12.5 9.5 10.2 9.2 9 8C10.2 6.8 12.5 6.5 14.8 8Z"/>
-    <path d="M8 14.8C6.5 12.5 6.8 10.2 8 9C9.2 10.2 9.5 12.5 8 14.8Z"/>
-    <path d="M1.2 8C3.5 6.5 5.8 6.8 7 8C5.8 9.2 3.5 9.5 1.2 8Z"/>
-    <circle cx="8" cy="8" r="1.8" fill="#FFF4D9"/>
+
+  <circle cx="31" cy="28" r="20" fill="var(--logo-moon, #F6E6A8)" opacity="0.12" filter="url(#soft-glow)"/>
+  <path d="M37.2 9C26.2 9 17.2 18 17.2 29C17.2 40 26.2 49 37.2 49C43.8 49 49.7 45.8 53.3 40.8C47.2 40.3 42.4 35.2 42.4 29C42.4 22.8 47.2 17.7 53.3 17.2C49.7 12.2 43.8 9 37.2 9Z" fill="url(#moon-fill)"/>
+
+  <use href="#sparkle" transform="translate(64 22)"/>
+  <use href="#sparkle" transform="translate(78 15) scale(0.72)" opacity="0.65"/>
+  <use href="#sparkle" transform="translate(56 36) scale(0.58)" opacity="0.55"/>
+
+  <g transform="translate(82 26) scale(1.06)" opacity="0.96">
+    <use href="#sakura"/>
   </g>
-  <g transform="translate(84 4) scale(.7)" fill="url(#petalFill)" opacity="0.9">
-    <path d="M8 1.2C9.5 3.5 9.2 5.8 8 7C6.8 5.8 6.5 3.5 8 1.2Z"/>
-    <path d="M14.8 8C12.5 9.5 10.2 9.2 9 8C10.2 6.8 12.5 6.5 14.8 8Z"/>
-    <path d="M8 14.8C6.5 12.5 6.8 10.2 8 9C9.2 10.2 9.5 12.5 8 14.8Z"/>
-    <path d="M1.2 8C3.5 6.5 5.8 6.8 7 8C5.8 9.2 3.5 9.5 1.2 8Z"/>
-    <circle cx="8" cy="8" r="1.8" fill="#FFF4D9"/>
+  <g transform="translate(101 15) scale(0.74)" opacity="0.84">
+    <use href="#sakura"/>
   </g>
+  <g transform="translate(112 34) scale(0.62)" opacity="0.72">
+    <use href="#sakura"/>
+  </g>
+
+  <use href="#petal" transform="translate(73 35) rotate(-22) scale(0.88)" opacity="0.55"/>
+  <use href="#petal" transform="translate(90 44) rotate(14) scale(0.7)" opacity="0.47"/>
+  <use href="#petal" transform="translate(106 46) rotate(-9) scale(0.62)" opacity="0.42"/>
+  <use href="#petal" transform="translate(118 8) rotate(33) scale(0.58)" opacity="0.36"/>
 </svg>
