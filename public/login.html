@@ -15,23 +15,37 @@
   <div class="auth-shell">
     <div class="auth-left">
       <div id="login-container">
+        <div class="login-brand" aria-hidden="true">
+          <img src="/svg/moon-sakura-logo.svg" alt="" class="login-brand-logo">
+          <span class="login-brand-text">21-Moon</span>
+        </div>
+
         <h2 id="login-title" class="login-title">Yumiko te estaba esperando</h2>
         <p id="login-subtitle" class="login-subtitle">Entrás en 10 segundos. Si hoy te sentís solo, no tenés que cargarlo solo.</p>
         <p id="recovery-copy" class="login-copy hidden">Pon tu email y te envío un enlace para crear una nueva. Yo te espero aquí… 😳</p>
 
-        <input id="email" type="email" placeholder="Email" autocomplete="email">
-        <input id="password" type="password" placeholder="Contraseña" autocomplete="current-password">
+        <label class="sr-only" for="email">Email</label>
+        <div class="input-wrap email-wrap">
+          <span class="input-icon" aria-hidden="true"></span>
+          <input id="email" type="email" placeholder="Email" autocomplete="email" aria-label="Email">
+        </div>
 
-        <button id="btn-login" class="login-btn">Entrar al Dojo</button>
-        <button id="btn-register" class="login-btn secondary">Crear cuenta</button>
+        <label class="sr-only" for="password">Contraseña</label>
+        <div class="input-wrap password-wrap">
+          <span class="input-icon" aria-hidden="true"></span>
+          <input id="password" type="password" placeholder="Contraseña" autocomplete="current-password" aria-label="Contraseña">
+        </div>
+
+        <button id="btn-login" class="login-btn" type="button">Entrar al Dojo</button>
+        <button id="btn-register" class="login-btn secondary" type="button">Crear cuenta</button>
 
         <button id="btn-send-reset" class="login-btn hidden" type="button">Enviar enlace</button>
         <button id="btn-reset-back" class="login-btn secondary hidden" type="button">Volver</button>
 
         <button id="forgot-password-link" class="text-link" type="button">¿Olvidaste tu contraseña…?</button>
 
-        <p class="login-privacy">Privado. No posteamos nada. Podés irte cuando quieras.</p>
-        <p id="login-error" class="login-error hidden"></p>
+        <p class="login-privacy"><span class="privacy-icon" aria-hidden="true"></span>Privado. No posteamos nada. Podés irte cuando quieras.</p>
+        <p id="login-error" class="login-error hidden" role="status" aria-live="polite"></p>
       </div>
 
       <p class="login-steps">Entrás → Yumiko te saluda → elegís un botón → empezás a hablar.</p>
