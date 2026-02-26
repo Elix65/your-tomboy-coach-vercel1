@@ -32,26 +32,10 @@ body {
   position: absolute;
   inset: 0;
   z-index: 0;
-  background-image: var(--bg-mobile);
-  background-size: cover;
-  background-position: 36% 34%;
-  background-repeat: no-repeat;
-}
-
-.yumiko-layer {
-  position: absolute;
-  z-index: 1;
-  right: clamp(8px, 3vw, 56px);
-  bottom: 0;
-  width: min(40vw, 620px);
-  height: min(92dvh, 920px);
   background-image: var(--bg-desktop);
+  background-size: cover;
+  background-position: right center;
   background-repeat: no-repeat;
-  background-size: auto 100%;
-  background-position: right bottom;
-  pointer-events: none;
-  user-select: none;
-  filter: drop-shadow(0 12px 35px rgba(0, 0, 0, 0.25));
 }
 
 .login-page::before {
@@ -60,9 +44,9 @@ body {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(circle at 12% 17%, rgba(255, 158, 128, 0.2), transparent 38%),
-    radial-gradient(circle at 93% 12%, rgba(141, 114, 242, 0.23), transparent 35%),
-    linear-gradient(140deg, rgba(8, 7, 18, 0.76) 2%, rgba(17, 11, 31, 0.42) 54%, rgba(19, 11, 26, 0.6) 100%);
+    radial-gradient(circle at 12% 17%, rgba(255, 158, 128, 0.18), transparent 38%),
+    radial-gradient(circle at 93% 12%, rgba(141, 114, 242, 0.2), transparent 35%),
+    linear-gradient(140deg, rgba(8, 7, 18, 0.58) 2%, rgba(17, 11, 31, 0.28) 54%, rgba(19, 11, 26, 0.5) 100%);
   backdrop-filter: blur(1.3px);
   z-index: 0;
 }
@@ -424,14 +408,9 @@ body {
 }
 
 @media (max-width: 899px) {
-  .yumiko-layer {
-    right: -10px;
-    height: 62dvh;
-    width: min(56vw, 340px);
-    opacity: 0.95;
+  .bg-scene {
     background-image: var(--bg-mobile);
-    background-size: auto 100%;
-    background-position: right bottom;
+    background-position: 55% 20%;
   }
 
   .auth-shell {
@@ -439,12 +418,13 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
-    padding: 22dvh 16px 24px;
+    padding: 26dvh 16px 24px;
   }
 
   #login-container {
     width: min(430px, 92vw);
-    margin: 24dvh auto 0;
+    margin: 28dvh auto 0;
+    padding: 22px 20px 16px;
     max-height: calc(100svh - 24px);
     overflow: auto;
   }
@@ -467,15 +447,27 @@ body {
   body {
   .bg-scene {
     background-image: var(--bg-desktop);
-    background-position: 26% center;
+    background-position: 68% 38%;
+  }
+}
+
+@media (min-width: 1200px) and (max-width: 1399px) {
+  .bg-scene {
+    background-position: right center;
   }
 }
 
 
-@media (min-width: 1200px) {
-  .yumiko-layer {
-    height: min(95dvh, 980px);
-    width: min(38vw, 660px);
+@media (min-width: 1400px) {
+  .bg-scene {
+    background-position: 75% 40%;
+  }
+}
+
+@media (max-width: 640px) {
+  .bg-scene {
+    background-image: var(--bg-mobile);
+    background-position: center top;
   }
 }
 
