@@ -4,6 +4,10 @@
   --panel-bg: rgba(25, 18, 42, 0.54);
   --panel-border: rgba(255, 230, 241, 0.3);
   --panel-shadow: 0 24px 46px rgba(11, 6, 22, 0.52);
+  --logo-moon: #F6E6A8;
+  --logo-sakura: #F7B7C9;
+  --logo-sakura-center: #FFD6A5;
+  --logo-sparkle: rgba(255, 255, 255, .75);
 }
 
 body {
@@ -105,9 +109,9 @@ body::before {
 }
 
 .login-brand-logo {
-  width: 82px;
-  height: auto;
-  filter: drop-shadow(0 0 9px rgba(255, 182, 142, 0.45));
+  width: auto;
+  height: clamp(22px, 5.3vw, 24px);
+  filter: drop-shadow(0 0 10px rgba(255, 195, 141, 0.45));
 }
 
 .login-brand-text {
@@ -416,6 +420,10 @@ body::before {
 }
 
 @media (min-width: 900px) {
+  .login-brand-logo {
+    height: clamp(24px, 2.2vw, 28px);
+  }
+
   body {
     background-image: var(--bg-desktop);
     background-attachment: fixed;
