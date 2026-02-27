@@ -1,0 +1,37 @@
+name: Release Windows Overlay
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+          cache-dependency-path: electron/package-lock.json
+
+      - name: Install dependencies
+        working-directory: electron
+        run: npm ci
+
+      - name: Build Windows installer
+        working-directory: electron
+        run: npm run build:win
+
+      - name: Upload installer to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: electron/dist/Yumiko-Overlay-Setup.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

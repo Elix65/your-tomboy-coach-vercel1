@@ -33,17 +33,100 @@ const DEFAULT_VOICE_VOLUME = 1;
 const AUDIO_OVERLAY_ID = "audio-overlay";
 const AUDIO_PANEL_DEBUG = Boolean(window.__AUDIO_PANEL_DEBUG__);
 
-const YUMIKO_100_IMAGE_URL = "https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/hi-4.png";
+const YUMIKO_RELEASE_OWNER = "<OWNER>";
+const YUMIKO_RELEASE_REPO = "<REPO>";
+const YUMIKO_DOWNLOAD_URL = `https://github.com/${YUMIKO_RELEASE_OWNER}/${YUMIKO_RELEASE_REPO}/releases/latest/download/Yumiko-Overlay-Setup.exe`;
 
 function syncYumiko100Visibility() {
   if (!btnYumiko100) return;
   btnYumiko100.classList.toggle("hidden", window.innerWidth < 768);
 }
 
-if (btnYumiko100) {
-  btnYumiko100.addEventListener("click", () => {
-    window.open(YUMIKO_100_IMAGE_URL, "_blank", "noopener,noreferrer");
+function isWindowsClient() {
+  return /Windows/i.test(window.navigator.userAgent || "");
+}
+
+function closeYumikoDownloadModal(modal) {
+  modal.remove();
+}
+
+function showYumikoDownloadModal(message) {
+  const modal = document.createElement("div");
+  modal.style.position = "fixed";
+  modal.style.inset = "0";
+  modal.style.background = "rgba(0,0,0,0.62)";
+  modal.style.zIndex = "100000";
+  modal.style.display = "grid";
+  modal.style.placeItems = "center";
+
+  const card = document.createElement("div");
+  card.style.maxWidth = "420px";
+  card.style.width = "calc(100% - 32px)";
+  card.style.padding = "18px";
+  card.style.borderRadius = "14px";
+  card.style.background = "#1a1530";
+  card.style.border = "1px solid rgba(255,255,255,0.18)";
+  card.style.color = "#fff";
+
+  const title = document.createElement("h3");
+  title.textContent = "Yumiko 100%";
+  title.style.margin = "0 0 10px";
+
+  const paragraph = document.createElement("p");
+  paragraph.textContent = message;
+  paragraph.style.margin = "0 0 14px";
+
+  const actions = document.createElement("div");
+  actions.style.display = "flex";
+  actions.style.gap = "10px";
+  actions.style.flexWrap = "wrap";
+
+  const closeBtn = document.createElement("button");
+  closeBtn.className = "top-btn";
+  closeBtn.textContent = "Cerrar";
+  closeBtn.addEventListener("click", () => closeYumikoDownloadModal(modal));
+
+  actions.appendChild(closeBtn);
+
+  if (isWindowsClient()) {
+    const downloadBtn = document.createElement("a");
+    downloadBtn.className = "top-btn top-btn-primary";
+    downloadBtn.href = YUMIKO_DOWNLOAD_URL;
+    downloadBtn.target = "_blank";
+    downloadBtn.rel = "noopener noreferrer";
+    downloadBtn.textContent = "Descargar Yumiko Overlay (Windows)";
+    actions.appendChild(downloadBtn);
+  }
+
+  card.append(title, paragraph, actions);
+  modal.appendChild(card);
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) closeYumikoDownloadModal(modal);
   });
+  document.body.appendChild(modal);
+}
+
+function openYumikoDesktopFlow() {
+  if (!isWindowsClient()) {
+    showYumikoDownloadModal("Disponible en Windows por ahora.");
+    return;
+  }
+
+  const ts = Date.now();
+  const deepLinkUrl = `yumiko://open?from=web&ts=${ts}`;
+  const startedAt = Date.now();
+
+  window.location.href = deepLinkUrl;
+
+  window.setTimeout(() => {
+    if (Date.now() - startedAt >= 1100) {
+      showYumikoDownloadModal("Si todavía no se abrió Yumiko, instalá el overlay para Windows.");
+    }
+  }, 1200);
+}
+
+if (btnYumiko100) {
+  btnYumiko100.addEventListener("click", openYumikoDesktopFlow);
   syncYumiko100Visibility();
   window.addEventListener("resize", syncYumiko100Visibility);
 }

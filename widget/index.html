@@ -7,19 +7,22 @@
   <link rel="stylesheet" href="./widget.css">
 </head>
 <body>
-  <div class="yumiko-widget" id="yumiko-widget" data-mode="focus" aria-live="polite">
-    <button id="yumiko-avatar" class="yumiko-avatar" type="button" aria-label="Cambiar modo de Yumiko">
-      <img src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png" alt="Yumiko">
+  <section class="yumiko-widget" id="yumiko-widget" data-mode="focus" aria-live="polite">
+    <button id="yumiko-bubble" class="yumiko-bubble" type="button" aria-label="Abrir chat con Yumiko">
+      ¿Me contás qué hacés?
     </button>
 
-    <button id="yumiko-bubble" class="yumiko-bubble" type="button">¿Me contás qué hacés?</button>
-
     <div class="yumiko-chat" id="yumiko-chat" hidden>
-      <label for="yumiko-input" class="sr-only">Mensaje para Yumiko</label>
-      <input id="yumiko-input" type="text" placeholder="Estoy haciendo..." autocomplete="off">
-      <button id="yumiko-send" type="button">Enviar</button>
+      <label class="sr-only" for="yumiko-input">Mensaje para Yumiko</label>
+      <input id="yumiko-input" type="text" autocomplete="off" placeholder="Estoy haciendo...">
+      <button id="yumiko-mic" class="icon-btn" type="button" aria-label="Micrófono">🎤</button>
+      <button id="yumiko-send" class="icon-btn send-btn" type="button" aria-label="Enviar">➤</button>
     </div>
-  </div>
+
+    <button id="yumiko-avatar" class="yumiko-avatar" type="button" aria-label="Cambiar entre focus y chat">
+      <img src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png" alt="Yumiko">
+    </button>
+  </section>
 
   <script src="./widget.js"></script>
 </body>

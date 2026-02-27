@@ -15,7 +15,17 @@
     "appId": "com.21moon.yumikooverlay",
     "productName": "YumikoOverlay",
     "files": [
-      "main.js"
+      "main.js",
+      "preload.js"
+    ],
+    "artifactName": "Yumiko-Overlay-Setup.exe",
+    "protocols": [
+      {
+        "name": "Yumiko Protocol",
+        "schemes": [
+          "yumiko"
+        ]
+      }
     ],
     "win": {
       "target": "nsis"

@@ -1,57 +1,124 @@
-const { app, BrowserWindow, globalShortcut, Menu, Tray, nativeImage } = require('electron');
+const path = require('node:path');
+const fs = require('node:fs');
+const {
+  app,
+  BrowserWindow,
+  globalShortcut,
+  ipcMain,
+  Menu,
+  Tray,
+  nativeImage,
+  screen
+} = require('electron');
 
-let win;
+const OVERLAY_URL = 'https://21-moon.com/widget/';
+const DEFAULT_BOUNDS = { width: 420, height: 260 };
+const SETTINGS_FILE = 'settings.json';
+
 let tray;
-let mode = 'focus';
+let win;
+let isQuitting = false;
 
-function refreshTrayMenu() {
-  if (!tray) return;
-  const contextMenu = Menu.buildFromTemplate([
-    { label: win?.isVisible() ? 'Ocultar' : 'Mostrar', click: toggleVisible },
-    { label: `Cambiar a ${mode === 'focus' ? 'chat' : 'focus'}`, click: toggleMode },
-    { type: 'separator' },
-    { label: 'Salir', click: () => app.quit() }
-  ]);
-  tray.setContextMenu(contextMenu);
+const defaultSettings = {
+  mode: 'focus',
+  visible: true,
+  bounds: null
+};
+
+function settingsPath() {
+  return path.join(app.getPath('userData'), SETTINGS_FILE);
 }
 
-function setFocusMode(enabled) {
-  mode = enabled ? 'focus' : 'chat';
-  if (win) {
-    win.setIgnoreMouseEvents(enabled, { forward: true });
+function readSettings() {
+  try {
+    const raw = fs.readFileSync(settingsPath(), 'utf8');
+    return { ...defaultSettings, ...JSON.parse(raw) };
+  } catch {
+    return { ...defaultSettings };
   }
-  refreshTrayMenu();
 }
 
-function createWindow() {
-  win = new BrowserWindow({
-    width: 360,
-    height: 520,
-    frame: false,
-    transparent: true,
-    alwaysOnTop: true,
-    resizable: false,
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false
-    }
-  });
+let settings = readSettings();
 
-  win.setMenuBarVisibility(false);
-  win.loadURL('https://21-moon.com/widget/');
-  setFocusMode(true);
-  win.on('show', refreshTrayMenu);
-  win.on('hide', refreshTrayMenu);
+function writeSettings() {
+  fs.mkdirSync(app.getPath('userData'), { recursive: true });
+  fs.writeFileSync(settingsPath(), JSON.stringify(settings, null, 2));
+}
+
+function getDefaultPosition() {
+  const display = screen.getPrimaryDisplay().workArea;
+  return {
+    x: display.x + display.width - DEFAULT_BOUNDS.width - 16,
+    y: display.y + display.height - DEFAULT_BOUNDS.height - 16
+  };
+}
+
+function getInitialBounds() {
+  const position = getDefaultPosition();
+  return {
+    width: DEFAULT_BOUNDS.width,
+    height: DEFAULT_BOUNDS.height,
+    ...position,
+    ...(settings.bounds || {})
+  };
+}
+
+function setMode(mode, { fromRenderer = false } = {}) {
+  const nextMode = mode === 'chat' ? 'chat' : 'focus';
+  settings.mode = nextMode;
+  writeSettings();
+
+  if (!win) return;
+
+  const isFocus = nextMode === 'focus';
+  win.setIgnoreMouseEvents(isFocus, { forward: true });
+  if (!isFocus) {
+    win.show();
+    win.focus();
+  }
+
+  if (!fromRenderer && !win.webContents.isLoading()) {
+    win.webContents.executeJavaScript(`window.yumikoWidget?.setMode?.(${JSON.stringify(nextMode)});`, true).catch(() => {});
+  }
+
+  refreshTrayMenu();
 }
 
 function toggleVisible() {
   if (!win) return;
-  if (win.isVisible()) win.hide();
-  else win.show();
+  if (win.isVisible()) {
+    win.hide();
+    settings.visible = false;
+  } else {
+    win.showInactive();
+    settings.visible = true;
+  }
+  writeSettings();
+  refreshTrayMenu();
 }
 
 function toggleMode() {
-  setFocusMode(mode !== 'focus');
+  setMode(settings.mode === 'focus' ? 'chat' : 'focus');
+}
+
+function showAndFocusChat() {
+  if (!win) return;
+  settings.visible = true;
+  writeSettings();
+  win.show();
+  win.focus();
+  setMode('chat');
+}
+
+function refreshTrayMenu() {
+  if (!tray || !win) return;
+  const contextMenu = Menu.buildFromTemplate([
+    { label: win.isVisible() ? 'Hide' : 'Show', click: toggleVisible },
+    { label: 'Toggle Focus/Chat', click: toggleMode },
+    { type: 'separator' },
+    { label: 'Quit', click: () => { isQuitting = true; app.quit(); } }
+  ]);
+  tray.setContextMenu(contextMenu);
 }
 
 function createTray() {
@@ -62,17 +129,123 @@ function createTray() {
   refreshTrayMenu();
 }
 
-app.whenReady().then(() => {
-  createWindow();
-  createTray();
+function saveBounds() {
+  if (!win) return;
+  settings.bounds = win.getBounds();
+  writeSettings();
+}
 
-  globalShortcut.register('CommandOrControl+Shift+Y', toggleVisible);
-  globalShortcut.register('CommandOrControl+Shift+M', toggleMode);
-  globalShortcut.register('Escape', () => setFocusMode(true));
-});
+function handleDeepLink(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') return;
+  if (!rawUrl.startsWith('yumiko://')) return;
+
+  try {
+    const parsed = new URL(rawUrl);
+    const hostAction = parsed.hostname;
+    if (hostAction === 'open') {
+      showAndFocusChat();
+    }
+  } catch {
+    if (rawUrl.startsWith('yumiko://open')) {
+      showAndFocusChat();
+    }
+  }
+}
+
+function handleArgvForDeepLink(argv = []) {
+  const deepLink = argv.find((arg) => typeof arg === 'string' && arg.startsWith('yumiko://'));
+  if (deepLink) {
+    handleDeepLink(deepLink);
+  }
+}
+
+function createWindow() {
+  const bounds = getInitialBounds();
+  win = new BrowserWindow({
+    ...bounds,
+    transparent: true,
+    frame: false,
+    alwaysOnTop: true,
+    resizable: false,
+    skipTaskbar: true,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, 'preload.js')
+    }
+  });
+
+  win.setMenuBarVisibility(false);
+  win.loadURL(OVERLAY_URL);
+
+  win.webContents.on('before-input-event', (_event, input) => {
+    if (input.type === 'keyDown' && input.key === 'Escape') {
+      setMode('focus');
+    }
+  });
+
+  win.on('move', saveBounds);
+  win.on('resize', saveBounds);
+  win.on('show', () => {
+    settings.visible = true;
+    writeSettings();
+    refreshTrayMenu();
+  });
+  win.on('hide', () => {
+    settings.visible = false;
+    writeSettings();
+    refreshTrayMenu();
+  });
+  win.on('close', (event) => {
+    if (!isQuitting) {
+      event.preventDefault();
+      win.hide();
+    }
+  });
+
+  win.webContents.on('did-finish-load', () => {
+    setMode(settings.mode);
+    if (!settings.visible) {
+      win.hide();
+    }
+  });
+}
+
+const singleInstance = app.requestSingleInstanceLock();
+if (!singleInstance) {
+  app.quit();
+} else {
+  app.on('second-instance', (_event, argv) => {
+    handleArgvForDeepLink(argv);
+    if (win) {
+      win.show();
+      win.focus();
+    }
+  });
+
+  app.whenReady().then(() => {
+    app.setAsDefaultProtocolClient('yumiko');
+
+    createWindow();
+    createTray();
+
+    globalShortcut.register('CommandOrControl+Shift+Y', toggleVisible);
+    globalShortcut.register('CommandOrControl+Shift+M', toggleMode);
+
+    ipcMain.handle('yumiko:get-state', () => settings);
+    ipcMain.on('yumiko:set-mode', (_event, mode) => setMode(mode, { fromRenderer: true }));
+
+    handleArgvForDeepLink(process.argv);
+  });
+}
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll();
+});
+
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  handleDeepLink(url);
 });
 
 app.on('window-all-closed', () => {
