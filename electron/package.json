@@ -39,13 +39,8 @@
       "target": [
         "nsis",
         "zip"
-      ]
-    },
-    "nsis": {
-      "artifactName": "Yumiko-Overlay-Setup.exe"
-    },
-    "zip": {
-      "artifactName": "Yumiko-Overlay-Windows.zip"
+      ],
+      "artifactName": "Yumiko-Overlay-Setup.${ext}"
     }
   }
 }
