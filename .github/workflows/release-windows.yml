@@ -6,9 +6,15 @@ on:
       - "v*.*.*"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-and-release:
     runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: electron
 
     steps:
       - name: Checkout
@@ -17,16 +23,14 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: "20"
           cache: npm
           cache-dependency-path: electron/package-lock.json
 
       - name: Install dependencies
-        working-directory: electron
         run: npm ci
 
       - name: Build Windows installer
-        working-directory: electron
         run: npm run build:win
 
       - name: Upload installer to release
