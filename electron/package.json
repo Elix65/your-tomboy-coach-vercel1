@@ -45,7 +45,8 @@
     },
     "publish": null,
     "nsis": {
-      "requestedExecutionLevel": "asInvoker"
+      "perMachine": false,
+      "allowElevation": false
     }
   }
 }
