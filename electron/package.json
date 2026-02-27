@@ -1,0 +1,24 @@
+{
+  "name": "yumiko-overlay-electron",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "dev": "electron .",
+    "build:win": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^32.3.3",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.21moon.yumikooverlay",
+    "productName": "YumikoOverlay",
+    "files": [
+      "main.js"
+    ],
+    "win": {
+      "target": "nsis"
+    }
+  }
+}

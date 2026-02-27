@@ -1,0 +1,94 @@
+:root {
+  color-scheme: dark;
+  --bg: rgba(25, 18, 45, 0.9);
+  --accent: #ff7cc8;
+  --accent-2: #8c9bff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: transparent;
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.yumiko-widget {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  z-index: 9999;
+}
+
+.yumiko-avatar {
+  width: 92px;
+  height: 92px;
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  border-radius: 999px;
+  background: radial-gradient(circle at 30% 30%, #46306f, #151023);
+  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.yumiko-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.yumiko-bubble {
+  max-width: 220px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: var(--bg);
+  color: #fff;
+  border-radius: 14px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.yumiko-chat {
+  width: min(280px, calc(100vw - 32px));
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--bg);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.yumiko-chat input {
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: #120f1f;
+  color: #fff;
+  padding: 9px 10px;
+}
+
+.yumiko-chat button {
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  padding: 0 12px;
+  font-weight: 700;
+}
+
+.yumiko-widget[data-mode="focus"] .yumiko-chat { display: none; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}

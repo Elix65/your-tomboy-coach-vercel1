@@ -20,6 +20,7 @@ const btnInventario = document.getElementById("btn-inventario");
 const btnAudios = document.getElementById("btn-audios");
 const btnRewards = document.getElementById("btn-rewards");
 const btnAudio = document.getElementById("btn-audio");
+const btnYumiko100 = document.getElementById("btn-yumiko-100");
 const audioPopover = document.getElementById("audioPopover");
 const navAudio = btnAudio?.closest(".nav-audio") || null;
 const musicVolumeSlider = document.getElementById("music-volume-slider");
@@ -31,6 +32,21 @@ const DEFAULT_MUSIC_VOLUME = 0.3;
 const DEFAULT_VOICE_VOLUME = 1;
 const AUDIO_OVERLAY_ID = "audio-overlay";
 const AUDIO_PANEL_DEBUG = Boolean(window.__AUDIO_PANEL_DEBUG__);
+
+const YUMIKO_100_IMAGE_URL = "https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/hi-4.png";
+
+function syncYumiko100Visibility() {
+  if (!btnYumiko100) return;
+  btnYumiko100.classList.toggle("hidden", window.innerWidth < 768);
+}
+
+if (btnYumiko100) {
+  btnYumiko100.addEventListener("click", () => {
+    window.open(YUMIKO_100_IMAGE_URL, "_blank", "noopener,noreferrer");
+  });
+  syncYumiko100Visibility();
+  window.addEventListener("resize", syncYumiko100Visibility);
+}
 
 let musicVolumeValue = DEFAULT_MUSIC_VOLUME;
 let voiceVolumeValue = DEFAULT_VOICE_VOLUME;

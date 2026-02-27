@@ -1012,6 +1012,11 @@ img.avatar-small {
   box-shadow: 0 10px 22px rgba(255, 95, 121, 0.2);
 }
 
+.yumiko-100-btn {
+  background: linear-gradient(180deg, #7f6dff, #5a47f0);
+  border-color: rgba(179, 170, 255, 0.7);
+}
+
 .top-btn:hover {
   transform: translateY(-1px);
   filter: brightness(1.08);

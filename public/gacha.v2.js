@@ -364,6 +364,7 @@ if (btn10) {
 const btnInicio = document.getElementById("btn-inicio");
 const btnInventario = document.getElementById("btn-inventario");
 const btnAudios = document.getElementById("btn-audios");
+const btnYumiko100 = document.getElementById("btn-yumiko-100");
 
 // Mobile
 const mInicio = document.getElementById("m-inicio");
@@ -373,6 +374,22 @@ const inventoryPanel = document.getElementById("inventoryPanel");
 const inventoryDropdown = document.getElementById("inventoryDropdown");
 const inventoryContent = document.getElementById("inventory-content");
 const inventoryCloseBtn = document.getElementById("inventory-close-btn");
+
+
+const YUMIKO_100_IMAGE_URL = "https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/hi-4.png";
+
+function syncYumiko100Visibility() {
+  if (!btnYumiko100) return;
+  btnYumiko100.classList.toggle("hidden", window.innerWidth < 768);
+}
+
+if (btnYumiko100) {
+  btnYumiko100.onclick = () => {
+    window.open(YUMIKO_100_IMAGE_URL, "_blank", "noopener,noreferrer");
+  };
+  syncYumiko100Visibility();
+  window.addEventListener("resize", syncYumiko100Visibility);
+}
 
 if (btnInicio) {
   btnInicio.onclick = (event) => {
