@@ -33,9 +33,7 @@ const DEFAULT_VOICE_VOLUME = 1;
 const AUDIO_OVERLAY_ID = "audio-overlay";
 const AUDIO_PANEL_DEBUG = Boolean(window.__AUDIO_PANEL_DEBUG__);
 
-const YUMIKO_RELEASE_OWNER = "<OWNER>";
-const YUMIKO_RELEASE_REPO = "<REPO>";
-const YUMIKO_DOWNLOAD_URL = `https://github.com/${YUMIKO_RELEASE_OWNER}/${YUMIKO_RELEASE_REPO}/releases/latest/download/Yumiko-Overlay-Setup.exe`;
+const DOWNLOAD_URL = "https://github.com/Elix65/your-tomboy-coach-vercel1/releases/latest/download/Yumiko-Overlay-Setup.exe";
 
 function syncYumiko100Visibility() {
   if (!btnYumiko100) return;
@@ -91,7 +89,7 @@ function showYumikoDownloadModal(message) {
   if (isWindowsClient()) {
     const downloadBtn = document.createElement("a");
     downloadBtn.className = "top-btn top-btn-primary";
-    downloadBtn.href = YUMIKO_DOWNLOAD_URL;
+    downloadBtn.href = DOWNLOAD_URL;
     downloadBtn.target = "_blank";
     downloadBtn.rel = "noopener noreferrer";
     downloadBtn.textContent = "Descargar Yumiko Overlay (Windows)";
