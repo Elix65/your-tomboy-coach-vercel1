@@ -19,3 +19,10 @@ También podés correr la release manualmente con `workflow_dispatch`.
 ## Link de descarga
 El botón “Yumiko 100%” usa la constante `DOWNLOAD_URL` en `public/script.v2.js`:
 `https://github.com/Elix65/your-tomboy-coach-vercel1/releases/latest/download/Yumiko-Overlay-Setup.exe`
+
+## Windows Defender / SmartScreen
+- Como la app es relativamente nueva, y especialmente si aún no está firmada con certificado de código, Windows Defender o SmartScreen pueden mostrar advertencias al descargar o ejecutar el instalador.
+- Cada release publica checksums SHA256 (archivos `.sha256` y `checksums.txt`) para que puedas verificar la integridad de los binarios descargados.
+- Descargá siempre desde GitHub Releases oficial: https://github.com/Elix65/your-tomboy-coach-vercel1/releases
+- El proyecto es open-source, podés auditar el código en este mismo repositorio.
+
