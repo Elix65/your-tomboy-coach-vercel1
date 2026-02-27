@@ -13,7 +13,7 @@
   "main": "main.js",
   "scripts": {
     "dev": "electron .",
-    "build:win": "electron-builder --win"
+    "build:win": "electron-builder --win --publish never"
   },
   "devDependencies": {
     "electron": "^32.3.3",
@@ -41,6 +41,7 @@
         "zip"
       ],
       "artifactName": "Yumiko-Overlay-Setup.${ext}"
-    }
+    },
+    "publish": null
   }
 }
