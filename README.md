@@ -16,10 +16,6 @@
 
 También podés correr la release manualmente con `workflow_dispatch`.
 
-## Configurar link de descarga (`<OWNER>/<REPO>`)
-Editar estas constantes en `public/script.v2.js`:
-- `YUMIKO_RELEASE_OWNER`
-- `YUMIKO_RELEASE_REPO`
-
-El botón “Yumiko 100%” usa:
-`https://github.com/<OWNER>/<REPO>/releases/latest/download/Yumiko-Overlay-Setup.exe`
+## Link de descarga
+El botón “Yumiko 100%” usa la constante `DOWNLOAD_URL` en `public/script.v2.js`:
+`https://github.com/Elix65/your-tomboy-coach-vercel1/releases/latest/download/Yumiko-Overlay-Setup.exe`
