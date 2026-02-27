@@ -25,7 +25,9 @@
     "asar": true,
     "files": [
       "main.js",
-      "preload.js"
+      "preload.js",
+      "renderer.html",
+      "renderer.js"
     ],
     "protocols": [
       {
