@@ -1,6 +1,14 @@
 {
   "name": "yumiko-overlay-electron",
   "version": "1.0.0",
+  "description": "Desktop overlay for Yumiko 100% built with Electron.",
+  "author": "Elix65",
+  "homepage": "https://github.com/Elix65/your-tomboy-coach-vercel1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Elix65/your-tomboy-coach-vercel1.git"
+  },
+  "license": "MIT",
   "private": true,
   "main": "main.js",
   "scripts": {
@@ -14,11 +22,11 @@
   "build": {
     "appId": "com.21moon.yumikooverlay",
     "productName": "YumikoOverlay",
+    "asar": true,
     "files": [
       "main.js",
       "preload.js"
     ],
-    "artifactName": "Yumiko-Overlay-Setup.exe",
     "protocols": [
       {
         "name": "Yumiko Protocol",
@@ -28,7 +36,16 @@
       }
     ],
     "win": {
-      "target": "nsis"
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "nsis": {
+      "artifactName": "Yumiko-Overlay-Setup.exe"
+    },
+    "zip": {
+      "artifactName": "Yumiko-Overlay-Windows.zip"
     }
   }
 }

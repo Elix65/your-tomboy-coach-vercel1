@@ -56,13 +56,69 @@ jobs:
             Start-Sleep -Seconds (10 * $i)
           }
 
+      - name: Configure optional code signing
+        if: ${{ secrets.WIN_CSC_LINK != '' || secrets.CSC_LINK != '' }}
+        shell: pwsh
+        run: |
+          $link = "${{ secrets.WIN_CSC_LINK }}"
+          if ([string]::IsNullOrWhiteSpace($link)) {
+            $link = "${{ secrets.CSC_LINK }}"
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($link)) {
+            "WIN_CSC_LINK=$link" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            "CSC_LINK=$link" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+
+      - name: Configure optional code signing password
+        if: ${{ secrets.WIN_CSC_KEY_PASSWORD != '' || secrets.CSC_KEY_PASSWORD != '' }}
+        shell: pwsh
+        run: |
+          $password = "${{ secrets.WIN_CSC_KEY_PASSWORD }}"
+          if ([string]::IsNullOrWhiteSpace($password)) {
+            $password = "${{ secrets.CSC_KEY_PASSWORD }}"
+          }
+
+          if (-not [string]::IsNullOrWhiteSpace($password)) {
+            "WIN_CSC_KEY_PASSWORD=$password" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            "CSC_KEY_PASSWORD=$password" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+
       - name: Build Windows installer
         run: npm run build:win
+
+      - name: Generate SHA256 checksums
+        shell: pwsh
+        run: |
+          $assets = @(
+            "Yumiko-Overlay-Setup.exe",
+            "Yumiko-Overlay-Windows.zip"
+          )
+
+          $checksums = @()
+          foreach ($asset in $assets) {
+            $assetPath = Join-Path "dist" $asset
+            if (-not (Test-Path $assetPath)) {
+              throw "Missing expected artifact: $assetPath"
+            }
+
+            $hash = (Get-FileHash -Algorithm SHA256 -Path $assetPath).Hash.ToLower()
+            $line = "$hash  $asset"
+            Set-Content -Path "$assetPath.sha256" -Value $line -NoNewline
+            $checksums += $line
+          }
+
+          $checksums | Set-Content -Path "dist/checksums.txt"
 
       - name: Upload installer to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
-          files: electron/dist/Yumiko-Overlay-Setup.exe
+          files: |
+            electron/dist/Yumiko-Overlay-Setup.exe
+            electron/dist/Yumiko-Overlay-Windows.zip
+            electron/dist/Yumiko-Overlay-Setup.exe.sha256
+            electron/dist/Yumiko-Overlay-Windows.zip.sha256
+            electron/dist/checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
