@@ -3,8 +3,12 @@ name: Release Windows Overlay
 on:
   push:
     tags:
-      - "v*.*.*"
+      - "v*"
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release (e.g. v0.1.0)"
+        required: true
 
 permissions:
   contents: write
@@ -58,6 +62,7 @@ jobs:
       - name: Upload installer to release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
           files: electron/dist/Yumiko-Overlay-Setup.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
