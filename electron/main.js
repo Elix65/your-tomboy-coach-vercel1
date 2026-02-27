@@ -20,9 +20,16 @@ let win;
 let isQuitting = false;
 
 const defaultSettings = {
-  mode: 'focus',
+  mode: 'chat',
+  clickThroughEnabled: false,
+  shortcutsEnabled: false,
   visible: true,
   bounds: null
+};
+
+const SHORTCUTS = {
+  toggleVisible: 'CommandOrControl+Shift+Y',
+  toggleMode: 'CommandOrControl+Shift+M'
 };
 
 function settingsPath() {
@@ -70,9 +77,9 @@ function setMode(mode, { fromRenderer = false } = {}) {
 
   if (!win) return;
 
-  const isFocus = nextMode === 'focus';
-  win.setIgnoreMouseEvents(isFocus, { forward: true });
-  if (!isFocus) {
+  const enableClickThrough = settings.clickThroughEnabled && nextMode === 'focus';
+  win.setIgnoreMouseEvents(enableClickThrough, { forward: true });
+  if (!enableClickThrough) {
     win.show();
     win.focus();
   }
@@ -82,6 +89,31 @@ function setMode(mode, { fromRenderer = false } = {}) {
   }
 
   refreshTrayMenu();
+}
+
+function updateGlobalShortcuts() {
+  globalShortcut.unregister(SHORTCUTS.toggleVisible);
+  globalShortcut.unregister(SHORTCUTS.toggleMode);
+
+  if (!settings.shortcutsEnabled) {
+    return;
+  }
+
+  globalShortcut.register(SHORTCUTS.toggleVisible, toggleVisible);
+  globalShortcut.register(SHORTCUTS.toggleMode, toggleMode);
+}
+
+function setShortcutsEnabled(enabled) {
+  settings.shortcutsEnabled = Boolean(enabled);
+  writeSettings();
+  updateGlobalShortcuts();
+  refreshTrayMenu();
+}
+
+function setClickThroughEnabled(enabled) {
+  settings.clickThroughEnabled = Boolean(enabled);
+  writeSettings();
+  setMode(settings.mode);
 }
 
 function toggleVisible() {
@@ -115,6 +147,18 @@ function refreshTrayMenu() {
   const contextMenu = Menu.buildFromTemplate([
     { label: win.isVisible() ? 'Hide' : 'Show', click: toggleVisible },
     { label: 'Toggle Focus/Chat', click: toggleMode },
+    {
+      label: 'Enable click-through in Focus mode',
+      type: 'checkbox',
+      checked: Boolean(settings.clickThroughEnabled),
+      click: (item) => setClickThroughEnabled(item.checked)
+    },
+    {
+      label: 'Enable global shortcuts',
+      type: 'checkbox',
+      checked: Boolean(settings.shortcutsEnabled),
+      click: (item) => setShortcutsEnabled(item.checked)
+    },
     { type: 'separator' },
     { label: 'Quit', click: () => { isQuitting = true; app.quit(); } }
   ]);
@@ -163,7 +207,8 @@ function createWindow() {
   const bounds = getInitialBounds();
   win = new BrowserWindow({
     ...bounds,
-    transparent: true,
+    transparent: false,
+    backgroundColor: '#121212',
     frame: false,
     alwaysOnTop: true,
     resizable: false,
@@ -228,12 +273,12 @@ if (!singleInstance) {
 
     createWindow();
     createTray();
-
-    globalShortcut.register('CommandOrControl+Shift+Y', toggleVisible);
-    globalShortcut.register('CommandOrControl+Shift+M', toggleMode);
+    updateGlobalShortcuts();
 
     ipcMain.handle('yumiko:get-state', () => settings);
     ipcMain.on('yumiko:set-mode', (_event, mode) => setMode(mode, { fromRenderer: true }));
+    ipcMain.on('yumiko:set-shortcuts-enabled', (_event, enabled) => setShortcutsEnabled(enabled));
+    ipcMain.on('yumiko:set-click-through-enabled', (_event, enabled) => setClickThroughEnabled(enabled));
 
     handleArgvForDeepLink(process.argv);
   });
