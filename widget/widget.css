@@ -1,6 +1,8 @@
 :root {
   color-scheme: dark;
-  --bg: rgba(25, 18, 45, 0.9);
+  --bg: rgba(17, 13, 31, 0.88);
+  --border: rgba(255, 255, 255, 0.2);
+  --text: #fff;
   --accent: #ff7cc8;
   --accent-2: #8c9bff;
 }
@@ -16,24 +18,25 @@ body {
 
 .yumiko-widget {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  right: 14px;
+  bottom: 14px;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 8px;
+  gap: 10px;
   z-index: 9999;
 }
 
 .yumiko-avatar {
-  width: 92px;
-  height: 92px;
-  border: 2px solid rgba(255, 255, 255, 0.28);
+  width: 86px;
+  height: 86px;
   border-radius: 999px;
-  background: radial-gradient(circle at 30% 30%, #46306f, #151023);
-  box-shadow: 0 16px 30px rgba(0, 0, 0, 0.4);
-  cursor: pointer;
   overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  background: radial-gradient(circle at 30% 30%, #4f3493, #100d1d);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  padding: 0;
 }
 
 .yumiko-avatar img {
@@ -43,40 +46,50 @@ body {
 }
 
 .yumiko-bubble {
-  max-width: 220px;
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  border: 1px solid var(--border);
+  border-radius: 15px;
   background: var(--bg);
-  color: #fff;
-  border-radius: 14px;
-  padding: 10px 12px;
+  color: var(--text);
+  padding: 11px 13px;
+  max-width: min(250px, calc(100vw - 32px));
+  text-align: left;
   cursor: pointer;
+  backdrop-filter: blur(7px);
 }
 
 .yumiko-chat {
-  width: min(280px, calc(100vw - 32px));
-  padding: 10px;
-  border-radius: 14px;
-  background: var(--bg);
-  border: 1px solid rgba(255, 255, 255, 0.24);
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   gap: 8px;
+  width: min(310px, calc(100vw - 32px));
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: var(--bg);
+  padding: 10px;
+  backdrop-filter: blur(7px);
 }
 
 .yumiko-chat input {
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: #120f1f;
-  color: #fff;
-  padding: 9px 10px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  padding: 0 10px;
+  min-height: 38px;
 }
 
-.yumiko-chat button {
-  border: none;
+.icon-btn {
+  min-width: 38px;
+  min-height: 38px;
   border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background: #211b3a;
+  color: var(--text);
+}
+
+.send-btn {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
-  color: #fff;
-  padding: 0 12px;
   font-weight: 700;
 }
 
