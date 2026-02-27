@@ -40,8 +40,12 @@
         "nsis",
         "zip"
       ],
-      "artifactName": "Yumiko-Overlay-Setup.${ext}"
+      "artifactName": "Yumiko-Overlay-Setup.${ext}",
+      "requestedExecutionLevel": "asInvoker"
     },
-    "publish": null
+    "publish": null,
+    "nsis": {
+      "requestedExecutionLevel": "asInvoker"
+    }
   }
 }

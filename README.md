@@ -20,9 +20,10 @@ También podés correr la release manualmente con `workflow_dispatch`.
 El botón “Yumiko 100%” usa la constante `DOWNLOAD_URL` en `public/script.v2.js`:
 `https://github.com/Elix65/your-tomboy-coach-vercel1/releases/latest/download/Yumiko-Overlay-Setup.exe`
 
-## Windows Defender / SmartScreen
-- Como la app es relativamente nueva, y especialmente si aún no está firmada con certificado de código, Windows Defender o SmartScreen pueden mostrar advertencias al descargar o ejecutar el instalador.
-- Cada release publica checksums SHA256 (archivos `.sha256` y `checksums.txt`) para que puedas verificar la integridad de los binarios descargados.
-- Descargá siempre desde GitHub Releases oficial: https://github.com/Elix65/your-tomboy-coach-vercel1/releases
-- El proyecto es open-source, podés auditar el código en este mismo repositorio.
+## Windows Defender false positives
+- Algunas versiones de Windows Defender pueden marcar el instalador/portable con alertas heurísticas (ej: `Program:Win32/Contebrew.A!ml`) aunque el binario sea legítimo.
+- Verificá siempre el SHA256 antes de ejecutar: cada release publica `*.sha256` y `checksums.txt` junto al `.exe` y al `.zip` portable.
+- Releases oficiales: https://github.com/Elix65/your-tomboy-coach-vercel1/releases
+- Código fuente oficial: https://github.com/Elix65/your-tomboy-coach-vercel1
+- Si tu antivirus alerta, compará el hash del archivo descargado con el publicado en el release correspondiente.
 
