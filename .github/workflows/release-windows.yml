@@ -87,37 +87,40 @@ jobs:
       - name: Build Windows installer
         run: npm run build:win
 
-      - name: Generate SHA256 checksums
+      - name: Build portable ZIP from win-unpacked
         shell: pwsh
         run: |
-          $assets = @(
-            "Yumiko-Overlay-Setup.exe",
-            "Yumiko-Overlay-Setup.zip"
-          )
-
-          $checksums = @()
-          foreach ($asset in $assets) {
-            $assetPath = Join-Path "dist" $asset
-            if (-not (Test-Path $assetPath)) {
-              throw "Missing expected artifact: $assetPath"
-            }
-
-            $hash = (Get-FileHash -Algorithm SHA256 -Path $assetPath).Hash.ToLower()
-            $line = "$hash  $asset"
-            Set-Content -Path "$assetPath.sha256" -Value $line -NoNewline
-            $checksums += $line
+          $portableSource = Join-Path "dist" "win-unpacked"
+          if (-not (Test-Path $portableSource)) {
+            throw "Missing expected portable folder: $portableSource"
           }
 
-          $checksums | Set-Content -Path "dist/checksums.txt"
+          $portableZip = Join-Path "dist" "Yumiko-Overlay-Portable.zip"
+          if (Test-Path $portableZip) {
+            Remove-Item $portableZip -Force
+          }
+
+          Compress-Archive -Path "$portableSource\*" -DestinationPath $portableZip
+
+      - name: Generate SHA256 for setup
+        shell: pwsh
+        run: |
+          $setupAsset = "Yumiko-Overlay-Setup.exe"
+          $setupPath = Join-Path "dist" $setupAsset
+          if (-not (Test-Path $setupPath)) {
+            throw "Missing expected artifact: $setupPath"
+          }
+
+          $hash = (Get-FileHash -Algorithm SHA256 -Path $setupPath).Hash.ToLower()
+          Set-Content -Path "$setupPath.sha256" -Value "$hash  $setupAsset" -NoNewline
 
       - name: Upload installer to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
           files: |
-            electron/dist/*.exe
-            electron/dist/*.zip
-            electron/dist/*.sha256
-            electron/dist/checksums.txt
+            electron/dist/Yumiko-Overlay-Setup.exe
+            electron/dist/Yumiko-Overlay-Setup.exe.sha256
+            electron/dist/Yumiko-Overlay-Portable.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

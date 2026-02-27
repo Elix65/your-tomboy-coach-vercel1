@@ -21,10 +21,12 @@ let isQuitting = false;
 
 const defaultSettings = {
   mode: 'chat',
+  overlayEnabled: false,
   clickThroughEnabled: false,
   shortcutsEnabled: false,
   visible: true,
-  bounds: null
+  bounds: null,
+  hasCompletedFirstRun: false
 };
 
 const SHORTCUTS = {
@@ -70,6 +72,28 @@ function getInitialBounds() {
   };
 }
 
+function broadcastState() {
+  if (!win || win.isDestroyed()) return;
+  win.webContents.send('yumiko:state-updated', settings);
+}
+
+function applyWindowBehavior() {
+  if (!win) return;
+
+  win.setAlwaysOnTop(Boolean(settings.overlayEnabled));
+
+  const enableClickThrough = settings.overlayEnabled && settings.clickThroughEnabled && settings.mode === 'focus';
+  win.setIgnoreMouseEvents(enableClickThrough, { forward: true });
+
+  if (!enableClickThrough) {
+    win.show();
+    win.focus();
+  }
+
+  broadcastState();
+  refreshTrayMenu();
+}
+
 function setMode(mode, { fromRenderer = false } = {}) {
   const nextMode = mode === 'chat' ? 'chat' : 'focus';
   settings.mode = nextMode;
@@ -77,18 +101,11 @@ function setMode(mode, { fromRenderer = false } = {}) {
 
   if (!win) return;
 
-  const enableClickThrough = settings.clickThroughEnabled && nextMode === 'focus';
-  win.setIgnoreMouseEvents(enableClickThrough, { forward: true });
-  if (!enableClickThrough) {
-    win.show();
-    win.focus();
-  }
+  applyWindowBehavior();
 
   if (!fromRenderer && !win.webContents.isLoading()) {
     win.webContents.executeJavaScript(`window.yumikoWidget?.setMode?.(${JSON.stringify(nextMode)});`, true).catch(() => {});
   }
-
-  refreshTrayMenu();
 }
 
 function updateGlobalShortcuts() {
@@ -107,13 +124,27 @@ function setShortcutsEnabled(enabled) {
   settings.shortcutsEnabled = Boolean(enabled);
   writeSettings();
   updateGlobalShortcuts();
+  broadcastState();
   refreshTrayMenu();
 }
 
 function setClickThroughEnabled(enabled) {
   settings.clickThroughEnabled = Boolean(enabled);
   writeSettings();
-  setMode(settings.mode);
+  applyWindowBehavior();
+}
+
+function setOverlayEnabled(enabled) {
+  settings.overlayEnabled = Boolean(enabled);
+  writeSettings();
+  applyWindowBehavior();
+}
+
+function completeFirstRun() {
+  if (settings.hasCompletedFirstRun) return;
+  settings.hasCompletedFirstRun = true;
+  writeSettings();
+  broadcastState();
 }
 
 function toggleVisible() {
@@ -126,6 +157,7 @@ function toggleVisible() {
     settings.visible = true;
   }
   writeSettings();
+  broadcastState();
   refreshTrayMenu();
 }
 
@@ -148,13 +180,19 @@ function refreshTrayMenu() {
     { label: win.isVisible() ? 'Hide' : 'Show', click: toggleVisible },
     { label: 'Toggle Focus/Chat', click: toggleMode },
     {
-      label: 'Enable click-through in Focus mode',
+      label: 'Modo Overlay (Siempre arriba)',
+      type: 'checkbox',
+      checked: Boolean(settings.overlayEnabled),
+      click: (item) => setOverlayEnabled(item.checked)
+    },
+    {
+      label: 'Click-through (dejar pasar clicks)',
       type: 'checkbox',
       checked: Boolean(settings.clickThroughEnabled),
       click: (item) => setClickThroughEnabled(item.checked)
     },
     {
-      label: 'Enable global shortcuts',
+      label: 'Atajos globales',
       type: 'checkbox',
       checked: Boolean(settings.shortcutsEnabled),
       click: (item) => setShortcutsEnabled(item.checked)
@@ -210,7 +248,7 @@ function createWindow() {
     transparent: false,
     backgroundColor: '#121212',
     frame: false,
-    alwaysOnTop: true,
+    alwaysOnTop: Boolean(settings.overlayEnabled),
     resizable: false,
     skipTaskbar: true,
     webPreferences: {
@@ -221,24 +259,20 @@ function createWindow() {
   });
 
   win.setMenuBarVisibility(false);
-  win.loadURL(OVERLAY_URL);
-
-  win.webContents.on('before-input-event', (_event, input) => {
-    if (input.type === 'keyDown' && input.key === 'Escape') {
-      setMode('focus');
-    }
-  });
+  win.loadFile(path.join(__dirname, 'renderer.html'));
 
   win.on('move', saveBounds);
   win.on('resize', saveBounds);
   win.on('show', () => {
     settings.visible = true;
     writeSettings();
+    broadcastState();
     refreshTrayMenu();
   });
   win.on('hide', () => {
     settings.visible = false;
     writeSettings();
+    broadcastState();
     refreshTrayMenu();
   });
   win.on('close', (event) => {
@@ -249,10 +283,11 @@ function createWindow() {
   });
 
   win.webContents.on('did-finish-load', () => {
-    setMode(settings.mode);
     if (!settings.visible) {
       win.hide();
     }
+    applyWindowBehavior();
+    setMode(settings.mode);
   });
 }
 
@@ -279,6 +314,8 @@ if (!singleInstance) {
     ipcMain.on('yumiko:set-mode', (_event, mode) => setMode(mode, { fromRenderer: true }));
     ipcMain.on('yumiko:set-shortcuts-enabled', (_event, enabled) => setShortcutsEnabled(enabled));
     ipcMain.on('yumiko:set-click-through-enabled', (_event, enabled) => setClickThroughEnabled(enabled));
+    ipcMain.on('yumiko:set-overlay-enabled', (_event, enabled) => setOverlayEnabled(enabled));
+    ipcMain.on('yumiko:complete-first-run', () => completeFirstRun());
 
     handleArgvForDeepLink(process.argv);
   });

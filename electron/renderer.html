@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yumiko Overlay</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: #121212;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    .bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      background: #1b1b1b;
+      border-bottom: 1px solid #2d2d2d;
+      gap: 8px;
+    }
+    .title { font-size: 13px; font-weight: 600; }
+    .panel-btn {
+      border: 1px solid #444;
+      background: #232323;
+      color: white;
+      border-radius: 8px;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .panel {
+      display: none;
+      background: #191919;
+      border-bottom: 1px solid #2d2d2d;
+      padding: 12px;
+    }
+    .panel.open { display: block; }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 13px;
+      gap: 12px;
+    }
+    .toggle-row label { flex: 1; }
+    .content {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+    }
+    iframe {
+      border: 0;
+      width: 100%;
+      height: 100%;
+      background: #121212;
+    }
+    .welcome {
+      position: absolute;
+      inset: 0;
+      background: #121212;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 12px;
+      padding: 18px;
+    }
+    .welcome h1 { margin: 0; font-size: 20px; }
+    .welcome p { margin: 0; color: #d1d1d1; font-size: 13px; line-height: 1.5; }
+    .welcome button {
+      border: 1px solid #4d4d4d;
+      background: #242424;
+      color: #fff;
+      border-radius: 10px;
+      padding: 10px;
+      cursor: pointer;
+      text-align: left;
+    }
+    .welcome .secondary {
+      text-align: center;
+      background: transparent;
+    }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <div class="title">Yumiko Overlay</div>
+    <button id="toggle-settings" class="panel-btn">Settings</button>
+  </div>
+
+  <div id="settings-panel" class="panel">
+    <div class="toggle-row">
+      <label for="overlay-enabled">Modo Overlay (Siempre arriba)</label>
+      <input id="overlay-enabled" type="checkbox" />
+    </div>
+    <div class="toggle-row">
+      <label for="click-through-enabled">Click-through (dejar pasar clicks)</label>
+      <input id="click-through-enabled" type="checkbox" />
+    </div>
+    <div class="toggle-row">
+      <label for="shortcuts-enabled">Atajos globales</label>
+      <input id="shortcuts-enabled" type="checkbox" />
+    </div>
+  </div>
+
+  <div class="content">
+    <div id="welcome" class="welcome" hidden>
+      <h1>Bienvenido a Yumiko Overlay</h1>
+      <p>
+        Esta app inicia en modo seguro: ventana normal, sin click-through y sin atajos globales.
+        Puedes activar opciones avanzadas cuando quieras.
+      </p>
+      <button id="welcome-overlay">Activar modo Overlay</button>
+      <button id="welcome-shortcuts">Activar atajos (opcional)</button>
+      <button id="welcome-clickthrough">Activar click-through (opcional)</button>
+      <button id="welcome-continue" class="secondary">Continuar</button>
+    </div>
+    <iframe id="widget" src="https://21-moon.com/widget/"></iframe>
+  </div>
+
+  <script src="./renderer.js"></script>
+</body>
+</html>
