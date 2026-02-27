@@ -92,7 +92,7 @@ jobs:
         run: |
           $assets = @(
             "Yumiko-Overlay-Setup.exe",
-            "Yumiko-Overlay-Windows.zip"
+            "Yumiko-Overlay-Setup.zip"
           )
 
           $checksums = @()
@@ -115,10 +115,9 @@ jobs:
         with:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
           files: |
-            electron/dist/Yumiko-Overlay-Setup.exe
-            electron/dist/Yumiko-Overlay-Windows.zip
-            electron/dist/Yumiko-Overlay-Setup.exe.sha256
-            electron/dist/Yumiko-Overlay-Windows.zip.sha256
+            electron/dist/*.exe
+            electron/dist/*.zip
+            electron/dist/*.sha256
             electron/dist/checksums.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
