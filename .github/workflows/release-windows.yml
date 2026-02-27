@@ -23,6 +23,10 @@ jobs:
       NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: 120000
       NPM_CONFIG_AUDIT: "false"
       NPM_CONFIG_FUND: "false"
+      WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
     defaults:
       run:
         working-directory: electron
@@ -57,12 +61,12 @@ jobs:
           }
 
       - name: Configure optional code signing
-        if: ${{ secrets.WIN_CSC_LINK != '' || secrets.CSC_LINK != '' }}
+        if: ${{ env.WIN_CSC_LINK != '' || env.CSC_LINK != '' }}
         shell: pwsh
         run: |
-          $link = "${{ secrets.WIN_CSC_LINK }}"
+          $link = "$env:WIN_CSC_LINK"
           if ([string]::IsNullOrWhiteSpace($link)) {
-            $link = "${{ secrets.CSC_LINK }}"
+            $link = "$env:CSC_LINK"
           }
 
           if (-not [string]::IsNullOrWhiteSpace($link)) {
@@ -71,12 +75,12 @@ jobs:
           }
 
       - name: Configure optional code signing password
-        if: ${{ secrets.WIN_CSC_KEY_PASSWORD != '' || secrets.CSC_KEY_PASSWORD != '' }}
+        if: ${{ env.WIN_CSC_KEY_PASSWORD != '' || env.CSC_KEY_PASSWORD != '' }}
         shell: pwsh
         run: |
-          $password = "${{ secrets.WIN_CSC_KEY_PASSWORD }}"
+          $password = "$env:WIN_CSC_KEY_PASSWORD"
           if ([string]::IsNullOrWhiteSpace($password)) {
-            $password = "${{ secrets.CSC_KEY_PASSWORD }}"
+            $password = "$env:CSC_KEY_PASSWORD"
           }
 
           if (-not [string]::IsNullOrWhiteSpace($password)) {
