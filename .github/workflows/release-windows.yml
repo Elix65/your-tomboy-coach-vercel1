@@ -12,6 +12,13 @@ permissions:
 jobs:
   build-and-release:
     runs-on: windows-latest
+    env:
+      NODE_OPTIONS: --dns-result-order=ipv4first
+      NPM_CONFIG_FETCH_RETRIES: 5
+      NPM_CONFIG_FETCH_RETRY_MINTIMEOUT: 20000
+      NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: 120000
+      NPM_CONFIG_AUDIT: "false"
+      NPM_CONFIG_FUND: "false"
     defaults:
       run:
         working-directory: electron
@@ -27,8 +34,23 @@ jobs:
           cache: npm
           cache-dependency-path: electron/package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Cache Electron and electron-builder
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ env.LOCALAPPDATA }}\electron\Cache
+            ${{ env.LOCALAPPDATA }}\electron-builder\Cache
+          key: ${{ runner.os }}-electron-cache-${{ hashFiles('electron/package-lock.json') }}
+
+      - name: Install dependencies (retry)
+        shell: pwsh
+        run: |
+          for ($i=1; $i -le 3; $i++) {
+            npm ci --no-audit --no-fund
+            if ($LASTEXITCODE -eq 0) { break }
+            if ($i -eq 3) { exit 1 }
+            Start-Sleep -Seconds (10 * $i)
+          }
 
       - name: Build Windows installer
         run: npm run build:win
