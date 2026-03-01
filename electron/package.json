@@ -40,9 +40,9 @@
     ],
     "win": {
       "target": [
-        "nsis"
-      ],
-      "artifactName": "Yumiko-Overlay-Setup.${ext}"
+        "nsis",
+        "zip"
+      ]
     },
     "publish": [
       {
@@ -51,7 +51,11 @@
     ],
     "nsis": {
       "perMachine": false,
-      "allowElevation": false
+      "allowElevation": false,
+      "artifactName": "Yumiko-Overlay-Setup.${ext}"
+    },
+    "zip": {
+      "artifactName": "Yumiko-Overlay-Portable.${ext}"
     }
   }
 }
