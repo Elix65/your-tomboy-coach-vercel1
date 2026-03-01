@@ -40,12 +40,15 @@
     ],
     "win": {
       "target": [
-        "nsis",
-        "zip"
+        "nsis"
       ],
       "artifactName": "Yumiko-Overlay-Setup.${ext}"
     },
-    "publish": null,
+    "publish": [
+      {
+        "provider": "github"
+      }
+    ],
     "nsis": {
       "perMachine": false,
       "allowElevation": false

@@ -27,3 +27,13 @@ El botón “Yumiko 100%” usa la constante `DOWNLOAD_URL` en `public/script.v2
 - Código fuente oficial: https://github.com/Elix65/your-tomboy-coach-vercel1
 - Si tu antivirus alerta, compará el hash del archivo descargado con el publicado en el release correspondiente.
 
+## Firma de código opcional para Windows (Authenticode)
+1. Generar un certificado de firma en formato `.pfx`/`.p12` (emitido por CA o de pruebas para entorno interno).
+2. Convertir el certificado a base64 para GitHub Actions:
+   - Linux/macOS: `base64 -w 0 cert.pfx > cert.pfx.base64`
+   - Windows PowerShell: `[Convert]::ToBase64String([IO.File]::ReadAllBytes(".\cert.pfx")) | Set-Content .\cert.pfx.base64`
+3. En GitHub → **Settings → Secrets and variables → Actions**, crear estos secrets del repositorio:
+   - `WIN_CSC_LINK`: contenido base64 del `.pfx`/`.p12` (o URL segura al certificado).
+   - `WIN_CSC_KEY_PASSWORD`: password del certificado.
+4. El workflow de release usa esos secrets solo si existen; si faltan, la build continúa sin firma.
+
