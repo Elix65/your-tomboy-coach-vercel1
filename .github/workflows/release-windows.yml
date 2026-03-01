@@ -23,10 +23,6 @@ jobs:
       NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: 120000
       NPM_CONFIG_AUDIT: "false"
       NPM_CONFIG_FUND: "false"
-      WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-      CSC_LINK: ${{ secrets.CSC_LINK }}
-      WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
     defaults:
       run:
         working-directory: electron
@@ -60,50 +56,88 @@ jobs:
             Start-Sleep -Seconds (10 * $i)
           }
 
-      - name: Validate optional code signing certificate
+      - name: Configure optional code signing certificate
         shell: pwsh
+        env:
+          SECRET_WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          SECRET_CSC_LINK: ${{ secrets.CSC_LINK }}
+          SECRET_WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+          SECRET_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
         run: |
-          $link = "$env:WIN_CSC_LINK"
-          if ([string]::IsNullOrWhiteSpace($link)) {
-            $link = "$env:CSC_LINK"
+          function Test-ValidCertLink {
+            param([string]$Link)
+
+            if ([string]::IsNullOrWhiteSpace($Link)) {
+              return $false
+            }
+
+            $isHttpUrl = $false
+            try {
+              $uri = [System.Uri]$Link
+              $isHttpUrl = $uri.IsAbsoluteUri -and ($uri.Scheme -in @('http', 'https'))
+            } catch {
+              $isHttpUrl = $false
+            }
+
+            if ($isHttpUrl) {
+              return $true
+            }
+
+            $resolvedPath = Resolve-Path -LiteralPath $Link -ErrorAction SilentlyContinue
+            if (-not $resolvedPath) {
+              return $false
+            }
+
+            $item = Get-Item -LiteralPath $resolvedPath.Path -ErrorAction SilentlyContinue
+            if (-not $item -or $item.PSIsContainer) {
+              return $false
+            }
+
+            return [System.IO.Path]::GetExtension($item.Name).ToLower() -in @('.p12', '.pfx')
           }
 
-          if ([string]::IsNullOrWhiteSpace($link)) {
-            Write-Host "Code signing disabled (no valid certificate provided)."
+          function Clear-SigningEnv {
             "WIN_CSC_LINK=" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
             "CSC_LINK=" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
             "WIN_CSC_KEY_PASSWORD=" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
             "CSC_KEY_PASSWORD=" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+
+          # If ambient signing vars are present but invalid, clear them.
+          $ambientLink = if (-not [string]::IsNullOrWhiteSpace($env:WIN_CSC_LINK)) { $env:WIN_CSC_LINK } else { $env:CSC_LINK }
+          if (-not [string]::IsNullOrWhiteSpace($ambientLink) -and -not (Test-ValidCertLink -Link $ambientLink)) {
+            Write-Host "Clearing invalid ambient signing environment variables."
+            Clear-SigningEnv
+          }
+
+          # Only configure signing from real certificate secrets.
+          $secretLink = if (-not [string]::IsNullOrWhiteSpace($env:SECRET_WIN_CSC_LINK)) { $env:SECRET_WIN_CSC_LINK } else { $env:SECRET_CSC_LINK }
+          if ([string]::IsNullOrWhiteSpace($secretLink)) {
+            Write-Host "Code signing disabled (no certificate secret configured)."
+            Clear-SigningEnv
             exit 0
           }
 
-          $isHttpUrl = $false
-          try {
-            $uri = [System.Uri]$link
-            $isHttpUrl = $uri.IsAbsoluteUri -and ($uri.Scheme -in @('http', 'https'))
-          } catch {
-            $isHttpUrl = $false
+          if (-not (Test-ValidCertLink -Link $secretLink)) {
+            Write-Host "Code signing disabled (certificate secret is invalid)."
+            Clear-SigningEnv
+            exit 0
           }
 
-          $isLeafCertFile = $false
-          if (-not $isHttpUrl) {
-            $resolvedPath = Resolve-Path -LiteralPath $link -ErrorAction SilentlyContinue
-            if ($resolvedPath) {
-              $item = Get-Item -LiteralPath $resolvedPath.Path -ErrorAction SilentlyContinue
-              if ($item -and -not $item.PSIsContainer) {
-                $extension = [System.IO.Path]::GetExtension($item.Name)
-                $isLeafCertFile = $extension -in @('.p12', '.pfx')
-              }
-            }
+          if (-not [string]::IsNullOrWhiteSpace($env:SECRET_WIN_CSC_LINK)) {
+            "WIN_CSC_LINK=$($env:SECRET_WIN_CSC_LINK)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+          if (-not [string]::IsNullOrWhiteSpace($env:SECRET_CSC_LINK)) {
+            "CSC_LINK=$($env:SECRET_CSC_LINK)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+          if (-not [string]::IsNullOrWhiteSpace($env:SECRET_WIN_CSC_KEY_PASSWORD)) {
+            "WIN_CSC_KEY_PASSWORD=$($env:SECRET_WIN_CSC_KEY_PASSWORD)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          }
+          if (-not [string]::IsNullOrWhiteSpace($env:SECRET_CSC_KEY_PASSWORD)) {
+            "CSC_KEY_PASSWORD=$($env:SECRET_CSC_KEY_PASSWORD)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           }
 
-          if (-not $isHttpUrl -and -not $isLeafCertFile) {
-            Write-Host "Code signing disabled (no valid certificate provided)."
-            "WIN_CSC_LINK=" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-            "CSC_LINK=" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-            "WIN_CSC_KEY_PASSWORD=" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-            "CSC_KEY_PASSWORD=" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          }
+          Write-Host "Code signing enabled from configured certificate secret."
 
       - name: Build Windows installer
         run: npm run build:win
