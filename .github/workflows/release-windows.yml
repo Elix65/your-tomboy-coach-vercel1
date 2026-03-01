@@ -57,12 +57,9 @@ jobs:
           }
 
       - name: Build Windows installer
+        working-directory: electron
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-          WIN_CSC_LINK: ""
-          CSC_LINK: ""
-          WIN_CSC_KEY_PASSWORD: ""
-          CSC_KEY_PASSWORD: ""
         run: npm run build:win
 
       - name: Build portable ZIP from win-unpacked
