@@ -1,3 +1,6 @@
 
 node_modules/
-
+dist/
+electron/dist/
+*.exe
+*.zip
