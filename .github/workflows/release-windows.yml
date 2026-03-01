@@ -56,36 +56,43 @@ jobs:
             Start-Sleep -Seconds (10 * $i)
           }
 
-      - name: Build Windows installer
-        working-directory: electron
+      - name: Build Windows artifacts (NSIS + ZIP)
         shell: pwsh
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-        run: |
-          if ('${{ secrets.WIN_CSC_LINK }}') {
-            $env:WIN_CSC_LINK = '${{ secrets.WIN_CSC_LINK }}'
-          }
+        run: npm run build:win
 
-          if ('${{ secrets.WIN_CSC_KEY_PASSWORD }}') {
-            $env:WIN_CSC_KEY_PASSWORD = '${{ secrets.WIN_CSC_KEY_PASSWORD }}'
-          }
-
-          npm run build:win
-
-      - name: Build portable ZIP from win-unpacked
+      - name: Normalize artifact names
         shell: pwsh
         run: |
-          $portableSource = Join-Path "dist" "win-unpacked"
-          if (-not (Test-Path $portableSource)) {
-            throw "Missing expected portable folder: $portableSource"
+          $distDir = "dist"
+          $setupDest = Join-Path $distDir "Yumiko-Overlay-Setup.exe"
+          $portableDest = Join-Path $distDir "Yumiko-Overlay-Portable.zip"
+
+          $setupCandidate = Get-ChildItem -Path $distDir -Filter "*.exe" -File |
+            Where-Object { $_.Name -notlike "*uninstaller*" } |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+          if (-not $setupCandidate) {
+            throw "Missing setup .exe artifact in $distDir"
           }
 
-          $portableZip = Join-Path "dist" "Yumiko-Overlay-Portable.zip"
-          if (Test-Path $portableZip) {
-            Remove-Item $portableZip -Force
+          if ($setupCandidate.Name -ne "Yumiko-Overlay-Setup.exe") {
+            Move-Item -Path $setupCandidate.FullName -Destination $setupDest -Force
           }
 
-          Compress-Archive -Path "$portableSource\*" -DestinationPath $portableZip
+          $portableCandidate = Get-ChildItem -Path $distDir -Filter "*.zip" -File |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1
+
+          if (-not $portableCandidate) {
+            throw "Missing portable .zip artifact in $distDir"
+          }
+
+          if ($portableCandidate.Name -ne "Yumiko-Overlay-Portable.zip") {
+            Move-Item -Path $portableCandidate.FullName -Destination $portableDest -Force
+          }
 
       - name: Generate SHA256 for setup
         shell: pwsh
@@ -99,7 +106,20 @@ jobs:
           $hash = (Get-FileHash -Algorithm SHA256 -Path $setupPath).Hash.ToLower()
           Set-Content -Path "$setupPath.sha256" -Value "$hash  $setupAsset" -NoNewline
 
-      - name: Upload installer to release
+      - name: Verify output artifacts
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path dist | Format-Table Name, Length, LastWriteTime -AutoSize
+
+          if (-not (Test-Path "dist/Yumiko-Overlay-Setup.exe")) {
+            throw "Missing dist/Yumiko-Overlay-Setup.exe"
+          }
+
+          if (-not (Test-Path "dist/Yumiko-Overlay-Portable.zip")) {
+            throw "Missing dist/Yumiko-Overlay-Portable.zip"
+          }
+
+      - name: Upload artifacts to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tag }}
