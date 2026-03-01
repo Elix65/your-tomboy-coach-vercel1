@@ -34,6 +34,7 @@ const AUDIO_OVERLAY_ID = "audio-overlay";
 const AUDIO_PANEL_DEBUG = Boolean(window.__AUDIO_PANEL_DEBUG__);
 
 const DOWNLOAD_URL = "https://github.com/Elix65/your-tomboy-coach-vercel1/releases/latest/download/Yumiko-Overlay-Setup.exe";
+const RELEASES_URL = "https://github.com/Elix65/your-tomboy-coach-vercel1/releases/latest";
 
 function syncYumiko100Visibility() {
   if (!btnYumiko100) return;
@@ -78,6 +79,7 @@ function showYumikoDownloadModal(message) {
   actions.style.display = "flex";
   actions.style.gap = "10px";
   actions.style.flexWrap = "wrap";
+  let fallbackText = null;
 
   const closeBtn = document.createElement("button");
   closeBtn.className = "top-btn";
@@ -94,9 +96,27 @@ function showYumikoDownloadModal(message) {
     downloadBtn.rel = "noopener noreferrer";
     downloadBtn.textContent = "Descargar Yumiko Overlay (Windows)";
     actions.appendChild(downloadBtn);
+
+    fallbackText = document.createElement("p");
+    fallbackText.style.margin = "10px 0 0";
+    fallbackText.style.fontSize = "0.92rem";
+    fallbackText.style.opacity = "0.9";
+    fallbackText.textContent = "Si falla la descarga directa: ";
+
+    const fallbackLink = document.createElement("a");
+    fallbackLink.href = RELEASES_URL;
+    fallbackLink.target = "_blank";
+    fallbackLink.rel = "noopener noreferrer";
+    fallbackLink.textContent = "ver última release";
+
+    fallbackText.appendChild(fallbackLink);
   }
 
-  card.append(title, paragraph, actions);
+  if (fallbackText) {
+    card.append(title, paragraph, actions, fallbackText);
+  } else {
+    card.append(title, paragraph, actions);
+  }
   modal.appendChild(card);
   modal.addEventListener("click", (event) => {
     if (event.target === modal) closeYumikoDownloadModal(modal);
