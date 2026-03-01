@@ -15,6 +15,11 @@ const welcomeContinue = document.getElementById('welcome-continue');
 const localWidget = document.getElementById('local-widget');
 const localMode = document.getElementById('local-mode');
 const localTitle = document.getElementById('local-title');
+const yumikoImage = document.getElementById('yumiko-image');
+const yumikoFallback = document.getElementById('yumiko-fallback');
+const statusMessage = document.getElementById('status-message');
+
+const YUMIKO_IMAGE_URL = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/hi-4.png';
 
 function applyLocalMode(mode) {
   const normalizedMode = mode === 'focus' ? 'focus' : 'chat';
@@ -50,7 +55,11 @@ toggleSettingsButton.addEventListener('click', () => {
 });
 
 quitAppButton.addEventListener('click', () => {
-  window.yumikoOverlay.quit();
+  if (typeof window.yumikoOverlay?.closeWindow === 'function') {
+    window.yumikoOverlay.closeWindow();
+    return;
+  }
+  window.close();
 });
 
 overlayToggle.addEventListener('change', () => {
@@ -84,5 +93,41 @@ welcomeContinue.addEventListener('click', () => {
   completeWelcome();
 });
 
-window.yumikoOverlay.getState().then(syncUI);
+
+
+function setSafeModeMessage(message) {
+  statusMessage.textContent = `Estado: ${message}`;
+}
+
+function showSafeFallback(reason) {
+  yumikoImage.hidden = true;
+  yumikoFallback.classList.add('visible');
+  setSafeModeMessage(`Modo seguro (${reason})`);
+}
+
+function renderYumikoImage() {
+  yumikoImage.src = YUMIKO_IMAGE_URL;
+
+  yumikoImage.addEventListener('load', () => {
+    yumikoImage.hidden = false;
+    yumikoFallback.classList.remove('visible');
+    setSafeModeMessage('conectado.');
+  });
+
+  yumikoImage.addEventListener('error', () => {
+    showSafeFallback('imagen no disponible');
+  });
+}
+
+async function verifySafeMode() {
+  try {
+    const state = await window.yumikoOverlay.getState();
+    syncUI(state);
+  } catch {
+    showSafeFallback('sin backend');
+  }
+}
+
+renderYumikoImage();
+verifySafeMode();
 window.yumikoOverlay.onStateUpdated(syncUI);
