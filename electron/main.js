@@ -324,6 +324,10 @@ if (!singleInstance) {
     ipcMain.on('yumiko:set-click-through-enabled', (_event, enabled) => setClickThroughEnabled(enabled));
     ipcMain.on('yumiko:set-overlay-enabled', (_event, enabled) => setOverlayEnabled(enabled));
     ipcMain.on('yumiko:complete-first-run', () => completeFirstRun());
+    ipcMain.on('yumiko:close-window', () => {
+      if (!win || win.isDestroyed()) return;
+      win.close();
+    });
     ipcMain.on('yumiko:quit', quitApp);
 
     handleArgvForDeepLink(process.argv);
