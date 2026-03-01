@@ -60,8 +60,7 @@ jobs:
             Start-Sleep -Seconds (10 * $i)
           }
 
-      - name: Configure optional code signing
-        if: ${{ env.WIN_CSC_LINK != '' || env.CSC_LINK != '' }}
+      - name: Validate optional code signing certificate
         shell: pwsh
         run: |
           $link = "$env:WIN_CSC_LINK"
@@ -69,23 +68,41 @@ jobs:
             $link = "$env:CSC_LINK"
           }
 
-          if (-not [string]::IsNullOrWhiteSpace($link)) {
-            "WIN_CSC_LINK=$link" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-            "CSC_LINK=$link" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          if ([string]::IsNullOrWhiteSpace($link)) {
+            Write-Host "Code signing disabled (no valid certificate provided)."
+            "WIN_CSC_LINK=" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            "CSC_LINK=" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            "WIN_CSC_KEY_PASSWORD=" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            "CSC_KEY_PASSWORD=" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            exit 0
           }
 
-      - name: Configure optional code signing password
-        if: ${{ env.WIN_CSC_KEY_PASSWORD != '' || env.CSC_KEY_PASSWORD != '' }}
-        shell: pwsh
-        run: |
-          $password = "$env:WIN_CSC_KEY_PASSWORD"
-          if ([string]::IsNullOrWhiteSpace($password)) {
-            $password = "$env:CSC_KEY_PASSWORD"
+          $isHttpUrl = $false
+          try {
+            $uri = [System.Uri]$link
+            $isHttpUrl = $uri.IsAbsoluteUri -and ($uri.Scheme -in @('http', 'https'))
+          } catch {
+            $isHttpUrl = $false
           }
 
-          if (-not [string]::IsNullOrWhiteSpace($password)) {
-            "WIN_CSC_KEY_PASSWORD=$password" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-            "CSC_KEY_PASSWORD=$password" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $isLeafCertFile = $false
+          if (-not $isHttpUrl) {
+            $resolvedPath = Resolve-Path -LiteralPath $link -ErrorAction SilentlyContinue
+            if ($resolvedPath) {
+              $item = Get-Item -LiteralPath $resolvedPath.Path -ErrorAction SilentlyContinue
+              if ($item -and -not $item.PSIsContainer) {
+                $extension = [System.IO.Path]::GetExtension($item.Name)
+                $isLeafCertFile = $extension -in @('.p12', '.pfx')
+              }
+            }
+          }
+
+          if (-not $isHttpUrl -and -not $isLeafCertFile) {
+            Write-Host "Code signing disabled (no valid certificate provided)."
+            "WIN_CSC_LINK=" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            "CSC_LINK=" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            "WIN_CSC_KEY_PASSWORD=" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+            "CSC_KEY_PASSWORD=" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
           }
 
       - name: Build Windows installer
