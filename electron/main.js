@@ -11,7 +11,6 @@ const {
   screen
 } = require('electron');
 
-const OVERLAY_URL = 'https://21-moon.com/widget/';
 const DEFAULT_BOUNDS = { width: 420, height: 260 };
 const SETTINGS_FILE = 'settings.json';
 
@@ -31,8 +30,14 @@ const defaultSettings = {
 
 const SHORTCUTS = {
   toggleVisible: 'CommandOrControl+Shift+Y',
-  toggleMode: 'CommandOrControl+Shift+M'
+  toggleMode: 'CommandOrControl+Shift+M',
+  forceQuit: 'CommandOrControl+Shift+Q'
 };
+
+function quitApp() {
+  isQuitting = true;
+  app.quit();
+}
 
 function settingsPath() {
   return path.join(app.getPath('userData'), SETTINGS_FILE);
@@ -111,6 +116,9 @@ function setMode(mode, { fromRenderer = false } = {}) {
 function updateGlobalShortcuts() {
   globalShortcut.unregister(SHORTCUTS.toggleVisible);
   globalShortcut.unregister(SHORTCUTS.toggleMode);
+  globalShortcut.unregister(SHORTCUTS.forceQuit);
+
+  globalShortcut.register(SHORTCUTS.forceQuit, quitApp);
 
   if (!settings.shortcutsEnabled) {
     return;
@@ -198,7 +206,7 @@ function refreshTrayMenu() {
       click: (item) => setShortcutsEnabled(item.checked)
     },
     { type: 'separator' },
-    { label: 'Quit', click: () => { isQuitting = true; app.quit(); } }
+    { label: 'Quit', click: quitApp }
   ]);
   tray.setContextMenu(contextMenu);
 }
@@ -316,6 +324,7 @@ if (!singleInstance) {
     ipcMain.on('yumiko:set-click-through-enabled', (_event, enabled) => setClickThroughEnabled(enabled));
     ipcMain.on('yumiko:set-overlay-enabled', (_event, enabled) => setOverlayEnabled(enabled));
     ipcMain.on('yumiko:complete-first-run', () => completeFirstRun());
+    ipcMain.on('yumiko:quit', quitApp);
 
     handleArgvForDeepLink(process.argv);
   });

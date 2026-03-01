@@ -1,43 +1,67 @@
 <!doctype html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data:; script-src 'self'; style-src 'self' 'unsafe-inline';" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yumiko Overlay</title>
   <style>
     * { box-sizing: border-box; }
-    body {
+    html, body {
+      width: 100%;
+      height: 100%;
       margin: 0;
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: #121212;
-      color: #fff;
+      overflow: hidden;
+      background: #0f0f12;
+      color: #f5f6fb;
+      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
+    }
+    body {
       display: flex;
       flex-direction: column;
-      height: 100vh;
+      border: 1px solid #292a30;
+      border-radius: 14px;
     }
     .bar {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 10px 12px;
-      background: #1b1b1b;
-      border-bottom: 1px solid #2d2d2d;
+      justify-content: space-between;
       gap: 8px;
+      padding: 8px 10px;
+      background: #17181d;
+      border-bottom: 1px solid #2d2d32;
+      -webkit-app-region: drag;
     }
-    .title { font-size: 13px; font-weight: 600; }
+    .title {
+      font-weight: 600;
+      font-size: 12px;
+      letter-spacing: 0.02em;
+    }
+    .actions {
+      display: flex;
+      gap: 8px;
+      -webkit-app-region: no-drag;
+    }
     .panel-btn {
-      border: 1px solid #444;
-      background: #232323;
-      color: white;
+      border: 1px solid #3a3b44;
+      background: #22242c;
+      color: #f6f6f7;
       border-radius: 8px;
       padding: 6px 10px;
       cursor: pointer;
       font-size: 12px;
+      line-height: 1;
+    }
+    .close-btn {
+      width: 28px;
+      padding: 6px 0;
+      text-align: center;
+      font-weight: 700;
     }
     .panel {
       display: none;
-      background: #191919;
-      border-bottom: 1px solid #2d2d2d;
+      background: #191a20;
+      border-bottom: 1px solid #2d2d32;
       padding: 12px;
     }
     .panel.open { display: block; }
@@ -54,25 +78,61 @@
       position: relative;
       flex: 1;
       min-height: 0;
+      display: flex;
+      padding: 14px;
+      background: radial-gradient(circle at top right, #1f2230 0%, #121318 42%, #0d0e12 100%);
     }
-    iframe {
-      border: 0;
+    .local-widget {
       width: 100%;
-      height: 100%;
-      background: #121212;
+      border-radius: 14px;
+      border: 1px solid #353744;
+      background: rgba(17, 19, 26, 0.78);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px;
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    }
+    .local-widget.focus {
+      border-color: #6c90ff;
+      box-shadow: 0 8px 28px rgba(83, 130, 255, 0.24);
+    }
+    .local-image {
+      width: min(100%, 240px);
+      max-height: 120px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 1px solid #434657;
+    }
+    .local-mode {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #9ca3b4;
+      margin: 0;
+    }
+    .local-title {
+      font-size: 17px;
+      line-height: 1.25;
+      font-weight: 600;
+      margin: 0;
     }
     .welcome {
       position: absolute;
       inset: 0;
-      background: #121212;
+      background: rgba(11, 12, 17, 0.92);
+      backdrop-filter: blur(2px);
       z-index: 5;
       display: flex;
       flex-direction: column;
       justify-content: center;
-      gap: 12px;
+      gap: 10px;
       padding: 18px;
     }
-    .welcome h1 { margin: 0; font-size: 20px; }
+    .welcome h1 { margin: 0; font-size: 18px; }
     .welcome p { margin: 0; color: #d1d1d1; font-size: 13px; line-height: 1.5; }
     .welcome button {
       border: 1px solid #4d4d4d;
@@ -92,7 +152,10 @@
 <body>
   <div class="bar">
     <div class="title">Yumiko Overlay</div>
-    <button id="toggle-settings" class="panel-btn">Settings</button>
+    <div class="actions">
+      <button id="toggle-settings" class="panel-btn">Settings</button>
+      <button id="quit-app" class="panel-btn close-btn" aria-label="Cerrar app">X</button>
+    </div>
   </div>
 
   <div id="settings-panel" class="panel">
@@ -122,7 +185,17 @@
       <button id="welcome-clickthrough">Activar click-through (opcional)</button>
       <button id="welcome-continue" class="secondary">Continuar</button>
     </div>
-    <iframe id="widget" src="https://21-moon.com/widget/"></iframe>
+
+    <div id="local-widget" class="local-widget" data-mode="chat">
+      <img
+        id="yumiko-image"
+        class="local-image"
+        src="https://images.unsplash.com/photo-1544717302-de2939b7ef71?auto=format&fit=crop&w=900&q=80"
+        alt="Ilustración preliminar de Yumiko"
+      />
+      <p id="local-mode" class="local-mode">Modo chat</p>
+      <p id="local-title" class="local-title">Yumiko está despertando…</p>
+    </div>
   </div>
 
   <script src="./renderer.js"></script>
