@@ -48,11 +48,31 @@ jobs:
             Start-Sleep -Seconds (10 * $i)
           }
 
-      - name: Build Windows installer
+      - name: Build Windows artifacts (NSIS + ZIP)
         run: npm run build:win
 
-      - name: Upload installer artifact
+      - name: Verify NSIS + ZIP artifacts
+        shell: pwsh
+        run: |
+          Get-ChildItem -Path dist | Format-Table Name, Length, LastWriteTime -AutoSize
+
+          $setupArtifact = Get-ChildItem -Path dist -Filter "*.exe" -File |
+            Where-Object { $_.Name -notlike "*uninstaller*" } |
+            Select-Object -First 1
+          if (-not $setupArtifact) {
+            throw "Missing NSIS setup artifact (.exe)"
+          }
+
+          $zipArtifact = Get-ChildItem -Path dist -Filter "*.zip" -File |
+            Select-Object -First 1
+          if (-not $zipArtifact) {
+            throw "Missing ZIP artifact (.zip)"
+          }
+
+      - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: yumiko-overlay-windows-installer
-          path: electron/dist/Yumiko-Overlay-Setup.exe
+          name: yumiko-overlay-windows
+          path: |
+            electron/dist/*.exe
+            electron/dist/*.zip

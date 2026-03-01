@@ -31,8 +31,42 @@ const defaultSettings = {
 const SHORTCUTS = {
   toggleVisible: 'CommandOrControl+Shift+Y',
   toggleMode: 'CommandOrControl+Shift+M',
-  forceQuit: 'CommandOrControl+Shift+Q'
+  forceQuit: 'CommandOrControl+Shift+Q',
+  panicSafeMode: 'CommandOrControl+Alt+Shift+S'
 };
+
+function shouldForceInteractiveStartup() {
+  return settings.visible || !settings.hasCompletedFirstRun;
+}
+
+function ensureInteractiveStartup() {
+  if (!shouldForceInteractiveStartup()) return;
+  if (settings.clickThroughEnabled) {
+    settings.clickThroughEnabled = false;
+    writeSettings();
+  }
+  if (win && !win.isDestroyed()) {
+    win.setIgnoreMouseEvents(false);
+  }
+}
+
+function panicDisableOverlayAndClickThrough() {
+  settings.clickThroughEnabled = false;
+  settings.overlayEnabled = false;
+  writeSettings();
+
+  if (win && !win.isDestroyed()) {
+    win.setIgnoreMouseEvents(false);
+    win.setAlwaysOnTop(false);
+    if (!win.isVisible()) {
+      win.show();
+    }
+    win.focus();
+  }
+
+  broadcastState();
+  refreshTrayMenu();
+}
 
 function quitApp() {
   isQuitting = true;
@@ -117,8 +151,10 @@ function updateGlobalShortcuts() {
   globalShortcut.unregister(SHORTCUTS.toggleVisible);
   globalShortcut.unregister(SHORTCUTS.toggleMode);
   globalShortcut.unregister(SHORTCUTS.forceQuit);
+  globalShortcut.unregister(SHORTCUTS.panicSafeMode);
 
   globalShortcut.register(SHORTCUTS.forceQuit, quitApp);
+  globalShortcut.register(SHORTCUTS.panicSafeMode, panicDisableOverlayAndClickThrough);
 
   if (!settings.shortcutsEnabled) {
     return;
@@ -205,6 +241,10 @@ function refreshTrayMenu() {
       checked: Boolean(settings.shortcutsEnabled),
       click: (item) => setShortcutsEnabled(item.checked)
     },
+    {
+      label: 'Panic safe mode (Ctrl+Alt+Shift+S)',
+      click: panicDisableOverlayAndClickThrough
+    },
     { type: 'separator' },
     { label: 'Quit', click: quitApp }
   ]);
@@ -250,6 +290,8 @@ function handleArgvForDeepLink(argv = []) {
 }
 
 function createWindow() {
+  ensureInteractiveStartup();
+
   const bounds = getInitialBounds();
   win = new BrowserWindow({
     ...bounds,
@@ -291,6 +333,7 @@ function createWindow() {
   });
 
   win.webContents.on('did-finish-load', () => {
+    ensureInteractiveStartup();
     if (!settings.visible) {
       win.hide();
     }
