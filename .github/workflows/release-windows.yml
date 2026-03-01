@@ -56,33 +56,21 @@ jobs:
             Start-Sleep -Seconds (10 * $i)
           }
 
-      - name: Configure Authenticode signing env (optional)
-        shell: pwsh
-        env:
-          SECRET_WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          SECRET_CSC_LINK: ${{ secrets.CSC_LINK }}
-          SECRET_WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
-          SECRET_CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
-        run: |
-          if ($env:SECRET_WIN_CSC_LINK) {
-            "WIN_CSC_LINK=$($env:SECRET_WIN_CSC_LINK)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          }
-          elseif ($env:SECRET_CSC_LINK) {
-            "CSC_LINK=$($env:SECRET_CSC_LINK)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          }
-
-          if ($env:SECRET_WIN_CSC_KEY_PASSWORD) {
-            "WIN_CSC_KEY_PASSWORD=$($env:SECRET_WIN_CSC_KEY_PASSWORD)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          }
-          elseif ($env:SECRET_CSC_KEY_PASSWORD) {
-            "CSC_KEY_PASSWORD=$($env:SECRET_CSC_KEY_PASSWORD)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          }
-
       - name: Build Windows installer
         working-directory: electron
+        shell: pwsh
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-        run: npm run build:win
+        run: |
+          if ('${{ secrets.WIN_CSC_LINK }}') {
+            $env:WIN_CSC_LINK = '${{ secrets.WIN_CSC_LINK }}'
+          }
+
+          if ('${{ secrets.WIN_CSC_KEY_PASSWORD }}') {
+            $env:WIN_CSC_KEY_PASSWORD = '${{ secrets.WIN_CSC_KEY_PASSWORD }}'
+          }
+
+          npm run build:win
 
       - name: Build portable ZIP from win-unpacked
         shell: pwsh
