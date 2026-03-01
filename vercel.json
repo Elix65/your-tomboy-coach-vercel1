@@ -1,6 +1,9 @@
 {
   "cleanUrls": true,
   "rewrites": [
+    { "source": "/widget", "destination": "/widget/index.html" },
+    { "source": "/widget/", "destination": "/widget/index.html" },
+    { "source": "/widget/(.*)", "destination": "/widget/$1" },
     { "source": "/", "destination": "/index.html" },
     { "source": "/api/yumiko", "destination": "/api/router?action=yumiko" },
     { "source": "/api/regenerate-last", "destination": "/api/router?action=regenerate-last" },
