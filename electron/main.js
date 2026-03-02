@@ -1,5 +1,6 @@
 const path = require('node:path');
 const fs = require('node:fs');
+const crypto = require('node:crypto');
 const {
   app,
   BrowserWindow,
@@ -11,9 +12,11 @@ const {
   screen
 } = require('electron');
 const chatClient = require('./chatClient');
+const keytar = require('keytar');
 
 const DEFAULT_BOUNDS = { width: 560, height: 380 };
 const SETTINGS_FILE = 'settings.json';
+const KEYTAR_SERVICE = 'yumiko-overlay';
 
 let tray;
 let win;
@@ -28,8 +31,10 @@ const defaultSettings = {
   bounds: null,
   hasCompletedFirstRun: false,
   chatBaseUrl: process.env.YUMIKO_CHAT_URL || 'https://21-moon.com',
-  // TODO(security): move authToken storage to OS keychain (keytar) before production rollout.
-  authToken: '',
+  deviceId: '',
+  deviceName: '',
+  overlayAccessToken: '',
+  overlayAccountEmail: '',
   conversationId: ''
 };
 
@@ -96,6 +101,142 @@ let settings = readSettings();
 function writeSettings() {
   fs.mkdirSync(app.getPath('userData'), { recursive: true });
   fs.writeFileSync(settingsPath(), JSON.stringify(settings, null, 2));
+}
+
+function ensureDeviceIdentity() {
+  if (!settings.deviceId) {
+    settings.deviceId = crypto.randomUUID();
+  }
+  if (!settings.deviceName) {
+    settings.deviceName = `${app.getName()}-${process.platform}`;
+  }
+}
+
+async function saveRefreshToken(token) {
+  await keytar.setPassword(KEYTAR_SERVICE, settings.deviceId, token);
+}
+
+async function readRefreshToken() {
+  return keytar.getPassword(KEYTAR_SERVICE, settings.deviceId);
+}
+
+async function clearRefreshToken() {
+  await keytar.deletePassword(KEYTAR_SERVICE, settings.deviceId);
+}
+
+function applyExchangeResponse(data = {}) {
+  settings.overlayAccessToken = typeof data?.access_token === 'string' ? data.access_token : '';
+  settings.overlayAccountEmail = typeof data?.email === 'string' ? data.email : '';
+  settings.visible = true;
+  writeSettings();
+  broadcastState();
+}
+
+async function exchangePairingCode(code) {
+  const exchangeUrl = `${settings.chatBaseUrl.replace(/\/$/, '')}/api/overlay/link/exchange`;
+  const response = await fetch(exchangeUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      code,
+      device_id: settings.deviceId,
+      device_name: settings.deviceName,
+      app_version: app.getVersion()
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Pairing exchange failed (HTTP ${response.status})`);
+  }
+
+  const data = await response.json();
+  if (typeof data?.refresh_token !== 'string' || !data.refresh_token) {
+    throw new Error('Pairing exchange response missing refresh_token');
+  }
+  await saveRefreshToken(data.refresh_token);
+  applyExchangeResponse(data);
+}
+
+async function refreshOverlayAccessToken() {
+  const refreshToken = await readRefreshToken();
+  if (!refreshToken) {
+    const error = new Error('No refresh token stored for this device');
+    error.code = 'AUTH_MISSING';
+    throw error;
+  }
+
+  const refreshUrl = `${settings.chatBaseUrl.replace(/\/$/, '')}/api/overlay/token/refresh`;
+  const response = await fetch(refreshUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      refresh_token: refreshToken,
+      device_id: settings.deviceId,
+      device_name: settings.deviceName,
+      app_version: app.getVersion()
+    })
+  });
+
+  if (!response.ok) {
+    const error = new Error(`Token refresh failed (HTTP ${response.status})`);
+    error.code = response.status === 401 ? 'AUTH_INVALID' : 'AUTH_REFRESH_FAILED';
+    throw error;
+  }
+
+  const data = await response.json();
+  if (typeof data?.refresh_token === 'string' && data.refresh_token) {
+    await saveRefreshToken(data.refresh_token);
+  }
+  applyExchangeResponse({
+    access_token: data?.access_token,
+    email: data?.email || settings.overlayAccountEmail
+  });
+  return settings.overlayAccessToken;
+}
+
+function isAuthRetryableError(error) {
+  return error?.code === 'AUTH_INVALID' || error?.status === 401;
+}
+
+async function withOverlayAccessToken(requestFn) {
+  let token = settings.overlayAccessToken;
+  if (!token) {
+    token = await refreshOverlayAccessToken();
+  }
+
+  try {
+    return await requestFn(token);
+  } catch (error) {
+    if (!isAuthRetryableError(error)) {
+      throw error;
+    }
+    const refreshedToken = await refreshOverlayAccessToken();
+    return requestFn(refreshedToken);
+  }
+}
+
+async function disconnectOverlayDevice() {
+  const revokeUrl = `${settings.chatBaseUrl.replace(/\/$/, '')}/api/overlay/revoke-device`;
+  try {
+    if (settings.overlayAccessToken) {
+      await fetch(revokeUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${settings.overlayAccessToken}`
+        },
+        body: JSON.stringify({ device_id: settings.deviceId })
+      });
+    }
+  } catch (error) {
+    console.warn('[yumiko][auth] revoke-device request failed', error);
+  }
+
+  await clearRefreshToken();
+  settings.overlayAccessToken = '';
+  settings.overlayAccountEmail = '';
+  writeSettings();
+  broadcastState();
 }
 
 function getDefaultPosition() {
@@ -298,15 +439,18 @@ function handleDeepLink(rawUrl) {
     const parsed = new URL(rawUrl);
     const hostAction = parsed.hostname;
     if (hostAction === 'auth') {
-      const token = parsed.searchParams.get('token')?.trim();
-      if (token) {
-        settings.authToken = token;
-        settings.visible = true;
-        writeSettings();
-        console.info('[yumiko][auth] token updated from deeplink');
-      }
-      if (win && !win.isDestroyed()) {
-        win.showInactive();
+      const code = parsed.searchParams.get('code')?.trim();
+      if (code) {
+        exchangePairingCode(code)
+          .then(() => {
+            console.info('[yumiko][auth] pairing code exchanged from deeplink');
+            if (win && !win.isDestroyed()) {
+              win.showInactive();
+            }
+          })
+          .catch((error) => {
+            console.error('[yumiko][auth] pairing exchange failed:', error);
+          });
       }
     } else if (hostAction === 'open') {
       showAndFocusChat();
@@ -413,6 +557,8 @@ if (!singleInstance) {
 
   app.whenReady().then(() => {
     app.setAsDefaultProtocolClient('yumiko');
+    ensureDeviceIdentity();
+    writeSettings();
 
     createWindow();
     createTray();
@@ -421,10 +567,10 @@ if (!singleInstance) {
     ipcMain.handle('yumiko:get-state', () => settings);
     ipcMain.handle('yumiko:chat-history', async () => {
       try {
-        return await chatClient.fetchHistory({
+        return await withOverlayAccessToken((overlayAccessToken) => chatClient.fetchHistory({
           baseUrl: settings.chatBaseUrl,
-          token: settings.authToken
-        });
+          overlayAccessToken
+        }));
       } catch (error) {
         logAuthIssue('chat-history', error);
         throw error;
@@ -437,16 +583,20 @@ if (!singleInstance) {
         return { reply: '' };
       }
       try {
-        return await chatClient.sendMessage({
+        return await withOverlayAccessToken((overlayAccessToken) => chatClient.sendMessage({
           baseUrl: settings.chatBaseUrl,
-          token: settings.authToken,
+          overlayAccessToken,
           message,
           contextMessages
-        });
+        }));
       } catch (error) {
         logAuthIssue('chat-send', error);
         throw error;
       }
+    });
+    ipcMain.handle('yumiko:disconnect-overlay', async () => {
+      await disconnectOverlayDevice();
+      return settings;
     });
     ipcMain.on('yumiko:set-mode', (_event, mode) => setMode(mode, { fromRenderer: true }));
     ipcMain.on('yumiko:set-shortcuts-enabled', (_event, enabled) => setShortcutsEnabled(enabled));

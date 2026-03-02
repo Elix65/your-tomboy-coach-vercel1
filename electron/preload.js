@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
     getHistory: () => ipcRenderer.invoke('yumiko:chat-history'),
     sendMessage: ({ message, contextMessages }) => ipcRenderer.invoke('yumiko:chat-send', { message, contextMessages })
   },
+  disconnectOverlay: () => ipcRenderer.invoke('yumiko:disconnect-overlay'),
   onStateUpdated: (callback) => {
     const listener = (_event, state) => callback(state);
     ipcRenderer.on('yumiko:state-updated', listener);

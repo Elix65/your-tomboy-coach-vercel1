@@ -68,5 +68,8 @@
       "allowElevation": false,
       "artifactName": "Yumiko-Overlay-Setup.${ext}"
     }
+  },
+  "dependencies": {
+    "keytar": "^7.9.0"
   }
 }
