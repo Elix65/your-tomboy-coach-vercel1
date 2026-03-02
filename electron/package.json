@@ -28,7 +28,10 @@
       "main.js",
       "preload.js",
       "renderer.html",
-      "renderer.js"
+      "renderer.js",
+      "widget.css",
+      "widget.js",
+      "assets/**/*"
     ],
     "protocols": [
       {
