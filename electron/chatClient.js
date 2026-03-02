@@ -250,9 +250,12 @@ async function sendMessage({ baseUrl, token, message, contextMessages = [] }) {
     const yumikoPayload = {
       user_id: userId,
       sender: 'yumiko',
-      content: reply,
-      conversation_id: conversationId
+      content: reply
     };
+
+    if (conversationId) {
+      yumikoPayload.conversation_id = conversationId;
+    }
 
     if (typeof data?.audio_out_signed_url === 'string' && data.audio_out_signed_url) {
       yumikoPayload.audio_url = data.audio_out_signed_url;

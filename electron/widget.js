@@ -144,6 +144,9 @@ async function loadChatHistory() {
       contextCache: contextCache.length
     });
   } catch (error) {
+    if (isAuthError(error)) {
+      console.warn('[yumiko][auth] AUTH_MISSING/AUTH_INVALID on widget getHistory');
+    }
     console.error('[yumiko][widget] getHistory failed:', error);
     contextCache = [];
     if (isAuthError(error)) {
@@ -165,13 +168,13 @@ async function submitMessage() {
   contextCache = contextCache.slice(-20);
   input.value = '';
   setThinking(true);
-  const thinkingNode = addMessage('assistant', 'Pensando...', { thinking: true });
-  if (bubble) bubble.textContent = 'Pensando...';
+  const thinkingNode = addMessage('assistant', 'Pensando…', { thinking: true });
+  if (bubble) bubble.textContent = 'Pensando…';
 
   try {
     const result = await window.yumikoOverlay?.chat?.sendMessage?.({
       message,
-      contextMessages: contextCache
+      contextMessages: contextCache.slice(-20)
     });
 
     const reply = typeof result?.reply === 'string' && result.reply.trim()
@@ -201,6 +204,9 @@ async function submitMessage() {
       addMessage('assistant', fallback);
     }
     if (bubble) bubble.textContent = fallback;
+    if (isAuthError(error)) {
+      console.warn('[yumiko][auth] AUTH_MISSING/AUTH_INVALID on widget sendMessage');
+    }
     console.error('[yumiko][widget] sendMessage failed:', error);
   } finally {
     setThinking(false);
