@@ -33,6 +33,7 @@
       background: #17181d;
       border-bottom: 1px solid #2d2d32;
       -webkit-app-region: drag;
+      flex-shrink: 0;
     }
     .title {
       font-weight: 600;
@@ -65,6 +66,7 @@
       background: #191a20;
       border-bottom: 1px solid #2d2d32;
       padding: 12px;
+      flex-shrink: 0;
     }
     .panel.open { display: block; }
     .toggle-row {
@@ -81,10 +83,9 @@
       flex: 1;
       min-height: 0;
       display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 14px;
-      overflow-y: auto;
+      align-items: stretch;
+      justify-content: stretch;
+      padding: 12px;
       background: radial-gradient(circle at top right, #1f2230 0%, #121318 42%, #0d0e12 100%);
     }
   </style>
@@ -114,21 +115,30 @@
   </div>
 
   <div class="content">
-    <section class="yumiko-widget" id="yumiko-widget" data-mode="focus" aria-live="polite">
-      <button id="yumiko-bubble" class="yumiko-bubble" type="button" aria-label="Abrir chat con Yumiko">
-        ¿Me contás qué hacés?
+    <section class="yumiko-widget" id="yumiko-widget" data-mode="chat" aria-live="polite">
+      <button id="yumiko-bubble" class="yumiko-bubble" type="button" aria-label="Abrir chat con Yumiko" hidden>
+        Volver al chat
       </button>
 
-      <div class="yumiko-chat" id="yumiko-chat" hidden>
-        <label class="sr-only" for="yumiko-input">Mensaje para Yumiko</label>
-        <input id="yumiko-input" type="text" autocomplete="off" placeholder="Estoy haciendo..." />
-        <button id="yumiko-mic" class="icon-btn" type="button" aria-label="Micrófono">🎤</button>
-        <button id="yumiko-send" class="icon-btn send-btn" type="button" aria-label="Enviar">➤</button>
+      <div class="yumiko-chat" id="yumiko-chat">
+        <div class="chat-header">
+          <button id="yumiko-avatar" class="yumiko-avatar" type="button" aria-label="Cambiar entre focus y chat">
+            <img src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/hi-4.png" alt="Yumiko" />
+          </button>
+          <div>
+            <strong>Yumiko</strong>
+            <p>Tu coach tomboy 🫶</p>
+          </div>
+        </div>
+
+        <div id="chat-log" class="chat-log" aria-live="polite"></div>
+
+        <div class="chat-compose">
+          <label class="sr-only" for="yumiko-input">Mensaje para Yumiko</label>
+          <input id="yumiko-input" type="text" autocomplete="off" placeholder="Escribí tu mensaje..." />
+          <button id="yumiko-send" class="icon-btn send-btn" type="button" aria-label="Enviar">Enviar</button>
+        </div>
       </div>
-
-      <button id="yumiko-avatar" class="yumiko-avatar" type="button" aria-label="Cambiar entre focus y chat">
-        <img src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/hi-4.png" alt="Yumiko" />
-      </button>
     </section>
   </div>
 

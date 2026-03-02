@@ -1,6 +1,6 @@
 :root {
   color-scheme: dark;
-  --bg: rgba(17, 13, 31, 0.88);
+  --bg: rgba(17, 13, 31, 0.92);
   --border: rgba(255, 255, 255, 0.2);
   --text: #fff;
   --accent: #ff7cc8;
@@ -11,26 +11,49 @@
 .yumiko-widget * { box-sizing: border-box; }
 
 .yumiko-widget {
-  position: fixed;
-  right: 14px;
-  bottom: 14px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  min-height: 0;
+}
+
+.yumiko-chat {
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  width: 100%;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: var(--bg);
+  padding: 10px;
+  backdrop-filter: blur(7px);
   gap: 10px;
-  z-index: 9999;
+}
+
+.chat-header {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.chat-header p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: #c6c9ff;
 }
 
 .yumiko-avatar {
-  width: 86px;
-  height: 86px;
+  width: 52px;
+  height: 52px;
   border-radius: 999px;
   overflow: hidden;
   border: 2px solid rgba(255, 255, 255, 0.28);
   background: radial-gradient(circle at 30% 30%, #4f3493, #100d1d);
-  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
   cursor: pointer;
   padding: 0;
+  flex-shrink: 0;
 }
 
 .yumiko-avatar img {
@@ -39,28 +62,56 @@
   object-fit: cover;
 }
 
-.yumiko-bubble {
-  border: 1px solid var(--border);
-  border-radius: 15px;
-  background: var(--bg);
-  color: var(--text);
-  padding: 11px 13px;
-  max-width: min(250px, calc(100vw - 32px));
-  text-align: left;
-  cursor: pointer;
-  backdrop-filter: blur(7px);
+.chat-log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 4px;
 }
 
-.yumiko-chat {
+.chat-row {
+  max-width: 90%;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(31, 25, 54, 0.85);
+}
+
+.chat-row.user {
+  align-self: flex-end;
+  background: rgba(141, 87, 196, 0.35);
+}
+
+.chat-row.assistant {
+  align-self: flex-start;
+}
+
+.chat-row.thinking {
+  opacity: 0.8;
+  font-style: italic;
+}
+
+.chat-role {
+  display: block;
+  font-size: 11px;
+  color: #c6c9ff;
+  margin-bottom: 4px;
+}
+
+.chat-message {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chat-compose {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: 1fr auto;
   gap: 8px;
-  width: min(310px, calc(100vw - 32px));
-  border: 1px solid var(--border);
-  border-radius: 15px;
-  background: var(--bg);
-  padding: 10px;
-  backdrop-filter: blur(7px);
+  flex-shrink: 0;
 }
 
 .yumiko-chat input {
@@ -73,7 +124,7 @@
 }
 
 .icon-btn {
-  min-width: 38px;
+  min-width: 70px;
   min-height: 38px;
   border-radius: 10px;
   border: none;
@@ -85,6 +136,17 @@
 .send-btn {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   font-weight: 700;
+}
+
+.yumiko-bubble {
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 11px 13px;
+  text-align: left;
+  cursor: pointer;
+  backdrop-filter: blur(7px);
 }
 
 .yumiko-widget[data-mode="focus"] .yumiko-chat { display: none; }
