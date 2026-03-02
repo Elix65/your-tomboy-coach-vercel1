@@ -1,5 +1,40 @@
 # HANDOFF
 
+
+## Update: Real chat mode (Yumiko Overlay + 21-moon backend)
+
+### Configuración nueva (`settings.json` en `userData`)
+Se agregaron estos campos persistidos:
+- `chatBaseUrl` (default: `https://21-moon.com`)
+- `authToken` (string, por ahora en settings para dev)
+- `conversationId` (string opcional, se autoguarda al hablar)
+
+> Override por entorno: `YUMIKO_CHAT_URL` pisa `chatBaseUrl` al resolver llamadas de chat.
+
+### Endpoints placeholder implementados
+- `GET  ${baseUrl}/api/yumiko/history?conversationId=...&limit=...`
+- `POST ${baseUrl}/api/yumiko/send` body `{ conversationId, message }`
+- Respuesta esperada: `{ conversationId, messages?: [], reply?: { role, content } }`
+
+Archivo principal del cliente de API: `electron/chatClient.js`.
+
+### Cómo activar chat real
+1. Abrí el `settings.json` del app data de Electron (ruta de `app.getPath('userData')`).
+2. Seteá:
+   - `authToken`: token válido del backend
+   - `chatBaseUrl`: opcional si no querés usar el default
+3. (Opcional) Exportá env en runtime:
+```bash
+export YUMIKO_CHAT_URL="https://21-moon.com"
+```
+4. Iniciá Electron y verificá logs `[yumiko][chatClient]`.
+
+### Fallback demo
+Si falta token, falta baseUrl, o falla la API (timeout/HTTP/error red), el widget entra en modo demo automáticamente:
+- historial vacío inicial
+- respuesta demo/local al enviar mensaje
+
+
 ## 1) Qué cambié en este último prompt (resumen en 10 bullets)
 1. Creé este `HANDOFF.md` en la raíz del repo para dejar contexto operativo inmediato.
 2. Documenté el alcance exacto del cambio: **solo documentación**, sin tocar código funcional.
