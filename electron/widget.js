@@ -13,6 +13,13 @@ const input = document.getElementById('yumiko-input');
 const mic = document.getElementById('yumiko-mic');
 const send = document.getElementById('yumiko-send');
 
+const settingsPanel = document.getElementById('settings-panel');
+const toggleSettingsButton = document.getElementById('toggle-settings');
+const quitAppButton = document.getElementById('quit-app');
+const overlayToggle = document.getElementById('overlay-enabled');
+const clickThroughToggle = document.getElementById('click-through-enabled');
+const shortcutsToggle = document.getElementById('shortcuts-enabled');
+
 function loadSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -40,11 +47,18 @@ function setMode(nextMode) {
   settings.mode = mode;
   saveSettings();
 
+  if (!widget || !chat || !bubble) {
+    return;
+  }
+
   widget.dataset.mode = mode;
   chat.hidden = mode !== 'chat';
   bubble.textContent = mode === 'chat' ? 'Estoy escuchando 👀' : '¿Me contás qué hacés?';
+
   if (mode === 'chat') {
-    input.focus();
+    input?.focus();
+  } else {
+    bubble?.focus();
   }
 
   notifyHostMode(mode);
@@ -55,11 +69,48 @@ function toggleMode() {
 }
 
 function submitMessage() {
+  if (!input || !bubble) return;
   const value = input.value.trim();
   if (!value) return;
   bubble.textContent = `Yumiko: ${value.slice(0, 60)}`;
   input.value = '';
   setMode('focus');
+}
+
+function syncHostState(state = {}) {
+  if (overlayToggle) overlayToggle.checked = Boolean(state.overlayEnabled);
+  if (clickThroughToggle) clickThroughToggle.checked = Boolean(state.clickThroughEnabled);
+  if (shortcutsToggle) shortcutsToggle.checked = Boolean(state.shortcutsEnabled);
+
+  if (state.mode && state.mode !== settings.mode) {
+    setMode(state.mode);
+  }
+}
+
+function bindTopBarActions() {
+  toggleSettingsButton?.addEventListener('click', () => {
+    settingsPanel?.classList.toggle('open');
+  });
+
+  quitAppButton?.addEventListener('click', () => {
+    if (typeof window.yumikoOverlay?.quit === 'function') {
+      window.yumikoOverlay.quit();
+      return;
+    }
+    window.close();
+  });
+
+  overlayToggle?.addEventListener('change', () => {
+    window.yumikoOverlay?.setOverlayEnabled?.(overlayToggle.checked);
+  });
+
+  clickThroughToggle?.addEventListener('change', () => {
+    window.yumikoOverlay?.setClickThroughEnabled?.(clickThroughToggle.checked);
+  });
+
+  shortcutsToggle?.addEventListener('change', () => {
+    window.yumikoOverlay?.setShortcutsEnabled?.(shortcutsToggle.checked);
+  });
 }
 
 avatar?.addEventListener('click', toggleMode);
@@ -90,16 +141,28 @@ window.yumikoWidget = {
   getSettings: () => ({ ...settings })
 };
 
+bindTopBarActions();
+
+if (window.yumikoOverlay?.onStateUpdated) {
+  window.yumikoOverlay.onStateUpdated(syncHostState);
+}
+
 if (window.yumikoOverlay?.getState) {
-  window.yumikoOverlay.getState().then((state) => {
-    if (state?.mode) {
-      settings.mode = state.mode;
-      saveSettings();
-    }
-    setMode(settings.mode);
-  }).catch(() => setMode(settings.mode));
+  window.yumikoOverlay
+    .getState()
+    .then((state) => {
+      syncHostState(state);
+      if (state?.mode) {
+        settings.mode = state.mode;
+        saveSettings();
+      }
+      setMode(settings.mode);
+    })
+    .catch(() => setMode(settings.mode));
 } else {
   setMode(settings.mode);
 }
 
-mic.textContent = settings.mute ? '🔇' : '🎤';
+if (mic) {
+  mic.textContent = settings.mute ? '🔇' : '🎤';
+}

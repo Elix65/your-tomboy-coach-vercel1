@@ -5,7 +5,7 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data:; script-src 'self'; style-src 'self' 'unsafe-inline';" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yumiko Overlay</title>
-  <link rel="stylesheet" href="./widget.css">
+  <link rel="stylesheet" href="./widget.css" />
   <style>
     * { box-sizing: border-box; }
     html, body {
@@ -81,100 +81,11 @@
       flex: 1;
       min-height: 0;
       display: flex;
+      align-items: center;
+      justify-content: center;
       padding: 14px;
       overflow-y: auto;
       background: radial-gradient(circle at top right, #1f2230 0%, #121318 42%, #0d0e12 100%);
-    }
-    .local-widget {
-      width: 100%;
-      border-radius: 14px;
-      border: 1px solid #353744;
-      background: rgba(17, 19, 26, 0.78);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      padding: 12px;
-      text-align: center;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    }
-    .local-widget.focus {
-      border-color: #6c90ff;
-      box-shadow: 0 8px 28px rgba(83, 130, 255, 0.24);
-    }
-    .local-image {
-      width: min(100%, 240px);
-      max-height: 120px;
-      object-fit: cover;
-      border-radius: 12px;
-      border: 1px solid #434657;
-    }
-    .safe-image-fallback {
-      display: none;
-      width: min(100%, 240px);
-      min-height: 120px;
-      border-radius: 12px;
-      border: 1px solid #434657;
-      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 45%, #ec4899 100%);
-      color: #ffffff;
-      align-items: center;
-      justify-content: center;
-      font-size: 13px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-      padding: 12px;
-    }
-    .safe-image-fallback.visible {
-      display: flex;
-    }
-    .status-message {
-      margin: 0;
-      font-size: 12px;
-      color: #b8c1da;
-    }
-    .local-mode {
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      color: #9ca3b4;
-      margin: 0;
-    }
-    .local-title {
-      font-size: 17px;
-      line-height: 1.25;
-      font-weight: 600;
-      margin: 0;
-    }
-    .welcome {
-      position: absolute;
-      inset: 0;
-      background: rgba(11, 12, 17, 0.92);
-      backdrop-filter: blur(2px);
-      z-index: 5;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      gap: 10px;
-      padding: 18px;
-      overflow-y: auto;
-    }
-    .welcome h1 { margin: 0; font-size: 18px; }
-    .welcome p { margin: 0; color: #d1d1d1; font-size: 13px; line-height: 1.5; }
-    .welcome button {
-      border: 1px solid #4d4d4d;
-      background: #242424;
-      color: #fff;
-      border-radius: 10px;
-      padding: 10px;
-      cursor: pointer;
-      text-align: left;
-    }
-    .welcome .secondary {
-      text-align: center;
-      background: transparent;
     }
   </style>
 </head>
@@ -203,38 +114,24 @@
   </div>
 
   <div class="content">
-    <div id="welcome" class="welcome" hidden>
-      <h1>Bienvenido a Yumiko Overlay</h1>
-      <p>
-        Esta app inicia en modo seguro: ventana normal, sin click-through y sin atajos globales.
-        Puedes activar opciones avanzadas cuando quieras.
-      </p>
-      <button id="welcome-overlay">Activar modo Overlay</button>
-      <button id="welcome-shortcuts">Activar atajos (opcional)</button>
-      <button id="welcome-clickthrough">Activar click-through (opcional)</button>
-      <button id="welcome-continue" class="secondary">Continuar</button>
-    </div>
+    <section class="yumiko-widget" id="yumiko-widget" data-mode="focus" aria-live="polite">
+      <button id="yumiko-bubble" class="yumiko-bubble" type="button" aria-label="Abrir chat con Yumiko">
+        ¿Me contás qué hacés?
+      </button>
 
+      <div class="yumiko-chat" id="yumiko-chat" hidden>
+        <label class="sr-only" for="yumiko-input">Mensaje para Yumiko</label>
+        <input id="yumiko-input" type="text" autocomplete="off" placeholder="Estoy haciendo..." />
+        <button id="yumiko-mic" class="icon-btn" type="button" aria-label="Micrófono">🎤</button>
+        <button id="yumiko-send" class="icon-btn send-btn" type="button" aria-label="Enviar">➤</button>
+      </div>
+
+      <button id="yumiko-avatar" class="yumiko-avatar" type="button" aria-label="Cambiar entre focus y chat">
+        <img src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/hi-4.png" alt="Yumiko" />
+      </button>
+    </section>
   </div>
 
-  <script src="./renderer.js"></script>
   <script defer src="./widget.js"></script>
-
-  <section class="yumiko-widget" id="yumiko-widget" data-mode="focus" aria-live="polite" hidden>
-    <button id="yumiko-bubble" class="yumiko-bubble" type="button" aria-label="Abrir chat con Yumiko">
-      ¿Me contás qué hacés?
-    </button>
-
-    <div class="yumiko-chat" id="yumiko-chat" hidden>
-      <label class="sr-only" for="yumiko-input">Mensaje para Yumiko</label>
-      <input id="yumiko-input" type="text" autocomplete="off" placeholder="Estoy haciendo...">
-      <button id="yumiko-mic" class="icon-btn" type="button" aria-label="Micrófono">🎤</button>
-      <button id="yumiko-send" class="icon-btn send-btn" type="button" aria-label="Enviar">➤</button>
-    </div>
-
-    <button id="yumiko-avatar" class="yumiko-avatar" type="button" aria-label="Cambiar entre focus y chat">
-      <img src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/hi-4.png" alt="Yumiko">
-    </button>
-  </section>
 </body>
 </html>
