@@ -10,10 +10,14 @@ const mpAccessToken = process.env.MP_ACCESS_TOKEN;
 const mpWebhookSecret = process.env.MP_WEBHOOK_SECRET;
 const mpPlanId = process.env.MP_PLAN_ID;
 const mpPreapprovalPlanId = process.env.MP_PREAPPROVAL_PLAN_ID;
+const overlayJwtSecret = process.env.OVERLAY_JWT_SECRET || process.env.SUPABASE_JWT_SECRET || '';
 const mpAdminBypassEnabled = process.env.MP_ADMIN_BYPASS === '1';
 const MP_ADMIN_TEST_USER_ID = 'a5429e17-43e2-4922-9560-ab914f63283e';
 const VOICE_PLAN = 'pacto_voz_triunfante';
 const ACTIVE_VOICE_PLANS = ['voice_lite', 'voice_plus'];
+const OVERLAY_CODE_TTL_MS = 2 * 60 * 1000;
+const OVERLAY_ACCESS_TTL_SECONDS = 15 * 60;
+const OVERLAY_REFRESH_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 function normalizeMpErrorMessage(mpData) {
   return String(mpData?.message || mpData?.error || '').trim().toLowerCase();
@@ -241,6 +245,74 @@ async function getJsonBody(req) {
   } catch {
     return {};
   }
+}
+
+function base64Url(input) {
+  return Buffer.from(input)
+    .toString('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+}
+
+function signOverlayJwt(payload, expiresInSeconds) {
+  if (!overlayJwtSecret) {
+    throw new Error('Missing OVERLAY_JWT_SECRET.');
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const body = { ...payload, iat: now, exp: now + expiresInSeconds };
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const encodedHeader = base64Url(JSON.stringify(header));
+  const encodedBody = base64Url(JSON.stringify(body));
+  const unsigned = `${encodedHeader}.${encodedBody}`;
+  const signature = crypto
+    .createHmac('sha256', overlayJwtSecret)
+    .update(unsigned)
+    .digest('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+
+  return `${unsigned}.${signature}`;
+}
+
+function hashSecret(value) {
+  return crypto.createHash('sha256').update(String(value || '')).digest('hex');
+}
+
+function createOverlayCode() {
+  return crypto.randomBytes(6).toString('hex').toUpperCase();
+}
+
+function createRefreshTokenRaw() {
+  return crypto.randomBytes(48).toString('base64url');
+}
+
+async function issueOverlayTokens({ supabaseAdmin, userId, deviceId, deviceName }) {
+  const accessToken = signOverlayJwt({ sub: userId, typ: 'overlay_access', device_id: deviceId || null }, OVERLAY_ACCESS_TTL_SECONDS);
+  const refreshToken = createRefreshTokenRaw();
+  const refreshExpiresAt = new Date(Date.now() + OVERLAY_REFRESH_TTL_SECONDS * 1000).toISOString();
+
+  const { error } = await supabaseAdmin
+    .from('overlay_refresh_tokens')
+    .insert({
+      user_id: userId,
+      token_hash: hashSecret(refreshToken),
+      expires_at: refreshExpiresAt,
+      device_id: deviceId || null,
+      device_name: deviceName || null
+    });
+
+  if (error) {
+    throw new Error(error.message || 'Error storing overlay refresh token.');
+  }
+
+  return {
+    overlay_access_token: accessToken,
+    overlay_refresh_token: refreshToken,
+    expires_in: OVERLAY_ACCESS_TTL_SECONDS
+  };
 }
 
 
@@ -1326,6 +1398,153 @@ async function tirarSkinPremiumHandler(req, res) {
   }
 }
 
+async function overlayLinkStartHandler(req, res) {
+  try {
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase env vars are missing.' });
+
+    const token = getBearerToken(req);
+    const user = await getAuthUserOrNull(supabaseAdmin, token);
+    if (!user?.id) return res.status(401).json({ error: 'Unauthorized' });
+
+    const code = createOverlayCode();
+    const expiresAt = new Date(Date.now() + OVERLAY_CODE_TTL_MS).toISOString();
+
+    const { error } = await supabaseAdmin
+      .from('overlay_links')
+      .insert({
+        code_hash: hashSecret(code),
+        user_id: user.id,
+        expires_at: expiresAt
+      });
+
+    if (error) return res.status(500).json({ error: error.message || 'Error creating overlay link.' });
+
+    return res.status(200).json({
+      deepLink: `yumiko://auth?code=${encodeURIComponent(code)}`,
+      expires_at: expiresAt
+    });
+  } catch (error) {
+    console.error('overlay-link-start fatal:', error);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+async function overlayLinkExchangeHandler(req, res) {
+  try {
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase env vars are missing.' });
+
+    const { code, device_id: deviceId, device_name: deviceName } = req.body || {};
+    if (!code) return res.status(400).json({ error: 'Missing code' });
+
+    const nowIso = new Date().toISOString();
+    const codeHash = hashSecret(code);
+
+    const { data: link, error: linkErr } = await supabaseAdmin
+      .from('overlay_links')
+      .select('id,user_id,expires_at,used_at')
+      .eq('code_hash', codeHash)
+      .maybeSingle();
+
+    if (linkErr) return res.status(500).json({ error: linkErr.message || 'Error validating code.' });
+    if (!link) return res.status(400).json({ error: 'Invalid code' });
+    if (link.used_at) return res.status(400).json({ error: 'Code already used' });
+    if (new Date(link.expires_at).getTime() <= Date.now()) return res.status(400).json({ error: 'Code expired' });
+
+    const { error: consumeErr } = await supabaseAdmin
+      .from('overlay_links')
+      .update({ used_at: nowIso, device_id: deviceId || null, device_name: deviceName || null })
+      .eq('id', link.id)
+      .is('used_at', null);
+
+    if (consumeErr) return res.status(500).json({ error: consumeErr.message || 'Error consuming code.' });
+
+    const tokens = await issueOverlayTokens({
+      supabaseAdmin,
+      userId: link.user_id,
+      deviceId,
+      deviceName
+    });
+
+    return res.status(200).json(tokens);
+  } catch (error) {
+    console.error('overlay-link-exchange fatal:', error);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+async function overlayTokenRefreshHandler(req, res) {
+  try {
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase env vars are missing.' });
+
+    const { refresh_token: refreshToken } = req.body || {};
+    if (!refreshToken) return res.status(400).json({ error: 'Missing refresh_token' });
+
+    const nowIso = new Date().toISOString();
+    const tokenHash = hashSecret(refreshToken);
+
+    const { data: stored, error: tokenErr } = await supabaseAdmin
+      .from('overlay_refresh_tokens')
+      .select('id,user_id,device_id,device_name,expires_at,revoked_at')
+      .eq('token_hash', tokenHash)
+      .maybeSingle();
+
+    if (tokenErr) return res.status(500).json({ error: tokenErr.message || 'Error checking refresh token.' });
+    if (!stored || stored.revoked_at) return res.status(401).json({ error: 'Invalid refresh token' });
+    if (new Date(stored.expires_at).getTime() <= Date.now()) return res.status(401).json({ error: 'Refresh token expired' });
+
+    const accessToken = signOverlayJwt({ sub: stored.user_id, typ: 'overlay_access', device_id: stored.device_id || null }, OVERLAY_ACCESS_TTL_SECONDS);
+
+    return res.status(200).json({
+      overlay_access_token: accessToken,
+      expires_in: OVERLAY_ACCESS_TTL_SECONDS,
+      refreshed_at: nowIso
+    });
+  } catch (error) {
+    console.error('overlay-token-refresh fatal:', error);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+async function overlayRevokeDeviceHandler(req, res) {
+  try {
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase env vars are missing.' });
+
+    const token = getBearerToken(req);
+    const user = await getAuthUserOrNull(supabaseAdmin, token);
+    if (!user?.id) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { device_id: deviceId } = req.body || {};
+    if (!deviceId) return res.status(400).json({ error: 'Missing device_id' });
+
+    const revokedAt = new Date().toISOString();
+    const { error } = await supabaseAdmin
+      .from('overlay_refresh_tokens')
+      .update({ revoked_at: revokedAt })
+      .eq('user_id', user.id)
+      .eq('device_id', deviceId)
+      .is('revoked_at', null);
+
+    if (error) return res.status(500).json({ error: error.message || 'Error revoking device.' });
+
+    return res.status(200).json({ ok: true, revoked_at: revokedAt });
+  } catch (error) {
+    console.error('overlay-revoke-device fatal:', error);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
 async function tirarMultipleHandler(req, res) {
   try {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
@@ -1501,6 +1720,18 @@ module.exports = async function handler(req, res) {
       case 'tirar-multiple-premium':
         req.body = await getJsonBody(req);
         return tirarMultiplePremiumHandler(req, res);
+      case 'overlay-link-start':
+        req.body = await getJsonBody(req);
+        return overlayLinkStartHandler(req, res);
+      case 'overlay-link-exchange':
+        req.body = await getJsonBody(req);
+        return overlayLinkExchangeHandler(req, res);
+      case 'overlay-token-refresh':
+        req.body = await getJsonBody(req);
+        return overlayTokenRefreshHandler(req, res);
+      case 'overlay-revoke-device':
+        req.body = await getJsonBody(req);
+        return overlayRevokeDeviceHandler(req, res);
       case 'mp-init-point':
         return mpInitPointHandler(req, res);
       case 'mp-sync-voice':
