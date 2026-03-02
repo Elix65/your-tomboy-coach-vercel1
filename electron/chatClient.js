@@ -15,7 +15,7 @@ function withTimeout(signalTimeoutMs, requestFn) {
 
 function assertToken(token) {
   if (typeof token !== 'string' || !token.trim()) {
-    const error = new Error('No hay token. Conectá overlay con yumiko://auth?token=... o agregalo en Settings.');
+    const error = new Error('No hay token PRO. Conectá overlay con yumiko://auth?code=...');
     error.code = 'AUTH_MISSING';
     throw error;
   }
@@ -43,8 +43,8 @@ async function parseJsonResponse(response, fallback = {}) {
   }
 }
 
-async function fetchHistory({ baseUrl, token }) {
-  assertToken(token);
+async function fetchHistory({ baseUrl, overlayAccessToken }) {
+  assertToken(overlayAccessToken);
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
   const historyUrl = `${normalizedBaseUrl}/api/get-messages`;
 
@@ -52,12 +52,15 @@ async function fetchHistory({ baseUrl, token }) {
 
   const response = await withTimeout(CHAT_TIMEOUT_MS, (signal) => fetch(historyUrl, {
     method: 'GET',
-    headers: buildApiHeaders(token),
+    headers: buildApiHeaders(overlayAccessToken),
     signal
   }));
 
   if (!response.ok) {
-    throw new Error(`History request failed (HTTP ${response.status})`);
+    const error = new Error(`History request failed (HTTP ${response.status})`);
+    error.status = response.status;
+    if (response.status === 401) error.code = 'AUTH_INVALID';
+    throw error;
   }
 
   const data = await parseJsonResponse(response, {});
@@ -82,6 +85,7 @@ async function getUserId({ supabaseUrl, supabaseAnonKey, token }) {
 
   if (!response.ok) {
     const error = new Error(`Supabase auth user failed (HTTP ${response.status})`);
+    error.status = response.status;
     error.code = response.status === 401 ? 'AUTH_INVALID' : 'SUPABASE_AUTH_FAILED';
     throw error;
   }
@@ -114,7 +118,10 @@ async function getOrCreateDefaultConversation({ supabaseUrl, supabaseAnonKey, to
       });
       return null;
     }
-    throw new Error(`Fetch default conversation failed (HTTP ${existingResponse.status})`);
+    const error = new Error(`Fetch default conversation failed (HTTP ${existingResponse.status})`);
+    error.status = existingResponse.status;
+    if (existingResponse.status === 401) error.code = 'AUTH_INVALID';
+    throw error;
   }
 
   const rows = await parseJsonResponse(existingResponse, []);
@@ -139,7 +146,10 @@ async function getOrCreateDefaultConversation({ supabaseUrl, supabaseAnonKey, to
       });
       return null;
     }
-    throw new Error(`Create default conversation failed (HTTP ${createResponse.status})`);
+    const error = new Error(`Create default conversation failed (HTTP ${createResponse.status})`);
+    error.status = createResponse.status;
+    if (createResponse.status === 401) error.code = 'AUTH_INVALID';
+    throw error;
   }
 
   const created = await parseJsonResponse(createResponse, []);
@@ -163,12 +173,15 @@ async function insertMessage({ supabaseUrl, supabaseAnonKey, token, payload }) {
   }));
 
   if (!response.ok) {
-    throw new Error(`Insert message failed (HTTP ${response.status})`);
+    const error = new Error(`Insert message failed (HTTP ${response.status})`);
+    error.status = response.status;
+    if (response.status === 401) error.code = 'AUTH_INVALID';
+    throw error;
   }
 }
 
-async function sendMessage({ baseUrl, token, message, contextMessages = [] }) {
-  assertToken(token);
+async function sendMessage({ baseUrl, overlayAccessToken, message, contextMessages = [] }) {
+  assertToken(overlayAccessToken);
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
   const sendUrl = `${normalizedBaseUrl}/api/yumiko`;
   const { supabaseUrl, supabaseAnonKey } = resolveSupabaseConfig();
@@ -180,8 +193,8 @@ async function sendMessage({ baseUrl, token, message, contextMessages = [] }) {
     contextMessages: Array.isArray(contextMessages) ? contextMessages.length : 0
   });
 
-  const userId = await getUserId({ supabaseUrl, supabaseAnonKey, token });
-  const conversationId = await getOrCreateDefaultConversation({ supabaseUrl, supabaseAnonKey, token, userId });
+  const userId = await getUserId({ supabaseUrl, supabaseAnonKey, token: overlayAccessToken });
+  const conversationId = await getOrCreateDefaultConversation({ supabaseUrl, supabaseAnonKey, token: overlayAccessToken, userId });
 
   const userMessagePayload = {
     user_id: userId,
@@ -197,7 +210,7 @@ async function sendMessage({ baseUrl, token, message, contextMessages = [] }) {
     await insertMessage({
       supabaseUrl,
       supabaseAnonKey,
-      token,
+      token: overlayAccessToken,
       payload: userMessagePayload
     });
   } catch (error) {
@@ -218,7 +231,7 @@ async function sendMessage({ baseUrl, token, message, contextMessages = [] }) {
     await insertMessage({
       supabaseUrl,
       supabaseAnonKey,
-      token,
+      token: overlayAccessToken,
       payload: fallbackPayload
     });
   }
@@ -234,13 +247,16 @@ async function sendMessage({ baseUrl, token, message, contextMessages = [] }) {
 
   const response = await withTimeout(CHAT_TIMEOUT_MS, (signal) => fetch(sendUrl, {
     method: 'POST',
-    headers: buildApiHeaders(token),
+    headers: buildApiHeaders(overlayAccessToken),
     body: JSON.stringify(requestBody),
     signal
   }));
 
   if (!response.ok) {
-    throw new Error(`Send request failed (HTTP ${response.status})`);
+    const error = new Error(`Send request failed (HTTP ${response.status})`);
+    error.status = response.status;
+    if (response.status === 401) error.code = 'AUTH_INVALID';
+    throw error;
   }
 
   const data = await parseJsonResponse(response, {});
@@ -265,7 +281,7 @@ async function sendMessage({ baseUrl, token, message, contextMessages = [] }) {
       await insertMessage({
         supabaseUrl,
         supabaseAnonKey,
-        token,
+        token: overlayAccessToken,
         payload: yumikoPayload
       });
     } catch (error) {
@@ -281,7 +297,7 @@ async function sendMessage({ baseUrl, token, message, contextMessages = [] }) {
         await insertMessage({
           supabaseUrl,
           supabaseAnonKey,
-          token,
+          token: overlayAccessToken,
           payload: fallbackPayload
         });
       } else {

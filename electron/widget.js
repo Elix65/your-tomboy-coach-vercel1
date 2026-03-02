@@ -7,6 +7,8 @@ const quitAppButton = document.getElementById('quit-app');
 const overlayToggle = document.getElementById('overlay-enabled');
 const clickThroughToggle = document.getElementById('click-through-enabled');
 const shortcutsToggle = document.getElementById('shortcuts-enabled');
+const authStatus = document.getElementById('auth-status');
+const disconnectOverlayButton = document.getElementById('disconnect-overlay');
 
 const widget = document.getElementById('yumiko-widget');
 const avatar = document.getElementById('yumiko-avatar');
@@ -19,7 +21,7 @@ const chatLog = document.getElementById('chat-log');
 let isThinking = false;
 let contextCache = [];
 
-const AUTH_HINT_MESSAGE = 'No hay token. Conectá overlay con yumiko://auth?token=... o agregalo en Settings.';
+const AUTH_HINT_MESSAGE = 'No hay token PRO. Conectá overlay con yumiko://auth?code=...';
 
 function isAuthError(error) {
   const message = error instanceof Error ? error.message : String(error);
@@ -213,7 +215,17 @@ async function submitMessage() {
   }
 }
 
+function renderAuthState(state = {}) {
+  if (!authStatus) return;
+  if (state.overlayAccountEmail) {
+    authStatus.textContent = `Conectado como ${state.overlayAccountEmail}`;
+  } else {
+    authStatus.textContent = 'No conectado';
+  }
+}
+
 function syncHostState(state = {}) {
+  renderAuthState(state);
   if (overlayToggle) overlayToggle.checked = Boolean(state.overlayEnabled);
   if (clickThroughToggle) clickThroughToggle.checked = Boolean(state.clickThroughEnabled);
   if (shortcutsToggle) shortcutsToggle.checked = Boolean(state.shortcutsEnabled);
@@ -253,6 +265,20 @@ clickThroughToggle?.addEventListener('change', () => {
 
 shortcutsToggle?.addEventListener('change', () => {
   window.yumikoOverlay?.setShortcutsEnabled?.(shortcutsToggle.checked);
+});
+
+disconnectOverlayButton?.addEventListener('click', async () => {
+  disconnectOverlayButton.disabled = true;
+  try {
+    const nextState = await window.yumikoOverlay?.disconnectOverlay?.();
+    syncHostState(nextState || {});
+    renderMessages([]);
+    addMessage('assistant', 'Sesión PRO desconectada. Volvé a vincular con yumiko://auth?code=...');
+  } catch (error) {
+    console.error('[yumiko][auth] disconnect failed', error);
+  } finally {
+    disconnectOverlayButton.disabled = false;
+  }
 });
 
 avatar?.addEventListener('click', () => {
