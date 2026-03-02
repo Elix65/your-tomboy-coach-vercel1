@@ -35,6 +35,65 @@ const SHORTCUTS = {
   panicSafeMode: 'CommandOrControl+Alt+Shift+S'
 };
 
+
+const CHAT_TIMEOUT_MS = 12000;
+
+function normalizeHistory(history) {
+  if (!Array.isArray(history)) return [];
+  return history
+    .filter((item) => item && (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string')
+    .map((item) => ({ role: item.role, content: item.content }));
+}
+
+async function requestChatReply(message, history) {
+  const endpoint = process.env.YUMIKO_CHAT_URL;
+
+  if (!endpoint) {
+    console.info('[yumiko][chat] Running in MOCK mode (set YUMIKO_CHAT_URL for real API responses).');
+    return {
+      reply: `Estoy en modo demo. Me dijiste: ${message}. (Configura YUMIKO_CHAT_URL para respuestas reales)`
+    };
+  }
+
+  console.info(`[yumiko][chat] Running in API mode: ${endpoint}`);
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
+
+    let response;
+    try {
+      response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ message, history }),
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    const reply = typeof data?.reply === 'string' && data.reply.trim()
+      ? data.reply.trim()
+      : 'No recibí una respuesta válida del servidor.';
+
+    return { reply };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.error('[yumiko][chat] API request failed:', reason);
+    return {
+      reply: 'No pude conectarme con Yumiko ahora mismo. Probá de nuevo en unos segundos.'
+    };
+  }
+}
+
 function shouldForceInteractiveStartup() {
   return settings.visible || !settings.hasCompletedFirstRun;
 }
@@ -380,6 +439,15 @@ if (!singleInstance) {
     updateGlobalShortcuts();
 
     ipcMain.handle('yumiko:get-state', () => settings);
+    ipcMain.handle('yumiko:chat:send', async (_event, payload) => {
+      const message = typeof payload?.message === 'string' ? payload.message.trim() : '';
+      if (!message) {
+        return { reply: 'Contame algo y te respondo ✨' };
+      }
+
+      const history = normalizeHistory(payload?.history);
+      return requestChatReply(message, history);
+    });
     ipcMain.on('yumiko:set-mode', (_event, mode) => setMode(mode, { fromRenderer: true }));
     ipcMain.on('yumiko:set-shortcuts-enabled', (_event, enabled) => setShortcutsEnabled(enabled));
     ipcMain.on('yumiko:set-click-through-enabled', (_event, enabled) => setClickThroughEnabled(enabled));
