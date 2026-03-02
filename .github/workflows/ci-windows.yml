@@ -34,38 +34,29 @@ jobs:
             ${{ env.LOCALAPPDATA }}\electron-builder\Cache
           key: ${{ runner.os }}-electron-cache-${{ hashFiles('electron/package-lock.json') }}
 
-      - name: Debug lockfile resolution
+      - name: Debug npm working directory
         shell: pwsh
+        working-directory: electron
         run: |
           Write-Host "PWD:" (Get-Location).Path
+          Write-Host "\nFiles in current directory:"
+          Get-ChildItem -Force
 
-          Write-Host "\nRoot files:"
-          Write-Host "  package.json:" (Test-Path "package.json")
+          Write-Host "\nChecking package-lock.json:"
           Write-Host "  package-lock.json:" (Test-Path "package-lock.json")
 
-          Write-Host "\nElectron files:"
-          Write-Host "  electron/package.json:" (Test-Path "electron/package.json")
-          Write-Host "  electron/package-lock.json:" (Test-Path "electron/package-lock.json")
-
-          Write-Host "\nSearching for 'keytar' in root lockfile:"
+          Write-Host "\nSearching for 'keytar' in package-lock.json:"
           if (Test-Path "package-lock.json") {
             Select-String -Path "package-lock.json" -Pattern "keytar"
           } else {
-            Write-Host "  package-lock.json not found in root"
-          }
-
-          Write-Host "\nSearching for 'keytar' in electron lockfile:"
-          if (Test-Path "electron/package-lock.json") {
-            Select-String -Path "electron/package-lock.json" -Pattern "keytar"
-          } else {
-            Write-Host "  electron/package-lock.json not found"
+            Write-Host "  package-lock.json not found"
           }
 
       - name: Install dependencies (retry)
         shell: pwsh
+        working-directory: electron
         run: |
           for ($i=1; $i -le 3; $i++) {
-            cd electron
             npm ci --no-audit --no-fund
             if ($LASTEXITCODE -eq 0) { break }
             if ($i -eq 3) { exit 1 }
@@ -74,14 +65,14 @@ jobs:
 
       - name: Install native app dependencies
         shell: pwsh
+        working-directory: electron
         run: |
-          cd electron
           npx electron-builder install-app-deps
 
       - name: Build Windows artifacts (NSIS + ZIP)
         shell: pwsh
+        working-directory: electron
         run: |
-          cd electron
           npm run build:win
 
       - name: Verify NSIS + ZIP artifacts
