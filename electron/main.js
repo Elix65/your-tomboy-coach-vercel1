@@ -10,6 +10,7 @@ const {
   nativeImage,
   screen
 } = require('electron');
+const chatClient = require('./chatClient');
 
 const DEFAULT_BOUNDS = { width: 560, height: 380 };
 const SETTINGS_FILE = 'settings.json';
@@ -25,7 +26,11 @@ const defaultSettings = {
   shortcutsEnabled: false,
   visible: true,
   bounds: null,
-  hasCompletedFirstRun: false
+  hasCompletedFirstRun: false,
+  chatBaseUrl: 'https://21-moon.com',
+  // TODO(security): move authToken storage to OS keychain (keytar) before production rollout.
+  authToken: '',
+  conversationId: ''
 };
 
 const SHORTCUTS = {
@@ -35,9 +40,6 @@ const SHORTCUTS = {
   panicSafeMode: 'CommandOrControl+Alt+Shift+S'
 };
 
-
-const CHAT_TIMEOUT_MS = 12000;
-
 function normalizeHistory(history) {
   if (!Array.isArray(history)) return [];
   return history
@@ -45,51 +47,102 @@ function normalizeHistory(history) {
     .map((item) => ({ role: item.role, content: item.content }));
 }
 
-async function requestChatReply(message, history) {
-  const endpoint = process.env.YUMIKO_CHAT_URL;
+function resolveChatConfig() {
+  return {
+    baseUrl: process.env.YUMIKO_CHAT_URL || settings.chatBaseUrl,
+    token: settings.authToken,
+    conversationId: settings.conversationId
+  };
+}
 
-  if (!endpoint) {
-    console.info('[yumiko][chat] Running in MOCK mode (set YUMIKO_CHAT_URL for real API responses).');
+function isRealChatEnabled({ baseUrl, token }) {
+  return Boolean(baseUrl && token);
+}
+
+function buildDemoReply(message) {
+  return `Estoy en modo demo. Me dijiste: ${message}. (Configura authToken para respuestas reales)`;
+}
+
+async function getChatHistory({ conversationId, limit }) {
+  const chatConfig = resolveChatConfig();
+  const resolvedConversationId = conversationId || chatConfig.conversationId;
+
+  if (!isRealChatEnabled(chatConfig)) {
+    console.info('[yumiko][chat] History requested in DEMO mode (missing authToken and/or baseUrl).');
     return {
-      reply: `Estoy en modo demo. Me dijiste: ${message}. (Configura YUMIKO_CHAT_URL para respuestas reales)`
+      conversationId: resolvedConversationId || '',
+      messages: []
     };
   }
 
-  console.info(`[yumiko][chat] Running in API mode: ${endpoint}`);
-
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), CHAT_TIMEOUT_MS);
+    const result = await chatClient.fetchHistory({
+      baseUrl: chatConfig.baseUrl,
+      token: chatConfig.token,
+      conversationId: resolvedConversationId,
+      limit
+    });
 
-    let response;
-    try {
-      response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ message, history }),
-        signal: controller.signal
-      });
-    } finally {
-      clearTimeout(timeout);
-    }
+    settings.conversationId = result.conversationId || resolvedConversationId || '';
+    writeSettings();
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    const reply = typeof data?.reply === 'string' && data.reply.trim()
-      ? data.reply.trim()
-      : 'No recibí una respuesta válida del servidor.';
-
-    return { reply };
+    return {
+      conversationId: settings.conversationId,
+      messages: normalizeHistory(result.messages)
+    };
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    console.error('[yumiko][chat] API request failed:', reason);
+    console.error('[yumiko][chat] History API failed, using DEMO mode:', reason);
     return {
-      reply: 'No pude conectarme con Yumiko ahora mismo. Probá de nuevo en unos segundos.'
+      conversationId: resolvedConversationId || '',
+      messages: []
+    };
+  }
+}
+
+async function requestChatReply(message, conversationId) {
+  const chatConfig = resolveChatConfig();
+  const resolvedConversationId = conversationId || chatConfig.conversationId;
+
+  if (!isRealChatEnabled(chatConfig)) {
+    console.info('[yumiko][chat] sendMessage in DEMO mode (missing authToken and/or baseUrl).');
+    return {
+      conversationId: resolvedConversationId || '',
+      reply: { role: 'assistant', content: buildDemoReply(message) }
+    };
+  }
+
+  try {
+    const result = await chatClient.sendMessage({
+      baseUrl: chatConfig.baseUrl,
+      token: chatConfig.token,
+      conversationId: resolvedConversationId,
+      message
+    });
+    settings.conversationId = result.conversationId || resolvedConversationId || '';
+    writeSettings();
+
+    const normalizedMessages = Array.isArray(result.messages)
+      ? normalizeHistory(result.messages)
+      : undefined;
+    const reply = result.reply && typeof result.reply.content === 'string'
+      ? { role: result.reply.role || 'assistant', content: result.reply.content }
+      : { role: 'assistant', content: 'No recibí una respuesta válida del servidor.' };
+
+    return {
+      conversationId: settings.conversationId,
+      reply,
+      messages: normalizedMessages
+    };
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.error('[yumiko][chat] Send API failed, using DEMO mode:', reason);
+    return {
+      conversationId: resolvedConversationId || '',
+      reply: {
+        role: 'assistant',
+        content: 'No pude conectarme con Yumiko ahora mismo. Pasé a modo demo temporalmente.'
+      }
     };
   }
 }
@@ -447,14 +500,19 @@ if (!singleInstance) {
     updateGlobalShortcuts();
 
     ipcMain.handle('yumiko:get-state', () => settings);
-    ipcMain.handle('yumiko:chat:send', async (_event, payload) => {
+    ipcMain.handle('yumiko:chat-history', async (_event, payload) => {
+      const limit = Number.isFinite(Number(payload?.limit)) ? Number(payload.limit) : 50;
+      const conversationId = typeof payload?.conversationId === 'string' ? payload.conversationId.trim() : '';
+      return getChatHistory({ conversationId, limit });
+    });
+    ipcMain.handle('yumiko:chat-send', async (_event, payload) => {
       const message = typeof payload?.message === 'string' ? payload.message.trim() : '';
       if (!message) {
-        return { reply: 'Contame algo y te respondo ✨' };
+        return { reply: { role: 'assistant', content: 'Contame algo y te respondo ✨' } };
       }
 
-      const history = normalizeHistory(payload?.history);
-      return requestChatReply(message, history);
+      const conversationId = typeof payload?.conversationId === 'string' ? payload.conversationId.trim() : '';
+      return requestChatReply(message, conversationId);
     });
     ipcMain.on('yumiko:set-mode', (_event, mode) => setMode(mode, { fromRenderer: true }));
     ipcMain.on('yumiko:set-shortcuts-enabled', (_event, enabled) => setShortcutsEnabled(enabled));

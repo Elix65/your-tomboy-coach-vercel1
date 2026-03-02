@@ -16,7 +16,7 @@ const input = document.getElementById('yumiko-input');
 const send = document.getElementById('yumiko-send');
 const chatLog = document.getElementById('chat-log');
 
-const history = [];
+let conversationId = '';
 let isThinking = false;
 
 function loadSettings() {
@@ -52,6 +52,24 @@ function addMessage(role, content, { thinking = false } = {}) {
   chatLog.appendChild(row);
   chatLog.scrollTop = chatLog.scrollHeight;
   return row;
+}
+
+function clearMessages() {
+  if (!chatLog) return;
+  chatLog.innerHTML = '';
+}
+
+function renderMessages(messages = []) {
+  clearMessages();
+  messages.forEach(({ role, content }) => {
+    if ((role === 'user' || role === 'assistant') && typeof content === 'string') {
+      addMessage(role, content);
+    }
+  });
+
+  if (chatLog?.children.length === 0) {
+    addMessage('assistant', '¡Hola! Soy Yumiko ✨ ¿En qué te ayudo hoy?');
+  }
 }
 
 function setThinking(state) {
@@ -90,22 +108,52 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   }
 }
 
+async function loadChatHistory() {
+  try {
+    const result = await window.yumikoOverlay?.chat?.getHistory?.({
+      conversationId,
+      limit: 50
+    });
+
+    if (typeof result?.conversationId === 'string') {
+      conversationId = result.conversationId;
+    }
+
+    const messages = Array.isArray(result?.messages) ? result.messages : [];
+    renderMessages(messages);
+  } catch (error) {
+    console.error('[yumiko][widget] getHistory failed:', error);
+    renderMessages([]);
+  }
+}
+
 async function submitMessage() {
   if (!input || isThinking) return;
   const message = input.value.trim();
   if (!message) return;
 
   addMessage('user', message);
-  history.push({ role: 'user', content: message });
-
   input.value = '';
   setThinking(true);
   const thinkingNode = addMessage('assistant', 'Pensando…', { thinking: true });
 
   try {
-    const result = await window.yumikoOverlay?.chat?.sendMessage?.({ message, history: [...history] });
-    const reply = typeof result?.reply === 'string' && result.reply.trim()
-      ? result.reply.trim()
+    const result = await window.yumikoOverlay?.chat?.sendMessage?.({
+      message,
+      conversationId
+    });
+
+    if (typeof result?.conversationId === 'string') {
+      conversationId = result.conversationId;
+    }
+
+    if (Array.isArray(result?.messages) && result.messages.length > 0) {
+      renderMessages(result.messages);
+      return;
+    }
+
+    const reply = typeof result?.reply?.content === 'string' && result.reply.content.trim()
+      ? result.reply.content.trim()
       : 'Me quedé sin palabras por un segundo. ¿Me repetís eso?';
 
     if (thinkingNode) {
@@ -115,8 +163,6 @@ async function submitMessage() {
     } else {
       addMessage('assistant', reply);
     }
-
-    history.push({ role: 'assistant', content: reply });
   } catch (error) {
     const fallback = 'Tuve un problema al responder. Probá de nuevo en un momento.';
     if (thinkingNode) {
@@ -208,8 +254,5 @@ window.yumikoOverlay?.getState?.()
   })
   .catch(() => setMode('chat', { source: 'state-sync' }));
 
-if (chatLog?.children.length === 0) {
-  addMessage('assistant', '¡Hola! Soy Yumiko ✨ ¿En qué te ayudo hoy?');
-}
-
 setMode('chat', { source: 'state-sync' });
+loadChatHistory();
