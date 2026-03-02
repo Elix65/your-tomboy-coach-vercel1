@@ -11,7 +11,7 @@ const {
   screen
 } = require('electron');
 
-const DEFAULT_BOUNDS = { width: 420, height: 260 };
+const DEFAULT_BOUNDS = { width: 560, height: 380 };
 const SETTINGS_FILE = 'settings.json';
 
 let tray;
@@ -80,7 +80,7 @@ function settingsPath() {
 function readSettings() {
   try {
     const raw = fs.readFileSync(settingsPath(), 'utf8');
-    return { ...defaultSettings, ...JSON.parse(raw) };
+    return { ...defaultSettings, ...JSON.parse(raw), clickThroughEnabled: false };
   } catch {
     return { ...defaultSettings };
   }
@@ -299,7 +299,9 @@ function createWindow() {
     backgroundColor: '#121212',
     frame: false,
     alwaysOnTop: Boolean(settings.overlayEnabled),
-    resizable: false,
+    minWidth: 420,
+    minHeight: 320,
+    resizable: true,
     skipTaskbar: true,
     webPreferences: {
       contextIsolation: true,
