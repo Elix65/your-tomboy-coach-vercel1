@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Conectar Overlay</title>
+  <link rel="stylesheet" href="/style.v2.css">
+  <style>
+    .overlay-connect-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
+    .overlay-connect-card { width: min(560px, 100%); background: rgba(20,16,34,.94); border: 1px solid rgba(255,255,255,.16); border-radius: 16px; padding: 24px; color: #fff; }
+    .overlay-connect-card h1 { margin-top: 0; }
+    .overlay-connect-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+    .overlay-connect-status { font-size: .95rem; opacity: .9; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="overlay-connect-wrap">
+    <section class="overlay-connect-card">
+      <h1>Conectar Overlay</h1>
+      <p>Estamos generando un código de emparejamiento para abrir Yumiko Overlay.</p>
+      <div class="overlay-connect-actions">
+        <button id="btn-open-deeplink" class="top-btn top-btn-primary" type="button">Abrir Yumiko Overlay</button>
+        <button id="btn-retry" class="top-btn" type="button">Generar nuevo código</button>
+        <a class="top-btn" href="/index.html">Volver al Dojo</a>
+      </div>
+      <p id="overlay-status" class="overlay-connect-status">Preparando…</p>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module" src="/overlay-connect.js"></script>
+</body>
+</html>

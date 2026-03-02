@@ -1,21 +1,89 @@
 {
   "cleanUrls": true,
   "rewrites": [
-    { "source": "/widget", "destination": "/widget/index.html" },
-    { "source": "/widget/", "destination": "/widget/index.html" },
-    { "source": "/widget/(.*)", "destination": "/widget/$1" },
-    { "source": "/", "destination": "/index.html" },
-    { "source": "/api/yumiko", "destination": "/api/router?action=yumiko" },
-    { "source": "/api/regenerate-last", "destination": "/api/router?action=regenerate-last" },
-    { "source": "/api/reset-chat", "destination": "/api/router?action=reset-chat" },
-    { "source": "/api/get-messages", "destination": "/api/router?action=get-messages" },
-    { "source": "/api/set-active-skin", "destination": "/api/router?action=set-active-skin" },
-    { "source": "/api/get-active-skin", "destination": "/api/router?action=get-active-skin" },
-    { "source": "/api/inventario", "destination": "/api/router?action=inventario" },
-    { "source": "/api/gacha-pull", "destination": "/api/router?action=gacha-pull" },
-    { "source": "/api/tirar-skin", "destination": "/api/router?action=tirar-skin" },
-    { "source": "/api/tirar-skin-premium", "destination": "/api/router?action=tirar-skin-premium" },
-    { "source": "/api/tirar-multiple", "destination": "/api/router?action=tirar-multiple" },
-    { "source": "/api/tirar-multiple-premium", "destination": "/api/router?action=tirar-multiple-premium" }
+    {
+      "source": "/widget",
+      "destination": "/widget/index.html"
+    },
+    {
+      "source": "/widget/",
+      "destination": "/widget/index.html"
+    },
+    {
+      "source": "/widget/(.*)",
+      "destination": "/widget/$1"
+    },
+    {
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/overlay/connect",
+      "destination": "/overlay-connect.html"
+    },
+    {
+      "source": "/api/yumiko",
+      "destination": "/api/router?action=yumiko"
+    },
+    {
+      "source": "/api/regenerate-last",
+      "destination": "/api/router?action=regenerate-last"
+    },
+    {
+      "source": "/api/reset-chat",
+      "destination": "/api/router?action=reset-chat"
+    },
+    {
+      "source": "/api/get-messages",
+      "destination": "/api/router?action=get-messages"
+    },
+    {
+      "source": "/api/set-active-skin",
+      "destination": "/api/router?action=set-active-skin"
+    },
+    {
+      "source": "/api/get-active-skin",
+      "destination": "/api/router?action=get-active-skin"
+    },
+    {
+      "source": "/api/inventario",
+      "destination": "/api/router?action=inventario"
+    },
+    {
+      "source": "/api/gacha-pull",
+      "destination": "/api/router?action=gacha-pull"
+    },
+    {
+      "source": "/api/tirar-skin",
+      "destination": "/api/router?action=tirar-skin"
+    },
+    {
+      "source": "/api/tirar-skin-premium",
+      "destination": "/api/router?action=tirar-skin-premium"
+    },
+    {
+      "source": "/api/tirar-multiple",
+      "destination": "/api/router?action=tirar-multiple"
+    },
+    {
+      "source": "/api/tirar-multiple-premium",
+      "destination": "/api/router?action=tirar-multiple-premium"
+    },
+    {
+      "source": "/api/overlay/link/start",
+      "destination": "/api/router?action=overlay-link-start"
+    },
+    {
+      "source": "/api/overlay/link/exchange",
+      "destination": "/api/router?action=overlay-link-exchange"
+    },
+    {
+      "source": "/api/overlay/token/refresh",
+      "destination": "/api/router?action=overlay-token-refresh"
+    },
+    {
+      "source": "/api/overlay/revoke-device",
+      "destination": "/api/router?action=overlay-revoke-device"
+    }
   ]
 }

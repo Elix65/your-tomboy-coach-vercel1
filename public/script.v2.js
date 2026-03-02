@@ -21,6 +21,7 @@ const btnAudios = document.getElementById("btn-audios");
 const btnRewards = document.getElementById("btn-rewards");
 const btnAudio = document.getElementById("btn-audio");
 const btnYumiko100 = document.getElementById("btn-yumiko-100");
+const btnOverlayConnect = document.getElementById("btn-overlay-connect");
 const audioPopover = document.getElementById("audioPopover");
 const navAudio = btnAudio?.closest(".nav-audio") || null;
 const musicVolumeSlider = document.getElementById("music-volume-slider");
@@ -404,6 +405,13 @@ if (btnRewards) {
   btnRewards.setAttribute("data-action", "rewards");
 }
 
+
+if (btnOverlayConnect) {
+  btnOverlayConnect.onclick = () => {
+    goWithTransition('/overlay/connect');
+  };
+}
+
 // ===============================
 // MENÚ HAMBURGUESA (MOBILE)
 // ===============================
@@ -435,6 +443,7 @@ const mGacha = document.getElementById("m-gacha");
 const mAudio = document.getElementById("m-audio");
 const mRewards = document.getElementById("m-rewards");
 const mAudios = document.getElementById("m-audios");
+const mOverlayConnect = document.getElementById("m-overlay-connect");
 
 function closeMobileMenu() {
   if (!mobileMenu || !hamburgerBtn) return;
@@ -588,6 +597,14 @@ if (mAudios) {
   mAudios.onclick = () => {
     closeMobileMenu();
     window.location.href = "/pacto-lunar-voz-triunfante.html";
+  };
+}
+
+
+if (mOverlayConnect) {
+  mOverlayConnect.onclick = () => {
+    closeMobileMenu();
+    goWithTransition('/overlay/connect');
   };
 }
 
