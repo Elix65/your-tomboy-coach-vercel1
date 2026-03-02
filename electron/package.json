@@ -70,6 +70,6 @@
     }
   },
   "dependencies": {
-    "keytar": "^7.9.0"
+    "keytar": "7.9.0"
   }
 }
