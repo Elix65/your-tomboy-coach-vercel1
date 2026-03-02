@@ -235,6 +235,14 @@ function showAndFocusChat() {
   setMode('chat');
 }
 
+function showChatInactive() {
+  if (!win) return;
+  settings.visible = true;
+  writeSettings();
+  win.showInactive();
+  setMode('chat');
+}
+
 function refreshTrayMenu() {
   if (!tray || !win) return;
   const contextMenu = Menu.buildFromTemplate([
@@ -296,7 +304,7 @@ function handleDeepLink(rawUrl) {
         writeSettings();
         console.info('[yumiko][auth] token updated from deeplink');
       }
-      showAndFocusChat();
+      showChatInactive();
     } else if (hostAction === 'open') {
       showAndFocusChat();
     }

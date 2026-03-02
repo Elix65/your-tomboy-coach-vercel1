@@ -108,6 +108,12 @@ async function getOrCreateDefaultConversation({ supabaseUrl, supabaseAnonKey, to
   }));
 
   if (!existingResponse.ok) {
+    if ([404, 406].includes(existingResponse.status)) {
+      console.warn('[yumiko][chatClient] conversations table/query unavailable, continuing without conversation_id', {
+        status: existingResponse.status
+      });
+      return null;
+    }
     throw new Error(`Fetch default conversation failed (HTTP ${existingResponse.status})`);
   }
 
@@ -127,6 +133,12 @@ async function getOrCreateDefaultConversation({ supabaseUrl, supabaseAnonKey, to
   }));
 
   if (!createResponse.ok) {
+    if ([404, 406].includes(createResponse.status)) {
+      console.warn('[yumiko][chatClient] cannot create default conversation, continuing without conversation_id', {
+        status: createResponse.status
+      });
+      return null;
+    }
     throw new Error(`Create default conversation failed (HTTP ${createResponse.status})`);
   }
 
@@ -171,17 +183,45 @@ async function sendMessage({ baseUrl, token, message, contextMessages = [] }) {
   const userId = await getUserId({ supabaseUrl, supabaseAnonKey, token });
   const conversationId = await getOrCreateDefaultConversation({ supabaseUrl, supabaseAnonKey, token, userId });
 
-  await insertMessage({
-    supabaseUrl,
-    supabaseAnonKey,
-    token,
-    payload: {
+  const userMessagePayload = {
+    user_id: userId,
+    sender: 'user',
+    content: message
+  };
+
+  if (conversationId) {
+    userMessagePayload.conversation_id = conversationId;
+  }
+
+  try {
+    await insertMessage({
+      supabaseUrl,
+      supabaseAnonKey,
+      token,
+      payload: userMessagePayload
+    });
+  } catch (error) {
+    if (!conversationId || !String(error?.message || '').includes('HTTP 4')) {
+      throw error;
+    }
+
+    console.warn('[yumiko][chatClient] insert with conversation_id failed, retrying without conversation_id', {
+      conversationId,
+      reason: error.message
+    });
+
+    const fallbackPayload = {
       user_id: userId,
       sender: 'user',
-      content: message,
-      conversation_id: conversationId
-    }
-  });
+      content: message
+    };
+    await insertMessage({
+      supabaseUrl,
+      supabaseAnonKey,
+      token,
+      payload: fallbackPayload
+    });
+  }
 
   const requestBody = {
     message,
@@ -218,12 +258,33 @@ async function sendMessage({ baseUrl, token, message, contextMessages = [] }) {
       yumikoPayload.audio_url = data.audio_out_signed_url;
     }
 
-    await insertMessage({
-      supabaseUrl,
-      supabaseAnonKey,
-      token,
-      payload: yumikoPayload
-    });
+    try {
+      await insertMessage({
+        supabaseUrl,
+        supabaseAnonKey,
+        token,
+        payload: yumikoPayload
+      });
+    } catch (error) {
+      if (conversationId && String(error?.message || '').includes('HTTP 4')) {
+        const fallbackPayload = {
+          user_id: userId,
+          sender: 'yumiko',
+          content: reply
+        };
+        if (typeof data?.audio_out_signed_url === 'string' && data.audio_out_signed_url) {
+          fallbackPayload.audio_url = data.audio_out_signed_url;
+        }
+        await insertMessage({
+          supabaseUrl,
+          supabaseAnonKey,
+          token,
+          payload: fallbackPayload
+        });
+      } else {
+        throw error;
+      }
+    }
   }
 
   return {

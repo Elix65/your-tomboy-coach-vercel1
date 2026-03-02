@@ -17,6 +17,7 @@ const send = document.getElementById('yumiko-send');
 const chatLog = document.getElementById('chat-log');
 
 let isThinking = false;
+let contextCache = [];
 
 const AUTH_HINT_MESSAGE = 'No hay token. Conectá overlay con yumiko://auth?token=... o agregalo en Settings.';
 
@@ -125,13 +126,26 @@ async function loadChatHistory() {
         ? result.messages
         : [];
 
-    const messages = records.map(({ sender, content }) => ({
-      role: sender === 'user' ? 'user' : 'assistant',
-      content
-    }));
+    const messages = records.map(({ sender, role, content }) => ({
+      role: sender === 'user' || role === 'user' ? 'user' : 'assistant',
+      content: typeof content === 'string' ? content : ''
+    })).filter((item) => item.content);
+
+    contextCache = messages.slice(-20);
     renderMessages(messages);
+
+    const lastAssistant = [...messages].reverse().find((item) => item.role === 'assistant');
+    if (lastAssistant?.content && bubble) {
+      bubble.textContent = lastAssistant.content;
+    }
+
+    console.info('[yumiko][widget] history loaded', {
+      records: records.length,
+      contextCache: contextCache.length
+    });
   } catch (error) {
     console.error('[yumiko][widget] getHistory failed:', error);
+    contextCache = [];
     if (isAuthError(error)) {
       renderMessages([]);
       addMessage('assistant', AUTH_HINT_MESSAGE);
@@ -141,30 +155,23 @@ async function loadChatHistory() {
   }
 }
 
-function collectContextMessages(limit = 20) {
-  if (!chatLog) return [];
-  const rows = [...chatLog.querySelectorAll('.chat-row:not(.thinking)')];
-  return rows.slice(-limit).map((row) => {
-    const role = row.classList.contains('user') ? 'user' : 'assistant';
-    const content = row.querySelector('.chat-message')?.textContent?.trim() || '';
-    return { role, content };
-  }).filter((item) => item.content);
-}
-
 async function submitMessage() {
   if (!input || isThinking) return;
   const message = input.value.trim();
   if (!message) return;
 
   addMessage('user', message);
+  contextCache.push({ role: 'user', content: message });
+  contextCache = contextCache.slice(-20);
   input.value = '';
   setThinking(true);
-  const thinkingNode = addMessage('assistant', 'Pensando…', { thinking: true });
+  const thinkingNode = addMessage('assistant', 'Pensando...', { thinking: true });
+  if (bubble) bubble.textContent = 'Pensando...';
 
   try {
     const result = await window.yumikoOverlay?.chat?.sendMessage?.({
       message,
-      contextMessages: collectContextMessages(20)
+      contextMessages: contextCache
     });
 
     const reply = typeof result?.reply === 'string' && result.reply.trim()
@@ -178,6 +185,10 @@ async function submitMessage() {
     } else {
       addMessage('assistant', reply);
     }
+
+    contextCache.push({ role: 'assistant', content: reply });
+    contextCache = contextCache.slice(-20);
+    if (bubble) bubble.textContent = reply;
   } catch (error) {
     const fallback = isAuthError(error)
       ? 'No pude autenticarte (AUTH_MISSING/AUTH_INVALID). Volvé a vincular tu cuenta desde Settings.'
@@ -189,6 +200,7 @@ async function submitMessage() {
     } else {
       addMessage('assistant', fallback);
     }
+    if (bubble) bubble.textContent = fallback;
     console.error('[yumiko][widget] sendMessage failed:', error);
   } finally {
     setThinking(false);
