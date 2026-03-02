@@ -37,3 +37,16 @@ El botón “Yumiko 100%” usa la constante `DOWNLOAD_URL` en `public/script.v2
    - `WIN_CSC_KEY_PASSWORD`: password del certificado.
 4. El workflow de release usa esos secrets solo si existen; si faltan, la build continúa sin firma.
 
+
+
+## Overlay chat real (21-moon + Supabase)
+1. Configurá token por deeplink (recomendado): `yumiko://auth?token=TU_TOKEN`.
+2. Alternativa: editar `settings.json` de Electron (`app.getPath('userData')`) y setear `authToken`.
+3. Opcional: setear `YUMIKO_CHAT_URL` (default `https://21-moon.com`).
+4. Opcional para Supabase REST: `SUPABASE_URL` y `SUPABASE_ANON_KEY` (si no, usa fallback del sitio).
+
+### Probar flujo real
+1. Abrí overlay con token cargado.
+2. Entrá al chat: se ejecuta `GET /api/get-messages`.
+3. Enviá mensaje: se inserta en Supabase (`messages`), luego `POST /api/yumiko`, y si falta `yumiko_message_id` se inserta respuesta yumiko en Supabase.
+4. Si falta token, la UI muestra: `No hay token. Conectá overlay con yumiko://auth?token=... o agregalo en Settings`.

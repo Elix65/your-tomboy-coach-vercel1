@@ -16,8 +16,9 @@ const input = document.getElementById('yumiko-input');
 const send = document.getElementById('yumiko-send');
 const chatLog = document.getElementById('chat-log');
 
-let conversationId = '';
 let isThinking = false;
+
+const AUTH_HINT_MESSAGE = 'No hay token. Conectá overlay con yumiko://auth?token=... o agregalo en Settings.';
 
 function loadSettings() {
   try {
@@ -110,21 +111,30 @@ function setMode(nextMode, { source = 'ui' } = {}) {
 
 async function loadChatHistory() {
   try {
-    const result = await window.yumikoOverlay?.chat?.getHistory?.({
-      conversationId,
-      limit: 50
-    });
-
-    if (typeof result?.conversationId === 'string') {
-      conversationId = result.conversationId;
-    }
+    const result = await window.yumikoOverlay?.chat?.getHistory?.();
 
     const messages = Array.isArray(result?.messages) ? result.messages : [];
     renderMessages(messages);
   } catch (error) {
     console.error('[yumiko][widget] getHistory failed:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('No hay token') || message.includes('AUTH_MISSING')) {
+      renderMessages([]);
+      addMessage('assistant', AUTH_HINT_MESSAGE);
+      return;
+    }
     renderMessages([]);
   }
+}
+
+function collectContextMessages(limit = 20) {
+  if (!chatLog) return [];
+  const rows = [...chatLog.querySelectorAll('.chat-row:not(.thinking)')];
+  return rows.slice(-limit).map((row) => {
+    const role = row.classList.contains('user') ? 'user' : 'assistant';
+    const content = row.querySelector('.chat-message')?.textContent?.trim() || '';
+    return { role, content };
+  }).filter((item) => item.content);
 }
 
 async function submitMessage() {
@@ -140,20 +150,11 @@ async function submitMessage() {
   try {
     const result = await window.yumikoOverlay?.chat?.sendMessage?.({
       message,
-      conversationId
+      contextMessages: collectContextMessages(20)
     });
 
-    if (typeof result?.conversationId === 'string') {
-      conversationId = result.conversationId;
-    }
-
-    if (Array.isArray(result?.messages) && result.messages.length > 0) {
-      renderMessages(result.messages);
-      return;
-    }
-
-    const reply = typeof result?.reply?.content === 'string' && result.reply.content.trim()
-      ? result.reply.content.trim()
+    const reply = typeof result?.reply === 'string' && result.reply.trim()
+      ? result.reply.trim()
       : 'Me quedé sin palabras por un segundo. ¿Me repetís eso?';
 
     if (thinkingNode) {
@@ -164,7 +165,10 @@ async function submitMessage() {
       addMessage('assistant', reply);
     }
   } catch (error) {
-    const fallback = 'Tuve un problema al responder. Probá de nuevo en un momento.';
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const fallback = errorMessage.includes('No hay token') || errorMessage.includes('AUTH_MISSING')
+      ? AUTH_HINT_MESSAGE
+      : 'Tuve un problema al responder. Probá de nuevo en un momento.';
     if (thinkingNode) {
       thinkingNode.classList.remove('thinking');
       const textNode = thinkingNode.querySelector('.chat-message');

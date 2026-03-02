@@ -10,8 +10,8 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
   quit: () => ipcRenderer.send('yumiko:quit'),
   getState: () => ipcRenderer.invoke('yumiko:get-state'),
   chat: {
-    getHistory: (payload) => ipcRenderer.invoke('yumiko:chat-history', payload),
-    sendMessage: (payload) => ipcRenderer.invoke('yumiko:chat-send', payload)
+    getHistory: () => ipcRenderer.invoke('yumiko:chat-history'),
+    sendMessage: ({ message, contextMessages }) => ipcRenderer.invoke('yumiko:chat-send', { message, contextMessages })
   },
   onStateUpdated: (callback) => {
     const listener = (_event, state) => callback(state);
