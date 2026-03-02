@@ -171,6 +171,10 @@ Si falla la capa puente/IPC o envío:
 
 
 ## Update: conexión de token + prueba de chat real
+### Setear token por deeplink
+- Ejecutar: `yumiko://auth?token=TU_TOKEN`
+- Efecto: guarda `settings.authToken`, persiste `settings.json` y abre overlay en modo chat sin robar foco (`showInactive`).
+
 - Deeplink soportado: `yumiko://auth?token=...` (guarda `settings.authToken` automáticamente).
 - IPC de chat del overlay:
   - `yumiko:chat-history` -> `GET /api/get-messages`
