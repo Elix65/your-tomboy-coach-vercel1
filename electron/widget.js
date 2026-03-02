@@ -20,6 +20,12 @@ let isThinking = false;
 
 const AUTH_HINT_MESSAGE = 'No hay token. Conectá overlay con yumiko://auth?token=... o agregalo en Settings.';
 
+function isAuthError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  const code = typeof error?.code === 'string' ? error.code : '';
+  return [message, code].some((value) => value.includes('AUTH_MISSING') || value.includes('AUTH_INVALID') || value.includes('No hay token'));
+}
+
 function loadSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -113,12 +119,20 @@ async function loadChatHistory() {
   try {
     const result = await window.yumikoOverlay?.chat?.getHistory?.();
 
-    const messages = Array.isArray(result?.messages) ? result.messages : [];
+    const records = Array.isArray(result?.records)
+      ? result.records
+      : Array.isArray(result?.messages)
+        ? result.messages
+        : [];
+
+    const messages = records.map(({ sender, content }) => ({
+      role: sender === 'user' ? 'user' : 'assistant',
+      content
+    }));
     renderMessages(messages);
   } catch (error) {
     console.error('[yumiko][widget] getHistory failed:', error);
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.includes('No hay token') || message.includes('AUTH_MISSING')) {
+    if (isAuthError(error)) {
       renderMessages([]);
       addMessage('assistant', AUTH_HINT_MESSAGE);
       return;
@@ -165,9 +179,8 @@ async function submitMessage() {
       addMessage('assistant', reply);
     }
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    const fallback = errorMessage.includes('No hay token') || errorMessage.includes('AUTH_MISSING')
-      ? AUTH_HINT_MESSAGE
+    const fallback = isAuthError(error)
+      ? 'No pude autenticarte (AUTH_MISSING/AUTH_INVALID). Volvé a vincular tu cuenta desde Settings.'
       : 'Tuve un problema al responder. Probá de nuevo en un momento.';
     if (thinkingNode) {
       thinkingNode.classList.remove('thinking');
@@ -179,7 +192,6 @@ async function submitMessage() {
     console.error('[yumiko][widget] sendMessage failed:', error);
   } finally {
     setThinking(false);
-    input?.focus();
   }
 }
 
@@ -247,16 +259,18 @@ window.yumikoWidget = {
   getSettings: () => ({ ...settings })
 };
 
-window.yumikoOverlay?.onStateUpdated?.(syncHostState);
+window.addEventListener('DOMContentLoaded', () => {
+  window.yumikoOverlay?.onStateUpdated?.(syncHostState);
 
-window.yumikoOverlay?.getState?.()
-  .then((state) => {
-    syncHostState(state);
-    if (!state?.mode) {
-      setMode('chat', { source: 'state-sync' });
-    }
-  })
-  .catch(() => setMode('chat', { source: 'state-sync' }));
+  window.yumikoOverlay?.getState?.()
+    .then((state) => {
+      syncHostState(state);
+      if (!state?.mode) {
+        setMode('chat', { source: 'state-sync' });
+      }
+    })
+    .catch(() => setMode('chat', { source: 'state-sync' }));
 
-setMode('chat', { source: 'state-sync' });
-loadChatHistory();
+  setMode('chat', { source: 'state-sync' });
+  loadChatHistory();
+});
