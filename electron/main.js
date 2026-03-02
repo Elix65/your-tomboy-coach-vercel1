@@ -301,10 +301,13 @@ function handleDeepLink(rawUrl) {
       const token = parsed.searchParams.get('token')?.trim();
       if (token) {
         settings.authToken = token;
+        settings.visible = true;
         writeSettings();
         console.info('[yumiko][auth] token updated from deeplink');
       }
-      showChatInactive();
+      if (win && !win.isDestroyed()) {
+        win.showInactive();
+      }
     } else if (hostAction === 'open') {
       showAndFocusChat();
     }
@@ -312,6 +315,13 @@ function handleDeepLink(rawUrl) {
     if (rawUrl.startsWith('yumiko://open')) {
       showAndFocusChat();
     }
+  }
+}
+
+function logAuthIssue(scope, error) {
+  const code = typeof error?.code === 'string' ? error.code : '';
+  if (code === 'AUTH_MISSING' || code === 'AUTH_INVALID') {
+    console.warn(`[yumiko][auth] ${code} on ${scope}`);
   }
 }
 
@@ -409,22 +419,34 @@ if (!singleInstance) {
     updateGlobalShortcuts();
 
     ipcMain.handle('yumiko:get-state', () => settings);
-    ipcMain.handle('yumiko:chat-history', async () => chatClient.fetchHistory({
-      baseUrl: settings.chatBaseUrl,
-      token: settings.authToken
-    }));
+    ipcMain.handle('yumiko:chat-history', async () => {
+      try {
+        return await chatClient.fetchHistory({
+          baseUrl: settings.chatBaseUrl,
+          token: settings.authToken
+        });
+      } catch (error) {
+        logAuthIssue('chat-history', error);
+        throw error;
+      }
+    });
     ipcMain.handle('yumiko:chat-send', async (_event, payload) => {
       const message = typeof payload?.message === 'string' ? payload.message.trim() : '';
       const contextMessages = Array.isArray(payload?.contextMessages) ? payload.contextMessages : [];
       if (!message) {
         return { reply: '' };
       }
-      return chatClient.sendMessage({
-        baseUrl: settings.chatBaseUrl,
-        token: settings.authToken,
-        message,
-        contextMessages
-      });
+      try {
+        return await chatClient.sendMessage({
+          baseUrl: settings.chatBaseUrl,
+          token: settings.authToken,
+          message,
+          contextMessages
+        });
+      } catch (error) {
+        logAuthIssue('chat-send', error);
+        throw error;
+      }
     });
     ipcMain.on('yumiko:set-mode', (_event, mode) => setMode(mode, { fromRenderer: true }));
     ipcMain.on('yumiko:set-shortcuts-enabled', (_event, enabled) => setShortcutsEnabled(enabled));
