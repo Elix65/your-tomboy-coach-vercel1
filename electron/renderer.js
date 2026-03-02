@@ -45,8 +45,14 @@ function syncUI(state) {
   applyLocalMode(state.mode);
 }
 
-function completeWelcome() {
-  window.yumikoOverlay.completeFirstRun();
+async function completeWelcome() {
+  try {
+    await window.yumikoOverlay.completeFirstRun();
+  } catch (error) {
+    console.error('Failed to complete first run transition:', error);
+  }
+
+  window.location.href = 'index.html';
   welcome.hidden = true;
 }
 
@@ -74,23 +80,23 @@ shortcutsToggle.addEventListener('change', () => {
   window.yumikoOverlay.setShortcutsEnabled(shortcutsToggle.checked);
 });
 
-welcomeOverlay.addEventListener('click', () => {
+welcomeOverlay.addEventListener('click', async () => {
   window.yumikoOverlay.setOverlayEnabled(true);
-  completeWelcome();
+  await completeWelcome();
 });
 
-welcomeShortcuts.addEventListener('click', () => {
+welcomeShortcuts.addEventListener('click', async () => {
   window.yumikoOverlay.setShortcutsEnabled(true);
-  completeWelcome();
+  await completeWelcome();
 });
 
-welcomeClickThrough.addEventListener('click', () => {
+welcomeClickThrough.addEventListener('click', async () => {
   window.yumikoOverlay.setClickThroughEnabled(true);
-  completeWelcome();
+  await completeWelcome();
 });
 
-welcomeContinue.addEventListener('click', () => {
-  completeWelcome();
+welcomeContinue.addEventListener('click', async () => {
+  await completeWelcome();
 });
 
 

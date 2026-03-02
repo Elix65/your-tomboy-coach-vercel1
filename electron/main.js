@@ -121,7 +121,11 @@ function applyWindowBehavior() {
 
   win.setAlwaysOnTop(Boolean(settings.overlayEnabled));
 
-  const enableClickThrough = settings.overlayEnabled && settings.clickThroughEnabled && settings.mode === 'focus';
+  const canUseClickThrough = settings.hasCompletedFirstRun;
+  const enableClickThrough = canUseClickThrough
+    && settings.overlayEnabled
+    && settings.clickThroughEnabled
+    && settings.mode === 'focus';
   win.setIgnoreMouseEvents(enableClickThrough, { forward: true });
 
   if (!enableClickThrough) {
@@ -188,7 +192,18 @@ function completeFirstRun() {
   if (settings.hasCompletedFirstRun) return;
   settings.hasCompletedFirstRun = true;
   writeSettings();
+  if (win && !win.isDestroyed()) {
+    win.loadFile(path.join(__dirname, 'index.html')).catch(() => {
+      win.loadFile(path.join(__dirname, '..', 'widget', 'index.html')).catch(() => {});
+    });
+  }
   broadcastState();
+}
+
+function resolveWidgetPage() {
+  const electronWidgetPage = path.join(__dirname, 'index.html');
+  if (fs.existsSync(electronWidgetPage)) return electronWidgetPage;
+  return path.join(__dirname, '..', 'widget', 'index.html');
 }
 
 function toggleVisible() {
@@ -311,7 +326,8 @@ function createWindow() {
   });
 
   win.setMenuBarVisibility(false);
-  win.loadFile(path.join(__dirname, 'renderer.html'));
+  const startPage = settings.hasCompletedFirstRun ? resolveWidgetPage() : path.join(__dirname, 'renderer.html');
+  win.loadFile(startPage);
 
   win.on('move', saveBounds);
   win.on('resize', saveBounds);
