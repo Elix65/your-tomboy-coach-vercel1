@@ -48,6 +48,9 @@ jobs:
             Start-Sleep -Seconds (10 * $i)
           }
 
+      - name: Install native app dependencies
+        run: npx electron-builder install-app-deps
+
       - name: Build Windows artifacts (NSIS + ZIP)
         run: npm run build:win
 
