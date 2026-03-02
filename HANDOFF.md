@@ -168,3 +168,23 @@ Si falla la capa puente/IPC o envío:
 ### Deep link
 - Soporta protocolo `yumiko://`.
 - Acción `yumiko://open` muestra ventana y enfoca chat.
+
+
+## Update: conexión de token + prueba de chat real
+- Deeplink soportado: `yumiko://auth?token=...` (guarda `settings.authToken` automáticamente).
+- IPC de chat del overlay:
+  - `yumiko:chat-history` -> `GET /api/get-messages`
+  - `yumiko:chat-send` -> `POST /api/yumiko`
+- Persistencia Supabase REST integrada para mensajes/conversación default.
+- Variables opcionales:
+  - `YUMIKO_CHAT_URL` (default `https://21-moon.com`)
+  - `SUPABASE_URL`, `SUPABASE_ANON_KEY` (fallback al `public/supabase.js` del sitio)
+
+### QA rápido
+1. Abrir app Electron.
+2. Ejecutar deeplink `yumiko://auth?token=TOKEN_VALIDO`.
+3. Verificar en logs:
+   - `[yumiko][auth] token updated from deeplink`
+   - `[yumiko][chatClient] GET history .../api/get-messages`
+   - `[yumiko][chatClient] POST send .../api/yumiko`
+4. Confirmar filas nuevas en `messages` (sender `user`/`yumiko`) dentro de conversación `is_default=true`.

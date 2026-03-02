@@ -27,7 +27,7 @@ const defaultSettings = {
   visible: true,
   bounds: null,
   hasCompletedFirstRun: false,
-  chatBaseUrl: 'https://21-moon.com',
+  chatBaseUrl: process.env.YUMIKO_CHAT_URL || 'https://21-moon.com',
   // TODO(security): move authToken storage to OS keychain (keytar) before production rollout.
   authToken: '',
   conversationId: ''
@@ -39,113 +39,6 @@ const SHORTCUTS = {
   forceQuit: 'CommandOrControl+Shift+Q',
   panicSafeMode: 'CommandOrControl+Alt+Shift+S'
 };
-
-function normalizeHistory(history) {
-  if (!Array.isArray(history)) return [];
-  return history
-    .filter((item) => item && (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string')
-    .map((item) => ({ role: item.role, content: item.content }));
-}
-
-function resolveChatConfig() {
-  return {
-    baseUrl: process.env.YUMIKO_CHAT_URL || settings.chatBaseUrl,
-    token: settings.authToken,
-    conversationId: settings.conversationId
-  };
-}
-
-function isRealChatEnabled({ baseUrl, token }) {
-  return Boolean(baseUrl && token);
-}
-
-function buildDemoReply(message) {
-  return `Estoy en modo demo. Me dijiste: ${message}. (Configura authToken para respuestas reales)`;
-}
-
-async function getChatHistory({ conversationId, limit }) {
-  const chatConfig = resolveChatConfig();
-  const resolvedConversationId = conversationId || chatConfig.conversationId;
-
-  if (!isRealChatEnabled(chatConfig)) {
-    console.info('[yumiko][chat] History requested in DEMO mode (missing authToken and/or baseUrl).');
-    return {
-      conversationId: resolvedConversationId || '',
-      messages: []
-    };
-  }
-
-  try {
-    const result = await chatClient.fetchHistory({
-      baseUrl: chatConfig.baseUrl,
-      token: chatConfig.token,
-      conversationId: resolvedConversationId,
-      limit
-    });
-
-    settings.conversationId = result.conversationId || resolvedConversationId || '';
-    writeSettings();
-
-    return {
-      conversationId: settings.conversationId,
-      messages: normalizeHistory(result.messages)
-    };
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    console.error('[yumiko][chat] History API failed, using DEMO mode:', reason);
-    return {
-      conversationId: resolvedConversationId || '',
-      messages: []
-    };
-  }
-}
-
-async function requestChatReply(message, conversationId) {
-  const chatConfig = resolveChatConfig();
-  const resolvedConversationId = conversationId || chatConfig.conversationId;
-
-  if (!isRealChatEnabled(chatConfig)) {
-    console.info('[yumiko][chat] sendMessage in DEMO mode (missing authToken and/or baseUrl).');
-    return {
-      conversationId: resolvedConversationId || '',
-      reply: { role: 'assistant', content: buildDemoReply(message) }
-    };
-  }
-
-  try {
-    const result = await chatClient.sendMessage({
-      baseUrl: chatConfig.baseUrl,
-      token: chatConfig.token,
-      conversationId: resolvedConversationId,
-      message
-    });
-    settings.conversationId = result.conversationId || resolvedConversationId || '';
-    writeSettings();
-
-    const normalizedMessages = Array.isArray(result.messages)
-      ? normalizeHistory(result.messages)
-      : undefined;
-    const reply = result.reply && typeof result.reply.content === 'string'
-      ? { role: result.reply.role || 'assistant', content: result.reply.content }
-      : { role: 'assistant', content: 'No recibí una respuesta válida del servidor.' };
-
-    return {
-      conversationId: settings.conversationId,
-      reply,
-      messages: normalizedMessages
-    };
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    console.error('[yumiko][chat] Send API failed, using DEMO mode:', reason);
-    return {
-      conversationId: resolvedConversationId || '',
-      reply: {
-        role: 'assistant',
-        content: 'No pude conectarme con Yumiko ahora mismo. Pasé a modo demo temporalmente.'
-      }
-    };
-  }
-}
 
 function shouldForceInteractiveStartup() {
   return settings.visible || !settings.hasCompletedFirstRun;
@@ -396,7 +289,15 @@ function handleDeepLink(rawUrl) {
   try {
     const parsed = new URL(rawUrl);
     const hostAction = parsed.hostname;
-    if (hostAction === 'open') {
+    if (hostAction === 'auth') {
+      const token = parsed.searchParams.get('token')?.trim();
+      if (token) {
+        settings.authToken = token;
+        writeSettings();
+        console.info('[yumiko][auth] token updated from deeplink');
+      }
+      showAndFocusChat();
+    } else if (hostAction === 'open') {
       showAndFocusChat();
     }
   } catch {
@@ -500,19 +401,22 @@ if (!singleInstance) {
     updateGlobalShortcuts();
 
     ipcMain.handle('yumiko:get-state', () => settings);
-    ipcMain.handle('yumiko:chat-history', async (_event, payload) => {
-      const limit = Number.isFinite(Number(payload?.limit)) ? Number(payload.limit) : 50;
-      const conversationId = typeof payload?.conversationId === 'string' ? payload.conversationId.trim() : '';
-      return getChatHistory({ conversationId, limit });
-    });
+    ipcMain.handle('yumiko:chat-history', async () => chatClient.fetchHistory({
+      baseUrl: settings.chatBaseUrl,
+      token: settings.authToken
+    }));
     ipcMain.handle('yumiko:chat-send', async (_event, payload) => {
       const message = typeof payload?.message === 'string' ? payload.message.trim() : '';
+      const contextMessages = Array.isArray(payload?.contextMessages) ? payload.contextMessages : [];
       if (!message) {
-        return { reply: { role: 'assistant', content: 'Contame algo y te respondo ✨' } };
+        return { reply: '' };
       }
-
-      const conversationId = typeof payload?.conversationId === 'string' ? payload.conversationId.trim() : '';
-      return requestChatReply(message, conversationId);
+      return chatClient.sendMessage({
+        baseUrl: settings.chatBaseUrl,
+        token: settings.authToken,
+        message,
+        contextMessages
+      });
     });
     ipcMain.on('yumiko:set-mode', (_event, mode) => setMode(mode, { fromRenderer: true }));
     ipcMain.on('yumiko:set-shortcuts-enabled', (_event, enabled) => setShortcutsEnabled(enabled));
