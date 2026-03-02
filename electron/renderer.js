@@ -11,49 +11,30 @@ const welcomeOverlay = document.getElementById('welcome-overlay');
 const welcomeShortcuts = document.getElementById('welcome-shortcuts');
 const welcomeClickThrough = document.getElementById('welcome-clickthrough');
 const welcomeContinue = document.getElementById('welcome-continue');
-
-const localWidget = document.getElementById('local-widget');
-const localMode = document.getElementById('local-mode');
-const localTitle = document.getElementById('local-title');
-const yumikoImage = document.getElementById('yumiko-image');
-const yumikoFallback = document.getElementById('yumiko-fallback');
-const statusMessage = document.getElementById('status-message');
-
-const YUMIKO_IMAGE_URL = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/hi-4.png';
-
-function applyLocalMode(mode) {
-  const normalizedMode = mode === 'focus' ? 'focus' : 'chat';
-  localWidget.dataset.mode = normalizedMode;
-  localWidget.classList.toggle('focus', normalizedMode === 'focus');
-  localMode.textContent = normalizedMode === 'focus' ? 'Modo focus' : 'Modo chat';
-  localTitle.textContent = normalizedMode === 'focus'
-    ? 'Yumiko está concentrada contigo…'
-    : 'Yumiko está despertando…';
-}
-
-window.yumikoWidget = {
-  setMode(mode) {
-    applyLocalMode(mode);
-  }
-};
+const yumikoWidgetContainer = document.getElementById('yumiko-widget');
 
 function syncUI(state) {
   overlayToggle.checked = Boolean(state.overlayEnabled);
   clickThroughToggle.checked = Boolean(state.clickThroughEnabled);
   shortcutsToggle.checked = Boolean(state.shortcutsEnabled);
-  welcome.hidden = Boolean(state.hasCompletedFirstRun);
-  applyLocalMode(state.mode);
+  const hasCompletedFirstRun = Boolean(state.hasCompletedFirstRun);
+  welcome.hidden = hasCompletedFirstRun;
+  if (yumikoWidgetContainer) {
+    yumikoWidgetContainer.hidden = !hasCompletedFirstRun;
+  }
 }
 
 async function completeWelcome() {
+  welcome.hidden = true;
+  if (yumikoWidgetContainer) {
+    yumikoWidgetContainer.hidden = false;
+  }
+
   try {
     await window.yumikoOverlay.completeFirstRun();
   } catch (error) {
     console.error('Failed to complete first run transition:', error);
   }
-
-  window.location.href = 'index.html';
-  welcome.hidden = true;
 }
 
 toggleSettingsButton.addEventListener('click', () => {
@@ -99,41 +80,45 @@ welcomeContinue.addEventListener('click', async () => {
   await completeWelcome();
 });
 
-
-
-function setSafeModeMessage(message) {
-  statusMessage.textContent = `Estado: ${message}`;
-}
-
-function showSafeFallback(reason) {
-  yumikoImage.hidden = true;
-  yumikoFallback.classList.add('visible');
-  setSafeModeMessage(`Modo seguro (${reason})`);
-}
-
-function renderYumikoImage() {
-  yumikoImage.src = YUMIKO_IMAGE_URL;
-
-  yumikoImage.addEventListener('load', () => {
-    yumikoImage.hidden = false;
-    yumikoFallback.classList.remove('visible');
-    setSafeModeMessage('conectado.');
-  });
-
-  yumikoImage.addEventListener('error', () => {
-    showSafeFallback('imagen no disponible');
-  });
-}
-
 async function verifySafeMode() {
   try {
     const state = await window.yumikoOverlay.getState();
     syncUI(state);
   } catch {
-    showSafeFallback('sin backend');
+    if (yumikoWidgetContainer) {
+      yumikoWidgetContainer.hidden = false;
+    }
   }
 }
 
-renderYumikoImage();
 verifySafeMode();
 window.yumikoOverlay.onStateUpdated(syncUI);
+
+function showRuntimeError(errorLike) {
+  const pre = document.createElement('pre');
+  pre.style.position = 'fixed';
+  pre.style.left = '10px';
+  pre.style.right = '10px';
+  pre.style.bottom = '10px';
+  pre.style.maxHeight = '40vh';
+  pre.style.overflow = 'auto';
+  pre.style.padding = '10px';
+  pre.style.borderRadius = '8px';
+  pre.style.border = '1px solid #f66';
+  pre.style.background = 'rgba(34, 0, 0, 0.92)';
+  pre.style.color = '#ffd2d2';
+  pre.style.zIndex = '10000';
+  const message = errorLike instanceof Error
+    ? `${errorLike.message}\n\n${errorLike.stack || ''}`
+    : String(errorLike);
+  pre.textContent = `Runtime error:\n${message}`;
+  document.body.appendChild(pre);
+}
+
+window.onerror = (_message, _source, _lineno, _colno, error) => {
+  showRuntimeError(error || _message);
+};
+
+window.addEventListener('unhandledrejection', (event) => {
+  showRuntimeError(event.reason || 'Unhandled promise rejection');
+});

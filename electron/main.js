@@ -192,18 +192,7 @@ function completeFirstRun() {
   if (settings.hasCompletedFirstRun) return;
   settings.hasCompletedFirstRun = true;
   writeSettings();
-  if (win && !win.isDestroyed()) {
-    win.loadFile(path.join(__dirname, 'index.html')).catch(() => {
-      win.loadFile(path.join(__dirname, '..', 'widget', 'index.html')).catch(() => {});
-    });
-  }
   broadcastState();
-}
-
-function resolveWidgetPage() {
-  const electronWidgetPage = path.join(__dirname, 'index.html');
-  if (fs.existsSync(electronWidgetPage)) return electronWidgetPage;
-  return path.join(__dirname, '..', 'widget', 'index.html');
 }
 
 function toggleVisible() {
@@ -326,8 +315,19 @@ function createWindow() {
   });
 
   win.setMenuBarVisibility(false);
-  const startPage = settings.hasCompletedFirstRun ? resolveWidgetPage() : path.join(__dirname, 'renderer.html');
-  win.loadFile(startPage);
+  win.loadFile(path.join(__dirname, 'renderer.html'));
+
+  win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
+    console.error('[yumiko] did-fail-load', { errorCode, errorDescription, validatedURL });
+  });
+
+  win.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[yumiko] render-process-gone', { reason: details?.reason });
+  });
+
+  if (process.env.YUMIKO_DEBUG === '1') {
+    win.webContents.openDevTools({ mode: 'detach' });
+  }
 
   win.on('move', saveBounds);
   win.on('resize', saveBounds);
