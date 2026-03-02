@@ -64,8 +64,14 @@ function notifyHostMode(mode) {
   window.yumikoOverlay?.setMode?.(mode);
 }
 
-function setMode(nextMode) {
+function setMode(nextMode, { source = 'ui' } = {}) {
   const mode = nextMode === 'focus' ? 'focus' : 'chat';
+  if (settings.mode === mode && source !== 'state-sync') {
+    console.info('[yumiko][route] setMode noop', { mode, source });
+  } else {
+    console.info('[yumiko][route] setMode', { previousMode: settings.mode, nextMode: mode, source });
+  }
+
   settings.mode = mode;
   saveSettings();
 
@@ -79,7 +85,9 @@ function setMode(nextMode) {
     input?.focus();
   }
 
-  notifyHostMode(mode);
+  if (source === 'ui' || source === 'hotkey') {
+    notifyHostMode(mode);
+  }
 }
 
 async function submitMessage() {
@@ -130,8 +138,8 @@ function syncHostState(state = {}) {
   if (clickThroughToggle) clickThroughToggle.checked = Boolean(state.clickThroughEnabled);
   if (shortcutsToggle) shortcutsToggle.checked = Boolean(state.shortcutsEnabled);
 
-  if (state.mode) {
-    setMode(state.mode);
+  if (state.mode && state.mode !== settings.mode) {
+    setMode(state.mode, { source: 'state-sync' });
   }
 }
 
@@ -139,11 +147,19 @@ toggleSettingsButton?.addEventListener('click', () => {
   settingsPanel?.classList.toggle('open');
 });
 
-quitAppButton?.addEventListener('click', () => {
-  if (typeof window.yumikoOverlay?.quit === 'function') {
+quitAppButton?.addEventListener('click', (event) => {
+  if (event.shiftKey && typeof window.yumikoOverlay?.quit === 'function') {
+    console.info('[yumiko][window] quit requested from X + Shift');
     window.yumikoOverlay.quit();
     return;
   }
+
+  console.info('[yumiko][window] hide requested from X');
+  if (typeof window.yumikoOverlay?.closeWindow === 'function') {
+    window.yumikoOverlay.closeWindow();
+    return;
+  }
+
   window.close();
 });
 
@@ -160,10 +176,10 @@ shortcutsToggle?.addEventListener('change', () => {
 });
 
 avatar?.addEventListener('click', () => {
-  setMode(settings.mode === 'focus' ? 'chat' : 'focus');
+  setMode(settings.mode === 'focus' ? 'chat' : 'focus', { source: 'ui' });
 });
 
-bubble?.addEventListener('click', () => setMode('chat'));
+bubble?.addEventListener('click', () => setMode('chat', { source: 'ui' }));
 send?.addEventListener('click', submitMessage);
 
 input?.addEventListener('keydown', (event) => {
@@ -172,12 +188,12 @@ input?.addEventListener('keydown', (event) => {
     submitMessage();
   }
   if (event.key === 'Escape') {
-    setMode('focus');
+    setMode('focus', { source: 'ui' });
   }
 });
 
 window.yumikoWidget = {
-  setMode,
+  setMode: (mode) => setMode(mode, { source: 'state-sync' }),
   getSettings: () => ({ ...settings })
 };
 
@@ -187,13 +203,13 @@ window.yumikoOverlay?.getState?.()
   .then((state) => {
     syncHostState(state);
     if (!state?.mode) {
-      setMode(settings.mode);
+      setMode('chat', { source: 'state-sync' });
     }
   })
-  .catch(() => setMode(settings.mode));
+  .catch(() => setMode('chat', { source: 'state-sync' }));
 
 if (chatLog?.children.length === 0) {
   addMessage('assistant', '¡Hola! Soy Yumiko ✨ ¿En qué te ayudo hoy?');
 }
 
-setMode(settings.mode || 'chat');
+setMode('chat', { source: 'state-sync' });

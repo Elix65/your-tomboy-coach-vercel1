@@ -178,18 +178,20 @@ function broadcastState() {
 function applyWindowBehavior() {
   if (!win) return;
 
-  win.setAlwaysOnTop(Boolean(settings.overlayEnabled));
+  win.setAlwaysOnTop(Boolean(settings.overlayEnabled), 'floating');
 
   const canUseClickThrough = settings.hasCompletedFirstRun;
   const enableClickThrough = canUseClickThrough
     && settings.overlayEnabled
     && settings.clickThroughEnabled
     && settings.mode === 'focus';
-  win.setIgnoreMouseEvents(enableClickThrough, { forward: true });
 
-  if (!enableClickThrough) {
-    win.show();
-    win.focus();
+  if (enableClickThrough) {
+    win.setFocusable(false);
+    win.setIgnoreMouseEvents(true, { forward: true });
+  } else {
+    win.setFocusable(true);
+    win.setIgnoreMouseEvents(false);
   }
 
   broadcastState();
@@ -198,6 +200,11 @@ function applyWindowBehavior() {
 
 function setMode(mode, { fromRenderer = false } = {}) {
   const nextMode = mode === 'chat' ? 'chat' : 'focus';
+  console.info('[yumiko][mode] setMode', {
+    previousMode: settings.mode,
+    nextMode,
+    source: fromRenderer ? 'renderer' : 'main'
+  });
   settings.mode = nextMode;
   writeSettings();
 
@@ -269,6 +276,7 @@ function toggleVisible() {
 }
 
 function toggleMode() {
+  console.info('[yumiko][mode] toggleMode shortcut/menu', { previousMode: settings.mode });
   setMode(settings.mode === 'focus' ? 'chat' : 'focus');
 }
 
@@ -455,6 +463,7 @@ if (!singleInstance) {
     ipcMain.on('yumiko:complete-first-run', () => completeFirstRun());
     ipcMain.on('yumiko:close-window', () => {
       if (!win || win.isDestroyed()) return;
+      console.info('[yumiko][window] hide requested from renderer');
       win.close();
     });
     ipcMain.on('yumiko:quit', quitApp);
