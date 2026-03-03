@@ -15,6 +15,9 @@ jobs:
       NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: 120000
       NPM_CONFIG_AUDIT: "false"
       NPM_CONFIG_FUND: "false"
+    defaults:
+      run:
+        working-directory: electron
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -36,25 +39,23 @@ jobs:
 
       - name: Debug npm working directory
         shell: pwsh
-        working-directory: electron
         run: |
           Write-Host "PWD:" (Get-Location).Path
-          Write-Host "\nFiles in current directory:"
-          Get-ChildItem -Force
+          Write-Host "Node version:" (node -v)
+          Write-Host "npm version:" (npm -v)
 
           Write-Host "\nChecking package-lock.json:"
           Write-Host "  package-lock.json:" (Test-Path "package-lock.json")
 
-          Write-Host "\nSearching for 'keytar' in package-lock.json:"
+          Write-Host "\nSearching for 'prebuild-install' in package-lock.json:"
           if (Test-Path "package-lock.json") {
-            Select-String -Path "package-lock.json" -Pattern "keytar"
+            Select-String -Path "package-lock.json" -Pattern "prebuild-install"
           } else {
             Write-Host "  package-lock.json not found"
           }
 
       - name: Install dependencies (retry)
         shell: pwsh
-        working-directory: electron
         run: |
           for ($i=1; $i -le 3; $i++) {
             npm ci --no-audit --no-fund
@@ -65,13 +66,11 @@ jobs:
 
       - name: Install native app dependencies
         shell: pwsh
-        working-directory: electron
         run: |
           npx electron-builder install-app-deps
 
       - name: Build Windows artifacts (NSIS + ZIP)
         shell: pwsh
-        working-directory: electron
         run: |
           npm run build:win
 
