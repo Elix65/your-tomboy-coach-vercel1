@@ -5,6 +5,7 @@ const openBtn = document.getElementById('btn-open-deeplink');
 const retryBtn = document.getElementById('btn-retry');
 
 let currentDeepLink = null;
+let lastStartError = null;
 
 function setStatus(message) {
   if (statusEl) statusEl.textContent = message;
@@ -12,7 +13,7 @@ function setStatus(message) {
 
 function openDeepLink() {
   if (!currentDeepLink) {
-    setStatus('Todavía no tenemos deep link listo.');
+    setStatus(lastStartError || 'Todavía no tenemos deep link listo.');
     return;
   }
   window.location.href = currentDeepLink;
@@ -40,9 +41,12 @@ async function startPairing() {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload?.deepLink) {
-    throw new Error(payload?.error || 'No pudimos iniciar la conexión de overlay.');
+    const errorMessage = payload?.error || 'No pudimos iniciar la conexión de overlay.';
+    lastStartError = errorMessage;
+    throw new Error(errorMessage);
   }
 
+  lastStartError = null;
   currentDeepLink = payload.deepLink;
   setStatus('Intentando abrir Yumiko Overlay… si no se abre, usa el botón manual.');
   openDeepLink();
