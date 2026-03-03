@@ -15,7 +15,7 @@ function withTimeout(signalTimeoutMs, requestFn) {
 
 function assertToken(token) {
   if (typeof token !== 'string' || !token.trim()) {
-    const error = new Error('No hay token PRO. Conectá overlay con yumiko://auth?code=...');
+    const error = new Error('No conectado. Abrí Settings > Vincular');
     error.code = 'AUTH_MISSING';
     throw error;
   }

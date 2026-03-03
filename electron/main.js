@@ -7,6 +7,7 @@ const {
   globalShortcut,
   ipcMain,
   Menu,
+  shell,
   Tray,
   nativeImage,
   screen
@@ -124,6 +125,16 @@ async function clearRefreshToken() {
   await keytar.deletePassword(KEYTAR_SERVICE, settings.deviceId);
 }
 
+async function markOverlayDisconnected({ clearStoredRefreshToken = false } = {}) {
+  if (clearStoredRefreshToken) {
+    await clearRefreshToken();
+  }
+  settings.overlayAccessToken = '';
+  settings.overlayAccountEmail = '';
+  writeSettings();
+  broadcastState();
+}
+
 function applyExchangeResponse(data = {}) {
   settings.overlayAccessToken = typeof data?.access_token === 'string' ? data.access_token : '';
   settings.overlayAccountEmail = typeof data?.email === 'string' ? data.email : '';
@@ -160,6 +171,7 @@ async function exchangePairingCode(code) {
 async function refreshOverlayAccessToken() {
   const refreshToken = await readRefreshToken();
   if (!refreshToken) {
+    await markOverlayDisconnected();
     const error = new Error('No refresh token stored for this device');
     error.code = 'AUTH_MISSING';
     throw error;
@@ -178,6 +190,9 @@ async function refreshOverlayAccessToken() {
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      await markOverlayDisconnected({ clearStoredRefreshToken: true });
+    }
     const error = new Error(`Token refresh failed (HTTP ${response.status})`);
     error.code = response.status === 401 ? 'AUTH_INVALID' : 'AUTH_REFRESH_FAILED';
     throw error;
@@ -232,11 +247,7 @@ async function disconnectOverlayDevice() {
     console.warn('[yumiko][auth] revoke-device request failed', error);
   }
 
-  await clearRefreshToken();
-  settings.overlayAccessToken = '';
-  settings.overlayAccountEmail = '';
-  writeSettings();
-  broadcastState();
+  await markOverlayDisconnected({ clearStoredRefreshToken: true });
 }
 
 function getDefaultPosition() {
@@ -597,6 +608,10 @@ if (!singleInstance) {
     ipcMain.handle('yumiko:disconnect-overlay', async () => {
       await disconnectOverlayDevice();
       return settings;
+    });
+    ipcMain.handle('yumiko:open-overlay-connect', async () => {
+      await shell.openExternal('https://21-moon.com/overlay/connect');
+      return true;
     });
     ipcMain.on('yumiko:set-mode', (_event, mode) => setMode(mode, { fromRenderer: true }));
     ipcMain.on('yumiko:set-shortcuts-enabled', (_event, enabled) => setShortcutsEnabled(enabled));

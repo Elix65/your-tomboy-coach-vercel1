@@ -8,7 +8,7 @@ const overlayToggle = document.getElementById('overlay-enabled');
 const clickThroughToggle = document.getElementById('click-through-enabled');
 const shortcutsToggle = document.getElementById('shortcuts-enabled');
 const authStatus = document.getElementById('auth-status');
-const disconnectOverlayButton = document.getElementById('disconnect-overlay');
+const authActionButton = document.getElementById('auth-action');
 
 const widget = document.getElementById('yumiko-widget');
 const avatar = document.getElementById('yumiko-avatar');
@@ -20,14 +20,24 @@ const chatLog = document.getElementById('chat-log');
 
 let isThinking = false;
 let contextCache = [];
+let overlayConnected = false;
 
-const AUTH_HINT_MESSAGE = 'No hay token PRO. Conectá overlay con yumiko://auth?code=...';
+const AUTH_MISSING_MESSAGE = 'No conectado. Abrí Settings > Vincular';
+const AUTH_INVALID_MESSAGE = 'Sesión expirada. Vinculá de nuevo';
 
-function isAuthError(error) {
-  const message = error instanceof Error ? error.message : String(error);
+function getAuthErrorCode(error) {
   const code = typeof error?.code === 'string' ? error.code : '';
-  return [message, code].some((value) => value.includes('AUTH_MISSING') || value.includes('AUTH_INVALID') || value.includes('No hay token'));
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (code === 'AUTH_MISSING' || message.includes('AUTH_MISSING') || message.includes(AUTH_MISSING_MESSAGE)) {
+    return 'AUTH_MISSING';
+  }
+  if (code === 'AUTH_INVALID' || message.includes('AUTH_INVALID')) {
+    return 'AUTH_INVALID';
+  }
+  return '';
 }
+
 
 function loadSettings() {
   try {
@@ -146,14 +156,15 @@ async function loadChatHistory() {
       contextCache: contextCache.length
     });
   } catch (error) {
-    if (isAuthError(error)) {
-      console.warn('[yumiko][auth] AUTH_MISSING/AUTH_INVALID on widget getHistory');
+    const authCode = getAuthErrorCode(error);
+    if (authCode) {
+      console.warn(`[yumiko][auth] ${authCode} on widget getHistory`);
     }
     console.error('[yumiko][widget] getHistory failed:', error);
     contextCache = [];
-    if (isAuthError(error)) {
+    if (authCode) {
       renderMessages([]);
-      addMessage('assistant', AUTH_HINT_MESSAGE);
+      addMessage('assistant', authCode === 'AUTH_INVALID' ? AUTH_INVALID_MESSAGE : AUTH_MISSING_MESSAGE);
       return;
     }
     renderMessages([]);
@@ -195,9 +206,13 @@ async function submitMessage() {
     contextCache = contextCache.slice(-20);
     if (bubble) bubble.textContent = reply;
   } catch (error) {
-    const fallback = isAuthError(error)
-      ? 'No pude autenticarte (AUTH_MISSING/AUTH_INVALID). Volvé a vincular tu cuenta desde Settings.'
-      : 'Tuve un problema al responder. Probá de nuevo en un momento.';
+    const authCode = getAuthErrorCode(error);
+    const fallback = authCode === 'AUTH_INVALID'
+      ? AUTH_INVALID_MESSAGE
+      : authCode === 'AUTH_MISSING'
+        ? AUTH_MISSING_MESSAGE
+        : 'Tuve un problema al responder. Probá de nuevo en un momento.';
+
     if (thinkingNode) {
       thinkingNode.classList.remove('thinking');
       const textNode = thinkingNode.querySelector('.chat-message');
@@ -206,8 +221,8 @@ async function submitMessage() {
       addMessage('assistant', fallback);
     }
     if (bubble) bubble.textContent = fallback;
-    if (isAuthError(error)) {
-      console.warn('[yumiko][auth] AUTH_MISSING/AUTH_INVALID on widget sendMessage');
+    if (authCode) {
+      console.warn(`[yumiko][auth] ${authCode} on widget sendMessage`);
     }
     console.error('[yumiko][widget] sendMessage failed:', error);
   } finally {
@@ -216,11 +231,16 @@ async function submitMessage() {
 }
 
 function renderAuthState(state = {}) {
-  if (!authStatus) return;
-  if (state.overlayAccountEmail) {
-    authStatus.textContent = `Conectado como ${state.overlayAccountEmail}`;
-  } else {
-    authStatus.textContent = 'No conectado';
+  overlayConnected = Boolean(state.overlayAccountEmail);
+
+  if (authStatus) {
+    authStatus.textContent = overlayConnected
+      ? `Conectado como ${state.overlayAccountEmail}`
+      : 'No conectado';
+  }
+
+  if (authActionButton) {
+    authActionButton.textContent = overlayConnected ? 'Desconectar' : 'Vincular';
   }
 }
 
@@ -267,17 +287,22 @@ shortcutsToggle?.addEventListener('change', () => {
   window.yumikoOverlay?.setShortcutsEnabled?.(shortcutsToggle.checked);
 });
 
-disconnectOverlayButton?.addEventListener('click', async () => {
-  disconnectOverlayButton.disabled = true;
+authActionButton?.addEventListener('click', async () => {
+  authActionButton.disabled = true;
   try {
+    if (!overlayConnected) {
+      await window.yumikoOverlay?.openOverlayConnect?.();
+      return;
+    }
+
     const nextState = await window.yumikoOverlay?.disconnectOverlay?.();
     syncHostState(nextState || {});
     renderMessages([]);
-    addMessage('assistant', 'Sesión PRO desconectada. Volvé a vincular con yumiko://auth?code=...');
+    addMessage('assistant', AUTH_MISSING_MESSAGE);
   } catch (error) {
-    console.error('[yumiko][auth] disconnect failed', error);
+    console.error('[yumiko][auth] auth action failed', error);
   } finally {
-    disconnectOverlayButton.disabled = false;
+    authActionButton.disabled = false;
   }
 });
 
