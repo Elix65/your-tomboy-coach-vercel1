@@ -290,6 +290,52 @@ function hashSecret(value) {
   return crypto.createHash('sha256').update(String(value || '')).digest('hex');
 }
 
+function sanitizeSupabaseError(error) {
+  if (!error) return null;
+  return {
+    message: error?.message ? String(error.message) : null,
+    details: error?.details ? String(error.details) : null,
+    hint: error?.hint ? String(error.hint) : null,
+    code: error?.code ? String(error.code) : null
+  };
+}
+
+function isSupabaseSchemaCacheError(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return (
+    message.includes('schema cache') ||
+    message.includes('could not find the table') ||
+    message.includes('could not find the column')
+  );
+}
+
+function sleepMs(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function runSupabaseOpWithSchemaReloadRetry({ supabaseAdmin, operationName, operation }) {
+  let result = await operation();
+
+  if (!result?.error || !isSupabaseSchemaCacheError(result.error)) {
+    return { ...result, retried: false };
+  }
+
+  logOverlayAuth(500, `${operationName}_schema_cache_retry`, {
+    supabase: sanitizeSupabaseError(result.error)
+  });
+
+  const { error: reloadErr } = await supabaseAdmin.rpc('pgrst_reload');
+  if (reloadErr) {
+    logOverlayAuth(500, `${operationName}_schema_cache_reload_failed`, {
+      supabase: sanitizeSupabaseError(reloadErr)
+    });
+  }
+
+  await sleepMs(300);
+  result = await operation();
+  return { ...result, retried: true };
+}
+
 function createOverlayCode() {
   return crypto.randomBytes(32).toString('base64url');
 }
@@ -305,19 +351,30 @@ async function issueOverlayTokens({ supabaseAdmin, userId, deviceId, deviceName 
   const refreshExpiresAt = new Date(Date.now() + OVERLAY_REFRESH_TTL_SECONDS * 1000).toISOString();
   const createdAt = new Date().toISOString();
 
-  const { error } = await supabaseAdmin
-    .from('overlay_refresh_tokens')
-    .insert({
-      user_id: userId,
-      refresh_token_hash: hashSecret(refreshToken),
-      expires_at: refreshExpiresAt,
-      device_id: deviceId || null,
-      device_name: deviceName || null,
-      created_at: createdAt
-    });
+  const { error } = await runSupabaseOpWithSchemaReloadRetry({
+    supabaseAdmin,
+    operationName: 'overlay_refresh_tokens_upsert',
+    operation: () =>
+      supabaseAdmin
+        .from('overlay_refresh_tokens')
+        .upsert(
+          {
+            user_id: userId,
+            refresh_token_hash: hashSecret(refreshToken),
+            expires_at: refreshExpiresAt,
+            device_id: deviceId || null,
+            device_name: deviceName || null,
+            revoked_at: null,
+            created_at: createdAt
+          },
+          { onConflict: 'user_id,device_id' }
+        )
+  });
 
   if (error) {
-    throw new Error(error.message || 'Error storing overlay refresh token.');
+    const wrapped = new Error(error.message || 'Error storing overlay refresh token.');
+    wrapped.supabase = sanitizeSupabaseError(error);
+    throw wrapped;
   }
 
   return {
@@ -1455,15 +1512,19 @@ async function overlayLinkExchangeHandler(req, res) {
   try {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
     const envState = getSupabaseAdminEnvState();
-    const hasJwtSecret = Boolean(process.env.OVERLAY_JWT_SECRET);
+    const hasOverlayJwtSecret = Boolean(process.env.OVERLAY_JWT_SECRET);
     logOverlayAuth(200, 'overlay_exchange_env_state', {
+      supabaseHost: envState.supabaseUrlHost,
       hasServiceRoleKey: envState.hasServiceRoleKey,
-      hasJwtSecret,
-      supabaseUrlHost: envState.supabaseUrlHost
+      hasOverlayJwtSecret
     });
 
-    if (!hasJwtSecret) {
-      logOverlayAuth(500, 'Missing OVERLAY_JWT_SECRET');
+    if (!hasOverlayJwtSecret) {
+      logOverlayAuth(500, 'Missing OVERLAY_JWT_SECRET', {
+        supabaseHost: envState.supabaseUrlHost,
+        hasServiceRoleKey: envState.hasServiceRoleKey,
+        hasOverlayJwtSecret
+      });
       return res.status(500).json({ error: 'Missing OVERLAY_JWT_SECRET' });
     }
 
@@ -1473,30 +1534,30 @@ async function overlayLinkExchangeHandler(req, res) {
     } catch (clientError) {
       const statusCode = clientError?.statusCode || 500;
       logOverlayAuth(statusCode, clientError?.message || 'supabase_admin_init_failed', {
+        supabaseHost: envState.supabaseUrlHost,
         hasServiceRoleKey: envState.hasServiceRoleKey,
-        hasJwtSecret,
-        supabaseUrlHost: envState.supabaseUrlHost
+        hasOverlayJwtSecret
       });
       return res.status(statusCode).json({ error: clientError?.message || 'Supabase admin init failed.' });
     }
 
-    const { error: schemaCheckError } = await supabaseAdmin
-      .from('overlay_refresh_tokens')
-      .select('id')
-      .limit(1);
+    const { error: schemaCheckError } = await runSupabaseOpWithSchemaReloadRetry({
+      supabaseAdmin,
+      operationName: 'overlay_refresh_tokens_schema_check',
+      operation: () =>
+        supabaseAdmin
+          .from('overlay_refresh_tokens')
+          .select('id')
+          .limit(1)
+    });
 
     if (schemaCheckError) {
-      const rawMessage = String(schemaCheckError?.message || schemaCheckError?.code || '');
-      const isSchemaCacheError =
-        rawMessage.toLowerCase().includes('schema cache') ||
-        rawMessage.includes('PGRST') ||
-        String(schemaCheckError?.code || '').startsWith('PGRST');
-      if (isSchemaCacheError) {
-        logOverlayAuth(500, 'overlay_schema_cache_error', { schemaCheckError });
-        return res.status(500).json({ error: 'Supabase schema cache is stale for overlay_refresh_tokens. Run migrations and NOTIFY pgrst, \'reload schema\'.' });
-      }
-
-      logOverlayAuth(500, 'overlay_schema_check_failed', { schemaCheckError });
+      logOverlayAuth(500, 'overlay_schema_check_failed', {
+        supabaseHost: envState.supabaseUrlHost,
+        hasServiceRoleKey: envState.hasServiceRoleKey,
+        hasOverlayJwtSecret,
+        supabase: sanitizeSupabaseError(schemaCheckError)
+      });
       return res.status(500).json({ error: 'Failed to verify overlay_refresh_tokens availability.' });
     }
 
@@ -1514,16 +1575,26 @@ async function overlayLinkExchangeHandler(req, res) {
     const nowIso = new Date().toISOString();
     const codeHash = hashSecret(code);
 
-    const { data: link, error: linkErr } = await supabaseAdmin
-      .from('overlay_links')
-      .select('id,user_id')
-      .eq('code_hash', codeHash)
-      .is('used_at', null)
-      .gt('expires_at', nowIso)
-      .maybeSingle();
+    const { data: link, error: linkErr } = await runSupabaseOpWithSchemaReloadRetry({
+      supabaseAdmin,
+      operationName: 'overlay_links_select',
+      operation: () =>
+        supabaseAdmin
+          .from('overlay_links')
+          .select('id,user_id')
+          .eq('code_hash', codeHash)
+          .is('used_at', null)
+          .gt('expires_at', nowIso)
+          .maybeSingle()
+    });
 
     if (linkErr) {
-      logOverlayAuth(500, linkErr.message || 'code_lookup_failed');
+      logOverlayAuth(500, linkErr.message || 'code_lookup_failed', {
+        supabaseHost: envState.supabaseUrlHost,
+        hasServiceRoleKey: envState.hasServiceRoleKey,
+        hasOverlayJwtSecret,
+        supabase: sanitizeSupabaseError(linkErr)
+      });
       return res.status(500).json({ error: linkErr.message || 'Error validating code.' });
     }
     if (!link) {
@@ -1531,14 +1602,24 @@ async function overlayLinkExchangeHandler(req, res) {
       return res.status(400).json({ error: 'invalid_or_expired' });
     }
 
-    const { error: consumeErr } = await supabaseAdmin
-      .from('overlay_links')
-      .update({ used_at: nowIso, device_id: deviceId, device_name: deviceName })
-      .eq('id', link.id)
-      .is('used_at', null);
+    const { error: consumeErr } = await runSupabaseOpWithSchemaReloadRetry({
+      supabaseAdmin,
+      operationName: 'overlay_links_consume',
+      operation: () =>
+        supabaseAdmin
+          .from('overlay_links')
+          .update({ used_at: nowIso, device_id: deviceId, device_name: deviceName })
+          .eq('id', link.id)
+          .is('used_at', null)
+    });
 
     if (consumeErr) {
-      logOverlayAuth(500, consumeErr.message || 'code_consume_failed');
+      logOverlayAuth(500, consumeErr.message || 'code_consume_failed', {
+        supabaseHost: envState.supabaseUrlHost,
+        hasServiceRoleKey: envState.hasServiceRoleKey,
+        hasOverlayJwtSecret,
+        supabase: sanitizeSupabaseError(consumeErr)
+      });
       return res.status(500).json({ error: consumeErr.message || 'Error consuming code.' });
     }
 
@@ -1551,8 +1632,18 @@ async function overlayLinkExchangeHandler(req, res) {
         deviceName
       });
     } catch (tokenError) {
-      logOverlayAuth(500, tokenError?.message || 'token_issue');
-      return res.status(500).json({ error: 'token_issue' });
+      const supabaseError = sanitizeSupabaseError(tokenError?.supabase);
+      logOverlayAuth(500, tokenError?.message || 'token_issue', {
+        supabaseHost: envState.supabaseUrlHost,
+        hasServiceRoleKey: envState.hasServiceRoleKey,
+        hasOverlayJwtSecret,
+        supabase: supabaseError
+      });
+      return res.status(500).json({
+        ok: false,
+        code: 'token_issue',
+        supabase: supabaseError
+      });
     }
 
     const accessToken = tokens.overlay_access_token;
@@ -1573,10 +1664,13 @@ async function overlayLinkExchangeHandler(req, res) {
       deviceId
     });
   } catch (error) {
-    logOverlayAuth(500, error?.message || 'overlay-link-exchange fatal');
+    logOverlayAuth(500, error?.message || 'overlay-link-exchange fatal', {
+      supabase: sanitizeSupabaseError(error?.supabase)
+    });
     return res.status(500).json({ error: 'Internal error' });
   }
 }
+
 
 async function overlayTokenRefreshHandler(req, res) {
   try {
