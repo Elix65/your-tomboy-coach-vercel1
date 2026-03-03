@@ -25,7 +25,7 @@ async function startPairing() {
   const accessToken = sessionData?.session?.access_token;
 
   if (!accessToken) {
-    window.location.href = '/login.html';
+    window.location.href = `/login?returnTo=${encodeURIComponent('/overlay/connect')}`;
     return;
   }
 
