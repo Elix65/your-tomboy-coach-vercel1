@@ -15,9 +15,15 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
   },
   disconnectOverlay: () => ipcRenderer.invoke('yumiko:disconnect-overlay'),
   openOverlayConnect: () => ipcRenderer.invoke('yumiko:open-overlay-connect'),
+  exchangeAuthCode: (code) => ipcRenderer.invoke('yumiko:exchange-auth-code', { code }),
   onStateUpdated: (callback) => {
     const listener = (_event, state) => callback(state);
     ipcRenderer.on('yumiko:state-updated', listener);
     return () => ipcRenderer.removeListener('yumiko:state-updated', listener);
+  },
+  onAuthCode: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('yumiko:auth-code', listener);
+    return () => ipcRenderer.removeListener('yumiko:auth-code', listener);
   }
 });

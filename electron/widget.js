@@ -244,6 +244,26 @@ function renderAuthState(state = {}) {
   }
 }
 
+
+async function exchangeCode(code) {
+  if (typeof code !== 'string' || !code.trim()) {
+    return;
+  }
+
+  addMessage('assistant', 'Recibí code, vinculando…');
+
+  try {
+    const nextState = await window.yumikoOverlay?.exchangeAuthCode?.(code.trim());
+    syncHostState(nextState || {});
+    if (nextState?.overlayAccountEmail) {
+      addMessage('assistant', 'Conectado ✅');
+    }
+  } catch (error) {
+    addMessage('assistant', 'No pude vincular este dispositivo. Probá de nuevo.');
+    console.error('[yumiko][auth] auth code exchange failed');
+  }
+}
+
 function syncHostState(state = {}) {
   renderAuthState(state);
   if (overlayToggle) overlayToggle.checked = Boolean(state.overlayEnabled);
@@ -330,6 +350,10 @@ window.yumikoWidget = {
 
 window.addEventListener('DOMContentLoaded', () => {
   window.yumikoOverlay?.onStateUpdated?.(syncHostState);
+  window.addEventListener('yumiko:auth-code', (event) => {
+    const code = typeof event?.detail?.code === 'string' ? event.detail.code : '';
+    exchangeCode(code);
+  });
 
   window.yumikoOverlay?.getState?.()
     .then((state) => {

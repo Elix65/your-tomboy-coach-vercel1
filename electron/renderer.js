@@ -28,3 +28,8 @@ window.onerror = (message, _source, _lineno, _colno, error) => {
 window.addEventListener('unhandledrejection', (event) => {
   showRuntimeError(event.reason || 'Unhandled promise rejection');
 });
+
+window.yumikoOverlay?.onAuthCode?.((payload) => {
+  const code = typeof payload?.code === 'string' ? payload.code : '';
+  window.dispatchEvent(new CustomEvent('yumiko:auth-code', { detail: { code } }));
+});
