@@ -259,8 +259,11 @@ async function exchangeCode(code) {
       addMessage('assistant', 'Conectado ✅');
     }
   } catch (error) {
-    addMessage('assistant', 'No pude vincular este dispositivo. Probá de nuevo.');
-    console.error('[yumiko][auth] auth code exchange failed');
+    const reason = typeof error?.message === 'string' && error.message.trim()
+      ? error.message.trim()
+      : 'error_desconocido';
+    addMessage('assistant', `No pude vincular: ${reason}`);
+    console.error('[yumiko][auth] auth code exchange failed', { reason });
   }
 }
 

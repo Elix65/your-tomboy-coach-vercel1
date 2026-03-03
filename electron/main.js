@@ -137,7 +137,9 @@ async function markOverlayDisconnected({ clearStoredRefreshToken = false } = {})
 }
 
 function applyExchangeResponse(data = {}) {
-  settings.overlayAccessToken = typeof data?.access_token === 'string' ? data.access_token : '';
+  settings.overlayAccessToken = typeof data?.access_token === 'string'
+    ? data.access_token
+    : (typeof data?.accessToken === 'string' ? data.accessToken : '');
   settings.overlayAccountEmail = typeof data?.email === 'string' ? data.email : '';
   settings.visible = true;
   writeSettings();
@@ -146,7 +148,7 @@ function applyExchangeResponse(data = {}) {
 
 async function exchangePairingCode(code) {
   const exchangeUrl = `${settings.chatBaseUrl.replace(/\/$/, '')}/api/overlay/link/exchange`;
-  const response = await fetch(exchangeUrl, {
+  const res = await fetch(exchangeUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -157,16 +159,43 @@ async function exchangePairingCode(code) {
     })
   });
 
-  if (!response.ok) {
-    throw new Error(`Pairing exchange failed (HTTP ${response.status})`);
+  if (!res.ok) {
+    const text = await res.text().catch(() => '<no body>');
+    console.error('[yumiko][auth] exchange failed', {
+      status: res.status,
+      body: text.slice(0, 300)
+    });
+
+    let reason = 'exchange_failed';
+    try {
+      const parsed = JSON.parse(text);
+      if (typeof parsed?.error === 'string' && parsed.error.trim()) {
+        reason = parsed.error.trim();
+      }
+    } catch {
+      // no-op: keep generic reason when response body is not valid JSON.
+    }
+
+    throw new Error(`HTTP ${res.status} ${reason}`);
   }
 
-  const data = await response.json();
-  if (typeof data?.refresh_token !== 'string' || !data.refresh_token) {
-    throw new Error('Pairing exchange response missing refresh_token');
+  const data = await res.json();
+  const accessToken = data?.accessToken || data?.access_token || data?.token;
+  const refreshToken = data?.refreshToken || data?.refresh_token;
+
+  if (typeof accessToken !== 'string' || !accessToken) {
+    throw new Error('missing_token_fields');
   }
-  await saveRefreshToken(data.refresh_token);
-  applyExchangeResponse(data);
+  if (typeof refreshToken !== 'string' || !refreshToken) {
+    throw new Error('missing_refresh_token');
+  }
+
+  await saveRefreshToken(refreshToken);
+  applyExchangeResponse({
+    ...data,
+    access_token: accessToken,
+    refresh_token: refreshToken
+  });
 }
 
 async function refreshOverlayAccessToken() {
