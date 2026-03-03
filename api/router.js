@@ -3,6 +3,7 @@ const path = require('path');
 const crypto = require('crypto');
 const OpenAI = require('openai');
 const { createClient } = require('@supabase/supabase-js');
+const { getSupabaseAdminClient, getSupabaseAdminEnvState } = require('../lib/supabaseAdmin');
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -57,25 +58,6 @@ function getSupabaseAdmin() {
   }
 
   return createClient(supabaseUrl, supabaseServiceRoleKey);
-}
-
-function getMissingSupabaseEnvVars() {
-  const missing = [];
-  if (!supabaseUrl) missing.push('SUPABASE_URL|NEXT_PUBLIC_SUPABASE_URL');
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missing.push('SUPABASE_SERVICE_ROLE_KEY');
-  return missing;
-}
-
-function getSupabaseServiceRoleAdmin() {
-  const missing = getMissingSupabaseEnvVars();
-  if (missing.length > 0) {
-    return { client: null, missing };
-  }
-
-  return {
-    client: createClient(supabaseUrl, process.env.SUPABASE_SERVICE_ROLE_KEY),
-    missing: []
-  };
 }
 
 function logOverlayAuth(status, errorMessage, extra = {}) {
@@ -317,18 +299,21 @@ function createRefreshTokenRaw() {
 }
 
 async function issueOverlayTokens({ supabaseAdmin, userId, deviceId, deviceName }) {
-  const accessToken = signOverlayJwt({ sub: userId, typ: 'overlay_access', device_id: deviceId || null }, OVERLAY_ACCESS_TTL_SECONDS);
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  const accessToken = signOverlayJwt({ sub: userId, device_id: deviceId || null, iat: nowSeconds }, OVERLAY_ACCESS_TTL_SECONDS);
   const refreshToken = createRefreshTokenRaw();
   const refreshExpiresAt = new Date(Date.now() + OVERLAY_REFRESH_TTL_SECONDS * 1000).toISOString();
+  const createdAt = new Date().toISOString();
 
   const { error } = await supabaseAdmin
     .from('overlay_refresh_tokens')
     .insert({
       user_id: userId,
-      token_hash: hashSecret(refreshToken),
+      refresh_token_hash: hashSecret(refreshToken),
       expires_at: refreshExpiresAt,
       device_id: deviceId || null,
-      device_name: deviceName || null
+      device_name: deviceName || null,
+      created_at: createdAt
     });
 
   if (error) {
@@ -1147,8 +1132,12 @@ async function setActiveSkinHandler(req, res) {
   try {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
-    const supabaseAdmin = getSupabaseAdmin();
-    if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase env vars are missing.' });
+    let supabaseAdmin;
+    try {
+      supabaseAdmin = getSupabaseAdminClient();
+    } catch (clientError) {
+      return res.status(clientError?.statusCode || 500).json({ error: clientError?.message || 'Supabase admin init failed.' });
+    }
 
     const { user_id, skin_id } = req.body || {};
     if (!user_id || !skin_id) return res.status(400).json({ error: 'Missing user_id or skin_id' });
@@ -1429,8 +1418,12 @@ async function overlayLinkStartHandler(req, res) {
   try {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
-    const supabaseAdmin = getSupabaseAdmin();
-    if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase env vars are missing.' });
+    let supabaseAdmin;
+    try {
+      supabaseAdmin = getSupabaseAdminClient();
+    } catch (clientError) {
+      return res.status(clientError?.statusCode || 500).json({ error: clientError?.message || 'Supabase admin init failed.' });
+    }
 
     const token = getBearerToken(req);
     const user = await getAuthUserOrNull(supabaseAdmin, token);
@@ -1461,15 +1454,50 @@ async function overlayLinkStartHandler(req, res) {
 async function overlayLinkExchangeHandler(req, res) {
   try {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
-    if (!process.env.OVERLAY_JWT_SECRET) {
+    const envState = getSupabaseAdminEnvState();
+    const hasJwtSecret = Boolean(process.env.OVERLAY_JWT_SECRET);
+    logOverlayAuth(200, 'overlay_exchange_env_state', {
+      hasServiceRoleKey: envState.hasServiceRoleKey,
+      hasJwtSecret,
+      supabaseUrlHost: envState.supabaseUrlHost
+    });
+
+    if (!hasJwtSecret) {
       logOverlayAuth(500, 'Missing OVERLAY_JWT_SECRET');
       return res.status(500).json({ error: 'Missing OVERLAY_JWT_SECRET' });
     }
 
-    const { client: supabaseAdmin, missing } = getSupabaseServiceRoleAdmin();
-    if (!supabaseAdmin) {
-      logOverlayAuth(500, 'supabase_env_missing', { missing_env: missing.join(',') });
-      return res.status(500).json({ error: 'Supabase env vars are missing.' });
+    let supabaseAdmin;
+    try {
+      supabaseAdmin = getSupabaseAdminClient();
+    } catch (clientError) {
+      const statusCode = clientError?.statusCode || 500;
+      logOverlayAuth(statusCode, clientError?.message || 'supabase_admin_init_failed', {
+        hasServiceRoleKey: envState.hasServiceRoleKey,
+        hasJwtSecret,
+        supabaseUrlHost: envState.supabaseUrlHost
+      });
+      return res.status(statusCode).json({ error: clientError?.message || 'Supabase admin init failed.' });
+    }
+
+    const { error: schemaCheckError } = await supabaseAdmin
+      .from('overlay_refresh_tokens')
+      .select('id')
+      .limit(1);
+
+    if (schemaCheckError) {
+      const rawMessage = String(schemaCheckError?.message || schemaCheckError?.code || '');
+      const isSchemaCacheError =
+        rawMessage.toLowerCase().includes('schema cache') ||
+        rawMessage.includes('PGRST') ||
+        String(schemaCheckError?.code || '').startsWith('PGRST');
+      if (isSchemaCacheError) {
+        logOverlayAuth(500, 'overlay_schema_cache_error', { schemaCheckError });
+        return res.status(500).json({ error: 'Supabase schema cache is stale for overlay_refresh_tokens. Run migrations and NOTIFY pgrst, \'reload schema\'.' });
+      }
+
+      logOverlayAuth(500, 'overlay_schema_check_failed', { schemaCheckError });
+      return res.status(500).json({ error: 'Failed to verify overlay_refresh_tokens availability.' });
     }
 
     const {
@@ -1503,6 +1531,17 @@ async function overlayLinkExchangeHandler(req, res) {
       return res.status(400).json({ error: 'invalid_or_expired' });
     }
 
+    const { error: consumeErr } = await supabaseAdmin
+      .from('overlay_links')
+      .update({ used_at: nowIso, device_id: deviceId, device_name: deviceName })
+      .eq('id', link.id)
+      .is('used_at', null);
+
+    if (consumeErr) {
+      logOverlayAuth(500, consumeErr.message || 'code_consume_failed');
+      return res.status(500).json({ error: consumeErr.message || 'Error consuming code.' });
+    }
+
     let tokens;
     try {
       tokens = await issueOverlayTokens({
@@ -1516,17 +1555,6 @@ async function overlayLinkExchangeHandler(req, res) {
       return res.status(500).json({ error: 'token_issue' });
     }
 
-    const { error: consumeErr } = await supabaseAdmin
-      .from('overlay_links')
-      .update({ used_at: nowIso, device_id: deviceId, device_name: deviceName })
-      .eq('id', link.id)
-      .is('used_at', null);
-
-    if (consumeErr) {
-      logOverlayAuth(500, consumeErr.message || 'code_consume_failed');
-      return res.status(500).json({ error: consumeErr.message || 'Error consuming code.' });
-    }
-
     const accessToken = tokens.overlay_access_token;
     const refreshToken = tokens.overlay_refresh_token || null;
 
@@ -1537,10 +1565,12 @@ async function overlayLinkExchangeHandler(req, res) {
       refreshToken,
       userId: link.user_id,
       expiresIn: OVERLAY_ACCESS_TTL_SECONDS,
+      device_id: deviceId,
       // Compat fields
       access_token: accessToken,
       refresh_token: refreshToken,
-      expires_in: OVERLAY_ACCESS_TTL_SECONDS
+      expires_in: OVERLAY_ACCESS_TTL_SECONDS,
+      deviceId
     });
   } catch (error) {
     logOverlayAuth(500, error?.message || 'overlay-link-exchange fatal');
@@ -1552,8 +1582,12 @@ async function overlayTokenRefreshHandler(req, res) {
   try {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
-    const supabaseAdmin = getSupabaseAdmin();
-    if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase env vars are missing.' });
+    let supabaseAdmin;
+    try {
+      supabaseAdmin = getSupabaseAdminClient();
+    } catch (clientError) {
+      return res.status(clientError?.statusCode || 500).json({ error: clientError?.message || 'Supabase admin init failed.' });
+    }
 
     const { refresh_token: refreshToken } = req.body || {};
     if (!refreshToken) return res.status(400).json({ error: 'Missing refresh_token' });
@@ -1564,14 +1598,14 @@ async function overlayTokenRefreshHandler(req, res) {
     const { data: stored, error: tokenErr } = await supabaseAdmin
       .from('overlay_refresh_tokens')
       .select('id,user_id,device_id,device_name,expires_at,revoked_at')
-      .eq('token_hash', tokenHash)
+      .eq('refresh_token_hash', tokenHash)
       .maybeSingle();
 
     if (tokenErr) return res.status(500).json({ error: tokenErr.message || 'Error checking refresh token.' });
     if (!stored || stored.revoked_at) return res.status(401).json({ error: 'Invalid refresh token' });
     if (new Date(stored.expires_at).getTime() <= Date.now()) return res.status(401).json({ error: 'Refresh token expired' });
 
-    const accessToken = signOverlayJwt({ sub: stored.user_id, typ: 'overlay_access', device_id: stored.device_id || null }, OVERLAY_ACCESS_TTL_SECONDS);
+    const accessToken = signOverlayJwt({ sub: stored.user_id, device_id: stored.device_id || null }, OVERLAY_ACCESS_TTL_SECONDS);
 
     return res.status(200).json({
       overlay_access_token: accessToken,
@@ -1588,8 +1622,12 @@ async function overlayRevokeDeviceHandler(req, res) {
   try {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
-    const supabaseAdmin = getSupabaseAdmin();
-    if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase env vars are missing.' });
+    let supabaseAdmin;
+    try {
+      supabaseAdmin = getSupabaseAdminClient();
+    } catch (clientError) {
+      return res.status(clientError?.statusCode || 500).json({ error: clientError?.message || 'Supabase admin init failed.' });
+    }
 
     const token = getBearerToken(req);
     const user = await getAuthUserOrNull(supabaseAdmin, token);

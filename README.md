@@ -74,9 +74,12 @@ Opcional (CLI): ejecutar `supabase db push` apuntando al proyecto de producción
 Para que `POST /api/overlay/link/exchange` funcione correctamente en Vercel, configurá **sí o sí**:
 
 - `OVERLAY_JWT_SECRET`
+- `SUPABASE_URL` (o `NEXT_PUBLIC_SUPABASE_URL`)
+- `SUPABASE_SERVICE_ROLE_KEY`
 
 Si no está definida, el endpoint responde `500` con:
 
 ```json
 { "error": "Missing OVERLAY_JWT_SECRET" }
+{ "error": "Missing SUPABASE_SERVICE_ROLE_KEY" }
 ```
