@@ -1,6 +1,6 @@
 {
   "name": "yumiko-overlay-electron",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Desktop overlay for Yumiko 100% built with Electron.",
   "author": "Elix65",
   "homepage": "https://github.com/Elix65/your-tomboy-coach-vercel1",
@@ -71,5 +71,8 @@
   },
   "dependencies": {
     "keytar": "7.9.0"
+  },
+  "engines": {
+    "node": ">=20 <21"
   }
 }
