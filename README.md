@@ -50,3 +50,22 @@ El botón “Yumiko 100%” usa la constante `DOWNLOAD_URL` en `public/script.v2
 2. Entrá al chat: se ejecuta `GET /api/get-messages`.
 3. Enviá mensaje: se inserta en Supabase (`messages`), luego `POST /api/yumiko`, y si falta `yumiko_message_id` se inserta respuesta yumiko en Supabase.
 4. Si falta token, la UI muestra: `No hay token. Conectá overlay con yumiko://auth?token=... o agregalo en Settings`.
+
+## Pairing PRO: migración `public.overlay_links` en producción
+Si en producción aparece el error `Could not find table public.overlay_links`, aplicá la migración nueva:
+
+1. Abrí Supabase Dashboard → **SQL Editor**.
+2. Abrí el archivo `supabase/migrations/20260303120000_overlay_links_rls_backfill.sql` de este repo.
+3. Copiá y ejecutá todo el SQL en producción.
+4. Verificá que exista la tabla con:
+   ```sql
+   select to_regclass('public.overlay_links');
+   ```
+5. Verificá RLS/policies con:
+   ```sql
+   select policyname, cmd
+   from pg_policies
+   where schemaname = 'public' and tablename = 'overlay_links';
+   ```
+
+Opcional (CLI): ejecutar `supabase db push` apuntando al proyecto de producción para aplicar esta migración.
