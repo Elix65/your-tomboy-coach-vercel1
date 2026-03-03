@@ -17,6 +17,19 @@ const safeLocalStorage = (() => {
 
 // Detectar página actual
 const currentPage = window.location.pathname;
+const returnToParam = new URLSearchParams(window.location.search).get("returnTo");
+
+function getSafeReturnTo() {
+  if (!returnToParam || !returnToParam.startsWith("/")) {
+    return null;
+  }
+
+  if (returnToParam.startsWith("//")) {
+    return null;
+  }
+
+  return returnToParam;
+}
 
 function goWithTransition(url) {
   if (typeof window.playPageTransitionAndGo === "function") {
@@ -33,7 +46,8 @@ if (currentPage.includes("login")) {
   supabaseClient.auth.getUser().then((res) => {
     const user = res?.data?.user;
     if (user) {
-      goWithTransition("index.html");
+      const safeReturnTo = getSafeReturnTo();
+      goWithTransition(safeReturnTo || "index.html");
     }
   });
 }
@@ -174,7 +188,8 @@ if (loginBtn) {
       }
 
       sessionStorage.setItem("show_entry_choice", "1");
-      goWithTransition("index.html");
+      const safeReturnTo = getSafeReturnTo();
+      goWithTransition(safeReturnTo || "index.html");
     } catch (error) {
       console.error(isRegisterMode ? "Register error:" : "Login error:", error?.message || error);
       showAuthMessage(error?.message || "Uhm… algo falló. ¿Revisamos e intentamos de nuevo? 🥺");

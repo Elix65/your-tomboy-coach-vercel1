@@ -282,7 +282,7 @@ function hashSecret(value) {
 }
 
 function createOverlayCode() {
-  return crypto.randomBytes(6).toString('hex').toUpperCase();
+  return crypto.randomBytes(32).toString('base64url');
 }
 
 function createRefreshTokenRaw() {

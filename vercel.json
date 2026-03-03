@@ -19,7 +19,7 @@
     },
     {
       "source": "/overlay/connect",
-      "destination": "/overlay-connect.html"
+      "destination": "/overlay/connect/index.html"
     },
     {
       "source": "/api/yumiko",
