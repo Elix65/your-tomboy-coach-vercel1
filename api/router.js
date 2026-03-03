@@ -1511,13 +1511,27 @@ async function overlayLinkStartHandler(req, res) {
 async function overlayLinkExchangeHandler(req, res) {
   try {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
     const envState = getSupabaseAdminEnvState();
     const hasOverlayJwtSecret = Boolean(process.env.OVERLAY_JWT_SECRET);
-    logOverlayAuth(200, 'overlay_exchange_env_state', {
-      supabaseHost: envState.supabaseUrlHost,
-      hasServiceRoleKey: envState.hasServiceRoleKey,
-      hasOverlayJwtSecret
-    });
+    const isDebugRequest = getRequestUrl(req).searchParams.get('debug') === '1';
+
+    if (isDebugRequest) {
+      logOverlayAuth(200, 'overlay_exchange_env_state', {
+        supabaseHost: envState.supabaseUrlHost,
+        hasServiceRoleKey: envState.hasServiceRoleKey,
+        hasOverlayJwtSecret
+      });
+      return res.status(200).json({
+        ok: true,
+        debug: true,
+        env_state: {
+          supabase_url_host: envState.supabaseUrlHost,
+          has_service_role_key: envState.hasServiceRoleKey,
+          has_overlay_jwt_secret: hasOverlayJwtSecret
+        }
+      });
+    }
 
     if (!hasOverlayJwtSecret) {
       logOverlayAuth(500, 'Missing OVERLAY_JWT_SECRET', {
@@ -1581,10 +1595,8 @@ async function overlayLinkExchangeHandler(req, res) {
       operation: () =>
         supabaseAdmin
           .from('overlay_links')
-          .select('id,user_id')
+          .select('id,user_id,expires_at,used_at')
           .eq('code_hash', codeHash)
-          .is('used_at', null)
-          .gt('expires_at', nowIso)
           .maybeSingle()
     });
 
@@ -1598,8 +1610,22 @@ async function overlayLinkExchangeHandler(req, res) {
       return res.status(500).json({ error: linkErr.message || 'Error validating code.' });
     }
     if (!link) {
-      logOverlayAuth(400, 'invalid_or_expired');
-      return res.status(400).json({ error: 'invalid_or_expired' });
+      logOverlayAuth(404, 'link_not_found');
+      return res.status(404).json({ error: 'link_not_found' });
+    }
+
+    if (link.used_at) {
+      logOverlayAuth(409, 'link_already_used', {
+        userId: link.user_id
+      });
+      return res.status(409).json({ error: 'link_already_used' });
+    }
+
+    if (!link.expires_at || new Date(link.expires_at).getTime() <= Date.now()) {
+      logOverlayAuth(410, 'link_expired', {
+        userId: link.user_id
+      });
+      return res.status(410).json({ error: 'link_expired' });
     }
 
     const { error: consumeErr } = await runSupabaseOpWithSchemaReloadRetry({
@@ -1649,19 +1675,17 @@ async function overlayLinkExchangeHandler(req, res) {
     const accessToken = tokens.overlay_access_token;
     const refreshToken = tokens.overlay_refresh_token || null;
 
+    logOverlayAuth(200, 'overlay exchange success', {
+      user_id: link.user_id,
+      device_id: deviceId
+    });
+
     return res.status(200).json({
       ok: true,
-      accessToken,
-      token: accessToken,
-      refreshToken,
-      userId: link.user_id,
-      expiresIn: OVERLAY_ACCESS_TTL_SECONDS,
-      device_id: deviceId,
-      // Compat fields
-      access_token: accessToken,
+      overlay_token: accessToken,
       refresh_token: refreshToken,
       expires_in: OVERLAY_ACCESS_TTL_SECONDS,
-      deviceId
+      user_id: link.user_id
     });
   } catch (error) {
     logOverlayAuth(500, error?.message || 'overlay-link-exchange fatal', {
