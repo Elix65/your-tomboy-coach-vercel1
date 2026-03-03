@@ -31,6 +31,17 @@ function getSafeReturnTo() {
   return returnToParam;
 }
 
+function getPostLoginRedirectPath() {
+  const params = new URLSearchParams(window.location.search);
+  const returnTo = params.get("returnTo") || "";
+  if (returnTo.startsWith("/")) {
+    return returnTo;
+  }
+  return "/index.html";
+}
+
+const postLoginRedirectPath = getPostLoginRedirectPath();
+
 function goWithTransition(url) {
   if (typeof window.playPageTransitionAndGo === "function") {
     window.playPageTransitionAndGo(url);
@@ -48,6 +59,7 @@ if (currentPage.includes("login")) {
     if (user) {
       const safeReturnTo = getSafeReturnTo();
       goWithTransition(safeReturnTo || "index.html");
+      goWithTransition(postLoginRedirectPath);
     }
   });
 }
@@ -190,6 +202,7 @@ if (loginBtn) {
       sessionStorage.setItem("show_entry_choice", "1");
       const safeReturnTo = getSafeReturnTo();
       goWithTransition(safeReturnTo || "index.html");
+      goWithTransition(postLoginRedirectPath);
     } catch (error) {
       console.error(isRegisterMode ? "Register error:" : "Login error:", error?.message || error);
       showAuthMessage(error?.message || "Uhm… algo falló. ¿Revisamos e intentamos de nuevo? 🥺");
