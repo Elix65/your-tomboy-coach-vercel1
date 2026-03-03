@@ -22,6 +22,7 @@ const KEYTAR_SERVICE = 'yumiko-overlay';
 let tray;
 let win;
 let isQuitting = false;
+let pendingAuthCode = '';
 
 const defaultSettings = {
   mode: 'chat',
@@ -452,16 +453,12 @@ function handleDeepLink(rawUrl) {
     if (hostAction === 'auth') {
       const code = parsed.searchParams.get('code')?.trim();
       if (code) {
-        exchangePairingCode(code)
-          .then(() => {
-            console.info('[yumiko][auth] pairing code exchanged from deeplink');
-            if (win && !win.isDestroyed()) {
-              win.showInactive();
-            }
-          })
-          .catch((error) => {
-            console.error('[yumiko][auth] pairing exchange failed:', error);
-          });
+        pendingAuthCode = code;
+        showAndFocusChat();
+
+        if (win && !win.isDestroyed() && !win.webContents.isLoading()) {
+          win.webContents.send('yumiko:auth-code', { code });
+        }
       }
     } else if (hostAction === 'open') {
       showAndFocusChat();
@@ -551,6 +548,10 @@ function createWindow() {
     }
     applyWindowBehavior();
     setMode(settings.mode);
+
+    if (pendingAuthCode) {
+      win.webContents.send('yumiko:auth-code', { code: pendingAuthCode });
+    }
   });
 }
 
@@ -612,6 +613,18 @@ if (!singleInstance) {
     ipcMain.handle('yumiko:open-overlay-connect', async () => {
       await shell.openExternal('https://21-moon.com/overlay/connect');
       return true;
+    });
+    ipcMain.handle('yumiko:exchange-auth-code', async (_event, payload) => {
+      const code = typeof payload?.code === 'string' ? payload.code.trim() : '';
+      if (!code) {
+        throw new Error('Missing pairing code');
+      }
+
+      await exchangePairingCode(code);
+      if (pendingAuthCode === code) {
+        pendingAuthCode = '';
+      }
+      return settings;
     });
     ipcMain.on('yumiko:set-mode', (_event, mode) => setMode(mode, { fromRenderer: true }));
     ipcMain.on('yumiko:set-shortcuts-enabled', (_event, enabled) => setShortcutsEnabled(enabled));
