@@ -1423,8 +1423,7 @@ async function overlayLinkStartHandler(req, res) {
     if (error) return res.status(500).json({ error: error.message || 'Error creating overlay link.' });
 
     return res.status(200).json({
-      deepLink: `yumiko://auth?code=${encodeURIComponent(code)}`,
-      expires_at: expiresAt
+      deepLink: `yumiko://auth?code=${encodeURIComponent(code)}`
     });
   } catch (error) {
     console.error('overlay-link-start fatal:', error);
