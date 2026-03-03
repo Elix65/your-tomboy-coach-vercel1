@@ -136,8 +136,7 @@ function getAction(req) {
 }
 
 function getRequestUrl(req) {
-  const host = getFirstHeaderValue(req.headers.host) || 'localhost';
-  return new URL(req.url, `https://${host}`);
+  return new URL(req.url, 'https://21-moon.com');
 }
 
 function getMercadoPagoConfigError() {
@@ -1462,6 +1461,10 @@ async function overlayLinkStartHandler(req, res) {
 async function overlayLinkExchangeHandler(req, res) {
   try {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+    if (!process.env.OVERLAY_JWT_SECRET) {
+      logOverlayAuth(500, 'Missing OVERLAY_JWT_SECRET');
+      return res.status(500).json({ error: 'Missing OVERLAY_JWT_SECRET' });
+    }
 
     const { client: supabaseAdmin, missing } = getSupabaseServiceRoleAdmin();
     if (!supabaseAdmin) {

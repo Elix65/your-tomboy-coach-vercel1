@@ -69,3 +69,14 @@ Si en producción aparece el error `Could not find table public.overlay_links`, 
    ```
 
 Opcional (CLI): ejecutar `supabase db push` apuntando al proyecto de producción para aplicar esta migración.
+
+## Vercel: variables de entorno requeridas para overlay exchange
+Para que `POST /api/overlay/link/exchange` funcione correctamente en Vercel, configurá **sí o sí**:
+
+- `OVERLAY_JWT_SECRET`
+
+Si no está definida, el endpoint responde `500` con:
+
+```json
+{ "error": "Missing OVERLAY_JWT_SECRET" }
+```
