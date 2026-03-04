@@ -15,6 +15,8 @@ jobs:
       NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT: 120000
       NPM_CONFIG_AUDIT: "false"
       NPM_CONFIG_FUND: "false"
+      ELECTRON_CACHE: ${{ github.workspace }}\.cache\electron
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}\.cache\electron-builder
     defaults:
       run:
         working-directory: electron
@@ -29,13 +31,13 @@ jobs:
           cache: npm
           cache-dependency-path: electron/package-lock.json
 
-      - name: Cache Electron and electron-builder
+      - name: Cache Electron & electron-builder
         uses: actions/cache@v4
         with:
           path: |
-            ${{ env.LOCALAPPDATA }}\electron\Cache
-            ${{ env.LOCALAPPDATA }}\electron-builder\Cache
-          key: ${{ runner.os }}-electron-cache-${{ hashFiles('electron/package-lock.json') }}
+            .cache/electron
+            .cache/electron-builder
+          key: ${{ runner.os }}-electron-${{ hashFiles('electron/package-lock.json') }}
 
       - name: Debug npm working directory
         shell: pwsh
