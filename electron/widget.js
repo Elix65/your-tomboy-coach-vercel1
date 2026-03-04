@@ -21,6 +21,9 @@ const chatLog = document.getElementById('chat-log');
 let isThinking = false;
 let contextCache = [];
 let overlayConnected = false;
+let overlayAccountEmail = '';
+let isAuthExchangeInProgress = false;
+const processedAuthCodes = new Set();
 
 const AUTH_MISSING_MESSAGE = 'No conectado. Abrí Settings > Vincular';
 const AUTH_INVALID_MESSAGE = 'Sesión expirada. Vinculá de nuevo';
@@ -231,29 +234,36 @@ async function submitMessage() {
 }
 
 function renderAuthState(state = {}) {
-  overlayConnected = Boolean(state.overlayAccountEmail);
+  overlayAccountEmail = typeof state.overlayAccountEmail === 'string' ? state.overlayAccountEmail : '';
+  overlayConnected = Boolean(overlayAccountEmail);
 
   if (authStatus) {
     authStatus.textContent = overlayConnected
-      ? `Conectado como ${state.overlayAccountEmail}`
+      ? `Conectado como ${overlayAccountEmail}`
       : 'No conectado';
   }
 
   if (authActionButton) {
     authActionButton.textContent = overlayConnected ? 'Desconectar' : 'Vincular';
+    authActionButton.disabled = isAuthExchangeInProgress;
   }
 }
 
 
 async function exchangeCode(code) {
-  if (typeof code !== 'string' || !code.trim()) {
+  const trimmedCode = typeof code === 'string' ? code.trim() : '';
+  if (!trimmedCode || processedAuthCodes.has(trimmedCode) || isAuthExchangeInProgress) {
     return;
   }
+
+  processedAuthCodes.add(trimmedCode);
+  isAuthExchangeInProgress = true;
+  if (authActionButton) authActionButton.disabled = true;
 
   addMessage('assistant', 'Recibí code, vinculando…');
 
   try {
-    const nextState = await window.yumikoOverlay?.exchangeAuthCode?.(code.trim());
+    const nextState = await window.yumikoOverlay?.exchangeAuthCode?.(trimmedCode);
     syncHostState(nextState || {});
     if (nextState?.overlayAccountEmail) {
       addMessage('assistant', 'Vinculado ✅');
@@ -264,6 +274,9 @@ async function exchangeCode(code) {
       : 'error_desconocido';
     addMessage('assistant', `No pude vincular: ${reason}`);
     console.error('[yumiko][auth] auth code exchange failed', { reason });
+  } finally {
+    isAuthExchangeInProgress = false;
+    renderAuthState({ overlayAccountEmail });
   }
 }
 
@@ -325,7 +338,7 @@ authActionButton?.addEventListener('click', async () => {
   } catch (error) {
     console.error('[yumiko][auth] auth action failed', error);
   } finally {
-    authActionButton.disabled = false;
+    if (authActionButton) authActionButton.disabled = isAuthExchangeInProgress;
   }
 });
 
