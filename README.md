@@ -77,9 +77,16 @@ Para que `POST /api/overlay/link/exchange` funcione correctamente en Vercel, con
 - `SUPABASE_URL` (o `NEXT_PUBLIC_SUPABASE_URL`)
 - `SUPABASE_SERVICE_ROLE_KEY`
 
-Si no está definida, el endpoint responde `500` con:
+Si falta alguna, el endpoint responde `500` con:
 
 ```json
-{ "error": "Missing OVERLAY_JWT_SECRET" }
-{ "error": "Missing SUPABASE_SERVICE_ROLE_KEY" }
+{ "ok": false, "error": "token_issue", "missing": ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "OVERLAY_JWT_SECRET"] }
+```
+
+Prueba manual rápida (comentada) para validar que devuelve `access_token` y `refresh_token`:
+
+```bash
+# curl -sS -X POST "https://21-moon.com/api/overlay/link/exchange" \
+#   -H "Content-Type: application/json" \
+#   -d '{"code":"<CODE>","device_id":"device-test-1","device_name":"Test Device"}' | jq
 ```
