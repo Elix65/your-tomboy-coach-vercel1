@@ -66,7 +66,8 @@ function logOverlayAuth(status, errorMessage, extra = {}) {
     error: errorMessage ? String(errorMessage) : null,
     ...extra
   };
-  console.error('[yumiko][auth]', payload);
+  const logger = status >= 400 ? console.error : console.info;
+  logger('[yumiko][auth]', payload);
 }
 
 function getBearerToken(req) {
@@ -387,11 +388,16 @@ async function issueOverlayTokens({ supabaseAdmin, userId, deviceId, deviceName 
         return query;
       }
     });
-    error = fallbackUpdate.error;
+    if (fallbackUpdate.error) {
+      error = fallbackUpdate.error;
+    } else {
+      error = null;
+    }
   }
 
   if (error) {
     const wrapped = new Error(error.message || 'Error storing overlay refresh token.');
+    wrapped.code = String(error?.code || '');
     wrapped.supabase = sanitizeSupabaseError(error);
     throw wrapped;
   }
@@ -1674,18 +1680,47 @@ async function overlayLinkExchangeHandler(req, res) {
         deviceName
       });
     } catch (tokenError) {
-      const supabaseError = sanitizeSupabaseError(tokenError?.supabase);
-      logOverlayAuth(500, tokenError?.message || 'token_issue', {
-        supabaseHost: envState.supabaseUrlHost,
-        hasServiceRoleKey: envState.hasServiceRoleKey,
-        hasOverlayJwtSecret,
-        supabase: supabaseError
-      });
-      return res.status(500).json({
-        ok: false,
-        error: 'token_issue',
-        supabase: supabaseError
-      });
+      if (String(tokenError?.code) === '23505') {
+        try {
+          tokens = await issueOverlayTokens({
+            supabaseAdmin,
+            userId: link.user_id,
+            deviceId,
+            deviceName
+          });
+          logOverlayAuth(200, 'overlay exchange unique_violation_recovered', {
+            user_id: link.user_id,
+            device_id: deviceId,
+            supabase: sanitizeSupabaseError(tokenError?.supabase)
+          });
+        } catch (retryError) {
+          const retrySupabaseError = sanitizeSupabaseError(retryError?.supabase);
+          logOverlayAuth(500, retryError?.message || 'token_issue_retry_failed', {
+            supabaseHost: envState.supabaseUrlHost,
+            hasServiceRoleKey: envState.hasServiceRoleKey,
+            hasOverlayJwtSecret,
+            supabase: retrySupabaseError
+          });
+          return res.status(500).json({
+            ok: false,
+            error: 'token_issue',
+            supabase: retrySupabaseError
+          });
+        }
+      } else {
+        const supabaseError = sanitizeSupabaseError(tokenError?.supabase);
+        logOverlayAuth(500, tokenError?.message || 'token_issue', {
+          supabaseHost: envState.supabaseUrlHost,
+          hasServiceRoleKey: envState.hasServiceRoleKey,
+          hasOverlayJwtSecret,
+          supabase: supabaseError
+        });
+        return res.status(500).json({
+          ok: false,
+          error: 'token_issue',
+          supabase: supabaseError
+        });
+      }
     }
 
     const accessToken = tokens.overlay_access_token;
