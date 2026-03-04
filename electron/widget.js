@@ -256,7 +256,7 @@ async function exchangeCode(code) {
     const nextState = await window.yumikoOverlay?.exchangeAuthCode?.(code.trim());
     syncHostState(nextState || {});
     if (nextState?.overlayAccountEmail) {
-      addMessage('assistant', 'Conectado ✅');
+      addMessage('assistant', 'Vinculado ✅');
     }
   } catch (error) {
     const reason = typeof error?.message === 'string' && error.message.trim()

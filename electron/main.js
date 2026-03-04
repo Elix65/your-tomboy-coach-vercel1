@@ -18,6 +18,7 @@ const keytar = require('keytar');
 const DEFAULT_BOUNDS = { width: 560, height: 380 };
 const SETTINGS_FILE = 'settings.json';
 const KEYTAR_SERVICE = 'yumiko-overlay';
+const TOKEN_FALLBACK_FILE = 'overlay-token-store.json';
 
 let tray;
 let win;
@@ -115,20 +116,137 @@ function ensureDeviceIdentity() {
 }
 
 async function saveRefreshToken(token) {
-  await keytar.setPassword(KEYTAR_SERVICE, settings.deviceId, token);
+  try {
+    if (keytar?.setPassword) {
+      await keytar.setPassword(KEYTAR_SERVICE, settings.deviceId, token);
+      return;
+    }
+  } catch (error) {
+    console.warn('[yumiko][auth] keytar save failed, using local fallback', {
+      reason: typeof error?.message === 'string' ? error.message : 'unknown'
+    });
+  }
+
+  writeTokenFallback({ refreshToken: token });
+}
+
+async function saveAccessToken(token) {
+  try {
+    if (keytar?.setPassword) {
+      await keytar.setPassword(KEYTAR_SERVICE, `${settings.deviceId}:access`, token);
+      return;
+    }
+  } catch (error) {
+    console.warn('[yumiko][auth] keytar save access failed, using local fallback', {
+      reason: typeof error?.message === 'string' ? error.message : 'unknown'
+    });
+  }
+
+  writeTokenFallback({ accessToken: token });
 }
 
 async function readRefreshToken() {
-  return keytar.getPassword(KEYTAR_SERVICE, settings.deviceId);
+  try {
+    if (keytar?.getPassword) {
+      const storedToken = await keytar.getPassword(KEYTAR_SERVICE, settings.deviceId);
+      if (typeof storedToken === 'string' && storedToken) {
+        return storedToken;
+      }
+    }
+  } catch (error) {
+    console.warn('[yumiko][auth] keytar read failed, using local fallback', {
+      reason: typeof error?.message === 'string' ? error.message : 'unknown'
+    });
+  }
+
+  return readTokenFallback().refreshToken || '';
 }
 
 async function clearRefreshToken() {
-  await keytar.deletePassword(KEYTAR_SERVICE, settings.deviceId);
+  try {
+    if (keytar?.deletePassword) {
+      await keytar.deletePassword(KEYTAR_SERVICE, settings.deviceId);
+    }
+  } catch (error) {
+    console.warn('[yumiko][auth] keytar clear failed, cleaning local fallback', {
+      reason: typeof error?.message === 'string' ? error.message : 'unknown'
+    });
+  }
+
+  writeTokenFallback({ refreshToken: '' });
+}
+
+async function clearAccessToken() {
+  try {
+    if (keytar?.deletePassword) {
+      await keytar.deletePassword(KEYTAR_SERVICE, `${settings.deviceId}:access`);
+    }
+  } catch (error) {
+    console.warn('[yumiko][auth] keytar clear access failed, cleaning local fallback', {
+      reason: typeof error?.message === 'string' ? error.message : 'unknown'
+    });
+  }
+
+  writeTokenFallback({ accessToken: '' });
+}
+
+function tokenFallbackPath() {
+  return path.join(app.getPath('userData'), TOKEN_FALLBACK_FILE);
+}
+
+function tokenFallbackSecret() {
+  return crypto.createHash('sha256')
+    .update(`${settings.deviceId || 'yumiko-device'}::${app.getName()}::overlay-fallback`)
+    .digest();
+}
+
+function obfuscateTokenPayload(payload) {
+  const serialized = JSON.stringify(payload);
+  const source = Buffer.from(serialized, 'utf8');
+  const secret = tokenFallbackSecret();
+  const obfuscated = Buffer.alloc(source.length);
+
+  for (let index = 0; index < source.length; index += 1) {
+    obfuscated[index] = source[index] ^ secret[index % secret.length];
+  }
+
+  return obfuscated.toString('base64');
+}
+
+function deobfuscateTokenPayload(input) {
+  const source = Buffer.from(input, 'base64');
+  const secret = tokenFallbackSecret();
+  const decoded = Buffer.alloc(source.length);
+
+  for (let index = 0; index < source.length; index += 1) {
+    decoded[index] = source[index] ^ secret[index % secret.length];
+  }
+
+  return JSON.parse(decoded.toString('utf8'));
+}
+
+function readTokenFallback() {
+  try {
+    const raw = fs.readFileSync(tokenFallbackPath(), 'utf8');
+    if (!raw) return {};
+    const parsed = deobfuscateTokenPayload(raw);
+    return typeof parsed === 'object' && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeTokenFallback(nextPatch = {}) {
+  const previous = readTokenFallback();
+  const next = { ...previous, ...nextPatch };
+  fs.mkdirSync(app.getPath('userData'), { recursive: true });
+  fs.writeFileSync(tokenFallbackPath(), obfuscateTokenPayload(next));
 }
 
 async function markOverlayDisconnected({ clearStoredRefreshToken = false } = {}) {
   if (clearStoredRefreshToken) {
     await clearRefreshToken();
+    await clearAccessToken();
   }
   settings.overlayAccessToken = '';
   settings.overlayAccountEmail = '';
@@ -159,38 +277,42 @@ async function exchangePairingCode(code) {
     })
   });
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => '<no body>');
+  let data = null;
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
+  }
+
+  const serverError = typeof data?.error === 'string' && data.error.trim() ? data.error.trim() : '';
+  if (!res.ok || data?.ok === false) {
     console.error('[yumiko][auth] exchange failed', {
       status: res.status,
-      body: text.slice(0, 300)
+      ok: data?.ok,
+      error: serverError || '<none>',
+      keys: data && typeof data === 'object' ? Object.keys(data) : []
     });
 
-    let reason = 'exchange_failed';
-    try {
-      const parsed = JSON.parse(text);
-      if (typeof parsed?.error === 'string' && parsed.error.trim()) {
-        reason = parsed.error.trim();
-      }
-    } catch {
-      // no-op: keep generic reason when response body is not valid JSON.
+    if (serverError) {
+      throw new Error(`HTTP ${res.status} ${serverError}`);
     }
 
-    throw new Error(`HTTP ${res.status} ${reason}`);
+    throw new Error(`HTTP ${res.status} exchange_failed`);
   }
 
-  const data = await res.json();
   const accessToken = data?.accessToken || data?.access_token || data?.token;
   const refreshToken = data?.refreshToken || data?.refresh_token;
+  const expiresIn = data?.expiresIn ?? data?.expires_in;
+  const receivedKeys = data && typeof data === 'object' ? Object.keys(data) : [];
 
-  if (typeof accessToken !== 'string' || !accessToken) {
-    throw new Error('missing_token_fields');
-  }
-  if (typeof refreshToken !== 'string' || !refreshToken) {
-    throw new Error('missing_refresh_token');
+  if (typeof accessToken !== 'string' || !accessToken
+    || typeof refreshToken !== 'string' || !refreshToken
+    || !Number.isFinite(Number(expiresIn))) {
+    throw new Error(`missing_token_fields keys=${receivedKeys.join(',') || '<none>'}`);
   }
 
   await saveRefreshToken(refreshToken);
+  await saveAccessToken(accessToken);
   applyExchangeResponse({
     ...data,
     access_token: accessToken,
