@@ -348,25 +348,47 @@ async function issueOverlayTokens({ supabaseAdmin, userId, deviceId, deviceName 
   const nowSeconds = Math.floor(Date.now() / 1000);
   const accessToken = signOverlayJwt({ sub: userId, device_id: deviceId || null, device_name: deviceName || null, iat: nowSeconds }, OVERLAY_ACCESS_TTL_SECONDS);
   const refreshToken = createRefreshTokenRaw();
+  const refreshTokenHash = hashSecret(refreshToken);
   const refreshExpiresAt = new Date(Date.now() + OVERLAY_REFRESH_TTL_SECONDS * 1000).toISOString();
-  const createdAt = new Date().toISOString();
+  const refreshTokenRow = {
+    user_id: userId,
+    device_id: deviceId || null,
+    device_name: deviceName || null,
+    refresh_token_hash: refreshTokenHash,
+    expires_at: refreshExpiresAt,
+    revoked_at: null
+  };
 
-  const { error } = await runSupabaseOpWithSchemaReloadRetry({
+  let { error } = await runSupabaseOpWithSchemaReloadRetry({
     supabaseAdmin,
     operationName: 'overlay_refresh_tokens_upsert',
     operation: () =>
       supabaseAdmin
         .from('overlay_refresh_tokens')
-        .insert({
-          user_id: userId,
-          refresh_token_hash: hashSecret(refreshToken),
-          expires_at: refreshExpiresAt,
-          device_id: deviceId || null,
-          device_name: deviceName || null,
-          revoked_at: null,
-          created_at: createdAt
-        })
+        .upsert(refreshTokenRow, { onConflict: 'user_id,device_id' })
   });
+
+  if (error && String(error?.code) === '23505') {
+    const fallbackUpdate = await runSupabaseOpWithSchemaReloadRetry({
+      supabaseAdmin,
+      operationName: 'overlay_refresh_tokens_fallback_update',
+      operation: () => {
+        let query = supabaseAdmin
+          .from('overlay_refresh_tokens')
+          .update({
+            refresh_token_hash: refreshTokenHash,
+            expires_at: refreshExpiresAt,
+            device_name: deviceName || null,
+            revoked_at: null
+          })
+          .eq('user_id', userId);
+
+        query = deviceId ? query.eq('device_id', deviceId) : query.is('device_id', null);
+        return query;
+      }
+    });
+    error = fallbackUpdate.error;
+  }
 
   if (error) {
     const wrapped = new Error(error.message || 'Error storing overlay refresh token.');
