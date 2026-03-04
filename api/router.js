@@ -341,12 +341,12 @@ function createOverlayCode() {
 }
 
 function createRefreshTokenRaw() {
-  return crypto.randomBytes(48).toString('base64url');
+  return crypto.randomBytes(32).toString('base64url');
 }
 
 async function issueOverlayTokens({ supabaseAdmin, userId, deviceId, deviceName }) {
   const nowSeconds = Math.floor(Date.now() / 1000);
-  const accessToken = signOverlayJwt({ sub: userId, device_id: deviceId || null, iat: nowSeconds }, OVERLAY_ACCESS_TTL_SECONDS);
+  const accessToken = signOverlayJwt({ sub: userId, device_id: deviceId || null, device_name: deviceName || null, iat: nowSeconds }, OVERLAY_ACCESS_TTL_SECONDS);
   const refreshToken = createRefreshTokenRaw();
   const refreshExpiresAt = new Date(Date.now() + OVERLAY_REFRESH_TTL_SECONDS * 1000).toISOString();
   const createdAt = new Date().toISOString();
@@ -357,18 +357,15 @@ async function issueOverlayTokens({ supabaseAdmin, userId, deviceId, deviceName 
     operation: () =>
       supabaseAdmin
         .from('overlay_refresh_tokens')
-        .upsert(
-          {
-            user_id: userId,
-            refresh_token_hash: hashSecret(refreshToken),
-            expires_at: refreshExpiresAt,
-            device_id: deviceId || null,
-            device_name: deviceName || null,
-            revoked_at: null,
-            created_at: createdAt
-          },
-          { onConflict: 'user_id,device_id' }
-        )
+        .insert({
+          user_id: userId,
+          refresh_token_hash: hashSecret(refreshToken),
+          expires_at: refreshExpiresAt,
+          device_id: deviceId || null,
+          device_name: deviceName || null,
+          revoked_at: null,
+          created_at: createdAt
+        })
   });
 
   if (error) {
@@ -1513,10 +1510,16 @@ async function overlayLinkExchangeHandler(req, res) {
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
     const envState = getSupabaseAdminEnvState();
+    const missingEnv = [];
+    if (!process.env.SUPABASE_URL) missingEnv.push('SUPABASE_URL');
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) missingEnv.push('SUPABASE_SERVICE_ROLE_KEY');
+    if (!process.env.OVERLAY_JWT_SECRET) missingEnv.push('OVERLAY_JWT_SECRET');
+
     const hasOverlayJwtSecret = Boolean(process.env.OVERLAY_JWT_SECRET);
     const isDebugRequest = getRequestUrl(req).searchParams.get('debug') === '1';
+    const isOverlayDebugEnabled = process.env.OVERLAY_DEBUG === '1';
 
-    if (isDebugRequest) {
+    if (isDebugRequest && isOverlayDebugEnabled) {
       logOverlayAuth(200, 'overlay_exchange_env_state', {
         supabaseHost: envState.supabaseUrlHost,
         hasServiceRoleKey: envState.hasServiceRoleKey,
@@ -1533,13 +1536,14 @@ async function overlayLinkExchangeHandler(req, res) {
       });
     }
 
-    if (!hasOverlayJwtSecret) {
-      logOverlayAuth(500, 'Missing OVERLAY_JWT_SECRET', {
+    if (missingEnv.length > 0) {
+      logOverlayAuth(500, 'token_issue_missing_env', {
+        missing: missingEnv,
         supabaseHost: envState.supabaseUrlHost,
         hasServiceRoleKey: envState.hasServiceRoleKey,
         hasOverlayJwtSecret
       });
-      return res.status(500).json({ error: 'Missing OVERLAY_JWT_SECRET' });
+      return res.status(500).json({ ok: false, error: 'token_issue', missing: missingEnv });
     }
 
     let supabaseAdmin;
@@ -1575,13 +1579,14 @@ async function overlayLinkExchangeHandler(req, res) {
       return res.status(500).json({ error: 'Failed to verify overlay_refresh_tokens availability.' });
     }
 
+    const body = await getJsonBody(req);
     const {
       code,
       deviceId: bodyDeviceId,
       deviceName: bodyDeviceName,
       device_id: legacyDeviceId,
       device_name: legacyDeviceName
-    } = req.body || {};
+    } = body || {};
     const deviceId = bodyDeviceId || legacyDeviceId || null;
     const deviceName = bodyDeviceName || legacyDeviceName || null;
     if (!code) return res.status(400).json({ error: 'Missing code' });
@@ -1597,6 +1602,8 @@ async function overlayLinkExchangeHandler(req, res) {
           .from('overlay_links')
           .select('id,user_id,expires_at,used_at')
           .eq('code_hash', codeHash)
+          .is('used_at', null)
+          .gt('expires_at', nowIso)
           .maybeSingle()
     });
 
@@ -1610,22 +1617,10 @@ async function overlayLinkExchangeHandler(req, res) {
       return res.status(500).json({ error: linkErr.message || 'Error validating code.' });
     }
     if (!link) {
-      logOverlayAuth(404, 'link_not_found');
-      return res.status(404).json({ error: 'link_not_found' });
-    }
-
-    if (link.used_at) {
-      logOverlayAuth(409, 'link_already_used', {
-        userId: link.user_id
+      logOverlayAuth(400, 'invalid_code', {
+        code_hash_prefix: String(codeHash).slice(0, 10)
       });
-      return res.status(409).json({ error: 'link_already_used' });
-    }
-
-    if (!link.expires_at || new Date(link.expires_at).getTime() <= Date.now()) {
-      logOverlayAuth(410, 'link_expired', {
-        userId: link.user_id
-      });
-      return res.status(410).json({ error: 'link_expired' });
+      return res.status(400).json({ ok: false, error: 'invalid_code' });
     }
 
     const { error: consumeErr } = await runSupabaseOpWithSchemaReloadRetry({
@@ -1637,16 +1632,15 @@ async function overlayLinkExchangeHandler(req, res) {
           .update({ used_at: nowIso, device_id: deviceId, device_name: deviceName })
           .eq('id', link.id)
           .is('used_at', null)
+          .gt('expires_at', nowIso)
     });
 
     if (consumeErr) {
-      logOverlayAuth(500, consumeErr.message || 'code_consume_failed', {
-        supabaseHost: envState.supabaseUrlHost,
-        hasServiceRoleKey: envState.hasServiceRoleKey,
-        hasOverlayJwtSecret,
-        supabase: sanitizeSupabaseError(consumeErr)
+      logOverlayAuth(400, 'invalid_code_consume_conflict', {
+        userId: link.user_id,
+        device_id: deviceId
       });
-      return res.status(500).json({ error: consumeErr.message || 'Error consuming code.' });
+      return res.status(400).json({ ok: false, error: 'invalid_code' });
     }
 
     let tokens;
@@ -1667,7 +1661,7 @@ async function overlayLinkExchangeHandler(req, res) {
       });
       return res.status(500).json({
         ok: false,
-        code: 'token_issue',
+        error: 'token_issue',
         supabase: supabaseError
       });
     }
@@ -1677,15 +1671,18 @@ async function overlayLinkExchangeHandler(req, res) {
 
     logOverlayAuth(200, 'overlay exchange success', {
       user_id: link.user_id,
-      device_id: deviceId
+      device_id: deviceId,
+      access_token_preview: accessToken ? `${accessToken.slice(0, 12)}...` : null,
+      refresh_token_preview: refreshToken ? `${refreshToken.slice(0, 8)}...` : null
     });
 
     return res.status(200).json({
       ok: true,
-      overlay_token: accessToken,
+      access_token: accessToken,
       refresh_token: refreshToken,
       expires_in: OVERLAY_ACCESS_TTL_SECONDS,
-      user_id: link.user_id
+      user_id: link.user_id,
+      device_id: deviceId || null
     });
   } catch (error) {
     logOverlayAuth(500, error?.message || 'overlay-link-exchange fatal', {
