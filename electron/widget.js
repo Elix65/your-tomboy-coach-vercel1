@@ -41,6 +41,17 @@ function getAuthErrorCode(error) {
   return '';
 }
 
+function formatHttpErrorMessage(error) {
+  const message = error instanceof Error ? error.message : String(error || '');
+  const httpMatch = message.match(/HTTP\s+(\d+):?\s*([\s\S]*)/i);
+  if (!httpMatch) return '';
+
+  const status = httpMatch[1];
+  const body = (httpMatch[2] || '').trim().replace(/\s+/g, ' ');
+  const shortBody = body ? body.slice(0, 200) : 'Sin detalle';
+  return `Error HTTP ${status}: ${shortBody}`;
+}
+
 
 function loadSettings() {
   try {
@@ -210,11 +221,12 @@ async function submitMessage() {
     if (bubble) bubble.textContent = reply;
   } catch (error) {
     const authCode = getAuthErrorCode(error);
+    const httpErrorMessage = formatHttpErrorMessage(error);
     const fallback = authCode === 'AUTH_INVALID'
       ? AUTH_INVALID_MESSAGE
       : authCode === 'AUTH_MISSING'
         ? AUTH_MISSING_MESSAGE
-        : 'Tuve un problema al responder. Probá de nuevo en un momento.';
+        : (httpErrorMessage || 'Tuve un problema al responder. Probá de nuevo en un momento.');
 
     if (thinkingNode) {
       thinkingNode.classList.remove('thinking');
@@ -227,7 +239,7 @@ async function submitMessage() {
     if (authCode) {
       console.warn(`[yumiko][auth] ${authCode} on widget sendMessage`);
     }
-    console.error('[yumiko][widget] sendMessage failed:', error);
+    console.error('[yumiko][chat] sendMessage failed:', error);
   } finally {
     setThinking(false);
   }
