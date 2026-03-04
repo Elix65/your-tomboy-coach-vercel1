@@ -75,6 +75,122 @@ function getBearerToken(req) {
   return authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
 }
 
+
+function decodeBase64UrlJson(segment) {
+  const normalized = String(segment || '').replace(/-/g, '+').replace(/_/g, '/');
+  const padding = normalized.length % 4 === 0 ? '' : '='.repeat(4 - (normalized.length % 4));
+  const text = Buffer.from(`${normalized}${padding}`, 'base64').toString('utf8');
+  return JSON.parse(text);
+}
+
+function verifyOverlayJwt(token) {
+  if (!overlayJwtSecret || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+
+  const [encodedHeader, encodedPayload, signature] = parts;
+  const unsigned = `${encodedHeader}.${encodedPayload}`;
+  const expectedSignature = crypto
+    .createHmac('sha256', overlayJwtSecret)
+    .update(unsigned)
+    .digest('base64')
+    .replace(/=/g, '')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_');
+
+  if (expectedSignature !== signature) return null;
+
+  const payload = decodeBase64UrlJson(encodedPayload);
+  const expMs = Number(payload?.exp || 0) * 1000;
+  if (!Number.isFinite(expMs) || expMs <= Date.now()) return null;
+
+  return payload;
+}
+
+function buildTokenDebug(token, tokenType = 'unknown') {
+  const raw = typeof token === 'string' ? token.trim() : '';
+  return {
+    tokenType,
+    tokenDotCount: raw ? raw.split('.').length - 1 : 0,
+    tokenLength: raw.length
+  };
+}
+
+async function resolveOverlayOrSupabaseAuth(supabaseAdmin, req) {
+  const token = getBearerToken(req);
+  if (!token) {
+    const error = new Error('auth_missing');
+    error.httpStatus = 401;
+    error.errorCode = 'auth_missing';
+    error.tokenDebug = buildTokenDebug(token);
+    throw error;
+  }
+
+  const overlayPayload = verifyOverlayJwt(token);
+  if (overlayPayload?.sub) {
+    const userId = String(overlayPayload.sub);
+    const deviceId = typeof overlayPayload.device_id === 'string' ? overlayPayload.device_id : null;
+    const nowIso = new Date().toISOString();
+
+    let query = supabaseAdmin
+      .from('overlay_refresh_tokens')
+      .select('id')
+      .eq('user_id', userId)
+      .is('revoked_at', null)
+      .gt('expires_at', nowIso)
+      .limit(1);
+
+    query = deviceId ? query.eq('device_id', deviceId) : query.is('device_id', null);
+
+    const { data: activeRows, error: activeErr } = await query;
+    if (activeErr) {
+      const error = new Error('token_issue');
+      error.httpStatus = 500;
+      error.errorCode = 'token_issue';
+      error.tokenDebug = buildTokenDebug(token, 'overlay');
+      error.user_id = userId;
+      error.device_id = deviceId;
+      throw error;
+    }
+
+    if (!Array.isArray(activeRows) || activeRows.length === 0) {
+      const error = new Error('invalid_token');
+      error.httpStatus = 401;
+      error.errorCode = 'invalid_token';
+      error.tokenDebug = buildTokenDebug(token, 'overlay');
+      error.user_id = userId;
+      error.device_id = deviceId;
+      throw error;
+    }
+
+    return {
+      userId,
+      deviceId,
+      tokenType: 'overlay',
+      tokenDebug: buildTokenDebug(token, 'overlay')
+    };
+  }
+
+  const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
+  if (userErr || !userData?.user?.id) {
+    const message = String(userErr?.message || '').toLowerCase();
+    const status = Number(userErr?.status || 0);
+    const isSupabaseAuthFailed = status === 403 || message.includes('jwt');
+    const error = new Error(isSupabaseAuthFailed ? 'supabase_auth_failed' : 'invalid_token');
+    error.httpStatus = isSupabaseAuthFailed ? 403 : 401;
+    error.errorCode = isSupabaseAuthFailed ? 'supabase_auth_failed' : 'invalid_token';
+    error.tokenDebug = buildTokenDebug(token, 'supabase');
+    throw error;
+  }
+
+  return {
+    userId: userData.user.id,
+    deviceId: null,
+    tokenType: 'supabase',
+    tokenDebug: buildTokenDebug(token, 'supabase')
+  };
+}
+
 async function getAuthUserOrNull(supabaseAdmin, token) {
   if (!token) return null;
   const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
@@ -923,6 +1039,26 @@ async function yumikoHandler(req, res) {
       return res.status(500).json({ error: 'Falta la variable de entorno DEEPSEEK_KEY.' });
     }
 
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: 'Supabase env vars are missing (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).' });
+    }
+
+    let auth;
+    try {
+      auth = await resolveOverlayOrSupabaseAuth(supabaseAdmin, req);
+    } catch (authError) {
+      console.warn('[yumiko][auth]', {
+        ...buildTokenDebug(getBearerToken(req), authError?.tokenDebug?.tokenType || 'unknown'),
+        user_id: authError?.user_id || null,
+        device_id: authError?.device_id || null,
+        status: authError?.errorCode || 'invalid_token'
+      });
+      return res.status(authError?.httpStatus || 401).json({ error: authError?.errorCode || 'invalid_token' });
+    }
+
+    const userId = auth.userId;
+
     if (profile?.name) global.yumikoSession.name = profile.name;
     if (profile?.goal) global.yumikoSession.meta = profile.goal;
     if (profile?.challengeStart) global.yumikoSession.challengeStart = profile.challengeStart;
@@ -986,37 +1122,62 @@ async function yumikoHandler(req, res) {
     const reply = data?.choices?.[0]?.message?.content || 'Yumiko no generó respuesta.';
     let audioMode = audioModeRaw === true;
 
-    const supabaseAdmin = getSupabaseAdmin();
-    if (audioMode && !supabaseAdmin) {
-      return res.status(500).json({ error: 'Supabase env vars are missing (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).' });
-    }
-
-    let userId = null;
     let audioAllowed = false;
-    if (audioMode && supabaseAdmin) {
-      const token = getBearerToken(req);
-      const user = await getAuthUserOrNull(supabaseAdmin, token);
+    if (audioMode) {
+      try {
+        const matchedSubscription = await getActiveVoiceSubscription(supabaseAdmin, userId);
+        audioAllowed = Boolean(matchedSubscription);
+      } catch (subErr) {
+        return res.status(500).json({ error: subErr.message || 'Error validating voice subscription.' });
+      }
 
-      if (user) {
-        userId = user.id;
-
-        try {
-          const matchedSubscription = await getActiveVoiceSubscription(supabaseAdmin, userId);
-          audioAllowed = Boolean(matchedSubscription);
-        } catch (subErr) {
-          return res.status(500).json({ error: subErr.message || 'Error validating voice subscription.' });
-        }
-
-        if (!audioAllowed) {
-          return res.status(402).json({ error: 'subscription_required', plan: VOICE_PLAN });
-        }
-      } else {
-        audioMode = false;
+      if (!audioAllowed) {
+        return res.status(402).json({ error: 'subscription_required', plan: VOICE_PLAN });
       }
     }
 
+    const { error: userInsertErr } = await supabaseAdmin
+      .from('messages')
+      .insert({
+        user_id: userId,
+        sender: 'user',
+        content: message,
+        message_type: 'text'
+      });
+
+    if (userInsertErr) {
+      return res.status(500).json({ error: userInsertErr.message || 'Error inserting user message.' });
+    }
+
     if (!audioMode) {
-      return res.status(200).json({ reply, audio_allowed: audioAllowed });
+      const { data: yumikoInserted, error: yumikoInsertErr } = await supabaseAdmin
+        .from('messages')
+        .insert({
+          user_id: userId,
+          sender: 'yumiko',
+          content: reply,
+          message_type: 'text'
+        })
+        .select('id')
+        .single();
+
+      if (yumikoInsertErr) {
+        return res.status(500).json({ error: yumikoInsertErr.message || 'Error inserting Yumiko message.' });
+      }
+
+      console.info('[yumiko][auth]', {
+        ...auth.tokenDebug,
+        user_id: userId,
+        device_id: auth.deviceId,
+        status: 'ok'
+      });
+
+      return res.status(200).json({
+        reply,
+        yumiko_message_id: yumikoInserted?.id || null,
+        audio_allowed: audioAllowed,
+        token_type: auth.tokenType
+      });
     }
 
     const elevenKey = process.env.ELEVENLABS_API_KEY;
@@ -1071,13 +1232,21 @@ async function yumikoHandler(req, res) {
       return res.status(500).json({ error: signedErr.message || 'Error creating Yumiko audio signed URL.' });
     }
 
+    console.info('[yumiko][auth]', {
+      ...auth.tokenDebug,
+      user_id: userId,
+      device_id: auth.deviceId,
+      status: 'ok'
+    });
+
     return res.status(200).json({
       reply,
       yumiko_message_id: yumikoMessageId,
       audio_out_signed_url: signedData?.signedUrl,
       audio_out_key: audioOutKey,
       tts_seconds: ttsSeconds,
-      audio_allowed: audioAllowed
+      audio_allowed: audioAllowed,
+      token_type: auth.tokenType
     });
   } catch (error) {
     console.error('Error en yumiko:', error);
@@ -1172,14 +1341,14 @@ async function getMessagesHandler(req, res) {
       return res.status(500).json({ error: 'Supabase env vars are missing (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).' });
     }
 
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (!token) return res.status(401).json({ error: 'Missing Bearer token' });
+    let auth;
+    try {
+      auth = await resolveOverlayOrSupabaseAuth(supabaseAdmin, req);
+    } catch (authError) {
+      return res.status(authError?.httpStatus || 401).json({ error: authError?.errorCode || 'invalid_token' });
+    }
 
-    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
-    if (userErr || !userData?.user) return res.status(401).json({ error: 'Invalid token' });
-
-    const userId = userData.user.id;
+    const userId = auth.userId;
     const { data: rows, error: messagesErr } = await supabaseAdmin
       .from('messages')
       .select('id,sender,content,created_at,message_type,audio_out_path,tts_seconds')
@@ -1203,6 +1372,7 @@ async function getMessagesHandler(req, res) {
       messages.push(message);
     }
 
+    console.info('[yumiko][auth]', { ...auth.tokenDebug, user_id: userId, device_id: auth.deviceId, status: 'ok' });
     return res.status(200).json({ messages });
   } catch (e) {
     console.error('get-messages error:', e?.message || e);
@@ -1327,14 +1497,14 @@ async function gachaPullHandler(req, res) {
     const supabaseAdmin = getSupabaseAdmin();
     if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase env vars are missing.' });
 
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (!token) return res.status(401).json({ error: 'Missing Bearer token' });
+    let auth;
+    try {
+      auth = await resolveOverlayOrSupabaseAuth(supabaseAdmin, req);
+    } catch (authError) {
+      return res.status(authError?.httpStatus || 401).json({ error: authError?.errorCode || 'invalid_token' });
+    }
 
-    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
-    if (userErr || !userData?.user) return res.status(401).json({ error: 'Invalid token' });
-
-    const userId = userData.user.id;
+    const userId = auth.userId;
     const { tipo, count } = req.body || {};
     const tipoNorm = normalizeTipo(tipo);
     const n = clampInt(count, 1, 10);
@@ -1782,8 +1952,12 @@ async function overlayTokenRefreshHandler(req, res) {
 
     return res.status(200).json({
       overlay_access_token: accessToken,
+      access_token: accessToken,
       expires_in: OVERLAY_ACCESS_TTL_SECONDS,
-      refreshed_at: nowIso
+      expires_at: new Date(Date.now() + OVERLAY_ACCESS_TTL_SECONDS * 1000).toISOString(),
+      refreshed_at: nowIso,
+      user_id: stored.user_id,
+      device_id: stored.device_id || null
     });
   } catch (error) {
     console.error('overlay-token-refresh fatal:', error);
@@ -2008,6 +2182,7 @@ module.exports = async function handler(req, res) {
         req.body = await getJsonBody(req);
         return overlayLinkExchangeHandler(req, res);
       case 'overlay-token-refresh':
+      case 'overlay-link-refresh':
         req.body = await getJsonBody(req);
         return overlayTokenRefreshHandler(req, res);
       case 'overlay-revoke-device':

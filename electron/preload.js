@@ -17,6 +17,7 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
   openOverlayConnect: () => ipcRenderer.invoke('yumiko:open-overlay-connect'),
   exchangeAuthCode: ({ code, deviceId, deviceName }) => ipcRenderer.invoke('yumiko:exchange-auth-code', { code, deviceId, deviceName }),
   getAuth: () => ipcRenderer.invoke('yumiko:get-auth'),
+  getAuthStatus: () => ipcRenderer.invoke('yumiko:auth-status'),
   disconnect: () => ipcRenderer.invoke('yumiko:disconnect'),
   onStateUpdated: (callback) => {
     const listener = (_event, state) => callback(state);
