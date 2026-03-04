@@ -24,6 +24,7 @@ let tray;
 let win;
 let isQuitting = false;
 let pendingAuthCode = '';
+const processedAuthCodes = new Set();
 
 const defaultSettings = {
   mode: 'chat',
@@ -604,6 +605,11 @@ function handleDeepLink(rawUrl) {
     if (hostAction === 'auth') {
       const code = parsed.searchParams.get('code')?.trim();
       if (code) {
+        if (processedAuthCodes.has(code)) {
+          return;
+        }
+        processedAuthCodes.add(code);
+        console.info('[yumiko][auth] received code');
         pendingAuthCode = code;
         showAndFocusChat();
 
@@ -710,6 +716,7 @@ const singleInstance = app.requestSingleInstanceLock();
 if (!singleInstance) {
   app.quit();
 } else {
+  console.info('[yumiko][app] single instance lock acquired');
   app.on('second-instance', (_event, argv) => {
     handleArgvForDeepLink(argv);
     if (win) {
@@ -771,9 +778,19 @@ if (!singleInstance) {
         throw new Error('Missing pairing code');
       }
 
-      await exchangePairingCode(code);
-      if (pendingAuthCode === code) {
-        pendingAuthCode = '';
+      console.info('[yumiko][auth] exchange started');
+      try {
+        await exchangePairingCode(code);
+        console.info('[yumiko][auth] exchange success');
+      } catch (error) {
+        console.warn('[yumiko][auth] exchange fail', {
+          reason: typeof error?.message === 'string' ? error.message : 'unknown'
+        });
+        throw error;
+      } finally {
+        if (pendingAuthCode === code) {
+          pendingAuthCode = '';
+        }
       }
       return settings;
     });
