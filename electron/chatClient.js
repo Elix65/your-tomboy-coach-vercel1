@@ -43,6 +43,25 @@ async function parseJsonResponse(response, fallback = {}) {
   }
 }
 
+function buildHttpError({ response, requestUrl, responseBody }) {
+  const bodyText = typeof responseBody === 'string' ? responseBody.trim() : '';
+  const bodyPreview = bodyText ? bodyText.slice(0, 500) : '<empty>';
+
+  console.error('[yumiko][chat] upstream request failed', {
+    status: response.status,
+    statusText: response.statusText,
+    url: requestUrl || response.url,
+    bodyPreview
+  });
+
+  const error = new Error(`HTTP ${response.status}: ${bodyText || response.statusText || 'Unknown error'}`);
+  error.status = response.status;
+  error.responseBody = bodyText;
+  error.url = requestUrl || response.url;
+  if (response.status === 401) error.code = 'AUTH_INVALID';
+  return error;
+}
+
 async function fetchHistory({ baseUrl, overlayAccessToken }) {
   assertToken(overlayAccessToken);
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
@@ -239,7 +258,7 @@ async function sendMessage({ baseUrl, overlayAccessToken, message, contextMessag
   const requestBody = {
     message,
     audio_mode: false,
-    summary: null,
+    summary: '',
     messages: Array.isArray(contextMessages)
       ? contextMessages.filter((item) => item && typeof item.role === 'string' && typeof item.content === 'string')
       : []
@@ -253,10 +272,8 @@ async function sendMessage({ baseUrl, overlayAccessToken, message, contextMessag
   }));
 
   if (!response.ok) {
-    const error = new Error(`Send request failed (HTTP ${response.status})`);
-    error.status = response.status;
-    if (response.status === 401) error.code = 'AUTH_INVALID';
-    throw error;
+    const responseBody = await response.text();
+    throw buildHttpError({ response, requestUrl: sendUrl, responseBody });
   }
 
   const data = await parseJsonResponse(response, {});

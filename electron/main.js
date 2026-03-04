@@ -17,6 +17,7 @@ const chatClient = require('./chatClient');
 const DEFAULT_BOUNDS = { width: 560, height: 380 };
 const SETTINGS_FILE = 'settings.json';
 const AUTH_FILE = 'auth.json';
+const DEFAULT_YUMIKO_WEB_ORIGIN = 'https://21-moon.com';
 
 let tray;
 let win;
@@ -38,13 +39,31 @@ const defaultSettings = {
   visible: true,
   bounds: null,
   hasCompletedFirstRun: false,
-  chatBaseUrl: process.env.YUMIKO_CHAT_URL || 'https://21-moon.com',
+  yumikoWebOrigin: process.env.YUMIKO_WEB_ORIGIN || process.env.YUMIKO_CHAT_URL || DEFAULT_YUMIKO_WEB_ORIGIN,
   deviceId: '',
   deviceName: '',
   overlayAccessToken: '',
   overlayAccountEmail: '',
   conversationId: ''
 };
+
+function normalizeOrigin(value) {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  if (!raw) return '';
+  return raw.replace(/\/$/, '');
+}
+
+function resolveYumikoWebOrigin(persistedSettings = {}) {
+  const persistedOrigin = normalizeOrigin(
+    persistedSettings.yumikoWebOrigin || persistedSettings.chatBaseUrl
+  );
+  if (persistedOrigin) return persistedOrigin;
+
+  const envOrigin = normalizeOrigin(process.env.YUMIKO_WEB_ORIGIN || process.env.YUMIKO_CHAT_URL);
+  if (envOrigin) return envOrigin;
+
+  return DEFAULT_YUMIKO_WEB_ORIGIN;
+}
 
 const SHORTCUTS = {
   toggleVisible: 'CommandOrControl+Shift+Y',
@@ -98,13 +117,24 @@ function settingsPath() {
 function readSettings() {
   try {
     const raw = fs.readFileSync(settingsPath(), 'utf8');
-    return { ...defaultSettings, ...JSON.parse(raw), clickThroughEnabled: false };
+    const parsed = JSON.parse(raw);
+    return {
+      ...defaultSettings,
+      ...parsed,
+      yumikoWebOrigin: resolveYumikoWebOrigin(parsed),
+      clickThroughEnabled: false
+    };
   } catch {
-    return { ...defaultSettings };
+    return {
+      ...defaultSettings,
+      yumikoWebOrigin: resolveYumikoWebOrigin()
+    };
   }
 }
 
 let settings = readSettings();
+const YUMIKO_WEB_ORIGIN = resolveYumikoWebOrigin(settings);
+settings.yumikoWebOrigin = YUMIKO_WEB_ORIGIN;
 
 function writeSettings() {
   fs.mkdirSync(app.getPath('userData'), { recursive: true });
@@ -192,7 +222,7 @@ function createExchangeError(message, { status = 500, apiError = '' } = {}) {
 }
 
 async function exchangePairingCode(code, { deviceId, deviceName } = {}) {
-  const exchangeUrl = `${settings.chatBaseUrl.replace(/\/$/, '')}/api/overlay/link/exchange`;
+  const exchangeUrl = `${YUMIKO_WEB_ORIGIN}/api/overlay/link/exchange`;
   const effectiveDeviceId = typeof deviceId === 'string' && deviceId.trim() ? deviceId.trim() : settings.deviceId;
   const effectiveDeviceName = typeof deviceName === 'string' && deviceName.trim() ? deviceName.trim() : settings.deviceName;
   settings.deviceId = effectiveDeviceId;
@@ -277,7 +307,7 @@ async function refreshOverlayAccessToken() {
     throw error;
   }
 
-  const refreshUrl = `${settings.chatBaseUrl.replace(/\/$/, '')}/api/overlay/token/refresh`;
+  const refreshUrl = `${YUMIKO_WEB_ORIGIN}/api/overlay/token/refresh`;
   const response = await fetch(refreshUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -342,7 +372,7 @@ async function withOverlayAccessToken(requestFn) {
 }
 
 async function disconnectOverlayDevice() {
-  const revokeUrl = `${settings.chatBaseUrl.replace(/\/$/, '')}/api/overlay/revoke-device`;
+  const revokeUrl = `${YUMIKO_WEB_ORIGIN}/api/overlay/revoke-device`;
   try {
     if (settings.overlayAccessToken) {
       await fetch(revokeUrl, {
@@ -759,7 +789,7 @@ if (!singleInstance) {
     ipcMain.handle('yumiko:chat-history', async () => {
       try {
         return await withOverlayAccessToken((overlayAccessToken) => chatClient.fetchHistory({
-          baseUrl: settings.chatBaseUrl,
+          baseUrl: YUMIKO_WEB_ORIGIN,
           overlayAccessToken
         }));
       } catch (error) {
@@ -775,7 +805,7 @@ if (!singleInstance) {
       }
       try {
         return await withOverlayAccessToken((overlayAccessToken) => chatClient.sendMessage({
-          baseUrl: settings.chatBaseUrl,
+          baseUrl: YUMIKO_WEB_ORIGIN,
           overlayAccessToken,
           message,
           contextMessages
@@ -794,7 +824,7 @@ if (!singleInstance) {
         device_id: settings.deviceId,
         device_name: settings.deviceName
       });
-      await shell.openExternal(`https://21-moon.com/overlay/connect?${params.toString()}`);
+      await shell.openExternal(`${YUMIKO_WEB_ORIGIN}/overlay/connect?${params.toString()}`);
       return true;
     });
     ipcMain.handle('yumiko:exchange-auth-code', async (_event, payload) => {
