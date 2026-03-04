@@ -1651,26 +1651,6 @@ async function overlayLinkExchangeHandler(req, res) {
       return res.status(400).json({ ok: false, error: 'invalid_code' });
     }
 
-    const { error: consumeErr } = await runSupabaseOpWithSchemaReloadRetry({
-      supabaseAdmin,
-      operationName: 'overlay_links_consume',
-      operation: () =>
-        supabaseAdmin
-          .from('overlay_links')
-          .update({ used_at: nowIso, device_id: deviceId, device_name: deviceName })
-          .eq('id', link.id)
-          .is('used_at', null)
-          .gt('expires_at', nowIso)
-    });
-
-    if (consumeErr) {
-      logOverlayAuth(400, 'invalid_code_consume_conflict', {
-        userId: link.user_id,
-        device_id: deviceId
-      });
-      return res.status(400).json({ ok: false, error: 'invalid_code' });
-    }
-
     let tokens;
     try {
       tokens = await issueOverlayTokens({
@@ -1721,6 +1701,27 @@ async function overlayLinkExchangeHandler(req, res) {
           supabase: supabaseError
         });
       }
+    }
+
+    const consumedAtIso = new Date().toISOString();
+    const { error: consumeErr } = await runSupabaseOpWithSchemaReloadRetry({
+      supabaseAdmin,
+      operationName: 'overlay_links_consume',
+      operation: () =>
+        supabaseAdmin
+          .from('overlay_links')
+          .update({ used_at: consumedAtIso, device_id: deviceId, device_name: deviceName })
+          .eq('id', link.id)
+          .is('used_at', null)
+          .gt('expires_at', consumedAtIso)
+    });
+
+    if (consumeErr) {
+      logOverlayAuth(400, 'invalid_code_consume_conflict', {
+        userId: link.user_id,
+        device_id: deviceId
+      });
+      return res.status(400).json({ ok: false, error: 'invalid_code' });
     }
 
     const accessToken = tokens.overlay_access_token;
