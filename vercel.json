@@ -78,6 +78,10 @@
       "destination": "/api/router?action=overlay-link-exchange"
     },
     {
+      "source": "/api/overlay/link/refresh",
+      "destination": "/api/router?action=overlay-link-refresh"
+    },
+    {
       "source": "/api/overlay/token/refresh",
       "destination": "/api/router?action=overlay-token-refresh"
     },

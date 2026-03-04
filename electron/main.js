@@ -169,6 +169,42 @@ function writeAuth(nextAuth) {
   fs.writeFileSync(authPath(), JSON.stringify(nextAuth, null, 2));
 }
 
+function normalizeToken(token) {
+  let normalized = typeof token === 'string' ? token.trim() : '';
+  while ((normalized.startsWith('"') && normalized.endsWith('"'))
+    || (normalized.startsWith("'") && normalized.endsWith("'"))) {
+    normalized = normalized.slice(1, -1).trim();
+  }
+  return normalized;
+}
+
+function isJwtLike(token) {
+  return typeof token === 'string' && token.split('.').length === 3;
+}
+
+function getPersistedSession(authPayload) {
+  const session = authPayload?.session && typeof authPayload.session === 'object'
+    ? authPayload.session
+    : authPayload;
+
+  if (!session || typeof session !== 'object') return null;
+
+  return {
+    user_id: typeof session.user_id === 'string' ? session.user_id : '',
+    device_id: typeof session.device_id === 'string' ? session.device_id : settings.deviceId,
+    access_token: normalizeToken(session.access_token),
+    refresh_token: normalizeToken(session.refresh_token),
+    expires_at: session.expires_at || null
+  };
+}
+
+function isAccessTokenExpiring(expiresAt, skewSeconds = 60) {
+  if (!expiresAt) return true;
+  const expiresAtMs = new Date(expiresAt).getTime();
+  if (!Number.isFinite(expiresAtMs)) return true;
+  return expiresAtMs - Date.now() <= skewSeconds * 1000;
+}
+
 function clearAuth() {
   try {
     fs.unlinkSync(authPath());
@@ -198,9 +234,11 @@ function markOverlayDisconnected({ clearStoredRefreshToken = false } = {}) {
 }
 
 function applyExchangeResponse(data = {}) {
-  settings.overlayAccessToken = typeof data?.access_token === 'string'
-    ? data.access_token
-    : (typeof data?.accessToken === 'string' ? data.accessToken : '');
+  settings.overlayAccessToken = normalizeToken(
+    typeof data?.access_token === 'string'
+      ? data.access_token
+      : (typeof data?.accessToken === 'string' ? data.accessToken : '')
+  );
   settings.overlayAccountEmail = typeof data?.email === 'string' ? data.email : '';
   settings.visible = true;
   authState = {
@@ -263,25 +301,32 @@ async function exchangePairingCode(code, { deviceId, deviceName } = {}) {
     throw createExchangeError(`HTTP ${res.status} exchange_failed`, { status: res.status });
   }
 
-  const accessToken = data?.accessToken || data?.access_token || data?.token;
-  const refreshToken = data?.refreshToken || data?.refresh_token;
+  const accessToken = normalizeToken(data?.accessToken || data?.access_token || data?.token);
+  const refreshToken = normalizeToken(data?.refreshToken || data?.refresh_token);
   const expiresIn = data?.expiresIn ?? data?.expires_in;
   const receivedKeys = data && typeof data === 'object' ? Object.keys(data) : [];
 
-  if (typeof accessToken !== 'string' || !accessToken
+  if (typeof accessToken !== 'string' || !accessToken || !isJwtLike(accessToken)
     || typeof refreshToken !== 'string' || !refreshToken
     || !Number.isFinite(Number(expiresIn))) {
     throw createExchangeError(`missing_token_fields keys=${receivedKeys.join(',') || '<none>'}`);
   }
 
   const userId = typeof data?.user_id === 'string' ? data.user_id : '';
+  const connectedAt = new Date().toISOString();
+  const expiresAt = typeof data?.expires_at === 'string' && data.expires_at
+    ? data.expires_at
+    : new Date(Date.now() + Number(expiresIn) * 1000).toISOString();
   const persistedAuth = {
-    user_id: userId,
-    device_id: effectiveDeviceId,
-    access_token: accessToken,
-    refresh_token: refreshToken,
-    expires_at: data?.expires_at || null,
-    updated_at: new Date().toISOString()
+    connectedAt,
+    session: {
+      user_id: userId,
+      device_id: effectiveDeviceId,
+      access_token: accessToken,
+      refresh_token: refreshToken,
+      expires_at: expiresAt
+    },
+    updated_at: connectedAt
   };
 
   writeAuth(persistedAuth);
@@ -299,7 +344,8 @@ async function exchangePairingCode(code, { deviceId, deviceName } = {}) {
 
 async function refreshOverlayAccessToken() {
   const storedAuth = readAuth();
-  const refreshToken = typeof storedAuth?.refresh_token === 'string' ? storedAuth.refresh_token : '';
+  const session = getPersistedSession(storedAuth);
+  const refreshToken = normalizeToken(session?.refresh_token || '');
   if (!refreshToken) {
     markOverlayDisconnected();
     const error = new Error('No refresh token stored for this device');
@@ -307,7 +353,7 @@ async function refreshOverlayAccessToken() {
     throw error;
   }
 
-  const refreshUrl = `${YUMIKO_WEB_ORIGIN}/api/overlay/token/refresh`;
+  const refreshUrl = `${YUMIKO_WEB_ORIGIN}/api/overlay/link/refresh`;
   const response = await fetch(refreshUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -329,22 +375,37 @@ async function refreshOverlayAccessToken() {
   }
 
   const data = await response.json();
-  const nextRefreshToken = typeof data?.refresh_token === 'string' && data.refresh_token
+  const nextAccessToken = normalizeToken(data?.access_token || data?.overlay_access_token || '');
+  const nextRefreshToken = normalizeToken(typeof data?.refresh_token === 'string' && data.refresh_token
     ? data.refresh_token
-    : refreshToken;
+    : refreshToken);
+  const expiresAt = typeof data?.expires_at === 'string' && data.expires_at
+    ? data.expires_at
+    : (Number.isFinite(Number(data?.expires_in))
+      ? new Date(Date.now() + Number(data.expires_in) * 1000).toISOString()
+      : session?.expires_at || null);
+
+  if (!nextAccessToken || !isJwtLike(nextAccessToken)) {
+    const error = new Error('Token refresh failed (invalid access token format)');
+    error.code = 'AUTH_INVALID';
+    throw error;
+  }
+
   writeAuth({
-    ...(storedAuth || {}),
-    user_id: typeof data?.user_id === 'string' ? data.user_id : (storedAuth?.user_id || ''),
-    device_id: settings.deviceId,
-    access_token: data?.access_token,
-    refresh_token: nextRefreshToken,
-    expires_at: data?.expires_at || storedAuth?.expires_at || null,
+    connectedAt: storedAuth?.connectedAt || new Date().toISOString(),
+    session: {
+      user_id: typeof data?.user_id === 'string' ? data.user_id : (session?.user_id || ''),
+      device_id: settings.deviceId,
+      access_token: nextAccessToken,
+      refresh_token: nextRefreshToken,
+      expires_at: expiresAt
+    },
     updated_at: new Date().toISOString()
   });
   applyExchangeResponse({
-    access_token: data?.access_token,
+    access_token: nextAccessToken,
     refresh_token: nextRefreshToken,
-    user_id: typeof data?.user_id === 'string' ? data.user_id : (storedAuth?.user_id || ''),
+    user_id: typeof data?.user_id === 'string' ? data.user_id : (session?.user_id || ''),
     email: data?.email || settings.overlayAccountEmail
   });
   return settings.overlayAccessToken;
@@ -355,8 +416,18 @@ function isAuthRetryableError(error) {
 }
 
 async function withOverlayAccessToken(requestFn) {
-  let token = settings.overlayAccessToken;
+  const persisted = getPersistedSession(readAuth());
+  let token = normalizeToken(settings.overlayAccessToken || persisted?.access_token || '');
+
   if (!token) {
+    const error = new Error('No conectado. Abrí Settings > Vincular');
+    error.code = 'AUTH_MISSING';
+    throw error;
+  }
+
+  if (!isJwtLike(token)) {
+    token = await refreshOverlayAccessToken();
+  } else if (isAccessTokenExpiring(persisted?.expires_at, 60) && persisted?.refresh_token) {
     token = await refreshOverlayAccessToken();
   }
 
@@ -661,19 +732,20 @@ async function exchangeCode(code, { deviceId, deviceName, showFeedback = false }
 
 function loadAuthStateFromDisk() {
   const persisted = readAuth();
-  if (typeof persisted?.device_id === 'string' && persisted.device_id) {
-    settings.deviceId = persisted.device_id;
+  const session = getPersistedSession(persisted);
+  if (typeof session?.device_id === 'string' && session.device_id) {
+    settings.deviceId = session.device_id;
   }
 
   authState = {
-    connected: Boolean(persisted?.refresh_token),
-    user_id: typeof persisted?.user_id === 'string' ? persisted.user_id : '',
+    connected: Boolean(session?.refresh_token),
+    user_id: typeof session?.user_id === 'string' ? session.user_id : '',
     device_id: settings.deviceId,
     device_name: settings.deviceName
   };
 
-  if (typeof persisted?.access_token === 'string') {
-    settings.overlayAccessToken = persisted.access_token;
+  if (typeof session?.access_token === 'string') {
+    settings.overlayAccessToken = session.access_token;
   }
 }
 
@@ -836,6 +908,12 @@ if (!singleInstance) {
       return { ok: true };
     });
     ipcMain.handle('yumiko:get-auth', () => ({ ...authState }));
+    ipcMain.handle('yumiko:auth-status', () => ({
+      connected: Boolean(authState.connected),
+      user_id: authState.user_id,
+      device_id: authState.device_id,
+      connectedAt: readAuth()?.connectedAt || null
+    }));
     ipcMain.handle('yumiko:disconnect', async () => {
       markOverlayDisconnected({ clearStoredRefreshToken: true });
       return { ok: true };
