@@ -33,3 +33,9 @@ window.yumikoOverlay?.onAuthCode?.((payload) => {
   const code = typeof payload?.code === 'string' ? payload.code : '';
   window.dispatchEvent(new CustomEvent('yumiko:auth-code', { detail: { code } }));
 });
+
+
+window.yumikoOverlay?.onAuthResult?.((payload) => {
+  const message = typeof payload?.message === 'string' ? payload.message : '';
+  window.dispatchEvent(new CustomEvent('yumiko:auth-result', { detail: { message } }));
+});

@@ -15,7 +15,9 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
   },
   disconnectOverlay: () => ipcRenderer.invoke('yumiko:disconnect-overlay'),
   openOverlayConnect: () => ipcRenderer.invoke('yumiko:open-overlay-connect'),
-  exchangeAuthCode: (code) => ipcRenderer.invoke('yumiko:exchange-auth-code', { code }),
+  exchangeAuthCode: ({ code, deviceId, deviceName }) => ipcRenderer.invoke('yumiko:exchange-auth-code', { code, deviceId, deviceName }),
+  getAuth: () => ipcRenderer.invoke('yumiko:get-auth'),
+  disconnect: () => ipcRenderer.invoke('yumiko:disconnect'),
   onStateUpdated: (callback) => {
     const listener = (_event, state) => callback(state);
     ipcRenderer.on('yumiko:state-updated', listener);
@@ -25,5 +27,10 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on('yumiko:auth-code', listener);
     return () => ipcRenderer.removeListener('yumiko:auth-code', listener);
+  },
+  onAuthResult: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('yumiko:auth-result', listener);
+    return () => ipcRenderer.removeListener('yumiko:auth-result', listener);
   }
 });
