@@ -21,7 +21,7 @@ const chatLog = document.getElementById('chat-log');
 let isThinking = false;
 let contextCache = [];
 let overlayConnected = false;
-let overlayAccountEmail = '';
+let currentAuthState = { connected: false, user_id: '', device_id: '', device_name: '' };
 let isAuthExchangeInProgress = false;
 const processedAuthCodes = new Set();
 
@@ -233,13 +233,28 @@ async function submitMessage() {
   }
 }
 
+function abbreviateUserId(value) {
+  if (typeof value !== 'string' || value.length < 10) return value || '';
+  return `${value.slice(0, 6)}…${value.slice(-4)}`;
+}
+
 function renderAuthState(state = {}) {
-  overlayAccountEmail = typeof state.overlayAccountEmail === 'string' ? state.overlayAccountEmail : '';
-  overlayConnected = Boolean(overlayAccountEmail);
+  const nextAuthState = state?.authState && typeof state.authState === 'object'
+    ? state.authState
+    : state;
+
+  currentAuthState = {
+    connected: Boolean(nextAuthState?.connected),
+    user_id: typeof nextAuthState?.user_id === 'string' ? nextAuthState.user_id : '',
+    device_id: typeof nextAuthState?.device_id === 'string' ? nextAuthState.device_id : '',
+    device_name: typeof nextAuthState?.device_name === 'string' ? nextAuthState.device_name : ''
+  };
+
+  overlayConnected = currentAuthState.connected;
 
   if (authStatus) {
     authStatus.textContent = overlayConnected
-      ? `Conectado como ${overlayAccountEmail}`
+      ? `Conectado (${abbreviateUserId(currentAuthState.user_id) || 'sin user_id'})`
       : 'No conectado';
   }
 
@@ -263,9 +278,14 @@ async function exchangeCode(code) {
   addMessage('assistant', 'Recibí code, vinculando…');
 
   try {
-    const nextState = await window.yumikoOverlay?.exchangeAuthCode?.(trimmedCode);
+    await window.yumikoOverlay?.exchangeAuthCode?.({
+      code: trimmedCode,
+      deviceId: currentAuthState.device_id,
+      deviceName: currentAuthState.device_name
+    });
+    const nextState = await window.yumikoOverlay?.getState?.();
     syncHostState(nextState || {});
-    if (nextState?.overlayAccountEmail) {
+    if (nextState?.authState?.connected) {
       addMessage('assistant', 'Vinculado ✅');
     }
   } catch (error) {
@@ -276,11 +296,12 @@ async function exchangeCode(code) {
     console.error('[yumiko][auth] auth code exchange failed', { reason });
   } finally {
     isAuthExchangeInProgress = false;
-    renderAuthState({ overlayAccountEmail });
+    renderAuthState({ authState: currentAuthState });
   }
 }
 
 function syncHostState(state = {}) {
+  console.info('[yumiko][renderer] state updated', { authState: state?.authState });
   renderAuthState(state);
   if (overlayToggle) overlayToggle.checked = Boolean(state.overlayEnabled);
   if (clickThroughToggle) clickThroughToggle.checked = Boolean(state.clickThroughEnabled);
@@ -331,7 +352,8 @@ authActionButton?.addEventListener('click', async () => {
       return;
     }
 
-    const nextState = await window.yumikoOverlay?.disconnectOverlay?.();
+    await window.yumikoOverlay?.disconnect?.();
+    const nextState = await window.yumikoOverlay?.getState?.();
     syncHostState(nextState || {});
     renderMessages([]);
     addMessage('assistant', AUTH_MISSING_MESSAGE);
@@ -369,6 +391,12 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('yumiko:auth-code', (event) => {
     const code = typeof event?.detail?.code === 'string' ? event.detail.code : '';
     exchangeCode(code);
+  });
+  window.addEventListener('yumiko:auth-result', (event) => {
+    const message = typeof event?.detail?.message === 'string' ? event.detail.message : '';
+    if (message) {
+      addMessage('assistant', message);
+    }
   });
 
   window.yumikoOverlay?.getState?.()

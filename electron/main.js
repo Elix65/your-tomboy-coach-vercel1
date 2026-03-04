@@ -13,18 +13,22 @@ const {
   screen
 } = require('electron');
 const chatClient = require('./chatClient');
-const keytar = require('keytar');
 
 const DEFAULT_BOUNDS = { width: 560, height: 380 };
 const SETTINGS_FILE = 'settings.json';
-const KEYTAR_SERVICE = 'yumiko-overlay';
-const TOKEN_FALLBACK_FILE = 'overlay-token-store.json';
+const AUTH_FILE = 'auth.json';
 
 let tray;
 let win;
 let isQuitting = false;
 let pendingAuthCode = '';
 const processedAuthCodes = new Set();
+let authState = {
+  connected: false,
+  user_id: '',
+  device_id: '',
+  device_name: ''
+};
 
 const defaultSettings = {
   mode: 'chat',
@@ -116,141 +120,49 @@ function ensureDeviceIdentity() {
   }
 }
 
-async function saveRefreshToken(token) {
+function authPath() {
+  return path.join(app.getPath('userData'), AUTH_FILE);
+}
+
+function readAuth() {
   try {
-    if (keytar?.setPassword) {
-      await keytar.setPassword(KEYTAR_SERVICE, settings.deviceId, token);
-      return;
-    }
-  } catch (error) {
-    console.warn('[yumiko][auth] keytar save failed, using local fallback', {
-      reason: typeof error?.message === 'string' ? error.message : 'unknown'
-    });
-  }
-
-  writeTokenFallback({ refreshToken: token });
-}
-
-async function saveAccessToken(token) {
-  try {
-    if (keytar?.setPassword) {
-      await keytar.setPassword(KEYTAR_SERVICE, `${settings.deviceId}:access`, token);
-      return;
-    }
-  } catch (error) {
-    console.warn('[yumiko][auth] keytar save access failed, using local fallback', {
-      reason: typeof error?.message === 'string' ? error.message : 'unknown'
-    });
-  }
-
-  writeTokenFallback({ accessToken: token });
-}
-
-async function readRefreshToken() {
-  try {
-    if (keytar?.getPassword) {
-      const storedToken = await keytar.getPassword(KEYTAR_SERVICE, settings.deviceId);
-      if (typeof storedToken === 'string' && storedToken) {
-        return storedToken;
-      }
-    }
-  } catch (error) {
-    console.warn('[yumiko][auth] keytar read failed, using local fallback', {
-      reason: typeof error?.message === 'string' ? error.message : 'unknown'
-    });
-  }
-
-  return readTokenFallback().refreshToken || '';
-}
-
-async function clearRefreshToken() {
-  try {
-    if (keytar?.deletePassword) {
-      await keytar.deletePassword(KEYTAR_SERVICE, settings.deviceId);
-    }
-  } catch (error) {
-    console.warn('[yumiko][auth] keytar clear failed, cleaning local fallback', {
-      reason: typeof error?.message === 'string' ? error.message : 'unknown'
-    });
-  }
-
-  writeTokenFallback({ refreshToken: '' });
-}
-
-async function clearAccessToken() {
-  try {
-    if (keytar?.deletePassword) {
-      await keytar.deletePassword(KEYTAR_SERVICE, `${settings.deviceId}:access`);
-    }
-  } catch (error) {
-    console.warn('[yumiko][auth] keytar clear access failed, cleaning local fallback', {
-      reason: typeof error?.message === 'string' ? error.message : 'unknown'
-    });
-  }
-
-  writeTokenFallback({ accessToken: '' });
-}
-
-function tokenFallbackPath() {
-  return path.join(app.getPath('userData'), TOKEN_FALLBACK_FILE);
-}
-
-function tokenFallbackSecret() {
-  return crypto.createHash('sha256')
-    .update(`${settings.deviceId || 'yumiko-device'}::${app.getName()}::overlay-fallback`)
-    .digest();
-}
-
-function obfuscateTokenPayload(payload) {
-  const serialized = JSON.stringify(payload);
-  const source = Buffer.from(serialized, 'utf8');
-  const secret = tokenFallbackSecret();
-  const obfuscated = Buffer.alloc(source.length);
-
-  for (let index = 0; index < source.length; index += 1) {
-    obfuscated[index] = source[index] ^ secret[index % secret.length];
-  }
-
-  return obfuscated.toString('base64');
-}
-
-function deobfuscateTokenPayload(input) {
-  const source = Buffer.from(input, 'base64');
-  const secret = tokenFallbackSecret();
-  const decoded = Buffer.alloc(source.length);
-
-  for (let index = 0; index < source.length; index += 1) {
-    decoded[index] = source[index] ^ secret[index % secret.length];
-  }
-
-  return JSON.parse(decoded.toString('utf8'));
-}
-
-function readTokenFallback() {
-  try {
-    const raw = fs.readFileSync(tokenFallbackPath(), 'utf8');
-    if (!raw) return {};
-    const parsed = deobfuscateTokenPayload(raw);
-    return typeof parsed === 'object' && parsed !== null ? parsed : {};
+    const raw = fs.readFileSync(authPath(), 'utf8');
+    const parsed = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed !== null ? parsed : null;
   } catch {
-    return {};
+    return null;
   }
 }
 
-function writeTokenFallback(nextPatch = {}) {
-  const previous = readTokenFallback();
-  const next = { ...previous, ...nextPatch };
+function writeAuth(nextAuth) {
   fs.mkdirSync(app.getPath('userData'), { recursive: true });
-  fs.writeFileSync(tokenFallbackPath(), obfuscateTokenPayload(next));
+  fs.writeFileSync(authPath(), JSON.stringify(nextAuth, null, 2));
 }
 
-async function markOverlayDisconnected({ clearStoredRefreshToken = false } = {}) {
+function clearAuth() {
+  try {
+    fs.unlinkSync(authPath());
+  } catch {}
+}
+
+function getState() {
+  return {
+    ...settings,
+    authState: { ...authState }
+  };
+}
+
+function markOverlayDisconnected({ clearStoredRefreshToken = false } = {}) {
   if (clearStoredRefreshToken) {
-    await clearRefreshToken();
-    await clearAccessToken();
+    clearAuth();
   }
   settings.overlayAccessToken = '';
   settings.overlayAccountEmail = '';
+  authState = {
+    ...authState,
+    connected: false,
+    user_id: ''
+  };
   writeSettings();
   broadcastState();
 }
@@ -261,19 +173,39 @@ function applyExchangeResponse(data = {}) {
     : (typeof data?.accessToken === 'string' ? data.accessToken : '');
   settings.overlayAccountEmail = typeof data?.email === 'string' ? data.email : '';
   settings.visible = true;
+  authState = {
+    ...authState,
+    connected: Boolean(data?.refresh_token),
+    user_id: typeof data?.user_id === 'string' ? data.user_id : authState.user_id,
+    device_id: typeof data?.device_id === 'string' ? data.device_id : settings.deviceId,
+    device_name: settings.deviceName
+  };
   writeSettings();
   broadcastState();
 }
 
-async function exchangePairingCode(code) {
+function createExchangeError(message, { status = 500, apiError = '' } = {}) {
+  const error = new Error(message);
+  error.status = status;
+  error.apiError = apiError;
+  return error;
+}
+
+async function exchangePairingCode(code, { deviceId, deviceName } = {}) {
   const exchangeUrl = `${settings.chatBaseUrl.replace(/\/$/, '')}/api/overlay/link/exchange`;
+  const effectiveDeviceId = typeof deviceId === 'string' && deviceId.trim() ? deviceId.trim() : settings.deviceId;
+  const effectiveDeviceName = typeof deviceName === 'string' && deviceName.trim() ? deviceName.trim() : settings.deviceName;
+  settings.deviceId = effectiveDeviceId;
+  settings.deviceName = effectiveDeviceName;
+  console.info('[yumiko][auth] exchange started', { effectiveDeviceId, effectiveDeviceName });
+
   const res = await fetch(exchangeUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       code,
-      device_id: settings.deviceId,
-      device_name: settings.deviceName,
+      device_id: effectiveDeviceId,
+      device_name: effectiveDeviceName,
       app_version: app.getVersion()
     })
   });
@@ -295,10 +227,10 @@ async function exchangePairingCode(code) {
     });
 
     if (serverError) {
-      throw new Error(`HTTP ${res.status} ${serverError}`);
+      throw createExchangeError(`HTTP ${res.status} ${serverError}`, { status: res.status, apiError: serverError });
     }
 
-    throw new Error(`HTTP ${res.status} exchange_failed`);
+    throw createExchangeError(`HTTP ${res.status} exchange_failed`, { status: res.status });
   }
 
   const accessToken = data?.accessToken || data?.access_token || data?.token;
@@ -309,22 +241,37 @@ async function exchangePairingCode(code) {
   if (typeof accessToken !== 'string' || !accessToken
     || typeof refreshToken !== 'string' || !refreshToken
     || !Number.isFinite(Number(expiresIn))) {
-    throw new Error(`missing_token_fields keys=${receivedKeys.join(',') || '<none>'}`);
+    throw createExchangeError(`missing_token_fields keys=${receivedKeys.join(',') || '<none>'}`);
   }
 
-  await saveRefreshToken(refreshToken);
-  await saveAccessToken(accessToken);
+  const userId = typeof data?.user_id === 'string' ? data.user_id : '';
+  const persistedAuth = {
+    user_id: userId,
+    device_id: effectiveDeviceId,
+    access_token: accessToken,
+    refresh_token: refreshToken,
+    expires_at: data?.expires_at || null,
+    updated_at: new Date().toISOString()
+  };
+
+  writeAuth(persistedAuth);
+  console.info('[yumiko][auth] auth saved', { userId, deviceId: effectiveDeviceId });
   applyExchangeResponse({
     ...data,
+    user_id: userId,
+    device_id: effectiveDeviceId,
     access_token: accessToken,
     refresh_token: refreshToken
   });
+
+  return { userId, deviceId: effectiveDeviceId };
 }
 
 async function refreshOverlayAccessToken() {
-  const refreshToken = await readRefreshToken();
+  const storedAuth = readAuth();
+  const refreshToken = typeof storedAuth?.refresh_token === 'string' ? storedAuth.refresh_token : '';
   if (!refreshToken) {
-    await markOverlayDisconnected();
+    markOverlayDisconnected();
     const error = new Error('No refresh token stored for this device');
     error.code = 'AUTH_MISSING';
     throw error;
@@ -344,7 +291,7 @@ async function refreshOverlayAccessToken() {
 
   if (!response.ok) {
     if (response.status === 401) {
-      await markOverlayDisconnected({ clearStoredRefreshToken: true });
+      markOverlayDisconnected({ clearStoredRefreshToken: true });
     }
     const error = new Error(`Token refresh failed (HTTP ${response.status})`);
     error.code = response.status === 401 ? 'AUTH_INVALID' : 'AUTH_REFRESH_FAILED';
@@ -352,11 +299,22 @@ async function refreshOverlayAccessToken() {
   }
 
   const data = await response.json();
-  if (typeof data?.refresh_token === 'string' && data.refresh_token) {
-    await saveRefreshToken(data.refresh_token);
-  }
+  const nextRefreshToken = typeof data?.refresh_token === 'string' && data.refresh_token
+    ? data.refresh_token
+    : refreshToken;
+  writeAuth({
+    ...(storedAuth || {}),
+    user_id: typeof data?.user_id === 'string' ? data.user_id : (storedAuth?.user_id || ''),
+    device_id: settings.deviceId,
+    access_token: data?.access_token,
+    refresh_token: nextRefreshToken,
+    expires_at: data?.expires_at || storedAuth?.expires_at || null,
+    updated_at: new Date().toISOString()
+  });
   applyExchangeResponse({
     access_token: data?.access_token,
+    refresh_token: nextRefreshToken,
+    user_id: typeof data?.user_id === 'string' ? data.user_id : (storedAuth?.user_id || ''),
     email: data?.email || settings.overlayAccountEmail
   });
   return settings.overlayAccessToken;
@@ -400,7 +358,7 @@ async function disconnectOverlayDevice() {
     console.warn('[yumiko][auth] revoke-device request failed', error);
   }
 
-  await markOverlayDisconnected({ clearStoredRefreshToken: true });
+  markOverlayDisconnected({ clearStoredRefreshToken: true });
 }
 
 function getDefaultPosition() {
@@ -423,7 +381,7 @@ function getInitialBounds() {
 
 function broadcastState() {
   if (!win || win.isDestroyed()) return;
-  win.webContents.send('yumiko:state-updated', settings);
+  win.webContents.send('yumiko:state-updated', getState());
 }
 
 function applyWindowBehavior() {
@@ -611,11 +569,11 @@ function handleDeepLink(rawUrl) {
         processedAuthCodes.add(code);
         console.info('[yumiko][auth] received code');
         pendingAuthCode = code;
-        showAndFocusChat();
-
-        if (win && !win.isDestroyed() && !win.webContents.isLoading()) {
-          win.webContents.send('yumiko:auth-code', { code });
-        }
+        exchangeCode(code, { showFeedback: true }).catch((error) => {
+          console.warn('[yumiko][auth] deep link exchange failed', {
+            reason: typeof error?.message === 'string' ? error.message : 'unknown'
+          });
+        });
       }
     } else if (hostAction === 'open') {
       showAndFocusChat();
@@ -624,6 +582,68 @@ function handleDeepLink(rawUrl) {
     if (rawUrl.startsWith('yumiko://open')) {
       showAndFocusChat();
     }
+  }
+}
+
+function sendAuthFeedback(message) {
+  if (!win || win.isDestroyed() || win.webContents.isLoading()) return;
+  win.webContents.send('yumiko:auth-result', { message });
+}
+
+async function exchangeCode(code, { deviceId, deviceName, showFeedback = false } = {}) {
+  const trimmedCode = typeof code === 'string' ? code.trim() : '';
+  if (!trimmedCode) {
+    throw new Error('Missing pairing code');
+  }
+
+  try {
+    await exchangePairingCode(trimmedCode, { deviceId, deviceName });
+    console.info('[yumiko][auth] exchange success');
+    if (showFeedback) {
+      showAndFocusChat();
+      sendAuthFeedback('Vinculado ✅');
+    }
+  } catch (error) {
+    const isConflict = error?.status === 409 || String(error?.apiError || '').includes('23505');
+    if (isConflict) {
+      console.warn('[yumiko][auth] exchange conflict, retrying once');
+      await exchangePairingCode(trimmedCode, { deviceId, deviceName });
+      if (showFeedback) {
+        showAndFocusChat();
+        sendAuthFeedback('Vinculado ✅');
+      }
+      return { ok: true };
+    }
+
+    if (showFeedback && error?.status === 400 && String(error?.apiError || '').includes('invalid_code')) {
+      showAndFocusChat();
+      sendAuthFeedback('Código inválido/expirado. Generá uno nuevo.');
+    }
+    throw error;
+  } finally {
+    if (pendingAuthCode === trimmedCode) {
+      pendingAuthCode = '';
+    }
+  }
+
+  return { ok: true };
+}
+
+function loadAuthStateFromDisk() {
+  const persisted = readAuth();
+  if (typeof persisted?.device_id === 'string' && persisted.device_id) {
+    settings.deviceId = persisted.device_id;
+  }
+
+  authState = {
+    connected: Boolean(persisted?.refresh_token),
+    user_id: typeof persisted?.user_id === 'string' ? persisted.user_id : '',
+    device_id: settings.deviceId,
+    device_name: settings.deviceName
+  };
+
+  if (typeof persisted?.access_token === 'string') {
+    settings.overlayAccessToken = persisted.access_token;
   }
 }
 
@@ -728,13 +748,14 @@ if (!singleInstance) {
   app.whenReady().then(() => {
     app.setAsDefaultProtocolClient('yumiko');
     ensureDeviceIdentity();
+    loadAuthStateFromDisk();
     writeSettings();
 
     createWindow();
     createTray();
     updateGlobalShortcuts();
 
-    ipcMain.handle('yumiko:get-state', () => settings);
+    ipcMain.handle('yumiko:get-state', () => getState());
     ipcMain.handle('yumiko:chat-history', async () => {
       try {
         return await withOverlayAccessToken((overlayAccessToken) => chatClient.fetchHistory({
@@ -766,33 +787,28 @@ if (!singleInstance) {
     });
     ipcMain.handle('yumiko:disconnect-overlay', async () => {
       await disconnectOverlayDevice();
-      return settings;
+      return getState();
     });
     ipcMain.handle('yumiko:open-overlay-connect', async () => {
-      await shell.openExternal('https://21-moon.com/overlay/connect');
+      const params = new URLSearchParams({
+        device_id: settings.deviceId,
+        device_name: settings.deviceName
+      });
+      await shell.openExternal(`https://21-moon.com/overlay/connect?${params.toString()}`);
       return true;
     });
     ipcMain.handle('yumiko:exchange-auth-code', async (_event, payload) => {
       const code = typeof payload?.code === 'string' ? payload.code.trim() : '';
-      if (!code) {
-        throw new Error('Missing pairing code');
-      }
-
-      console.info('[yumiko][auth] exchange started');
-      try {
-        await exchangePairingCode(code);
-        console.info('[yumiko][auth] exchange success');
-      } catch (error) {
-        console.warn('[yumiko][auth] exchange fail', {
-          reason: typeof error?.message === 'string' ? error.message : 'unknown'
-        });
-        throw error;
-      } finally {
-        if (pendingAuthCode === code) {
-          pendingAuthCode = '';
-        }
-      }
-      return settings;
+      await exchangeCode(code, {
+        deviceId: payload?.deviceId,
+        deviceName: payload?.deviceName
+      });
+      return { ok: true };
+    });
+    ipcMain.handle('yumiko:get-auth', () => ({ ...authState }));
+    ipcMain.handle('yumiko:disconnect', async () => {
+      markOverlayDisconnected({ clearStoredRefreshToken: true });
+      return { ok: true };
     });
     ipcMain.on('yumiko:set-mode', (_event, mode) => setMode(mode, { fromRenderer: true }));
     ipcMain.on('yumiko:set-shortcuts-enabled', (_event, enabled) => setShortcutsEnabled(enabled));
