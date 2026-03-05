@@ -11,6 +11,7 @@ const authStatus = document.getElementById('auth-status');
 const authActionButton = document.getElementById('auth-action');
 
 const widget = document.getElementById('yumiko-widget');
+const mini = document.getElementById('yumiko-mini');
 const miniChatButton = document.getElementById('mini-chat');
 const miniMicButton = document.getElementById('mini-mic');
 const chat = document.getElementById('yumiko-chat');
@@ -169,6 +170,26 @@ function setMode(nextMode, { source = 'ui' } = {}) {
 
   if (widget) {
     widget.dataset.mode = mode;
+  }
+
+  if (mode === 'chat') {
+    if (chat) {
+      chat.hidden = false;
+      chat.setAttribute('aria-hidden', 'false');
+    }
+    if (mini) {
+      mini.hidden = true;
+      mini.setAttribute('aria-hidden', 'true');
+    }
+  } else {
+    if (chat) {
+      chat.hidden = true;
+      chat.setAttribute('aria-hidden', 'true');
+    }
+    if (mini) {
+      mini.hidden = false;
+      mini.setAttribute('aria-hidden', 'false');
+    }
   }
 
   if (mode === 'chat') {
