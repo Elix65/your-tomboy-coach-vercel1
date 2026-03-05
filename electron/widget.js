@@ -586,6 +586,16 @@ function adjustMiniScale(delta) {
   requestFitDebounced();
 }
 
+function panicResetRendererState() {
+  console.info('PANIC RESET');
+  localStorage.removeItem('miniScale');
+  settings = { ...settings, mode: 'focus', miniScale: 1 };
+  document.documentElement.style.setProperty('--mini-scale', '1');
+  applyMiniScale(1);
+  setMode('focus', { source: 'panic-reset' });
+  requestFit();
+}
+
 window.addEventListener('wheel', (event) => {
   if (!event.ctrlKey || settings.mode !== 'focus') return;
   event.preventDefault();
@@ -595,12 +605,7 @@ window.addEventListener('wheel', (event) => {
 window.addEventListener('keydown', (event) => {
   if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 'r') {
     event.preventDefault();
-    localStorage.clear();
-    settings = { ...DEFAULT_SETTINGS };
-    miniBaseSize = { ...MINI_BASE_FALLBACK };
-    applyMiniScale(1);
-    setMode('focus', { source: 'hotkey' });
-    requestFitDebounced();
+    panicResetRendererState();
     return;
   }
 
@@ -686,12 +691,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
   window.addEventListener('yumiko:panic-reset', () => {
-    localStorage.clear();
-    settings = { ...DEFAULT_SETTINGS };
-    miniBaseSize = { ...MINI_BASE_FALLBACK };
-    applyMiniScale(1);
-    setMode('focus', { source: 'state-sync' });
-    requestFitDebounced();
+    panicResetRendererState();
   });
   window.yumikoOverlay?.getState?.()
     .then((state) => {

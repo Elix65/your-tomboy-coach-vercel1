@@ -70,7 +70,7 @@ const SHORTCUTS = {
   toggleVisible: 'CommandOrControl+Shift+Y',
   toggleMode: 'CommandOrControl+Shift+M',
   forceQuit: 'CommandOrControl+Shift+Q',
-  panicReset: 'CommandOrControl+Alt+R',
+  panicReset: 'Control+Alt+R',
   panicSafeMode: 'CommandOrControl+Alt+Shift+S',
   emergencyClickThrough: 'CommandOrControl+Alt+C'
 };
@@ -105,13 +105,17 @@ function panicDisableOverlayAndClickThrough() {
 }
 
 function panicResetWindowAndRenderer() {
+  console.info('PANIC RESET');
   settings.mode = 'focus';
   settings.userPickedMode = false;
   settings.visible = true;
+  settings.overlayEnabled = true;
   writeSettings();
 
   if (win && !win.isDestroyed()) {
-    win.setBounds({ x: 50, y: 50, width: 420, height: 640 }, true);
+    win.setIgnoreMouseEvents(false);
+    win.setAlwaysOnTop(true, 'floating');
+    win.setBounds({ x: 80, y: 80, width: 480, height: 720 }, true);
     win.show();
     win.focus();
     win.webContents.send('yumiko:panic-reset', { reason: 'shortcut' });
