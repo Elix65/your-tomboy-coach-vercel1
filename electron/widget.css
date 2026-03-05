@@ -6,6 +6,8 @@
   --neon-2: #916bff;
 }
 
+[hidden] { display: none !important; }
+
 * { box-sizing: border-box; }
 
 html,
@@ -203,6 +205,16 @@ body {
   box-shadow:
     0 14px 34px rgba(0, 0, 0, 0.45),
     0 0 0 1px rgba(255, 103, 212, 0.1) inset;
+}
+
+#settings-panel {
+  position: absolute;
+  top: 44px;
+  right: 14px;
+  width: 280px;
+  max-height: 220px;
+  overflow: auto;
+  background: rgba(10, 10, 18, 0.92);
 }
 
 .toggle-row,

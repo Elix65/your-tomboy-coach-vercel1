@@ -132,9 +132,21 @@ function removeOutsideClickListener() {
 }
 
 function closeSettingsPanel() {
+  setSettingsPanelHidden(true);
+}
+
+function setSettingsPanelHidden(nextHidden) {
   if (!settingsPanel) return;
-  settingsPanel.hidden = true;
-  removeOutsideClickListener();
+
+  settingsPanel.hidden = Boolean(nextHidden);
+  toggleSettingsButton?.setAttribute('aria-expanded', String(!settingsPanel.hidden));
+
+  if (settingsPanel.hidden) {
+    removeOutsideClickListener();
+    return;
+  }
+
+  document.addEventListener('mousedown', onOutsideClick, { capture: true });
 }
 
 function onOutsideClick(event) {
@@ -354,16 +366,7 @@ function syncHostState(state = {}) {
 }
 
 toggleSettingsButton?.addEventListener('click', () => {
-  if (!settingsPanel) return;
-  settingsPanel.hidden = !settingsPanel.hidden;
-  const isOpen = !settingsPanel.hidden;
-
-  if (isOpen) {
-    document.addEventListener('mousedown', onOutsideClick, { capture: true });
-    return;
-  }
-
-  removeOutsideClickListener();
+  setSettingsPanelHidden(!settingsPanel?.hidden);
 });
 
 quitAppButton?.addEventListener('click', (event) => {
@@ -456,6 +459,8 @@ window.yumikoWidget = {
 };
 
 window.addEventListener('DOMContentLoaded', () => {
+  setSettingsPanelHidden(true);
+
   window.yumikoOverlay?.onStateUpdated?.(syncHostState);
   window.addEventListener('yumiko:auth-code', (event) => {
     const code = typeof event?.detail?.code === 'string' ? event.detail.code : '';
