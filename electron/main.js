@@ -138,12 +138,11 @@ function panicResetWindowAndRenderer() {
   writeSettings();
 
   if (win && !win.isDestroyed()) {
-    const fallbackBounds = safeBounds({ x: 80, y: 80, width: 520, height: 760 }, 'panic-reset');
     win.setIgnoreMouseEvents(false);
     if (settings.overlayEnabled) {
       win.setAlwaysOnTop(true, 'floating');
     }
-    win.setBounds(fallbackBounds, true);
+    win.setResizable(false);
     win.show();
     win.focus();
     win.webContents.send('yumiko:panic-reset', { reason: 'shortcut' });
@@ -582,7 +581,7 @@ function setMode(mode, { fromRenderer = false, userPickedMode = false } = {}) {
 
   if (!win) return;
 
-  win.setResizable(true);
+  win.setResizable(nextMode === 'chat');
 
   if (nextMode === 'chat') {
     win.setFocusable(true);
@@ -1052,14 +1051,15 @@ if (!singleInstance) {
       const requestedHeight = Number(payload?.height);
       if (!Number.isFinite(requestedWidth) || !Number.isFinite(requestedHeight)) return;
 
-      const fallbackBounds = { width: 520, height: 760 };
       const isRidiculous = requestedWidth < 200 || requestedHeight < 200;
-      const safeRequestedWidth = isRidiculous ? fallbackBounds.width : requestedWidth;
-      const safeRequestedHeight = isRidiculous ? fallbackBounds.height : requestedHeight;
+      if (isRidiculous) {
+        console.warn('[yumiko][window] ignored unsafe set-window-size request', { requestedWidth, requestedHeight });
+        return;
+      }
 
       const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-      const newW = clamp(Math.round(safeRequestedWidth), 200, 1200);
-      const newH = clamp(Math.round(safeRequestedHeight), 200, 900);
+      const newW = clamp(Math.round(requestedWidth), 200, 1200);
+      const newH = clamp(Math.round(requestedHeight), 200, 900);
 
       if (payload?.anchor === 'bottom-right') {
         const { x, y, width: oldW, height: oldH } = win.getBounds();
