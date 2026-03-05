@@ -112,17 +112,56 @@ function setMiniScale(nextScale, { persist = true, shouldRequestFit = true } = {
   if (shouldRequestFit) requestFitDebounced();
 }
 
-function measureMiniBaseSize() {
-  const baseBounds = withMiniScale(1, getMiniContentBounds);
-  if (!baseBounds) return { ...MINI_BASE_FALLBACK, shouldResetScale: true };
+function getCurrentScale() {
+  const cssValue = getComputedStyle(document.documentElement).getPropertyValue('--mini-scale');
+  const parsed = parseFloat(cssValue);
+  return clamp(Number.isFinite(parsed) ? parsed : miniScale || 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
+}
 
-  const width = Math.ceil(baseBounds.right - baseBounds.left);
-  const height = Math.ceil(baseBounds.bottom - baseBounds.top);
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
-    return { ...MINI_BASE_FALLBACK, shouldResetScale: true };
+function getUnionRect() {
+  const rects = [mini, miniActions, img]
+    .map((node) => node?.getBoundingClientRect?.())
+    .filter((rect) => rect && rect.width > 0 && rect.height > 0);
+
+  if (!rects.length) return null;
+
+  const union = rects.reduce((acc, rect) => ({
+    left: Math.min(acc.left, rect.left),
+    top: Math.min(acc.top, rect.top),
+    right: Math.max(acc.right, rect.right),
+    bottom: Math.max(acc.bottom, rect.bottom)
+  }));
+
+  return {
+    ...union,
+    width: Math.max(0, union.right - union.left),
+    height: Math.max(0, union.bottom - union.top)
+  };
+}
+
+function getBaseSize() {
+  const unionRect = getUnionRect();
+  const scale = getCurrentScale();
+  if (!unionRect || hasUnsafeCalculatedSize(unionRect.width, unionRect.height) || !Number.isFinite(scale) || scale <= 0) {
+    return null;
   }
 
-  return { width, height, shouldResetScale: false };
+  const baseW = unionRect.width / scale;
+  const baseH = unionRect.height / scale;
+  if (hasUnsafeCalculatedSize(baseW, baseH)) return null;
+
+  return { baseW, baseH, scale };
+}
+
+function measureMiniBaseSize() {
+  const baseSize = getBaseSize();
+  if (!baseSize) return { ...MINI_BASE_FALLBACK, shouldResetScale: true };
+
+  return {
+    width: Math.ceil(baseSize.baseW),
+    height: Math.ceil(baseSize.baseH),
+    shouldResetScale: false
+  };
 }
 
 function hasUnsafeCalculatedSize(width, height) {
@@ -145,7 +184,7 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
   if (settings.mode === 'focus') {
     updateFocusMinimumSize();
 
-    const unionRect = getMiniContentBounds();
+    const unionRect = getUnionRect();
     if (!unionRect) {
       if (lastGoodFocusFitSize) {
         const { width, height } = lastGoodFocusFitSize;
@@ -156,8 +195,8 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
       return;
     }
 
-    const unionW = Math.ceil(unionRect.right - unionRect.left);
-    const unionH = Math.ceil(unionRect.bottom - unionRect.top);
+    const unionW = Math.ceil(unionRect.width);
+    const unionH = Math.ceil(unionRect.height);
     const rawWidth = Math.ceil(unionW + (MINI_BOUNDS_PADDING * 2));
     const rawHeight = Math.ceil(unionH + (MINI_BOUNDS_PADDING * 2));
 
@@ -225,37 +264,12 @@ function requestFitDebounced(reason = 'debounced') {
   fitTimeout = window.setTimeout(() => requestFit({ reason }), 50);
 }
 
-function withMiniScale(scale, cb) {
-  const prevScale = miniScale;
-  setMiniScale(scale, { persist: false, shouldRequestFit: false });
-  try {
-    return cb();
-  } finally {
-    setMiniScale(prevScale, { persist: false, shouldRequestFit: false });
-  }
-}
-
-function getMiniContentBounds() {
-  const rects = [mini, miniActions, img]
-    .map((node) => node?.getBoundingClientRect?.())
-    .filter((rect) => rect && rect.width > 0 && rect.height > 0);
-
-  if (!rects.length) return null;
-
-  return rects.reduce((acc, rect) => ({
-    left: Math.min(acc.left, rect.left),
-    top: Math.min(acc.top, rect.top),
-    right: Math.max(acc.right, rect.right),
-    bottom: Math.max(acc.bottom, rect.bottom)
-  }));
-}
-
 function updateFocusMinimumSize() {
   if (settings.mode !== 'focus' || !window.yumikoOverlay?.setMinimumSize) return;
 
-  const baseBounds = withMiniScale(1, getMiniContentBounds);
-  const baseWidth = Math.ceil((baseBounds?.right || 0) - (baseBounds?.left || 0));
-  const baseHeight = Math.ceil((baseBounds?.bottom || 0) - (baseBounds?.top || 0));
+  const baseSize = getBaseSize();
+  const baseWidth = Math.ceil(baseSize?.baseW || 0);
+  const baseHeight = Math.ceil(baseSize?.baseH || 0);
 
   if (hasUnsafeCalculatedSize(baseWidth, baseHeight)) {
     if (minSizeRetryCount >= MINI_MIN_SIZE_RETRY_LIMIT) {
@@ -720,7 +734,25 @@ window.addEventListener('keydown', (event) => {
 
 window.addEventListener('resize', () => {
   if (settings.mode !== 'focus') return;
-  requestFitDebounced();
+
+  const baseSize = getBaseSize();
+  if (!baseSize) {
+    requestFitDebounced('resize:no-base-size');
+    return;
+  }
+
+  const { baseW, baseH, scale } = baseSize;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const target = clamp(Math.min(vw / baseW, vh / baseH), MINI_SCALE_MIN, MINI_SCALE_MAX);
+
+  if (Math.abs(target - scale) > 0.01) {
+    setMiniScale(target, { shouldRequestFit: false });
+    requestFitDebounced('resize:auto-scale');
+    return;
+  }
+
+  requestFitDebounced('resize');
 });
 
 send?.addEventListener('click', submitMessage);
