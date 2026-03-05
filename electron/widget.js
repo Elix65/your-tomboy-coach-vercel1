@@ -2,7 +2,7 @@ const STORAGE_KEY = 'yumiko-widget-settings-v1';
 const DEFAULT_SETTINGS = { mode: 'focus', miniScale: 1 };
 const CHAT_WINDOW_SIZE = { width: 560, height: 380 };
 const MINI_SCALE_MIN = 0.35;
-const MINI_SCALE_MAX = 1;
+const MINI_SCALE_MAX = 2;
 
 const settingsPanel = document.getElementById('settings-panel');
 const toggleSettingsButton = document.getElementById('toggle-settings');
@@ -75,7 +75,6 @@ function loadSettings() {
 let settings = loadSettings();
 let resizeObserver;
 let fitTimeout = null;
-let miniResizeTimeout = null;
 let lastFitRequest = { mode: '', width: 0, height: 0 };
 let miniBaseSize = null;
 
@@ -195,55 +194,6 @@ function getMiniContentBounds() {
   }
 
   return bounds;
-}
-
-function autoScaleMiniToWindow() {
-  if (settings.mode !== 'focus') return;
-
-  const availableW = window.innerWidth;
-  const availableH = window.innerHeight;
-  if (!Number.isFinite(availableW) || !Number.isFinite(availableH) || availableW <= 0 || availableH <= 0) {
-    return;
-  }
-
-  miniBaseSize = measureMiniBaseSize();
-  if (!miniBaseSize) return;
-
-  const baseW = miniBaseSize.width;
-  const baseH = miniBaseSize.height;
-  if (baseW <= 0 || baseH <= 0) return;
-
-  const scaleW = availableW / baseW;
-  const scaleH = availableH / baseH;
-  const nextScale = clamp(Math.min(scaleW, scaleH), MINI_SCALE_MIN, MINI_SCALE_MAX);
-
-  applyMiniScale(nextScale);
-  requestFitDebounced();
-}
-
-function handleResizeAttempt(detail = {}) {
-  if (settings.mode !== 'focus') return;
-
-  miniBaseSize = miniBaseSize || measureMiniBaseSize();
-  if (!miniBaseSize?.width || !miniBaseSize?.height) return;
-
-  const requestedW = Number(detail?.width);
-  const requestedH = Number(detail?.height);
-  if (!Number.isFinite(requestedW) || !Number.isFinite(requestedH)) return;
-
-  const nextScale = clamp(
-    Math.min(requestedW / miniBaseSize.width, requestedH / miniBaseSize.height),
-    MINI_SCALE_MIN,
-    MINI_SCALE_MAX
-  );
-
-  applyMiniScale(nextScale);
-  requestFitDebounced();
-}
-
-function autoScaleMiniToWindowDebounced() {
-  window.clearTimeout(miniResizeTimeout);
-  miniResizeTimeout = window.setTimeout(autoScaleMiniToWindow, 80);
 }
 
 function addMessage(role, content, { thinking = false } = {}) {
@@ -382,7 +332,6 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   if (mode === 'focus') {
     window.requestAnimationFrame(() => {
       applyMiniScale(settings.miniScale, { persist: false });
-      autoScaleMiniToWindowDebounced();
       requestFitDebounced();
     });
   } else {
@@ -628,18 +577,43 @@ miniMicButton?.addEventListener('click', () => {
   console.info('[yumiko][mic] Próximamente');
 });
 
-window.addEventListener('wheel', (event) => {
-  if (!event.ctrlKey) return;
-  event.preventDefault();
-
-  const direction = event.deltaY < 0 ? 0.05 : -0.05;
-  applyMiniScale((settings.miniScale || 1) + direction);
+function adjustMiniScale(delta) {
+  if (settings.mode !== 'focus') return;
+  applyMiniScale((settings.miniScale || 1) + delta);
   requestFitDebounced();
+}
+
+window.addEventListener('wheel', (event) => {
+  if (!event.ctrlKey || settings.mode !== 'focus') return;
+  event.preventDefault();
+  adjustMiniScale(event.deltaY < 0 ? 0.05 : -0.05);
 }, { passive: false });
+
+window.addEventListener('keydown', (event) => {
+  if (!event.ctrlKey || settings.mode !== 'focus') return;
+
+  if (event.key === '0') {
+    event.preventDefault();
+    applyMiniScale(1);
+    requestFitDebounced();
+    return;
+  }
+
+  if (event.key === '+' || event.key === '=') {
+    event.preventDefault();
+    adjustMiniScale(0.05);
+    return;
+  }
+
+  if (event.key === '-') {
+    event.preventDefault();
+    adjustMiniScale(-0.05);
+  }
+});
 
 window.addEventListener('resize', () => {
   if (settings.mode !== 'focus') return;
-  autoScaleMiniToWindowDebounced();
+  requestFitDebounced();
 });
 
 send?.addEventListener('click', submitMessage);
@@ -697,10 +671,6 @@ window.addEventListener('DOMContentLoaded', () => {
       addMessage('assistant', message);
     }
   });
-  window.addEventListener('yumiko:resize-attempt', (event) => {
-    handleResizeAttempt(event?.detail);
-  });
-
   window.yumikoOverlay?.getState?.()
     .then((state) => {
       syncHostState(state);
@@ -713,7 +683,6 @@ window.addEventListener('DOMContentLoaded', () => {
   setMode(settings.mode || 'focus', { source: 'state-sync' });
   miniBaseSize = measureMiniBaseSize();
   applyMiniScale(settings.miniScale, { persist: false });
-  autoScaleMiniToWindowDebounced();
   requestFitDebounced();
   loadChatHistory();
 });
