@@ -5,8 +5,9 @@ const CHAT_WINDOW_SIZE = { width: 560, height: 380 };
 const MINI_SCALE_MIN = 0.35;
 const MINI_SCALE_MAX = 1;
 const MINI_BASE_FALLBACK = { width: 360, height: 520 };
-const MINI_BOUNDS_PADDING = 12;
-const MINI_MIN_BOUNDS = 260;
+const MINI_BOUNDS_PADDING = 16;
+const MINI_MIN_WIDTH = 280;
+const MINI_MIN_HEIGHT = 320;
 const MINI_RETRY_LIMIT = 10;
 
 const settingsPanel = document.getElementById('settings-panel');
@@ -121,7 +122,7 @@ function measureMiniBaseSize() {
 }
 
 function hasUnsafeCalculatedSize(width, height) {
-  return !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0 || width < 320 || height < 420;
+  return !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0;
 }
 
 function scheduleFitRetry(reason = 'retry') {
@@ -138,14 +139,14 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
   if (!window.yumikoOverlay?.setWindowSize || !widget) return;
 
   if (settings.mode === 'focus') {
-    const bounds = getMiniContentBounds();
-    if (!bounds) {
+    const miniRect = mini?.getBoundingClientRect();
+    if (!miniRect || miniRect.width <= 0 || miniRect.height <= 0) {
       scheduleFitRetry(`${reason}:missing-bounds`);
       return;
     }
 
-    const rawWidth = Math.ceil((bounds.right - bounds.left) + (MINI_BOUNDS_PADDING * 2));
-    const rawHeight = Math.ceil((bounds.bottom - bounds.top) + (MINI_BOUNDS_PADDING * 2));
+    const rawWidth = Math.ceil(miniRect.width + (MINI_BOUNDS_PADDING * 2));
+    const rawHeight = Math.ceil(miniRect.height + (MINI_BOUNDS_PADDING * 2));
 
     if (hasUnsafeCalculatedSize(rawWidth, rawHeight)) {
       console.warn('[yumiko][fit] invalid measured focus bounds', { rawWidth, rawHeight, reason, retry });
@@ -155,8 +156,8 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
       return;
     }
 
-    const width = Math.max(rawWidth, MINI_MIN_BOUNDS);
-    const height = Math.max(rawHeight, MINI_MIN_BOUNDS);
+    const width = Math.max(rawWidth, MINI_MIN_WIDTH);
+    const height = Math.max(rawHeight, MINI_MIN_HEIGHT);
     if (lastFitRequest.mode === 'focus' && lastFitRequest.width === width && lastFitRequest.height === height) return;
 
     fitRetryCount = 0;
@@ -198,24 +199,12 @@ function getMiniContentBounds() {
   const miniRect = mini?.getBoundingClientRect();
   if (!miniRect || miniRect.width <= 0 || miniRect.height <= 0) return null;
 
-  let bounds = {
+  return {
     left: miniRect.left,
     top: miniRect.top,
     right: miniRect.right,
     bottom: miniRect.bottom
   };
-
-  const actionsRect = miniActions?.getBoundingClientRect();
-  if (actionsRect && actionsRect.width > 0 && actionsRect.height > 0) {
-    bounds = {
-      left: Math.min(bounds.left, actionsRect.left),
-      top: Math.min(bounds.top, actionsRect.top),
-      right: Math.max(bounds.right, actionsRect.right),
-      bottom: Math.max(bounds.bottom, actionsRect.bottom)
-    };
-  }
-
-  return bounds;
 }
 
 function addMessage(role, content, { thinking = false } = {}) {
