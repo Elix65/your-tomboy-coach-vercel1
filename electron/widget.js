@@ -120,8 +120,8 @@ function measureMiniBaseSize() {
   return { width, height, shouldResetScale: false };
 }
 
-function isValidDimension(value) {
-  return Number.isFinite(value) && value >= 120;
+function hasUnsafeCalculatedSize(width, height) {
+  return !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0 || width < 320 || height < 420;
 }
 
 function scheduleFitRetry(reason = 'retry') {
@@ -147,9 +147,11 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
     const rawWidth = Math.ceil((bounds.right - bounds.left) + (MINI_BOUNDS_PADDING * 2));
     const rawHeight = Math.ceil((bounds.bottom - bounds.top) + (MINI_BOUNDS_PADDING * 2));
 
-    if (!isValidDimension(rawWidth) || !isValidDimension(rawHeight)) {
+    if (hasUnsafeCalculatedSize(rawWidth, rawHeight)) {
       console.warn('[yumiko][fit] invalid measured focus bounds', { rawWidth, rawHeight, reason, retry });
-      scheduleFitRetry(`${reason}:invalid-bounds`);
+      if (fitRetryCount < 2) {
+        scheduleFitRetry(`${reason}:invalid-bounds`);
+      }
       return;
     }
 
@@ -177,9 +179,9 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
   });
 }
 
-function requestFitDebounced() {
+function requestFitDebounced(reason = 'debounced') {
   window.clearTimeout(fitTimeout);
-  fitTimeout = window.setTimeout(() => requestFit({ reason: 'debounced' }), 50);
+  fitTimeout = window.setTimeout(() => requestFit({ reason }), 50);
 }
 
 function withMiniScale(scale, cb) {
@@ -609,21 +611,17 @@ function panicResetRendererState() {
   setMiniScale(1, { persist: true });
   setMode('focus', { source: 'panic-reset' });
 
-  const doPanicFit = () => {
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        requestFit({ reason: 'panic' });
-      });
-    });
+  const schedulePanicFit = () => {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => requestFitDebounced('panic')));
   };
 
   if (img && !img.complete) {
-    img.addEventListener('load', doPanicFit, { once: true });
-    window.setTimeout(doPanicFit, 150);
+    img.addEventListener('load', schedulePanicFit, { once: true });
+    window.setTimeout(schedulePanicFit, 150);
     return;
   }
 
-  doPanicFit();
+  schedulePanicFit();
 }
 
 window.addEventListener('wheel', (event) => {
