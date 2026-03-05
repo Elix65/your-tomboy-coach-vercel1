@@ -1,5 +1,5 @@
 const STORAGE_KEY = 'yumiko-widget-settings-v1';
-const DEFAULT_SETTINGS = { mode: 'mini' };
+const DEFAULT_SETTINGS = { mode: 'focus' };
 
 const settingsPanel = document.getElementById('settings-panel');
 const toggleSettingsButton = document.getElementById('toggle-settings');
@@ -112,12 +112,12 @@ function setThinking(state) {
 }
 
 function toHostMode(uiMode) {
-  return uiMode === 'expand' ? 'chat' : 'focus';
+  return uiMode === 'chat' ? 'chat' : 'focus';
 }
 
 function toUiMode(anyMode) {
-  if (anyMode === 'chat' || anyMode === 'expand') return 'expand';
-  return 'mini';
+  if (anyMode === 'chat' || anyMode === 'expand') return 'chat';
+  return 'focus';
 }
 
 function notifyHostMode(mode) {
@@ -138,9 +138,9 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   if (!widget || !chat) return;
 
   widget.dataset.mode = mode;
-  chat.hidden = mode !== 'expand';
+  chat.hidden = mode !== 'chat';
 
-  if (mode === 'expand') {
+  if (mode === 'chat') {
     input?.focus();
   } else {
     settingsPanel?.setAttribute('hidden', '');
@@ -378,10 +378,11 @@ authActionButton?.addEventListener('click', async () => {
 });
 
 miniChatButton?.addEventListener('click', () => {
-  setMode(settings.mode === 'expand' ? 'mini' : 'expand', { source: 'ui' });
+  setMode('chat', { source: 'ui' });
 });
 
 miniMicButton?.addEventListener('click', () => {
+  miniMicButton.title = 'Próximamente';
   console.info('[yumiko][mic] Próximamente');
 });
 
@@ -395,8 +396,8 @@ input?.addEventListener('keydown', (event) => {
 });
 
 window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && settings.mode === 'expand') {
-    setMode('mini', { source: 'ui' });
+  if (event.key === 'Escape' && settings.mode === 'chat') {
+    setMode('focus', { source: 'ui' });
   }
 });
 
@@ -422,11 +423,11 @@ window.addEventListener('DOMContentLoaded', () => {
     .then((state) => {
       syncHostState(state);
       if (!state?.mode) {
-        setMode('mini', { source: 'state-sync' });
+        setMode('focus', { source: 'state-sync' });
       }
     })
-    .catch(() => setMode('mini', { source: 'state-sync' }));
+    .catch(() => setMode('focus', { source: 'state-sync' }));
 
-  setMode(settings.mode || 'mini', { source: 'state-sync' });
+  setMode(settings.mode || 'focus', { source: 'state-sync' });
   loadChatHistory();
 });
