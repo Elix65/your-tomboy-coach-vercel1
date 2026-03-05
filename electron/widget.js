@@ -1,8 +1,8 @@
 const STORAGE_KEY = 'yumiko-widget-settings-v1';
 const DEFAULT_SETTINGS = { mode: 'focus', miniScale: 1 };
 const CHAT_WINDOW_SIZE = { width: 560, height: 380 };
-const MINI_SCALE_MIN = 0.6;
-const MINI_SCALE_MAX = 1.2;
+const MINI_SCALE_MIN = 0.35;
+const MINI_SCALE_MAX = 1;
 
 const settingsPanel = document.getElementById('settings-panel');
 const toggleSettingsButton = document.getElementById('toggle-settings');
@@ -75,6 +75,7 @@ function loadSettings() {
 let settings = loadSettings();
 let resizeObserver;
 let fitTimeout = null;
+let miniResizeTimeout = null;
 let lastFitRequest = { mode: '', width: 0, height: 0 };
 
 function saveSettings() {
@@ -142,6 +143,69 @@ function requestFit() {
 function requestFitDebounced() {
   window.clearTimeout(fitTimeout);
   fitTimeout = window.setTimeout(requestFit, 50);
+}
+
+function withMiniScale(scale, cb) {
+  const prevScale = settings.miniScale;
+  applyMiniScale(scale, { persist: false });
+  try {
+    return cb();
+  } finally {
+    applyMiniScale(prevScale, { persist: false });
+  }
+}
+
+function getMiniContentBounds() {
+  const miniRect = mini?.getBoundingClientRect();
+  if (!miniRect || miniRect.width <= 0 || miniRect.height <= 0) return null;
+
+  let bounds = {
+    left: miniRect.left,
+    top: miniRect.top,
+    right: miniRect.right,
+    bottom: miniRect.bottom
+  };
+
+  const actionsRect = miniActions?.getBoundingClientRect();
+  if (actionsRect && actionsRect.width > 0 && actionsRect.height > 0) {
+    bounds = {
+      left: Math.min(bounds.left, actionsRect.left),
+      top: Math.min(bounds.top, actionsRect.top),
+      right: Math.max(bounds.right, actionsRect.right),
+      bottom: Math.max(bounds.bottom, actionsRect.bottom)
+    };
+  }
+
+  return bounds;
+}
+
+function autoScaleMiniToWindow() {
+  if (settings.mode !== 'focus') return;
+
+  const availableW = window.innerWidth;
+  const availableH = window.innerHeight;
+  if (!Number.isFinite(availableW) || !Number.isFinite(availableH) || availableW <= 0 || availableH <= 0) {
+    return;
+  }
+
+  const baseBounds = withMiniScale(1, getMiniContentBounds);
+  if (!baseBounds) return;
+
+  const baseW = Math.ceil(baseBounds.right - baseBounds.left);
+  const baseH = Math.ceil(baseBounds.bottom - baseBounds.top);
+  if (baseW <= 0 || baseH <= 0) return;
+
+  const scaleW = availableW / baseW;
+  const scaleH = availableH / baseH;
+  const nextScale = clamp(Math.min(scaleW, scaleH), MINI_SCALE_MIN, MINI_SCALE_MAX);
+
+  applyMiniScale(nextScale);
+  requestFitDebounced();
+}
+
+function autoScaleMiniToWindowDebounced() {
+  window.clearTimeout(miniResizeTimeout);
+  miniResizeTimeout = window.setTimeout(autoScaleMiniToWindow, 80);
 }
 
 function addMessage(role, content, { thinking = false } = {}) {
@@ -277,7 +341,15 @@ function setMode(nextMode, { source = 'ui' } = {}) {
     notifyHostMode(mode);
   }
 
-  requestFitDebounced();
+  if (mode === 'focus') {
+    window.requestAnimationFrame(() => {
+      applyMiniScale(settings.miniScale, { persist: false });
+      autoScaleMiniToWindowDebounced();
+      requestFitDebounced();
+    });
+  } else {
+    requestFitDebounced();
+  }
 }
 
 async function loadChatHistory() {
@@ -527,6 +599,11 @@ window.addEventListener('wheel', (event) => {
   requestFitDebounced();
 }, { passive: false });
 
+window.addEventListener('resize', () => {
+  if (settings.mode !== 'focus') return;
+  autoScaleMiniToWindowDebounced();
+});
+
 send?.addEventListener('click', submitMessage);
 
 input?.addEventListener('keydown', (event) => {
@@ -593,6 +670,7 @@ window.addEventListener('DOMContentLoaded', () => {
     .catch(() => setMode('focus', { source: 'state-sync' }));
 
   setMode(settings.mode || 'focus', { source: 'state-sync' });
+  autoScaleMiniToWindowDebounced();
   requestFitDebounced();
   loadChatHistory();
 });
