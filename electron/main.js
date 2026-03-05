@@ -830,10 +830,6 @@ function createWindow() {
 
   win.on('move', saveBounds);
   win.on('resize', saveBounds);
-  win.on('will-resize', (event) => {
-    if (settings.mode !== 'focus') return;
-    event.preventDefault();
-  });
   win.on('show', () => {
     settings.visible = true;
     writeSettings();
