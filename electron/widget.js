@@ -16,6 +16,7 @@ const authActionButton = document.getElementById('auth-action');
 const widget = document.getElementById('yumiko-widget');
 const mini = document.getElementById('yumiko-mini');
 const miniWrap = document.getElementById('mini-wrap');
+const miniActions = document.querySelector('.mini-actions');
 const miniChatButton = document.getElementById('mini-chat');
 const miniMicButton = document.getElementById('mini-mic');
 const chat = document.getElementById('yumiko-chat');
@@ -95,11 +96,28 @@ function requestFit() {
   if (!window.yumikoOverlay?.setWindowSize || !widget) return;
 
   if (settings.mode === 'focus') {
-    const rect = miniWrap?.getBoundingClientRect();
-    if (!rect || rect.width <= 0 || rect.height <= 0) return;
+    const miniRect = mini?.getBoundingClientRect();
+    if (!miniRect || miniRect.width <= 0 || miniRect.height <= 0) return;
 
-    const width = Math.ceil(rect.width);
-    const height = Math.ceil(rect.height);
+    let bounds = {
+      left: miniRect.left,
+      top: miniRect.top,
+      right: miniRect.right,
+      bottom: miniRect.bottom
+    };
+
+    const actionsRect = miniActions?.getBoundingClientRect();
+    if (actionsRect && actionsRect.width > 0 && actionsRect.height > 0) {
+      bounds = {
+        left: Math.min(bounds.left, actionsRect.left),
+        top: Math.min(bounds.top, actionsRect.top),
+        right: Math.max(bounds.right, actionsRect.right),
+        bottom: Math.max(bounds.bottom, actionsRect.bottom)
+      };
+    }
+
+    const width = Math.ceil(bounds.right - bounds.left);
+    const height = Math.ceil(bounds.bottom - bounds.top);
     if (lastFitRequest.mode === 'focus' && lastFitRequest.width === width && lastFitRequest.height === height) return;
 
     lastFitRequest = { mode: 'focus', width, height };
@@ -547,7 +565,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
   if (typeof ResizeObserver !== 'undefined') {
     resizeObserver = new ResizeObserver(() => requestFitDebounced());
+    if (mini) resizeObserver.observe(mini);
     if (miniWrap) resizeObserver.observe(miniWrap);
+    if (miniActions) resizeObserver.observe(miniActions);
     if (chat) resizeObserver.observe(chat);
   }
 
