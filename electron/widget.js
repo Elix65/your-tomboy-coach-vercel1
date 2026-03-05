@@ -116,11 +116,6 @@ function applyScale(source = 'unknown', { shouldRequestFit = true } = {}) {
   effectiveScale = nextEffectiveScale;
   document.documentElement.style.setProperty('--mini-scale', String(effectiveScale));
 
-  if (miniBaseSize?.width > 0 && miniBaseSize?.height > 0 && mini) {
-    mini.style.width = `${Math.ceil(miniBaseSize.width * effectiveScale)}px`;
-    mini.style.height = `${Math.ceil(miniBaseSize.height * effectiveScale)}px`;
-  }
-
   updateFocusMinimumSize();
   if (shouldRequestFit && (source === 'user' || scaleChanged)) {
     requestFitDebounced(`scale:${source}`);
@@ -213,7 +208,7 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
         const { width, height } = lastGoodFocusFitSize;
         lastFitRequest = { mode: 'focus', width, height };
         ignoreNextResize = true;
-        window.yumikoOverlay.setWindowSize({ width, height, anchor: 'bottom-right' });
+        window.yumikoOverlay.setWindowSize({ width, height, preservePosition: true });
       }
       scheduleFitRetry(`${reason}:missing-bounds`);
       return;
@@ -237,7 +232,7 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
         const { width: cachedW, height: cachedH } = lastGoodFocusFitSize;
         lastFitRequest = { mode: 'focus', width: cachedW, height: cachedH };
         ignoreNextResize = true;
-        window.yumikoOverlay.setWindowSize({ width: cachedW, height: cachedH, anchor: 'bottom-right' });
+        window.yumikoOverlay.setWindowSize({ width: cachedW, height: cachedH, preservePosition: true });
       }
       if (fitRetryCount < 2) {
         scheduleFitRetry(`${reason}:invalid-bounds`);
@@ -266,7 +261,7 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
     }
 
     ignoreNextResize = true;
-    window.yumikoOverlay.setWindowSize({ width, height, anchor: 'bottom-right' });
+    window.yumikoOverlay.setWindowSize({ width, height, preservePosition: true });
     return;
   }
 
@@ -283,7 +278,7 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
   window.yumikoOverlay.setWindowSize({
     width: CHAT_WINDOW_SIZE.width,
     height: CHAT_WINDOW_SIZE.height,
-    anchor: 'bottom-right'
+    preservePosition: true
   });
 }
 
