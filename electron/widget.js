@@ -10,6 +10,7 @@ const MINI_MIN_WIDTH = 280;
 const MINI_MIN_HEIGHT = 320;
 const MINI_RETRY_LIMIT = 10;
 const MINI_MIN_SIZE_RETRY_LIMIT = 5;
+const DEV_FIT_LOG = window.location.search.includes('dev=1') || localStorage.getItem('yumiko_debug_fit') === '1';
 
 const settingsPanel = document.getElementById('settings-panel');
 const toggleSettingsButton = document.getElementById('toggle-settings');
@@ -87,6 +88,7 @@ let lastFitRequest = { mode: '', width: 0, height: 0 };
 let miniBaseSize = null;
 let fitRetryCount = 0;
 let minSizeRetryCount = 0;
+let lastGoodFocusFitSize = null;
 
 function saveSettings() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -143,17 +145,36 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
   if (settings.mode === 'focus') {
     updateFocusMinimumSize();
 
-    const miniRect = mini?.getBoundingClientRect();
-    if (!miniRect || miniRect.width <= 0 || miniRect.height <= 0) {
+    const unionRect = getMiniContentBounds();
+    if (!unionRect) {
+      if (lastGoodFocusFitSize) {
+        const { width, height } = lastGoodFocusFitSize;
+        lastFitRequest = { mode: 'focus', width, height };
+        window.yumikoOverlay.setWindowSize({ width, height, anchor: 'bottom-right' });
+      }
       scheduleFitRetry(`${reason}:missing-bounds`);
       return;
     }
 
-    const rawWidth = Math.ceil(miniRect.width + (MINI_BOUNDS_PADDING * 2));
-    const rawHeight = Math.ceil(miniRect.height + (MINI_BOUNDS_PADDING * 2));
+    const unionW = Math.ceil(unionRect.right - unionRect.left);
+    const unionH = Math.ceil(unionRect.bottom - unionRect.top);
+    const rawWidth = Math.ceil(unionW + (MINI_BOUNDS_PADDING * 2));
+    const rawHeight = Math.ceil(unionH + (MINI_BOUNDS_PADDING * 2));
 
     if (hasUnsafeCalculatedSize(rawWidth, rawHeight)) {
-      console.warn('[yumiko][fit] invalid measured focus bounds', { rawWidth, rawHeight, reason, retry });
+      console.warn('[yumiko][fit] invalid measured focus bounds', {
+        rawWidth,
+        rawHeight,
+        unionW,
+        unionH,
+        reason,
+        retry
+      });
+      if (lastGoodFocusFitSize) {
+        const { width: cachedW, height: cachedH } = lastGoodFocusFitSize;
+        lastFitRequest = { mode: 'focus', width: cachedW, height: cachedH };
+        window.yumikoOverlay.setWindowSize({ width: cachedW, height: cachedH, anchor: 'bottom-right' });
+      }
       if (fitRetryCount < 2) {
         scheduleFitRetry(`${reason}:invalid-bounds`);
       }
@@ -165,7 +186,20 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
     if (lastFitRequest.mode === 'focus' && lastFitRequest.width === width && lastFitRequest.height === height) return;
 
     fitRetryCount = 0;
+    lastGoodFocusFitSize = { width, height };
     lastFitRequest = { mode: 'focus', width, height };
+
+    if (DEV_FIT_LOG) {
+      console.log('[fit]', {
+        mode: settings.mode,
+        scale: miniScale,
+        unionW,
+        unionH,
+        winW: width,
+        winH: height
+      });
+    }
+
     window.yumikoOverlay.setWindowSize({ width, height, anchor: 'bottom-right' });
     return;
   }
@@ -202,45 +236,24 @@ function withMiniScale(scale, cb) {
 }
 
 function getMiniContentBounds() {
-  const miniRect = mini?.getBoundingClientRect();
-  if (!miniRect || miniRect.width <= 0 || miniRect.height <= 0) return null;
+  const rects = [mini, miniActions, img]
+    .map((node) => node?.getBoundingClientRect?.())
+    .filter((rect) => rect && rect.width > 0 && rect.height > 0);
 
-  return {
-    left: miniRect.left,
-    top: miniRect.top,
-    right: miniRect.right,
-    bottom: miniRect.bottom
-  };
-}
+  if (!rects.length) return null;
 
-function getFocusContentBoundsAtScaleOne() {
-  return withMiniScale(1, () => {
-    const miniRect = mini?.getBoundingClientRect();
-    if (!miniRect || miniRect.width <= 0 || miniRect.height <= 0) return null;
-
-    const actionsRect = miniActions?.getBoundingClientRect();
-    if (!actionsRect || actionsRect.width <= 0 || actionsRect.height <= 0) {
-      return {
-        left: miniRect.left,
-        top: miniRect.top,
-        right: miniRect.right,
-        bottom: miniRect.bottom
-      };
-    }
-
-    return {
-      left: Math.min(miniRect.left, actionsRect.left),
-      top: Math.min(miniRect.top, actionsRect.top),
-      right: Math.max(miniRect.right, actionsRect.right),
-      bottom: Math.max(miniRect.bottom, actionsRect.bottom)
-    };
-  });
+  return rects.reduce((acc, rect) => ({
+    left: Math.min(acc.left, rect.left),
+    top: Math.min(acc.top, rect.top),
+    right: Math.max(acc.right, rect.right),
+    bottom: Math.max(acc.bottom, rect.bottom)
+  }));
 }
 
 function updateFocusMinimumSize() {
   if (settings.mode !== 'focus' || !window.yumikoOverlay?.setMinimumSize) return;
 
-  const baseBounds = getFocusContentBoundsAtScaleOne();
+  const baseBounds = withMiniScale(1, getMiniContentBounds);
   const baseWidth = Math.ceil((baseBounds?.right || 0) - (baseBounds?.left || 0));
   const baseHeight = Math.ceil((baseBounds?.bottom || 0) - (baseBounds?.top || 0));
 
