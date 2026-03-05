@@ -1022,11 +1022,15 @@ if (!singleInstance) {
       const requestedWidth = Number(payload?.width);
       const requestedHeight = Number(payload?.height);
       if (!Number.isFinite(requestedWidth) || !Number.isFinite(requestedHeight)) return;
-      if (requestedWidth < 100 || requestedHeight < 100) return;
+
+      const fallbackBounds = { width: 420, height: 640 };
+      const isRidiculous = requestedWidth < 200 || requestedHeight < 200;
+      const safeRequestedWidth = isRidiculous ? fallbackBounds.width : requestedWidth;
+      const safeRequestedHeight = isRidiculous ? fallbackBounds.height : requestedHeight;
 
       const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-      const newW = clamp(Math.round(requestedWidth), 180, 1200);
-      const newH = clamp(Math.round(requestedHeight), 180, 900);
+      const newW = clamp(Math.round(safeRequestedWidth), 200, 1200);
+      const newH = clamp(Math.round(safeRequestedHeight), 200, 900);
 
       if (payload?.anchor === 'bottom-right') {
         const { x, y, width: oldW, height: oldH } = win.getBounds();

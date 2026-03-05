@@ -106,6 +106,7 @@ body {
   transform: scale(var(--mini-scale));
   transform-origin: bottom right;
   -webkit-app-region: drag;
+  overflow: visible !important;
 }
 
 #yumiko-character {
