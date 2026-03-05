@@ -27,7 +27,6 @@ const chatLog = document.getElementById('chat-log');
 let isThinking = false;
 let contextCache = [];
 let overlayConnected = false;
-let restoreClickThroughOnFocus = false;
 let currentAuthState = { connected: false, user_id: '', device_id: '', device_name: '' };
 let isAuthExchangeInProgress = false;
 const processedAuthCodes = new Set();
@@ -251,19 +250,9 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   }
 
   if (mode === 'chat') {
-    if (clickThroughToggle?.checked) {
-      clickThroughToggle.checked = false;
-      window.yumikoOverlay?.setClickThroughEnabled?.(false);
-      restoreClickThroughOnFocus = true;
-    }
     input?.focus();
   } else {
     closeSettingsPanel();
-    if (restoreClickThroughOnFocus && clickThroughToggle) {
-      clickThroughToggle.checked = true;
-      window.yumikoOverlay?.setClickThroughEnabled?.(true);
-      restoreClickThroughOnFocus = false;
-    }
   }
 
   if (source === 'ui' || source === 'hotkey') {
@@ -438,7 +427,7 @@ function syncHostState(state = {}) {
   console.info('[yumiko][renderer] state updated', { authState: state?.authState });
   renderAuthState(state);
   if (overlayToggle) overlayToggle.checked = Boolean(state.overlayEnabled);
-  if (clickThroughToggle) clickThroughToggle.checked = Boolean(state.clickThroughEnabled);
+  if (clickThroughToggle) clickThroughToggle.checked = Boolean(state.clickThroughPreferred ?? state.clickThroughEnabled);
   if (shortcutsToggle) shortcutsToggle.checked = Boolean(state.shortcutsEnabled);
 
   if (state.mode) {
@@ -471,15 +460,10 @@ overlayToggle?.addEventListener('change', () => {
 });
 
 clickThroughToggle?.addEventListener('change', () => {
-  if (settings.mode === 'chat' && clickThroughToggle.checked) {
-    clickThroughToggle.checked = false;
-    restoreClickThroughOnFocus = false;
-    addMessage('assistant', 'Click-through solo funciona en modo mini. Cerrá el chat (ESC) para activarlo.');
-    window.yumikoOverlay?.setClickThroughEnabled?.(false);
-    return;
-  }
-
   window.yumikoOverlay?.setClickThroughEnabled?.(clickThroughToggle.checked);
+  if (settings.mode === 'chat') {
+    addMessage('assistant', 'Se aplicará al cerrar el chat (ESC)');
+  }
 });
 
 shortcutsToggle?.addEventListener('change', () => {
