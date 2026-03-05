@@ -35,7 +35,7 @@ const defaultSettings = {
   mode: 'focus',
   userPickedMode: false,
   overlayEnabled: true,
-  clickThroughEnabled: false,
+  clickThroughPreferred: false,
   shortcutsEnabled: true,
   visible: true,
   bounds: null,
@@ -70,7 +70,8 @@ const SHORTCUTS = {
   toggleVisible: 'CommandOrControl+Shift+Y',
   toggleMode: 'CommandOrControl+Shift+M',
   forceQuit: 'CommandOrControl+Shift+Q',
-  panicSafeMode: 'CommandOrControl+Alt+Shift+S'
+  panicSafeMode: 'CommandOrControl+Alt+Shift+S',
+  emergencyClickThrough: 'CommandOrControl+Alt+C'
 };
 
 function shouldForceInteractiveStartup() {
@@ -79,17 +80,13 @@ function shouldForceInteractiveStartup() {
 
 function ensureInteractiveStartup() {
   if (!shouldForceInteractiveStartup()) return;
-  if (settings.clickThroughEnabled) {
-    settings.clickThroughEnabled = false;
-    writeSettings();
-  }
   if (win && !win.isDestroyed()) {
     win.setIgnoreMouseEvents(false);
   }
 }
 
 function panicDisableOverlayAndClickThrough() {
-  settings.clickThroughEnabled = false;
+  settings.clickThroughPreferred = false;
   settings.overlayEnabled = false;
   writeSettings();
 
@@ -126,10 +123,10 @@ function readSettings() {
     const mergedSettings = {
       ...defaultSettings,
       ...parsed,
+      clickThroughPreferred: Boolean(parsed.clickThroughPreferred ?? parsed.clickThroughEnabled),
       mode: migratedMode,
       userPickedMode,
-      yumikoWebOrigin: resolveYumikoWebOrigin(parsed),
-      clickThroughEnabled: false
+      yumikoWebOrigin: resolveYumikoWebOrigin(parsed)
     };
 
     if (!mergedSettings.hasCompletedFirstRun) {
@@ -506,7 +503,7 @@ function applyWindowBehavior() {
   const canUseClickThrough = settings.hasCompletedFirstRun;
   const enableClickThrough = canUseClickThrough
     && settings.overlayEnabled
-    && settings.clickThroughEnabled
+    && settings.clickThroughPreferred
     && settings.mode === 'focus';
 
   if (enableClickThrough) {
@@ -536,6 +533,11 @@ function setMode(mode, { fromRenderer = false, userPickedMode = false } = {}) {
 
   if (!win) return;
 
+  if (nextMode === 'chat') {
+    win.setFocusable(true);
+    win.setIgnoreMouseEvents(false);
+  }
+
   applyWindowBehavior();
 
   if (!fromRenderer && !win.webContents.isLoading()) {
@@ -548,9 +550,13 @@ function updateGlobalShortcuts() {
   globalShortcut.unregister(SHORTCUTS.toggleMode);
   globalShortcut.unregister(SHORTCUTS.forceQuit);
   globalShortcut.unregister(SHORTCUTS.panicSafeMode);
+  globalShortcut.unregister(SHORTCUTS.emergencyClickThrough);
 
   globalShortcut.register(SHORTCUTS.forceQuit, quitApp);
   globalShortcut.register(SHORTCUTS.panicSafeMode, panicDisableOverlayAndClickThrough);
+  globalShortcut.register(SHORTCUTS.emergencyClickThrough, () => {
+    setClickThroughEnabled(!settings.clickThroughPreferred);
+  });
 
   if (!settings.shortcutsEnabled) {
     return;
@@ -569,7 +575,7 @@ function setShortcutsEnabled(enabled) {
 }
 
 function setClickThroughEnabled(enabled) {
-  settings.clickThroughEnabled = Boolean(enabled);
+  settings.clickThroughPreferred = Boolean(enabled);
   writeSettings();
   applyWindowBehavior();
 }
@@ -637,7 +643,7 @@ function refreshTrayMenu() {
     {
       label: 'Click-through (dejar pasar clicks)',
       type: 'checkbox',
-      checked: Boolean(settings.clickThroughEnabled),
+      checked: Boolean(settings.clickThroughPreferred),
       click: (item) => setClickThroughEnabled(item.checked)
     },
     {
@@ -649,6 +655,10 @@ function refreshTrayMenu() {
     {
       label: 'Panic safe mode (Ctrl+Alt+Shift+S)',
       click: panicDisableOverlayAndClickThrough
+    },
+    {
+      label: 'Emergencia click-through (Ctrl+Alt+C)',
+      click: () => setClickThroughEnabled(!settings.clickThroughPreferred)
     },
     { type: 'separator' },
     { label: 'Quit', click: quitApp }
