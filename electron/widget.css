@@ -81,9 +81,16 @@ body {
   width: fit-content;
   height: fit-content;
   display: inline-block;
-  pointer-events: none;
   opacity: 1;
   transition: opacity 0.2s ease;
+}
+
+.mini-wrap {
+  position: relative;
+  display: inline-block;
+  padding-right: 72px;
+  padding-bottom: 32px;
+  -webkit-app-region: drag;
 }
 
 #yumiko-mini {
@@ -105,16 +112,16 @@ body {
 
 .mini-actions {
   position: absolute;
-  right: -6px;
-  bottom: 38px;
+  right: 16px;
+  bottom: 16px;
   display: flex;
   gap: 10px;
-  pointer-events: auto;
+  z-index: 10;
 }
 
 .mini-btn {
-  width: 44px;
-  height: 44px;
+  width: 38px;
+  height: 38px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.25);
   background: rgba(160, 110, 255, 0.3);
