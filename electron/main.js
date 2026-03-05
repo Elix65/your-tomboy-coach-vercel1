@@ -34,9 +34,9 @@ let authState = {
 const defaultSettings = {
   mode: 'focus',
   userPickedMode: false,
-  overlayEnabled: false,
+  overlayEnabled: true,
   clickThroughEnabled: false,
-  shortcutsEnabled: false,
+  shortcutsEnabled: true,
   visible: true,
   bounds: null,
   hasCompletedFirstRun: false,
@@ -123,7 +123,7 @@ function readSettings() {
     const migratedMode = !userPickedMode && parsed.mode === 'chat'
       ? 'focus'
       : parsed.mode;
-    return {
+    const mergedSettings = {
       ...defaultSettings,
       ...parsed,
       mode: migratedMode,
@@ -131,6 +131,12 @@ function readSettings() {
       yumikoWebOrigin: resolveYumikoWebOrigin(parsed),
       clickThroughEnabled: false
     };
+
+    if (!mergedSettings.hasCompletedFirstRun) {
+      mergedSettings.overlayEnabled = true;
+    }
+
+    return mergedSettings;
   } catch {
     return {
       ...defaultSettings,
