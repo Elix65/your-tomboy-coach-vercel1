@@ -32,7 +32,7 @@ let authState = {
 };
 
 const defaultSettings = {
-  mode: 'chat',
+  mode: 'focus',
   overlayEnabled: false,
   clickThroughEnabled: false,
   shortcutsEnabled: false,

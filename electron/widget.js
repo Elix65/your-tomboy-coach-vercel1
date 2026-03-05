@@ -355,10 +355,10 @@ function syncHostState(state = {}) {
 
 toggleSettingsButton?.addEventListener('click', () => {
   if (!settingsPanel) return;
-  const willOpen = settingsPanel.hidden;
-  settingsPanel.hidden = !willOpen;
+  settingsPanel.hidden = !settingsPanel.hidden;
+  const isOpen = !settingsPanel.hidden;
 
-  if (willOpen) {
+  if (isOpen) {
     document.addEventListener('mousedown', onOutsideClick, { capture: true });
     return;
   }

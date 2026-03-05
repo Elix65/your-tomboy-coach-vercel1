@@ -20,10 +20,15 @@ body {
 }
 
 button,
-a,
 input,
-select,
-textarea { -webkit-app-region: no-drag; }
+textarea,
+a,
+.chat-log,
+.mini-actions,
+#quit-app,
+#toggle-settings {
+  -webkit-app-region: no-drag;
+}
 
 body {
   position: relative;
@@ -36,7 +41,7 @@ body {
   position: absolute;
   top: 8px;
   right: 8px;
-  z-index: 12;
+  z-index: 60;
   width: 28px;
   height: 28px;
   border: 1px solid rgba(255, 255, 255, 0.28);
@@ -51,6 +56,16 @@ body {
   width: 100%;
   height: 100%;
   position: relative;
+}
+
+.drag-region {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  -webkit-app-region: drag;
+  z-index: 50;
 }
 
 .yumiko-mini {
@@ -165,10 +180,10 @@ body {
 
 .panel {
   position: absolute;
-  top: 44px;
+  top: 42px;
   right: 14px;
   z-index: 24;
-  width: min(260px, calc(100% - 28px));
+  width: min(280px, calc(100% - 28px));
   border: 1px solid rgba(255, 255, 255, 0.24);
   border-radius: 14px;
   padding: 10px;
@@ -177,7 +192,7 @@ body {
   gap: 8px;
   max-height: 220px;
   overflow: auto;
-  background: rgba(9, 10, 20, 0.92);
+  background: rgba(10, 10, 18, 0.92);
   backdrop-filter: blur(12px);
   box-shadow:
     0 14px 34px rgba(0, 0, 0, 0.45),
