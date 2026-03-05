@@ -56,7 +56,9 @@ function loadSettings() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_SETTINGS };
-    return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+    parsed.mode = toUiMode(parsed.mode);
+    return parsed;
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
@@ -135,10 +137,9 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   settings.mode = mode;
   saveSettings();
 
-  if (!widget || !chat) return;
-
-  widget.dataset.mode = mode;
-  chat.hidden = mode !== 'chat';
+  if (widget) {
+    widget.dataset.mode = mode;
+  }
 
   if (mode === 'chat') {
     input?.focus();
@@ -379,6 +380,7 @@ authActionButton?.addEventListener('click', async () => {
 
 miniChatButton?.addEventListener('click', () => {
   setMode('chat', { source: 'ui' });
+  input?.focus();
 });
 
 miniMicButton?.addEventListener('click', () => {
@@ -397,7 +399,7 @@ input?.addEventListener('keydown', (event) => {
 
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && settings.mode === 'chat') {
-    setMode('focus', { source: 'ui' });
+    setMode('focus', { source: 'hotkey' });
   }
 });
 
