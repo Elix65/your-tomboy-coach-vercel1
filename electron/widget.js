@@ -21,6 +21,7 @@ const chatLog = document.getElementById('chat-log');
 let isThinking = false;
 let contextCache = [];
 let overlayConnected = false;
+let restoreClickThroughOnFocus = false;
 let currentAuthState = { connected: false, user_id: '', device_id: '', device_name: '' };
 let isAuthExchangeInProgress = false;
 const processedAuthCodes = new Set();
@@ -126,6 +127,23 @@ function notifyHostMode(mode) {
   window.yumikoOverlay?.setMode?.(toHostMode(mode));
 }
 
+function removeOutsideClickListener() {
+  document.removeEventListener('mousedown', onOutsideClick, true);
+}
+
+function closeSettingsPanel() {
+  if (!settingsPanel) return;
+  settingsPanel.hidden = true;
+  removeOutsideClickListener();
+}
+
+function onOutsideClick(event) {
+  const target = event.target;
+  if (!(target instanceof Node)) return;
+  if (settingsPanel?.contains(target) || toggleSettingsButton?.contains(target)) return;
+  closeSettingsPanel();
+}
+
 function setMode(nextMode, { source = 'ui' } = {}) {
   const mode = toUiMode(nextMode);
   if (settings.mode === mode && source !== 'state-sync') {
@@ -142,9 +160,19 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   }
 
   if (mode === 'chat') {
+    if (clickThroughToggle?.checked) {
+      clickThroughToggle.checked = false;
+      window.yumikoOverlay?.setClickThroughEnabled?.(false);
+      restoreClickThroughOnFocus = true;
+    }
     input?.focus();
   } else {
-    settingsPanel?.setAttribute('hidden', '');
+    closeSettingsPanel();
+    if (restoreClickThroughOnFocus && clickThroughToggle) {
+      clickThroughToggle.checked = true;
+      window.yumikoOverlay?.setClickThroughEnabled?.(true);
+      restoreClickThroughOnFocus = false;
+    }
   }
 
   if (source === 'ui' || source === 'hotkey') {
@@ -327,7 +355,15 @@ function syncHostState(state = {}) {
 
 toggleSettingsButton?.addEventListener('click', () => {
   if (!settingsPanel) return;
-  settingsPanel.hidden = !settingsPanel.hidden;
+  const willOpen = settingsPanel.hidden;
+  settingsPanel.hidden = !willOpen;
+
+  if (willOpen) {
+    document.addEventListener('mousedown', onOutsideClick, { capture: true });
+    return;
+  }
+
+  removeOutsideClickListener();
 });
 
 quitAppButton?.addEventListener('click', (event) => {
@@ -351,6 +387,14 @@ overlayToggle?.addEventListener('change', () => {
 });
 
 clickThroughToggle?.addEventListener('change', () => {
+  if (settings.mode === 'chat' && clickThroughToggle.checked) {
+    clickThroughToggle.checked = false;
+    restoreClickThroughOnFocus = false;
+    addMessage('assistant', 'Click-through solo funciona en modo mini. Cerrá el chat (ESC) para activarlo.');
+    window.yumikoOverlay?.setClickThroughEnabled?.(false);
+    return;
+  }
+
   window.yumikoOverlay?.setClickThroughEnabled?.(clickThroughToggle.checked);
 });
 
