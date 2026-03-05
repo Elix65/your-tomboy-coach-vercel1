@@ -785,12 +785,12 @@ function createWindow() {
   const bounds = getInitialBounds();
   win = new BrowserWindow({
     ...bounds,
-    transparent: false,
-    backgroundColor: '#121212',
+    transparent: true,
+    backgroundColor: '#00000000',
     frame: false,
     alwaysOnTop: Boolean(settings.overlayEnabled),
-    minWidth: 420,
-    minHeight: 320,
+    minWidth: 220,
+    minHeight: 220,
     resizable: true,
     skipTaskbar: true,
     webPreferences: {
@@ -801,6 +801,9 @@ function createWindow() {
   });
 
   win.setMenuBarVisibility(false);
+  if (typeof win.setHasShadow === 'function') {
+    win.setHasShadow(false);
+  }
   win.loadFile(path.join(__dirname, 'renderer.html'));
 
   win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
@@ -947,6 +950,27 @@ if (!singleInstance) {
       win.close();
     });
     ipcMain.on('yumiko:quit', quitApp);
+    ipcMain.on('yumiko:set-window-size', (_event, payload) => {
+      if (!win || win.isDestroyed()) return;
+
+      const requestedWidth = Number(payload?.width);
+      const requestedHeight = Number(payload?.height);
+      if (!Number.isFinite(requestedWidth) || !Number.isFinite(requestedHeight)) return;
+
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+      const newW = clamp(Math.round(requestedWidth), 180, 1200);
+      const newH = clamp(Math.round(requestedHeight), 180, 900);
+
+      if (payload?.anchor === 'bottom-right') {
+        const { x, y, width: oldW, height: oldH } = win.getBounds();
+        const newX = x + oldW - newW;
+        const newY = y + oldH - newH;
+        win.setBounds({ x: newX, y: newY, width: newW, height: newH }, true);
+        return;
+      }
+
+      win.setSize(newW, newH, true);
+    });
 
     handleArgvForDeepLink(process.argv);
   });
