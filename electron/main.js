@@ -76,7 +76,7 @@ const SHORTCUTS = {
 };
 
 function safeBounds(bounds, reason = 'unknown') {
-  const fallback = { x: 80, y: 80, width: 520, height: 760 };
+  const fallback = { x: 80, y: 80, width: 420, height: 420 };
   const width = Number(bounds?.width);
   const height = Number(bounds?.height);
 
@@ -85,7 +85,7 @@ function safeBounds(bounds, reason = 'unknown') {
     return { ...fallback };
   }
 
-  if (width < 320 || height < 420) {
+  if (width < 200 || height < 200) {
     console.warn('[yumiko][window] unsafe bounds (too small), using fallback', { reason, bounds });
     return { ...fallback };
   }
@@ -97,6 +97,26 @@ function safeBounds(bounds, reason = 'unknown') {
     y: Number.isFinite(nextY) ? Math.round(nextY) : fallback.y,
     width: Math.round(width),
     height: Math.round(height)
+  };
+}
+
+function clampBoundsToWorkArea(bounds) {
+  const display = screen.getDisplayMatching(bounds);
+  const area = display?.workArea;
+  if (!area) return bounds;
+
+  const width = Math.min(bounds.width, area.width);
+  const height = Math.min(bounds.height, area.height);
+
+  const maxX = area.x + area.width - width;
+  const maxY = area.y + area.height - height;
+
+  return {
+    ...bounds,
+    width,
+    height,
+    x: Math.max(area.x, Math.min(bounds.x, maxX)),
+    y: Math.max(area.y, Math.min(bounds.y, maxY))
   };
 }
 
@@ -1086,16 +1106,18 @@ if (!singleInstance) {
       const newW = clamp(Math.round(requestedWidth), 200, 1200);
       const newH = clamp(Math.round(requestedHeight), 200, 900);
 
-      if (payload?.anchor === 'bottom-right') {
+      if (payload?.anchor === 'bottom-right' && !payload?.preservePosition) {
         const old = win.getBounds();
         const newX = old.x + (old.width - newW);
         const newY = old.y + (old.height - newH);
-        win.setBounds(safeBounds({ x: newX, y: newY, width: newW, height: newH }, 'ipc:set-window-size:anchor'), false);
+        const anchoredBounds = safeBounds({ x: newX, y: newY, width: newW, height: newH }, 'ipc:set-window-size:anchor');
+        win.setBounds(clampBoundsToWorkArea(anchoredBounds), false);
         return;
       }
 
       const { x, y } = win.getBounds();
-      win.setBounds(safeBounds({ x, y, width: newW, height: newH }, 'ipc:set-window-size'), false);
+      const nextBounds = safeBounds({ x, y, width: newW, height: newH }, 'ipc:set-window-size');
+      win.setBounds(clampBoundsToWorkArea(nextBounds), false);
     });
     ipcMain.on('yumiko:set-minimum-size', (_event, payload) => {
       setFocusMinimumBounds(payload);
