@@ -4,6 +4,7 @@
   --muted: #bdb7db;
   --neon: #ff67d4;
   --neon-2: #916bff;
+  --mini-scale: 1;
 }
 
 [hidden] { display: none !important; }
@@ -16,7 +17,7 @@ body {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  background: transparent;
+  background: transparent !important;
   color: var(--text);
   font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
 }
@@ -60,6 +61,11 @@ body {
   position: relative;
 }
 
+.yumiko-widget[data-mode="focus"] {
+  width: fit-content;
+  height: fit-content;
+}
+
 .drag-region {
   position: absolute;
   top: 0;
@@ -71,65 +77,60 @@ body {
 }
 
 .yumiko-mini {
-  position: absolute;
-  right: 14px;
-  bottom: 10px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;
+  position: relative;
+  width: fit-content;
+  height: fit-content;
+  display: inline-block;
   pointer-events: none;
   opacity: 1;
   transition: opacity 0.2s ease;
 }
 
-
 #yumiko-mini {
-  right: 18px;
-  bottom: 18px;
+  transform: scale(var(--mini-scale));
+  transform-origin: bottom right;
 }
 
 #yumiko-character {
-  height: 300px;
-  width: auto;
   display: block;
+  height: auto;
+  width: auto;
+  max-width: 360px;
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
-  filter: drop-shadow(0 18px 28px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 12px 28px rgba(0, 0, 0, 0.45));
   pointer-events: none;
 }
 
 .mini-actions {
   position: absolute;
-  right: 20px;
-  bottom: 28px;
+  right: -6px;
+  bottom: 38px;
   display: flex;
-  flex-direction: column;
   gap: 10px;
   pointer-events: auto;
 }
 
 .mini-btn {
-  width: 50px;
-  height: 50px;
-  border: 1px solid rgba(255, 255, 255, 0.36);
+  width: 44px;
+  height: 44px;
   border-radius: 999px;
-  background: linear-gradient(140deg, rgba(255, 103, 212, 0.95), rgba(145, 107, 255, 0.95));
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(160, 110, 255, 0.3);
   color: #fff;
-  font-size: 20px;
+  font-size: 18px;
   cursor: pointer;
+  backdrop-filter: blur(10px);
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.06) inset,
-    0 8px 20px rgba(145, 107, 255, 0.4),
-    0 0 26px rgba(255, 103, 212, 0.36);
+    0 8px 20px rgba(145, 107, 255, 0.35);
   transition: transform 0.18s ease, box-shadow 0.2s ease;
 }
 
 .mini-btn:hover {
   transform: translateY(-2px) scale(1.02);
-  box-shadow:
-    0 10px 22px rgba(145, 107, 255, 0.5),
-    0 0 34px rgba(255, 103, 212, 0.45);
+  box-shadow: 0 10px 22px rgba(145, 107, 255, 0.45);
 }
 
 .yumiko-chat {
@@ -173,6 +174,14 @@ body {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
+}
+
+.yumiko-widget[data-mode="focus"] .drag-region {
+  display: none;
+}
+
+.yumiko-widget[data-mode="chat"] .drag-region {
+  display: block;
 }
 
 .panel-settings-btn {

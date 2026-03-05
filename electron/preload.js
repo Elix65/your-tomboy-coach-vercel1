@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
   setOverlayEnabled: (enabled) => ipcRenderer.send('yumiko:set-overlay-enabled', enabled),
   setShortcutsEnabled: (enabled) => ipcRenderer.send('yumiko:set-shortcuts-enabled', enabled),
   setClickThroughEnabled: (enabled) => ipcRenderer.send('yumiko:set-click-through-enabled', enabled),
+  setWindowSize: (size) => ipcRenderer.send('yumiko:set-window-size', size),
   completeFirstRun: () => ipcRenderer.send('yumiko:complete-first-run'),
   closeWindow: () => ipcRenderer.send('yumiko:close-window'),
   quit: () => ipcRenderer.send('yumiko:quit'),

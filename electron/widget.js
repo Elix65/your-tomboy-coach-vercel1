@@ -1,5 +1,8 @@
 const STORAGE_KEY = 'yumiko-widget-settings-v1';
-const DEFAULT_SETTINGS = { mode: 'focus' };
+const DEFAULT_SETTINGS = { mode: 'focus', miniScale: 1 };
+const CHAT_WINDOW_SIZE = { width: 560, height: 380 };
+const MINI_SCALE_MIN = 0.6;
+const MINI_SCALE_MAX = 1.2;
 
 const settingsPanel = document.getElementById('settings-panel');
 const toggleSettingsButton = document.getElementById('toggle-settings');
@@ -15,6 +18,7 @@ const mini = document.getElementById('yumiko-mini');
 const miniChatButton = document.getElementById('mini-chat');
 const miniMicButton = document.getElementById('mini-mic');
 const chat = document.getElementById('yumiko-chat');
+const img = document.getElementById('yumiko-character');
 const input = document.getElementById('yumiko-input');
 const send = document.getElementById('yumiko-send');
 const chatLog = document.getElementById('chat-log');
@@ -60,6 +64,7 @@ function loadSettings() {
     if (!raw) return { ...DEFAULT_SETTINGS };
     const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
     parsed.mode = toUiMode(parsed.mode);
+    parsed.miniScale = clamp(Number(parsed.miniScale) || 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
     return parsed;
   } catch {
     return { ...DEFAULT_SETTINGS };
@@ -67,9 +72,58 @@ function loadSettings() {
 }
 
 let settings = loadSettings();
+let resizeObserver;
+let fitTimeout = null;
+let lastFitRequest = { mode: '', width: 0, height: 0 };
 
 function saveSettings() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function applyMiniScale(nextScale, { persist = true } = {}) {
+  const safeScale = clamp(Number(nextScale) || 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
+  settings.miniScale = Number(safeScale.toFixed(2));
+  document.documentElement.style.setProperty('--mini-scale', String(settings.miniScale));
+  if (persist) saveSettings();
+}
+
+function requestFit() {
+  if (!window.yumikoOverlay?.setWindowSize || !widget) return;
+
+  if (settings.mode === 'focus') {
+    const rect = mini?.getBoundingClientRect();
+    if (!rect || rect.width <= 0 || rect.height <= 0) return;
+
+    const width = Math.ceil(rect.width);
+    const height = Math.ceil(rect.height);
+    if (lastFitRequest.mode === 'focus' && lastFitRequest.width === width && lastFitRequest.height === height) return;
+
+    lastFitRequest = { mode: 'focus', width, height };
+    window.yumikoOverlay.setWindowSize({ width, height, anchor: 'bottom-right' });
+    return;
+  }
+
+  if (lastFitRequest.mode === 'chat'
+    && lastFitRequest.width === CHAT_WINDOW_SIZE.width
+    && lastFitRequest.height === CHAT_WINDOW_SIZE.height) {
+    return;
+  }
+
+  lastFitRequest = { mode: 'chat', width: CHAT_WINDOW_SIZE.width, height: CHAT_WINDOW_SIZE.height };
+  window.yumikoOverlay.setWindowSize({
+    width: CHAT_WINDOW_SIZE.width,
+    height: CHAT_WINDOW_SIZE.height,
+    anchor: 'bottom-right'
+  });
+}
+
+function requestFitDebounced() {
+  window.clearTimeout(fitTimeout);
+  fitTimeout = window.setTimeout(requestFit, 50);
 }
 
 function addMessage(role, content, { thinking = false } = {}) {
@@ -171,6 +225,9 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   if (widget) {
     widget.dataset.mode = mode;
   }
+  if (quitAppButton) {
+    quitAppButton.hidden = mode === 'focus';
+  }
 
   if (mode === 'chat') {
     if (chat) {
@@ -211,6 +268,8 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   if (source === 'ui' || source === 'hotkey') {
     notifyHostMode(mode);
   }
+
+  requestFitDebounced();
 }
 
 async function loadChatHistory() {
@@ -456,6 +515,15 @@ miniMicButton?.addEventListener('click', () => {
   console.info('[yumiko][mic] Próximamente');
 });
 
+window.addEventListener('wheel', (event) => {
+  if (!event.ctrlKey) return;
+  event.preventDefault();
+
+  const direction = event.deltaY < 0 ? 0.05 : -0.05;
+  applyMiniScale((settings.miniScale || 1) + direction);
+  requestFitDebounced();
+}, { passive: false });
+
 send?.addEventListener('click', submitMessage);
 
 input?.addEventListener('keydown', (event) => {
@@ -476,11 +544,27 @@ window.addEventListener('keydown', handleEscapeToFocus);
 
 window.yumikoWidget = {
   setMode: (mode) => setMode(mode, { source: 'state-sync' }),
-  getSettings: () => ({ ...settings })
+  getSettings: () => ({ ...settings }),
+  requestFit
 };
 
 window.addEventListener('DOMContentLoaded', () => {
   setSettingsPanelHidden(true);
+  applyMiniScale(settings.miniScale, { persist: false });
+
+  if (img) {
+    if (img.complete) {
+      requestFitDebounced();
+    } else {
+      img.addEventListener('load', requestFitDebounced, { once: true });
+    }
+  }
+
+  if (typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(() => requestFitDebounced());
+    if (mini) resizeObserver.observe(mini);
+    if (chat) resizeObserver.observe(chat);
+  }
 
   window.yumikoOverlay?.onStateUpdated?.(syncHostState);
   window.addEventListener('yumiko:auth-code', (event) => {
@@ -504,5 +588,6 @@ window.addEventListener('DOMContentLoaded', () => {
     .catch(() => setMode('focus', { source: 'state-sync' }));
 
   setMode(settings.mode || 'focus', { source: 'state-sync' });
+  requestFitDebounced();
   loadChatHistory();
 });
