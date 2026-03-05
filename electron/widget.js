@@ -15,6 +15,7 @@ const authActionButton = document.getElementById('auth-action');
 
 const widget = document.getElementById('yumiko-widget');
 const mini = document.getElementById('yumiko-mini');
+const miniWrap = document.getElementById('mini-wrap');
 const miniChatButton = document.getElementById('mini-chat');
 const miniMicButton = document.getElementById('mini-mic');
 const chat = document.getElementById('yumiko-chat');
@@ -95,7 +96,7 @@ function requestFit() {
   if (!window.yumikoOverlay?.setWindowSize || !widget) return;
 
   if (settings.mode === 'focus') {
-    const rect = mini?.getBoundingClientRect();
+    const rect = miniWrap?.getBoundingClientRect();
     if (!rect || rect.width <= 0 || rect.height <= 0) return;
 
     const width = Math.ceil(rect.width);
@@ -562,7 +563,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
   if (typeof ResizeObserver !== 'undefined') {
     resizeObserver = new ResizeObserver(() => requestFitDebounced());
-    if (mini) resizeObserver.observe(mini);
+    if (miniWrap) resizeObserver.observe(miniWrap);
     if (chat) resizeObserver.observe(chat);
   }
 
