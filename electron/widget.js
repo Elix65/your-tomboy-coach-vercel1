@@ -80,8 +80,9 @@ function loadSettings() {
 }
 
 let settings = loadSettings();
-const storedMiniScale = parseFloat(localStorage.getItem(MINI_SCALE_KEY) || '1');
-let miniScale = clamp(Number.isFinite(storedMiniScale) ? storedMiniScale : 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
+const storedUserScale = parseFloat(localStorage.getItem(MINI_SCALE_KEY) || '1');
+let userScale = clamp(Number.isFinite(storedUserScale) ? storedUserScale : 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
+let effectiveScale = userScale;
 let resizeObserver;
 let fitTimeout = null;
 let lastFitRequest = { mode: '', width: 0, height: 0 };
@@ -89,6 +90,7 @@ let miniBaseSize = null;
 let fitRetryCount = 0;
 let minSizeRetryCount = 0;
 let lastGoodFocusFitSize = null;
+let ignoreNextResize = false;
 
 function saveSettings() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -98,25 +100,45 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function setMiniScale(nextScale, { persist = true, shouldRequestFit = true } = {}) {
-  const safeScale = clamp(Number(nextScale) || 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
-  miniScale = Number(safeScale.toFixed(2));
-  document.documentElement.style.setProperty('--mini-scale', String(miniScale));
+function applyScale(source = 'unknown', { shouldRequestFit = true } = {}) {
+  const baseSize = getBaseSize();
+  const baseW = baseSize?.baseW || miniBaseSize?.width;
+  const baseH = baseSize?.baseH || miniBaseSize?.height;
+  let fitScale = MINI_SCALE_MAX;
 
-  if (miniBaseSize?.width > 0 && miniBaseSize?.height > 0 && mini) {
-    mini.style.width = `${Math.ceil(miniBaseSize.width * miniScale)}px`;
-    mini.style.height = `${Math.ceil(miniBaseSize.height * miniScale)}px`;
+  if (baseW > 0 && baseH > 0) {
+    fitScale = clamp(Math.min(window.innerWidth / baseW, window.innerHeight / baseH), MINI_SCALE_MIN, MINI_SCALE_MAX);
   }
 
-  if (persist) localStorage.setItem(MINI_SCALE_KEY, String(miniScale));
+  const nextEffectiveScale = Number(Math.min(userScale, fitScale).toFixed(2));
+  const scaleChanged = Math.abs(nextEffectiveScale - effectiveScale) > 0.001;
+
+  effectiveScale = nextEffectiveScale;
+  document.documentElement.style.setProperty('--mini-scale', String(effectiveScale));
+
+  if (miniBaseSize?.width > 0 && miniBaseSize?.height > 0 && mini) {
+    mini.style.width = `${Math.ceil(miniBaseSize.width * effectiveScale)}px`;
+    mini.style.height = `${Math.ceil(miniBaseSize.height * effectiveScale)}px`;
+  }
+
   updateFocusMinimumSize();
-  if (shouldRequestFit) requestFitDebounced();
+  if (shouldRequestFit && (source === 'user' || scaleChanged)) {
+    requestFitDebounced(`scale:${source}`);
+  }
+}
+
+function setMiniScale(nextScale, { persist = true, shouldRequestFit = true } = {}) {
+  const safeScale = clamp(Number(nextScale) || 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
+  userScale = Number(safeScale.toFixed(2));
+
+  if (persist) localStorage.setItem(MINI_SCALE_KEY, String(userScale));
+  applyScale('user', { shouldRequestFit });
 }
 
 function getCurrentScale() {
   const cssValue = getComputedStyle(document.documentElement).getPropertyValue('--mini-scale');
   const parsed = parseFloat(cssValue);
-  return clamp(Number.isFinite(parsed) ? parsed : miniScale || 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
+  return clamp(Number.isFinite(parsed) ? parsed : effectiveScale || 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
 }
 
 function getUnionRect() {
@@ -190,6 +212,7 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
       if (lastGoodFocusFitSize) {
         const { width, height } = lastGoodFocusFitSize;
         lastFitRequest = { mode: 'focus', width, height };
+        ignoreNextResize = true;
         window.yumikoOverlay.setWindowSize({ width, height, anchor: 'bottom-right' });
       }
       scheduleFitRetry(`${reason}:missing-bounds`);
@@ -213,6 +236,7 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
       if (lastGoodFocusFitSize) {
         const { width: cachedW, height: cachedH } = lastGoodFocusFitSize;
         lastFitRequest = { mode: 'focus', width: cachedW, height: cachedH };
+        ignoreNextResize = true;
         window.yumikoOverlay.setWindowSize({ width: cachedW, height: cachedH, anchor: 'bottom-right' });
       }
       if (fitRetryCount < 2) {
@@ -232,7 +256,8 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
     if (DEV_FIT_LOG) {
       console.log('[fit]', {
         mode: settings.mode,
-        scale: miniScale,
+        userScale,
+        effectiveScale,
         unionW,
         unionH,
         winW: width,
@@ -240,6 +265,7 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
       });
     }
 
+    ignoreNextResize = true;
     window.yumikoOverlay.setWindowSize({ width, height, anchor: 'bottom-right' });
     return;
   }
@@ -253,6 +279,7 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
   }
 
   lastFitRequest = { mode: 'chat', width: CHAT_WINDOW_SIZE.width, height: CHAT_WINDOW_SIZE.height };
+  ignoreNextResize = true;
   window.yumikoOverlay.setWindowSize({
     width: CHAT_WINDOW_SIZE.width,
     height: CHAT_WINDOW_SIZE.height,
@@ -432,7 +459,7 @@ function setMode(nextMode, { source = 'ui' } = {}) {
 
   if (mode === 'focus') {
     window.requestAnimationFrame(() => {
-      setMiniScale(miniScale, { persist: false });
+      setMiniScale(userScale, { persist: false });
     });
   } else {
     requestFitDebounced();
@@ -679,7 +706,7 @@ miniMicButton?.addEventListener('click', () => {
 
 function adjustMiniScale(delta) {
   if (settings.mode !== 'focus') return;
-  setMiniScale((miniScale || 1) + delta);
+  setMiniScale((userScale || 1) + delta);
 }
 
 function panicResetRendererState() {
@@ -724,7 +751,7 @@ window.addEventListener('keydown', (event) => {
     return;
   }
 
-  if (event.key === '+' || event.key === '=') {
+  if (event.key === '+' || event.key === '=' || event.key === '/') {
     event.preventDefault();
     adjustMiniScale(0.05);
     return;
@@ -739,22 +766,17 @@ window.addEventListener('keydown', (event) => {
 window.addEventListener('resize', () => {
   if (settings.mode !== 'focus') return;
 
-  updateFocusMinimumSize();
-
-  const baseSize = getBaseSize();
-  if (!baseSize) {
-    requestFitDebounced('resize:no-base-size');
+  if (ignoreNextResize) {
+    ignoreNextResize = false;
     return;
   }
 
-  const { baseW, baseH, scale } = baseSize;
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
-  const target = clamp(Math.min(vw / baseW, vh / baseH), MINI_SCALE_MIN, MINI_SCALE_MAX);
+  updateFocusMinimumSize();
+  const previousScale = effectiveScale;
+  applyScale('resize', { shouldRequestFit: false });
 
-  if (Math.abs(target - scale) > 0.01) {
-    setMiniScale(target, { shouldRequestFit: false });
-    requestFitDebounced('resize:auto-scale');
+  if (Math.abs(previousScale - effectiveScale) > 0.001) {
+    requestFitDebounced('resize:auto-fit');
     return;
   }
 
@@ -787,7 +809,7 @@ window.yumikoWidget = {
 
 window.addEventListener('DOMContentLoaded', () => {
   setSettingsPanelHidden(true);
-  setMiniScale(miniScale, { persist: false });
+  setMiniScale(userScale, { persist: false });
 
   if (img) {
     if (img.complete) {
@@ -826,7 +848,7 @@ window.addEventListener('DOMContentLoaded', () => {
       return;
     }
     if (payload.delta != null) {
-      setMiniScale(miniScale + payload.delta);
+      setMiniScale(userScale + payload.delta);
     }
   });
   window.yumikoOverlay?.getState?.()
@@ -843,7 +865,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (miniBaseSize?.shouldResetScale) {
     setMiniScale(1);
   } else {
-    setMiniScale(miniScale, { persist: false });
+    applyScale('init', { shouldRequestFit: false });
   }
   loadChatHistory();
 });
