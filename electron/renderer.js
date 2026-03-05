@@ -56,3 +56,8 @@ window.yumikoOverlay?.onPanicReset?.(() => {
   window.dispatchEvent(new CustomEvent('yumiko:panic-reset'));
 });
 
+
+window.yumikoOverlay?.onMiniScale?.((payload) => {
+  window.dispatchEvent(new CustomEvent('yumiko:mini-scale', { detail: payload || {} }));
+});
+

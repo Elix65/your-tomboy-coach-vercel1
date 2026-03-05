@@ -44,5 +44,10 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on('yumiko:panic-reset', listener);
     return () => ipcRenderer.removeListener('yumiko:panic-reset', listener);
-  }
+  },
+  onMiniScale: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('yumiko:mini-scale', listener);
+    return () => ipcRenderer.removeListener('yumiko:mini-scale', listener);
+  },
 });
