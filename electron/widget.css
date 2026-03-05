@@ -61,6 +61,8 @@ body {
   align-items: flex-end;
   justify-content: flex-end;
   pointer-events: none;
+  opacity: 1;
+  transition: opacity 0.2s ease;
 }
 
 #yumiko-character {
@@ -143,6 +145,11 @@ body {
   pointer-events: none;
 }
 
+.yumiko-widget[data-mode="focus"] .yumiko-mini {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .panel-settings-btn {
   align-self: flex-end;
   width: 32px;
@@ -156,17 +163,21 @@ body {
 
 .panel {
   position: absolute;
-  top: 52px;
+  top: 44px;
   right: 14px;
-  z-index: 3;
-  width: min(280px, calc(100% - 28px));
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
+  z-index: 24;
+  width: min(260px, calc(100% - 28px));
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 14px;
   padding: 10px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: rgba(8, 10, 18, 0.68);
+  background: rgba(9, 10, 20, 0.72);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 103, 212, 0.1) inset;
 }
 
 .toggle-row,
