@@ -582,11 +582,12 @@ function setMode(mode, { fromRenderer = false, userPickedMode = false } = {}) {
 
   if (!win) return;
 
-  win.setResizable(nextMode === 'chat');
+  win.setResizable(true);
 
   if (nextMode === 'chat') {
     win.setFocusable(true);
     win.setIgnoreMouseEvents(false);
+    win.setMinimumSize(0, 0);
   }
 
   applyWindowBehavior();
@@ -1070,6 +1071,17 @@ if (!singleInstance) {
 
       const { x, y } = win.getBounds();
       win.setBounds(safeBounds({ x, y, width: newW, height: newH }, 'ipc:set-window-size'), true);
+    });
+    ipcMain.on('yumiko:set-minimum-size', (_event, payload) => {
+      if (!win || win.isDestroyed()) return;
+      const requestedWidth = Number(payload?.width);
+      const requestedHeight = Number(payload?.height);
+
+      if (!Number.isFinite(requestedWidth) || !Number.isFinite(requestedHeight)) return;
+
+      const minW = Math.max(260, Math.round(requestedWidth));
+      const minH = Math.max(260, Math.round(requestedHeight));
+      win.setMinimumSize(minW, minH);
     });
 
     handleArgvForDeepLink(process.argv);

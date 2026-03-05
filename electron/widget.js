@@ -9,6 +9,7 @@ const MINI_BOUNDS_PADDING = 16;
 const MINI_MIN_WIDTH = 280;
 const MINI_MIN_HEIGHT = 320;
 const MINI_RETRY_LIMIT = 10;
+const MINI_MIN_SIZE_RETRY_LIMIT = 5;
 
 const settingsPanel = document.getElementById('settings-panel');
 const toggleSettingsButton = document.getElementById('toggle-settings');
@@ -85,6 +86,7 @@ let fitTimeout = null;
 let lastFitRequest = { mode: '', width: 0, height: 0 };
 let miniBaseSize = null;
 let fitRetryCount = 0;
+let minSizeRetryCount = 0;
 
 function saveSettings() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -94,7 +96,7 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function setMiniScale(nextScale, { persist = true } = {}) {
+function setMiniScale(nextScale, { persist = true, shouldRequestFit = true } = {}) {
   const safeScale = clamp(Number(nextScale) || 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
   miniScale = Number(safeScale.toFixed(2));
   document.documentElement.style.setProperty('--mini-scale', String(miniScale));
@@ -105,7 +107,7 @@ function setMiniScale(nextScale, { persist = true } = {}) {
   }
 
   if (persist) localStorage.setItem(MINI_SCALE_KEY, String(miniScale));
-  requestFitDebounced();
+  if (shouldRequestFit) requestFitDebounced();
 }
 
 function measureMiniBaseSize() {
@@ -139,6 +141,8 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
   if (!window.yumikoOverlay?.setWindowSize || !widget) return;
 
   if (settings.mode === 'focus') {
+    updateFocusMinimumSize();
+
     const miniRect = mini?.getBoundingClientRect();
     if (!miniRect || miniRect.width <= 0 || miniRect.height <= 0) {
       scheduleFitRetry(`${reason}:missing-bounds`);
@@ -166,6 +170,8 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
     return;
   }
 
+  window.yumikoOverlay?.setMinimumSize?.({ width: 0, height: 0 });
+
   if (lastFitRequest.mode === 'chat'
     && lastFitRequest.width === CHAT_WINDOW_SIZE.width
     && lastFitRequest.height === CHAT_WINDOW_SIZE.height) {
@@ -187,11 +193,11 @@ function requestFitDebounced(reason = 'debounced') {
 
 function withMiniScale(scale, cb) {
   const prevScale = miniScale;
-  setMiniScale(scale, { persist: false });
+  setMiniScale(scale, { persist: false, shouldRequestFit: false });
   try {
     return cb();
   } finally {
-    setMiniScale(prevScale, { persist: false });
+    setMiniScale(prevScale, { persist: false, shouldRequestFit: false });
   }
 }
 
@@ -205,6 +211,59 @@ function getMiniContentBounds() {
     right: miniRect.right,
     bottom: miniRect.bottom
   };
+}
+
+function getFocusContentBoundsAtScaleOne() {
+  return withMiniScale(1, () => {
+    const miniRect = mini?.getBoundingClientRect();
+    if (!miniRect || miniRect.width <= 0 || miniRect.height <= 0) return null;
+
+    const actionsRect = miniActions?.getBoundingClientRect();
+    if (!actionsRect || actionsRect.width <= 0 || actionsRect.height <= 0) {
+      return {
+        left: miniRect.left,
+        top: miniRect.top,
+        right: miniRect.right,
+        bottom: miniRect.bottom
+      };
+    }
+
+    return {
+      left: Math.min(miniRect.left, actionsRect.left),
+      top: Math.min(miniRect.top, actionsRect.top),
+      right: Math.max(miniRect.right, actionsRect.right),
+      bottom: Math.max(miniRect.bottom, actionsRect.bottom)
+    };
+  });
+}
+
+function updateFocusMinimumSize() {
+  if (settings.mode !== 'focus' || !window.yumikoOverlay?.setMinimumSize) return;
+
+  const baseBounds = getFocusContentBoundsAtScaleOne();
+  const baseWidth = Math.ceil((baseBounds?.right || 0) - (baseBounds?.left || 0));
+  const baseHeight = Math.ceil((baseBounds?.bottom || 0) - (baseBounds?.top || 0));
+
+  if (hasUnsafeCalculatedSize(baseWidth, baseHeight)) {
+    if (minSizeRetryCount >= MINI_MIN_SIZE_RETRY_LIMIT) {
+      console.warn('[yumiko][fit] minimum size measurement failed after retries');
+      return;
+    }
+
+    minSizeRetryCount += 1;
+    window.requestAnimationFrame(() => updateFocusMinimumSize());
+    return;
+  }
+
+  const minW = Math.ceil((baseWidth * MINI_SCALE_MIN) + (MINI_BOUNDS_PADDING * 2));
+  const minH = Math.ceil((baseHeight * MINI_SCALE_MIN) + (MINI_BOUNDS_PADDING * 2));
+
+  if (hasUnsafeCalculatedSize(minW, minH)) {
+    return;
+  }
+
+  minSizeRetryCount = 0;
+  window.yumikoOverlay.setMinimumSize({ width: minW, height: minH });
 }
 
 function addMessage(role, content, { thinking = false } = {}) {
