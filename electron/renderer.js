@@ -50,3 +50,9 @@ window.yumikoOverlay?.onResizeAttempt?.((payload) => {
     }
   }));
 });
+
+
+window.yumikoOverlay?.onPanicReset?.(() => {
+  window.dispatchEvent(new CustomEvent('yumiko:panic-reset'));
+});
+

@@ -2,7 +2,8 @@ const STORAGE_KEY = 'yumiko-widget-settings-v1';
 const DEFAULT_SETTINGS = { mode: 'focus', miniScale: 1 };
 const CHAT_WINDOW_SIZE = { width: 560, height: 380 };
 const MINI_SCALE_MIN = 0.35;
-const MINI_SCALE_MAX = 2;
+const MINI_SCALE_MAX = 1;
+const MINI_BASE_FALLBACK = { width: 360, height: 520 };
 
 const settingsPanel = document.getElementById('settings-panel');
 const toggleSettingsButton = document.getElementById('toggle-settings');
@@ -101,13 +102,15 @@ function applyMiniScale(nextScale, { persist = true } = {}) {
 
 function measureMiniBaseSize() {
   const baseBounds = withMiniScale(1, getMiniContentBounds);
-  if (!baseBounds) return null;
+  if (!baseBounds) return { ...MINI_BASE_FALLBACK, shouldResetScale: true };
 
   const width = Math.ceil(baseBounds.right - baseBounds.left);
   const height = Math.ceil(baseBounds.bottom - baseBounds.top);
-  if (width <= 0 || height <= 0) return null;
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+    return { ...MINI_BASE_FALLBACK, shouldResetScale: true };
+  }
 
-  return { width, height };
+  return { width, height, shouldResetScale: false };
 }
 
 function requestFit() {
@@ -134,8 +137,8 @@ function requestFit() {
       };
     }
 
-    const width = Math.ceil(bounds.right - bounds.left);
-    const height = Math.ceil(bounds.bottom - bounds.top);
+    const width = Math.max(Math.ceil(bounds.right - bounds.left), 220);
+    const height = Math.max(Math.ceil(bounds.bottom - bounds.top), 220);
     if (lastFitRequest.mode === 'focus' && lastFitRequest.width === width && lastFitRequest.height === height) return;
 
     lastFitRequest = { mode: 'focus', width, height };
@@ -590,6 +593,17 @@ window.addEventListener('wheel', (event) => {
 }, { passive: false });
 
 window.addEventListener('keydown', (event) => {
+  if (event.ctrlKey && event.altKey && event.key.toLowerCase() === 'r') {
+    event.preventDefault();
+    localStorage.clear();
+    settings = { ...DEFAULT_SETTINGS };
+    miniBaseSize = { ...MINI_BASE_FALLBACK };
+    applyMiniScale(1);
+    setMode('focus', { source: 'hotkey' });
+    requestFitDebounced();
+    return;
+  }
+
   if (!event.ctrlKey || settings.mode !== 'focus') return;
 
   if (event.key === '0') {
@@ -671,6 +685,14 @@ window.addEventListener('DOMContentLoaded', () => {
       addMessage('assistant', message);
     }
   });
+  window.addEventListener('yumiko:panic-reset', () => {
+    localStorage.clear();
+    settings = { ...DEFAULT_SETTINGS };
+    miniBaseSize = { ...MINI_BASE_FALLBACK };
+    applyMiniScale(1);
+    setMode('focus', { source: 'state-sync' });
+    requestFitDebounced();
+  });
   window.yumikoOverlay?.getState?.()
     .then((state) => {
       syncHostState(state);
@@ -682,7 +704,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
   setMode(settings.mode || 'focus', { source: 'state-sync' });
   miniBaseSize = measureMiniBaseSize();
-  applyMiniScale(settings.miniScale, { persist: false });
+  if (miniBaseSize?.shouldResetScale) {
+    applyMiniScale(1);
+  } else {
+    applyMiniScale(settings.miniScale, { persist: false });
+  }
   requestFitDebounced();
   loadChatHistory();
 });
