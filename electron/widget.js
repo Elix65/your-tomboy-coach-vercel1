@@ -77,6 +77,7 @@ let resizeObserver;
 let fitTimeout = null;
 let miniResizeTimeout = null;
 let lastFitRequest = { mode: '', width: 0, height: 0 };
+let miniBaseSize = null;
 
 function saveSettings() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -90,7 +91,24 @@ function applyMiniScale(nextScale, { persist = true } = {}) {
   const safeScale = clamp(Number(nextScale) || 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
   settings.miniScale = Number(safeScale.toFixed(2));
   document.documentElement.style.setProperty('--mini-scale', String(settings.miniScale));
+
+  if (miniBaseSize?.width > 0 && miniBaseSize?.height > 0 && mini) {
+    mini.style.width = `${Math.ceil(miniBaseSize.width * settings.miniScale)}px`;
+    mini.style.height = `${Math.ceil(miniBaseSize.height * settings.miniScale)}px`;
+  }
+
   if (persist) saveSettings();
+}
+
+function measureMiniBaseSize() {
+  const baseBounds = withMiniScale(1, getMiniContentBounds);
+  if (!baseBounds) return null;
+
+  const width = Math.ceil(baseBounds.right - baseBounds.left);
+  const height = Math.ceil(baseBounds.bottom - baseBounds.top);
+  if (width <= 0 || height <= 0) return null;
+
+  return { width, height };
 }
 
 function requestFit() {
@@ -188,16 +206,36 @@ function autoScaleMiniToWindow() {
     return;
   }
 
-  const baseBounds = withMiniScale(1, getMiniContentBounds);
-  if (!baseBounds) return;
+  miniBaseSize = measureMiniBaseSize();
+  if (!miniBaseSize) return;
 
-  const baseW = Math.ceil(baseBounds.right - baseBounds.left);
-  const baseH = Math.ceil(baseBounds.bottom - baseBounds.top);
+  const baseW = miniBaseSize.width;
+  const baseH = miniBaseSize.height;
   if (baseW <= 0 || baseH <= 0) return;
 
   const scaleW = availableW / baseW;
   const scaleH = availableH / baseH;
   const nextScale = clamp(Math.min(scaleW, scaleH), MINI_SCALE_MIN, MINI_SCALE_MAX);
+
+  applyMiniScale(nextScale);
+  requestFitDebounced();
+}
+
+function handleResizeAttempt(detail = {}) {
+  if (settings.mode !== 'focus') return;
+
+  miniBaseSize = miniBaseSize || measureMiniBaseSize();
+  if (!miniBaseSize?.width || !miniBaseSize?.height) return;
+
+  const requestedW = Number(detail?.width);
+  const requestedH = Number(detail?.height);
+  if (!Number.isFinite(requestedW) || !Number.isFinite(requestedH)) return;
+
+  const nextScale = clamp(
+    Math.min(requestedW / miniBaseSize.width, requestedH / miniBaseSize.height),
+    MINI_SCALE_MIN,
+    MINI_SCALE_MAX
+  );
 
   applyMiniScale(nextScale);
   requestFitDebounced();
@@ -659,6 +697,9 @@ window.addEventListener('DOMContentLoaded', () => {
       addMessage('assistant', message);
     }
   });
+  window.addEventListener('yumiko:resize-attempt', (event) => {
+    handleResizeAttempt(event?.detail);
+  });
 
   window.yumikoOverlay?.getState?.()
     .then((state) => {
@@ -670,6 +711,8 @@ window.addEventListener('DOMContentLoaded', () => {
     .catch(() => setMode('focus', { source: 'state-sync' }));
 
   setMode(settings.mode || 'focus', { source: 'state-sync' });
+  miniBaseSize = measureMiniBaseSize();
+  applyMiniScale(settings.miniScale, { persist: false });
   autoScaleMiniToWindowDebounced();
   requestFitDebounced();
   loadChatHistory();
