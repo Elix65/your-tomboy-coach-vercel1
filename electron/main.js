@@ -70,6 +70,7 @@ const SHORTCUTS = {
   toggleVisible: 'CommandOrControl+Shift+Y',
   toggleMode: 'CommandOrControl+Shift+M',
   forceQuit: 'CommandOrControl+Shift+Q',
+  panicReset: 'CommandOrControl+Alt+R',
   panicSafeMode: 'CommandOrControl+Alt+Shift+S',
   emergencyClickThrough: 'CommandOrControl+Alt+C'
 };
@@ -101,6 +102,22 @@ function panicDisableOverlayAndClickThrough() {
 
   broadcastState();
   refreshTrayMenu();
+}
+
+function panicResetWindowAndRenderer() {
+  settings.mode = 'focus';
+  settings.userPickedMode = false;
+  settings.visible = true;
+  writeSettings();
+
+  if (win && !win.isDestroyed()) {
+    win.setBounds({ x: 50, y: 50, width: 420, height: 640 }, true);
+    win.show();
+    win.focus();
+    win.webContents.send('yumiko:panic-reset', { reason: 'shortcut' });
+  }
+
+  setMode('focus');
 }
 
 function quitApp() {
@@ -551,10 +568,12 @@ function updateGlobalShortcuts() {
   globalShortcut.unregister(SHORTCUTS.toggleVisible);
   globalShortcut.unregister(SHORTCUTS.toggleMode);
   globalShortcut.unregister(SHORTCUTS.forceQuit);
+  globalShortcut.unregister(SHORTCUTS.panicReset);
   globalShortcut.unregister(SHORTCUTS.panicSafeMode);
   globalShortcut.unregister(SHORTCUTS.emergencyClickThrough);
 
   globalShortcut.register(SHORTCUTS.forceQuit, quitApp);
+  globalShortcut.register(SHORTCUTS.panicReset, panicResetWindowAndRenderer);
   globalShortcut.register(SHORTCUTS.panicSafeMode, panicDisableOverlayAndClickThrough);
   globalShortcut.register(SHORTCUTS.emergencyClickThrough, () => {
     setClickThroughEnabled(!settings.clickThroughPreferred);
@@ -653,6 +672,10 @@ function refreshTrayMenu() {
       type: 'checkbox',
       checked: Boolean(settings.shortcutsEnabled),
       click: (item) => setShortcutsEnabled(item.checked)
+    },
+    {
+      label: 'Panic reset (Ctrl+Alt+R)',
+      click: panicResetWindowAndRenderer
     },
     {
       label: 'Panic safe mode (Ctrl+Alt+Shift+S)',
@@ -978,6 +1001,7 @@ if (!singleInstance) {
       const requestedWidth = Number(payload?.width);
       const requestedHeight = Number(payload?.height);
       if (!Number.isFinite(requestedWidth) || !Number.isFinite(requestedHeight)) return;
+      if (requestedWidth < 100 || requestedHeight < 100) return;
 
       const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
       const newW = clamp(Math.round(requestedWidth), 180, 1200);
