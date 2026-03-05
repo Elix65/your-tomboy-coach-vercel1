@@ -575,6 +575,9 @@ function updateGlobalShortcuts() {
   globalShortcut.unregister(SHORTCUTS.panicReset);
   globalShortcut.unregister(SHORTCUTS.panicSafeMode);
   globalShortcut.unregister(SHORTCUTS.emergencyClickThrough);
+  globalShortcut.unregister('CommandOrControl+Alt+=');
+  globalShortcut.unregister('CommandOrControl+Alt+-');
+  globalShortcut.unregister('CommandOrControl+Alt+0');
 
   globalShortcut.register(SHORTCUTS.forceQuit, quitApp);
   globalShortcut.register(SHORTCUTS.panicReset, panicResetWindowAndRenderer);
@@ -582,6 +585,20 @@ function updateGlobalShortcuts() {
   globalShortcut.register(SHORTCUTS.emergencyClickThrough, () => {
     setClickThroughEnabled(!settings.clickThroughPreferred);
   });
+  if (win && !win.isDestroyed()) {
+    globalShortcut.register('CommandOrControl+Alt+=', () => {
+      if (!win || win.isDestroyed()) return;
+      win.webContents.send('yumiko:mini-scale', { delta: +0.05 });
+    });
+    globalShortcut.register('CommandOrControl+Alt+-', () => {
+      if (!win || win.isDestroyed()) return;
+      win.webContents.send('yumiko:mini-scale', { delta: -0.05 });
+    });
+    globalShortcut.register('CommandOrControl+Alt+0', () => {
+      if (!win || win.isDestroyed()) return;
+      win.webContents.send('yumiko:mini-scale', { set: 1 });
+    });
+  }
 
   if (!settings.shortcutsEnabled) {
     return;

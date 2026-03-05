@@ -1,5 +1,6 @@
 const STORAGE_KEY = 'yumiko-widget-settings-v1';
-const DEFAULT_SETTINGS = { mode: 'focus', miniScale: 1 };
+const MINI_SCALE_KEY = 'yumiko_mini_scale_v1';
+const DEFAULT_SETTINGS = { mode: 'focus' };
 const CHAT_WINDOW_SIZE = { width: 560, height: 380 };
 const MINI_SCALE_MIN = 0.35;
 const MINI_SCALE_MAX = 1;
@@ -66,7 +67,6 @@ function loadSettings() {
     if (!raw) return { ...DEFAULT_SETTINGS };
     const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
     parsed.mode = toUiMode(parsed.mode);
-    parsed.miniScale = clamp(Number(parsed.miniScale) || 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
     return parsed;
   } catch {
     return { ...DEFAULT_SETTINGS };
@@ -74,6 +74,8 @@ function loadSettings() {
 }
 
 let settings = loadSettings();
+const storedMiniScale = parseFloat(localStorage.getItem(MINI_SCALE_KEY) || '1');
+let miniScale = clamp(Number.isFinite(storedMiniScale) ? storedMiniScale : 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
 let resizeObserver;
 let fitTimeout = null;
 let lastFitRequest = { mode: '', width: 0, height: 0 };
@@ -87,17 +89,18 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function applyMiniScale(nextScale, { persist = true } = {}) {
+function setMiniScale(nextScale, { persist = true } = {}) {
   const safeScale = clamp(Number(nextScale) || 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
-  settings.miniScale = Number(safeScale.toFixed(2));
-  document.documentElement.style.setProperty('--mini-scale', String(settings.miniScale));
+  miniScale = Number(safeScale.toFixed(2));
+  document.documentElement.style.setProperty('--mini-scale', String(miniScale));
 
   if (miniBaseSize?.width > 0 && miniBaseSize?.height > 0 && mini) {
-    mini.style.width = `${Math.ceil(miniBaseSize.width * settings.miniScale)}px`;
-    mini.style.height = `${Math.ceil(miniBaseSize.height * settings.miniScale)}px`;
+    mini.style.width = `${Math.ceil(miniBaseSize.width * miniScale)}px`;
+    mini.style.height = `${Math.ceil(miniBaseSize.height * miniScale)}px`;
   }
 
-  if (persist) saveSettings();
+  if (persist) localStorage.setItem(MINI_SCALE_KEY, String(miniScale));
+  requestFitDebounced();
 }
 
 function measureMiniBaseSize() {
@@ -166,12 +169,12 @@ function requestFitDebounced() {
 }
 
 function withMiniScale(scale, cb) {
-  const prevScale = settings.miniScale;
-  applyMiniScale(scale, { persist: false });
+  const prevScale = miniScale;
+  setMiniScale(scale, { persist: false });
   try {
     return cb();
   } finally {
-    applyMiniScale(prevScale, { persist: false });
+    setMiniScale(prevScale, { persist: false });
   }
 }
 
@@ -334,8 +337,7 @@ function setMode(nextMode, { source = 'ui' } = {}) {
 
   if (mode === 'focus') {
     window.requestAnimationFrame(() => {
-      applyMiniScale(settings.miniScale, { persist: false });
-      requestFitDebounced();
+      setMiniScale(miniScale, { persist: false });
     });
   } else {
     requestFitDebounced();
@@ -582,22 +584,21 @@ miniMicButton?.addEventListener('click', () => {
 
 function adjustMiniScale(delta) {
   if (settings.mode !== 'focus') return;
-  applyMiniScale((settings.miniScale || 1) + delta);
-  requestFitDebounced();
+  setMiniScale((miniScale || 1) + delta);
 }
 
 function panicResetRendererState() {
   console.info('PANIC RESET');
   localStorage.removeItem('miniScale');
-  settings = { ...settings, mode: 'focus', miniScale: 1 };
-  document.documentElement.style.setProperty('--mini-scale', '1');
-  applyMiniScale(1);
+  localStorage.removeItem(MINI_SCALE_KEY);
+  settings = { ...settings, mode: 'focus' };
+  setMiniScale(1, { persist: true });
   setMode('focus', { source: 'panic-reset' });
   requestFit();
 }
 
 window.addEventListener('wheel', (event) => {
-  if (!event.ctrlKey || settings.mode !== 'focus') return;
+  if (!event.ctrlKey || widget?.dataset.mode !== 'focus') return;
   event.preventDefault();
   adjustMiniScale(event.deltaY < 0 ? 0.05 : -0.05);
 }, { passive: false });
@@ -613,8 +614,7 @@ window.addEventListener('keydown', (event) => {
 
   if (event.key === '0') {
     event.preventDefault();
-    applyMiniScale(1);
-    requestFitDebounced();
+    setMiniScale(1);
     return;
   }
 
@@ -661,7 +661,7 @@ window.yumikoWidget = {
 
 window.addEventListener('DOMContentLoaded', () => {
   setSettingsPanelHidden(true);
-  applyMiniScale(settings.miniScale, { persist: false });
+  setMiniScale(miniScale, { persist: false });
 
   if (img) {
     if (img.complete) {
@@ -693,6 +693,16 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('yumiko:panic-reset', () => {
     panicResetRendererState();
   });
+  window.addEventListener('yumiko:mini-scale', (event) => {
+    const payload = event?.detail || {};
+    if (payload.set != null) {
+      setMiniScale(payload.set);
+      return;
+    }
+    if (payload.delta != null) {
+      setMiniScale(miniScale + payload.delta);
+    }
+  });
   window.yumikoOverlay?.getState?.()
     .then((state) => {
       syncHostState(state);
@@ -705,10 +715,9 @@ window.addEventListener('DOMContentLoaded', () => {
   setMode(settings.mode || 'focus', { source: 'state-sync' });
   miniBaseSize = measureMiniBaseSize();
   if (miniBaseSize?.shouldResetScale) {
-    applyMiniScale(1);
+    setMiniScale(1);
   } else {
-    applyMiniScale(settings.miniScale, { persist: false });
+    setMiniScale(miniScale, { persist: false });
   }
-  requestFitDebounced();
   loadChatHistory();
 });
