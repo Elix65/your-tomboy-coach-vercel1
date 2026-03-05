@@ -1087,15 +1087,15 @@ if (!singleInstance) {
       const newH = clamp(Math.round(requestedHeight), 200, 900);
 
       if (payload?.anchor === 'bottom-right') {
-        const { x, y, width: oldW, height: oldH } = win.getBounds();
-        const newX = x + oldW - newW;
-        const newY = y + oldH - newH;
-        win.setBounds(safeBounds({ x: newX, y: newY, width: newW, height: newH }, 'ipc:set-window-size:anchor'), true);
+        const old = win.getBounds();
+        const newX = old.x + (old.width - newW);
+        const newY = old.y + (old.height - newH);
+        win.setBounds(safeBounds({ x: newX, y: newY, width: newW, height: newH }, 'ipc:set-window-size:anchor'), false);
         return;
       }
 
       const { x, y } = win.getBounds();
-      win.setBounds(safeBounds({ x, y, width: newW, height: newH }, 'ipc:set-window-size'), true);
+      win.setBounds(safeBounds({ x, y, width: newW, height: newH }, 'ipc:set-window-size'), false);
     });
     ipcMain.on('yumiko:set-minimum-size', (_event, payload) => {
       setFocusMinimumBounds(payload);
