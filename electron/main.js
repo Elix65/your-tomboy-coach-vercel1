@@ -33,6 +33,7 @@ let authState = {
 
 const defaultSettings = {
   mode: 'focus',
+  userPickedMode: false,
   overlayEnabled: false,
   clickThroughEnabled: false,
   shortcutsEnabled: false,
@@ -118,9 +119,15 @@ function readSettings() {
   try {
     const raw = fs.readFileSync(settingsPath(), 'utf8');
     const parsed = JSON.parse(raw);
+    const userPickedMode = parsed.userPickedMode === true;
+    const migratedMode = !userPickedMode && parsed.mode === 'chat'
+      ? 'focus'
+      : parsed.mode;
     return {
       ...defaultSettings,
       ...parsed,
+      mode: migratedMode,
+      userPickedMode,
       yumikoWebOrigin: resolveYumikoWebOrigin(parsed),
       clickThroughEnabled: false
     };
@@ -508,7 +515,7 @@ function applyWindowBehavior() {
   refreshTrayMenu();
 }
 
-function setMode(mode, { fromRenderer = false } = {}) {
+function setMode(mode, { fromRenderer = false, userPickedMode = false } = {}) {
   const nextMode = mode === 'chat' ? 'chat' : 'focus';
   console.info('[yumiko][mode] setMode', {
     previousMode: settings.mode,
@@ -516,6 +523,9 @@ function setMode(mode, { fromRenderer = false } = {}) {
     source: fromRenderer ? 'renderer' : 'main'
   });
   settings.mode = nextMode;
+  if (userPickedMode) {
+    settings.userPickedMode = true;
+  }
   writeSettings();
 
   if (!win) return;
@@ -587,7 +597,7 @@ function toggleVisible() {
 
 function toggleMode() {
   console.info('[yumiko][mode] toggleMode shortcut/menu', { previousMode: settings.mode });
-  setMode(settings.mode === 'focus' ? 'chat' : 'focus');
+  setMode(settings.mode === 'focus' ? 'chat' : 'focus', { userPickedMode: true });
 }
 
 function showAndFocusChat() {
@@ -596,7 +606,7 @@ function showAndFocusChat() {
   writeSettings();
   win.show();
   win.focus();
-  setMode('chat');
+  setMode('chat', { userPickedMode: true });
 }
 
 function showChatInactive() {
@@ -604,7 +614,7 @@ function showChatInactive() {
   settings.visible = true;
   writeSettings();
   win.showInactive();
-  setMode('chat');
+  setMode('chat', { userPickedMode: true });
 }
 
 function refreshTrayMenu() {
@@ -918,7 +928,9 @@ if (!singleInstance) {
       markOverlayDisconnected({ clearStoredRefreshToken: true });
       return { ok: true };
     });
-    ipcMain.on('yumiko:set-mode', (_event, mode) => setMode(mode, { fromRenderer: true }));
+    ipcMain.on('yumiko:set-mode', (_event, mode) => {
+      setMode(mode, { fromRenderer: true, userPickedMode: true });
+    });
     ipcMain.on('yumiko:set-shortcuts-enabled', (_event, enabled) => setShortcutsEnabled(enabled));
     ipcMain.on('yumiko:set-click-through-enabled', (_event, enabled) => setClickThroughEnabled(enabled));
     ipcMain.on('yumiko:set-overlay-enabled', (_event, enabled) => setOverlayEnabled(enabled));
