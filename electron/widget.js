@@ -441,11 +441,14 @@ input?.addEventListener('keydown', (event) => {
   }
 });
 
-window.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && settings.mode === 'chat') {
-    setMode('focus', { source: 'hotkey' });
-  }
-});
+function handleEscapeToFocus(event) {
+  if (event.key !== 'Escape' || settings.mode !== 'chat') return;
+  event.preventDefault();
+  setMode('focus', { source: 'hotkey' });
+}
+
+input?.addEventListener('keydown', handleEscapeToFocus);
+window.addEventListener('keydown', handleEscapeToFocus);
 
 window.yumikoWidget = {
   setMode: (mode) => setMode(mode, { source: 'state-sync' }),
