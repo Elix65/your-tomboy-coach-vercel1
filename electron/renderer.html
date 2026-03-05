@@ -6,157 +6,55 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Yumiko Overlay</title>
   <link rel="stylesheet" href="./widget.css" />
-  <style>
-    * { box-sizing: border-box; }
-    html, body {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      overflow: hidden;
-      background: #0f0f12;
-      color: #f5f6fb;
-      font-family: Inter, "Segoe UI", Roboto, Arial, sans-serif;
-    }
-    body {
-      display: flex;
-      flex-direction: column;
-      border: 1px solid #292a30;
-      border-radius: 14px;
-    }
-    button, a, input, select, textarea { -webkit-app-region: no-drag; }
-    .bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 8px 10px;
-      background: #17181d;
-      border-bottom: 1px solid #2d2d32;
-      -webkit-app-region: drag;
-      flex-shrink: 0;
-    }
-    .title {
-      font-weight: 600;
-      font-size: 12px;
-      letter-spacing: 0.02em;
-    }
-    .actions {
-      display: flex;
-      gap: 8px;
-      -webkit-app-region: no-drag;
-    }
-    .panel-btn {
-      border: 1px solid #3a3b44;
-      background: #22242c;
-      color: #f6f6f7;
-      border-radius: 8px;
-      padding: 6px 10px;
-      cursor: pointer;
-      font-size: 12px;
-      line-height: 1;
-    }
-    .close-btn {
-      width: 28px;
-      padding: 6px 0;
-      text-align: center;
-      font-weight: 700;
-      -webkit-app-region: no-drag;
-    }
-    .panel {
-      display: none;
-      background: #191a20;
-      border-bottom: 1px solid #2d2d32;
-      padding: 12px;
-      flex-shrink: 0;
-    }
-    .panel.open { display: block; }
-    .toggle-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 0;
-      font-size: 13px;
-      gap: 12px;
-    }
-    .toggle-row label { flex: 1; }
-    .auth-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding-top: 10px;
-      margin-top: 8px;
-      border-top: 1px solid #2d2d32;
-      font-size: 12px;
-    }
-    .auth-status { color: #c9ccdc; }
-    .content {
-      position: relative;
-      flex: 1;
-      min-height: 0;
-      display: flex;
-      align-items: stretch;
-      justify-content: stretch;
-      padding: 12px;
-      background: radial-gradient(circle at top right, #1f2230 0%, #121318 42%, #0d0e12 100%);
-    }
-  </style>
 </head>
 <body>
-  <div class="bar">
-    <div class="title">Yumiko Overlay</div>
-    <div class="actions">
-      <button id="toggle-settings" class="panel-btn">Settings</button>
-      <button id="quit-app" class="panel-btn close-btn" aria-label="Cerrar app">X</button>
-    </div>
-  </div>
+  <button id="quit-app" class="floating-quit" aria-label="Cerrar app">✕</button>
 
-  <div id="settings-panel" class="panel">
-    <div class="toggle-row">
-      <label for="overlay-enabled">Modo Overlay (Siempre arriba)</label>
-      <input id="overlay-enabled" type="checkbox" />
-    </div>
-    <div class="toggle-row">
-      <label for="click-through-enabled">Click-through (dejar pasar clicks)</label>
-      <input id="click-through-enabled" type="checkbox" />
-    </div>
-    <div class="toggle-row">
-      <label for="shortcuts-enabled">Atajos globales</label>
-      <input id="shortcuts-enabled" type="checkbox" />
-    </div>
-    <div class="auth-row">
-      <span id="auth-status" class="auth-status">No conectado</span>
-      <button id="auth-action" class="panel-btn" type="button">Vincular</button>
-    </div>
-  </div>
+  <section class="yumiko-widget" id="yumiko-widget" data-mode="mini" aria-live="polite">
+    <div id="yumiko-mini" class="yumiko-mini" aria-hidden="true">
+      <img
+        id="yumiko-character"
+        src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png"
+        alt="Yumiko"
+      />
 
-  <div class="content">
-    <section class="yumiko-widget" id="yumiko-widget" data-mode="chat" aria-live="polite">
-      <button id="yumiko-bubble" class="yumiko-bubble" type="button" aria-label="Abrir chat con Yumiko" hidden>
-        Volver al chat
-      </button>
+      <div class="mini-actions" role="group" aria-label="Controles rápidos">
+        <button id="mini-mic" class="mini-btn" type="button" aria-label="Micrófono">🎤</button>
+        <button id="mini-chat" class="mini-btn" type="button" aria-label="Abrir chat">💬</button>
+      </div>
+    </div>
 
-      <div class="yumiko-chat" id="yumiko-chat">
-        <div class="chat-header">
-          <button id="yumiko-avatar" class="yumiko-avatar" type="button" aria-label="Cambiar entre focus y chat">
-            <img src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/hi-4.png" alt="Yumiko" />
-          </button>
-          <div>
-            <strong>Yumiko</strong>
-            <p>Tu coach tomboy 🫶</p>
-          </div>
+    <div class="yumiko-chat" id="yumiko-chat" hidden>
+      <button id="toggle-settings" class="panel-settings-btn" type="button" aria-label="Abrir settings">⚙️</button>
+
+      <div id="settings-panel" class="panel" hidden>
+        <div class="toggle-row">
+          <label for="overlay-enabled">Modo Overlay (Siempre arriba)</label>
+          <input id="overlay-enabled" type="checkbox" />
         </div>
-
-        <div id="chat-log" class="chat-log" aria-live="polite"></div>
-
-        <div class="chat-compose">
-          <label class="sr-only" for="yumiko-input">Mensaje para Yumiko</label>
-          <input id="yumiko-input" type="text" autocomplete="off" placeholder="Escribí tu mensaje..." />
-          <button id="yumiko-send" class="icon-btn send-btn" type="button" aria-label="Enviar">Enviar</button>
+        <div class="toggle-row">
+          <label for="click-through-enabled">Click-through (dejar pasar clicks)</label>
+          <input id="click-through-enabled" type="checkbox" />
+        </div>
+        <div class="toggle-row">
+          <label for="shortcuts-enabled">Atajos globales</label>
+          <input id="shortcuts-enabled" type="checkbox" />
+        </div>
+        <div class="auth-row">
+          <span id="auth-status" class="auth-status">No conectado</span>
+          <button id="auth-action" class="panel-btn" type="button">Vincular</button>
         </div>
       </div>
-    </section>
-  </div>
+
+      <div id="chat-log" class="chat-log" aria-live="polite"></div>
+
+      <div class="chat-compose">
+        <label class="sr-only" for="yumiko-input">Mensaje para Yumiko</label>
+        <input id="yumiko-input" type="text" autocomplete="off" placeholder="Escribí tu mensaje..." />
+        <button id="yumiko-send" class="icon-btn send-btn" type="button" aria-label="Enviar">Enviar</button>
+      </div>
+    </div>
+  </section>
 
   <script src="./renderer.js"></script>
   <script src="./widget.js"></script>

@@ -1,5 +1,5 @@
 const STORAGE_KEY = 'yumiko-widget-settings-v1';
-const DEFAULT_SETTINGS = { mode: 'chat' };
+const DEFAULT_SETTINGS = { mode: 'mini' };
 
 const settingsPanel = document.getElementById('settings-panel');
 const toggleSettingsButton = document.getElementById('toggle-settings');
@@ -11,9 +11,9 @@ const authStatus = document.getElementById('auth-status');
 const authActionButton = document.getElementById('auth-action');
 
 const widget = document.getElementById('yumiko-widget');
-const avatar = document.getElementById('yumiko-avatar');
+const miniChatButton = document.getElementById('mini-chat');
+const miniMicButton = document.getElementById('mini-mic');
 const chat = document.getElementById('yumiko-chat');
-const bubble = document.getElementById('yumiko-bubble');
 const input = document.getElementById('yumiko-input');
 const send = document.getElementById('yumiko-send');
 const chatLog = document.getElementById('chat-log');
@@ -51,7 +51,6 @@ function formatHttpErrorMessage(error) {
   const shortBody = body ? body.slice(0, 200) : 'Sin detalle';
   return `Error HTTP ${status}: ${shortBody}`;
 }
-
 
 function loadSettings() {
   try {
@@ -112,12 +111,21 @@ function setThinking(state) {
   if (send) send.disabled = isThinking;
 }
 
+function toHostMode(uiMode) {
+  return uiMode === 'expand' ? 'chat' : 'focus';
+}
+
+function toUiMode(anyMode) {
+  if (anyMode === 'chat' || anyMode === 'expand') return 'expand';
+  return 'mini';
+}
+
 function notifyHostMode(mode) {
-  window.yumikoOverlay?.setMode?.(mode);
+  window.yumikoOverlay?.setMode?.(toHostMode(mode));
 }
 
 function setMode(nextMode, { source = 'ui' } = {}) {
-  const mode = nextMode === 'focus' ? 'focus' : 'chat';
+  const mode = toUiMode(nextMode);
   if (settings.mode === mode && source !== 'state-sync') {
     console.info('[yumiko][route] setMode noop', { mode, source });
   } else {
@@ -127,14 +135,15 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   settings.mode = mode;
   saveSettings();
 
-  if (!widget || !chat || !bubble) return;
+  if (!widget || !chat) return;
 
   widget.dataset.mode = mode;
-  chat.hidden = mode !== 'chat';
-  bubble.hidden = mode === 'chat';
+  chat.hidden = mode !== 'expand';
 
-  if (mode === 'chat') {
+  if (mode === 'expand') {
     input?.focus();
+  } else {
+    settingsPanel?.setAttribute('hidden', '');
   }
 
   if (source === 'ui' || source === 'hotkey') {
@@ -159,11 +168,6 @@ async function loadChatHistory() {
 
     contextCache = messages.slice(-20);
     renderMessages(messages);
-
-    const lastAssistant = [...messages].reverse().find((item) => item.role === 'assistant');
-    if (lastAssistant?.content && bubble) {
-      bubble.textContent = lastAssistant.content;
-    }
 
     console.info('[yumiko][widget] history loaded', {
       records: records.length,
@@ -196,7 +200,6 @@ async function submitMessage() {
   input.value = '';
   setThinking(true);
   const thinkingNode = addMessage('assistant', 'Pensando…', { thinking: true });
-  if (bubble) bubble.textContent = 'Pensando…';
 
   try {
     const result = await window.yumikoOverlay?.chat?.sendMessage?.({
@@ -218,7 +221,6 @@ async function submitMessage() {
 
     contextCache.push({ role: 'assistant', content: reply });
     contextCache = contextCache.slice(-20);
-    if (bubble) bubble.textContent = reply;
   } catch (error) {
     const authCode = getAuthErrorCode(error);
     const httpErrorMessage = formatHttpErrorMessage(error);
@@ -235,7 +237,6 @@ async function submitMessage() {
     } else {
       addMessage('assistant', fallback);
     }
-    if (bubble) bubble.textContent = fallback;
     if (authCode) {
       console.warn(`[yumiko][auth] ${authCode} on widget sendMessage`);
     }
@@ -275,7 +276,6 @@ function renderAuthState(state = {}) {
     authActionButton.disabled = isAuthExchangeInProgress;
   }
 }
-
 
 async function exchangeCode(code) {
   const trimmedCode = typeof code === 'string' ? code.trim() : '';
@@ -319,13 +319,14 @@ function syncHostState(state = {}) {
   if (clickThroughToggle) clickThroughToggle.checked = Boolean(state.clickThroughEnabled);
   if (shortcutsToggle) shortcutsToggle.checked = Boolean(state.shortcutsEnabled);
 
-  if (state.mode && state.mode !== settings.mode) {
+  if (state.mode) {
     setMode(state.mode, { source: 'state-sync' });
   }
 }
 
 toggleSettingsButton?.addEventListener('click', () => {
-  settingsPanel?.classList.toggle('open');
+  if (!settingsPanel) return;
+  settingsPanel.hidden = !settingsPanel.hidden;
 });
 
 quitAppButton?.addEventListener('click', (event) => {
@@ -376,11 +377,14 @@ authActionButton?.addEventListener('click', async () => {
   }
 });
 
-avatar?.addEventListener('click', () => {
-  setMode(settings.mode === 'focus' ? 'chat' : 'focus', { source: 'ui' });
+miniChatButton?.addEventListener('click', () => {
+  setMode(settings.mode === 'expand' ? 'mini' : 'expand', { source: 'ui' });
 });
 
-bubble?.addEventListener('click', () => setMode('chat', { source: 'ui' }));
+miniMicButton?.addEventListener('click', () => {
+  console.info('[yumiko][mic] Próximamente');
+});
+
 send?.addEventListener('click', submitMessage);
 
 input?.addEventListener('keydown', (event) => {
@@ -388,8 +392,11 @@ input?.addEventListener('keydown', (event) => {
     event.preventDefault();
     submitMessage();
   }
-  if (event.key === 'Escape') {
-    setMode('focus', { source: 'ui' });
+});
+
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && settings.mode === 'expand') {
+    setMode('mini', { source: 'ui' });
   }
 });
 
@@ -415,11 +422,11 @@ window.addEventListener('DOMContentLoaded', () => {
     .then((state) => {
       syncHostState(state);
       if (!state?.mode) {
-        setMode('chat', { source: 'state-sync' });
+        setMode('mini', { source: 'state-sync' });
       }
     })
-    .catch(() => setMode('chat', { source: 'state-sync' }));
+    .catch(() => setMode('mini', { source: 'state-sync' }));
 
-  setMode('chat', { source: 'state-sync' });
+  setMode(settings.mode || 'mini', { source: 'state-sync' });
   loadChatHistory();
 });
