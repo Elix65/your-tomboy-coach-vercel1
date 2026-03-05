@@ -109,6 +109,7 @@ function setMiniScale(nextScale, { persist = true, shouldRequestFit = true } = {
   }
 
   if (persist) localStorage.setItem(MINI_SCALE_KEY, String(miniScale));
+  updateFocusMinimumSize();
   if (shouldRequestFit) requestFitDebounced();
 }
 
@@ -119,7 +120,7 @@ function getCurrentScale() {
 }
 
 function getUnionRect() {
-  const rects = [mini, miniActions, img]
+  const rects = [mini, miniActions]
     .map((node) => node?.getBoundingClientRect?.())
     .filter((rect) => rect && rect.width > 0 && rect.height > 0);
 
@@ -265,11 +266,14 @@ function requestFitDebounced(reason = 'debounced') {
 }
 
 function updateFocusMinimumSize() {
-  if (settings.mode !== 'focus' || !window.yumikoOverlay?.setMinimumSize) return;
+  if (settings.mode !== 'focus') return;
+
+  const setFocusMinSize = window.yumikoOverlay?.setFocusMinSize || window.yumikoOverlay?.setMinimumSize;
+  if (!setFocusMinSize) return;
 
   const baseSize = getBaseSize();
-  const baseWidth = Math.ceil(baseSize?.baseW || 0);
-  const baseHeight = Math.ceil(baseSize?.baseH || 0);
+  const baseWidth = baseSize?.baseW || 0;
+  const baseHeight = baseSize?.baseH || 0;
 
   if (hasUnsafeCalculatedSize(baseWidth, baseHeight)) {
     if (minSizeRetryCount >= MINI_MIN_SIZE_RETRY_LIMIT) {
@@ -290,7 +294,7 @@ function updateFocusMinimumSize() {
   }
 
   minSizeRetryCount = 0;
-  window.yumikoOverlay.setMinimumSize({ width: minW, height: minH });
+  setFocusMinSize({ width: minW, height: minH });
 }
 
 function addMessage(role, content, { thinking = false } = {}) {
@@ -734,6 +738,8 @@ window.addEventListener('keydown', (event) => {
 
 window.addEventListener('resize', () => {
   if (settings.mode !== 'focus') return;
+
+  updateFocusMinimumSize();
 
   const baseSize = getBaseSize();
   if (!baseSize) {
