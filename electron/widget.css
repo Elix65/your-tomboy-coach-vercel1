@@ -90,12 +90,12 @@ body {
   display: inline-block;
   padding-right: 72px;
   padding-bottom: 32px;
-  -webkit-app-region: drag;
 }
 
 #yumiko-mini {
   transform: scale(var(--mini-scale));
   transform-origin: bottom right;
+  -webkit-app-region: drag;
 }
 
 #yumiko-character {
@@ -117,6 +117,7 @@ body {
   display: flex;
   gap: 10px;
   z-index: 10;
+  -webkit-app-region: no-drag;
 }
 
 .mini-btn {
@@ -133,6 +134,12 @@ body {
     0 0 0 1px rgba(255, 255, 255, 0.06) inset,
     0 8px 20px rgba(145, 107, 255, 0.35);
   transition: transform 0.18s ease, box-shadow 0.2s ease;
+  -webkit-app-region: no-drag;
+}
+
+#mini-mic,
+#mini-chat {
+  -webkit-app-region: no-drag;
 }
 
 .mini-btn:hover {
