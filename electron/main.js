@@ -75,6 +75,31 @@ const SHORTCUTS = {
   emergencyClickThrough: 'CommandOrControl+Alt+C'
 };
 
+function safeBounds(bounds, reason = 'unknown') {
+  const fallback = { x: 80, y: 80, width: 520, height: 760 };
+  const width = Number(bounds?.width);
+  const height = Number(bounds?.height);
+
+  if (!Number.isFinite(width) || !Number.isFinite(height)) {
+    console.warn('[yumiko][window] unsafe bounds (non-finite), using fallback', { reason, bounds });
+    return { ...fallback };
+  }
+
+  if (width < 320 || height < 420) {
+    console.warn('[yumiko][window] unsafe bounds (too small), using fallback', { reason, bounds });
+    return { ...fallback };
+  }
+
+  const nextX = Number(bounds?.x);
+  const nextY = Number(bounds?.y);
+  return {
+    x: Number.isFinite(nextX) ? Math.round(nextX) : fallback.x,
+    y: Number.isFinite(nextY) ? Math.round(nextY) : fallback.y,
+    width: Math.round(width),
+    height: Math.round(height)
+  };
+}
+
 function shouldForceInteractiveStartup() {
   return settings.visible || !settings.hasCompletedFirstRun;
 }
@@ -113,9 +138,12 @@ function panicResetWindowAndRenderer() {
   writeSettings();
 
   if (win && !win.isDestroyed()) {
+    const fallbackBounds = safeBounds({ x: 80, y: 80, width: 520, height: 760 }, 'panic-reset');
     win.setIgnoreMouseEvents(false);
-    win.setAlwaysOnTop(true, 'floating');
-    win.setBounds({ x: 80, y: 80, width: 480, height: 720 }, true);
+    if (settings.overlayEnabled) {
+      win.setAlwaysOnTop(true, 'floating');
+    }
+    win.setBounds(fallbackBounds, true);
     win.show();
     win.focus();
     win.webContents.send('yumiko:panic-reset', { reason: 'shortcut' });
@@ -1023,7 +1051,7 @@ if (!singleInstance) {
       const requestedHeight = Number(payload?.height);
       if (!Number.isFinite(requestedWidth) || !Number.isFinite(requestedHeight)) return;
 
-      const fallbackBounds = { width: 420, height: 640 };
+      const fallbackBounds = { width: 520, height: 760 };
       const isRidiculous = requestedWidth < 200 || requestedHeight < 200;
       const safeRequestedWidth = isRidiculous ? fallbackBounds.width : requestedWidth;
       const safeRequestedHeight = isRidiculous ? fallbackBounds.height : requestedHeight;
@@ -1036,11 +1064,12 @@ if (!singleInstance) {
         const { x, y, width: oldW, height: oldH } = win.getBounds();
         const newX = x + oldW - newW;
         const newY = y + oldH - newH;
-        win.setBounds({ x: newX, y: newY, width: newW, height: newH }, true);
+        win.setBounds(safeBounds({ x: newX, y: newY, width: newW, height: newH }, 'ipc:set-window-size:anchor'), true);
         return;
       }
 
-      win.setSize(newW, newH, true);
+      const { x, y } = win.getBounds();
+      win.setBounds(safeBounds({ x, y, width: newW, height: newH }, 'ipc:set-window-size'), true);
     });
 
     handleArgvForDeepLink(process.argv);
