@@ -533,6 +533,8 @@ function setMode(mode, { fromRenderer = false, userPickedMode = false } = {}) {
 
   if (!win) return;
 
+  win.setResizable(nextMode === 'chat');
+
   if (nextMode === 'chat') {
     win.setFocusable(true);
     win.setIgnoreMouseEvents(false);
@@ -801,7 +803,7 @@ function createWindow() {
     alwaysOnTop: Boolean(settings.overlayEnabled),
     minWidth: 220,
     minHeight: 220,
-    resizable: true,
+    resizable: settings.mode === 'chat',
     skipTaskbar: true,
     webPreferences: {
       contextIsolation: true,
