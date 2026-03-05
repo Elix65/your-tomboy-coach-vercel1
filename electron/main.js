@@ -192,6 +192,23 @@ function readSettings() {
 
 let settings = readSettings();
 let focusMinBounds = { minW: 0, minH: 0 };
+
+function setFocusMinimumBounds(payload) {
+  if (!win || win.isDestroyed()) return;
+
+  const requestedWidth = Number(payload?.width);
+  const requestedHeight = Number(payload?.height);
+
+  if (!Number.isFinite(requestedWidth) || !Number.isFinite(requestedHeight)) return;
+
+  const minW = Math.max(260, Math.round(requestedWidth));
+  const minH = Math.max(260, Math.round(requestedHeight));
+  focusMinBounds = { minW, minH };
+
+  if (settings.mode === 'focus') {
+    win.setMinimumSize(minW, minH);
+  }
+}
 const YUMIKO_WEB_ORIGIN = resolveYumikoWebOrigin(settings);
 settings.yumikoWebOrigin = YUMIKO_WEB_ORIGIN;
 
@@ -588,6 +605,8 @@ function setMode(mode, { fromRenderer = false, userPickedMode = false } = {}) {
     win.setFocusable(true);
     win.setIgnoreMouseEvents(false);
     win.setMinimumSize(0, 0);
+  } else if (focusMinBounds.minW > 0 && focusMinBounds.minH > 0) {
+    win.setMinimumSize(focusMinBounds.minW, focusMinBounds.minH);
   }
 
   applyWindowBehavior();
@@ -1079,16 +1098,10 @@ if (!singleInstance) {
       win.setBounds(safeBounds({ x, y, width: newW, height: newH }, 'ipc:set-window-size'), true);
     });
     ipcMain.on('yumiko:set-minimum-size', (_event, payload) => {
-      if (!win || win.isDestroyed()) return;
-      const requestedWidth = Number(payload?.width);
-      const requestedHeight = Number(payload?.height);
-
-      if (!Number.isFinite(requestedWidth) || !Number.isFinite(requestedHeight)) return;
-
-      const minW = Math.max(260, Math.round(requestedWidth));
-      const minH = Math.max(260, Math.round(requestedHeight));
-      focusMinBounds = { minW, minH };
-      win.setMinimumSize(minW, minH);
+      setFocusMinimumBounds(payload);
+    });
+    ipcMain.on('yumiko:set-focus-min-size', (_event, payload) => {
+      setFocusMinimumBounds(payload);
     });
 
     handleArgvForDeepLink(process.argv);

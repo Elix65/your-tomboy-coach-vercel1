@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
   setClickThroughEnabled: (enabled) => ipcRenderer.send('yumiko:set-click-through-enabled', enabled),
   setWindowSize: (size) => ipcRenderer.send('yumiko:set-window-size', size),
   setMinimumSize: (size) => ipcRenderer.send('yumiko:set-minimum-size', size),
+  setFocusMinSize: (size) => ipcRenderer.send('yumiko:set-focus-min-size', size),
   completeFirstRun: () => ipcRenderer.send('yumiko:complete-first-run'),
   closeWindow: () => ipcRenderer.send('yumiko:close-window'),
   quit: () => ipcRenderer.send('yumiko:quit'),
