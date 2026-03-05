@@ -39,3 +39,14 @@ window.yumikoOverlay?.onAuthResult?.((payload) => {
   const message = typeof payload?.message === 'string' ? payload.message : '';
   window.dispatchEvent(new CustomEvent('yumiko:auth-result', { detail: { message } }));
 });
+
+window.yumikoOverlay?.onResizeAttempt?.((payload) => {
+  const width = Number(payload?.width);
+  const height = Number(payload?.height);
+  window.dispatchEvent(new CustomEvent('yumiko:resize-attempt', {
+    detail: {
+      width: Number.isFinite(width) ? width : 0,
+      height: Number.isFinite(height) ? height : 0
+    }
+  }));
+});

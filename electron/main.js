@@ -849,6 +849,16 @@ function createWindow() {
     }
   });
 
+  win.on('will-resize', (event, newBounds) => {
+    if (settings.mode !== 'focus') return;
+
+    event.preventDefault();
+    win.webContents.send('yumiko:resize-attempt', {
+      width: Math.round(Number(newBounds?.width) || 0),
+      height: Math.round(Number(newBounds?.height) || 0)
+    });
+  });
+
   win.webContents.on('did-finish-load', () => {
     ensureInteractiveStartup();
     if (!settings.visible) {
