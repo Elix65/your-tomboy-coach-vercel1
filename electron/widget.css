@@ -80,8 +80,14 @@ body {
   transition: opacity 0.2s ease;
 }
 
+
+#yumiko-mini {
+  right: 18px;
+  bottom: 18px;
+}
+
 #yumiko-character {
-  height: clamp(260px, 40vh, 360px);
+  height: 300px;
   width: auto;
   display: block;
   object-fit: contain;
