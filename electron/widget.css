@@ -155,13 +155,13 @@ body {
   pointer-events: auto;
 }
 
-.yumiko-widget[data-mode="chat"] .yumiko-mini {
+.yumiko-widget[data-mode="chat"] #yumiko-mini {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
 }
 
-.yumiko-widget[data-mode="focus"] .yumiko-mini {
+.yumiko-widget[data-mode="focus"] #yumiko-mini {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
