@@ -191,6 +191,7 @@ function readSettings() {
 }
 
 let settings = readSettings();
+let focusMinBounds = { minW: 0, minH: 0 };
 const YUMIKO_WEB_ORIGIN = resolveYumikoWebOrigin(settings);
 settings.yumikoWebOrigin = YUMIKO_WEB_ORIGIN;
 
@@ -581,7 +582,7 @@ function setMode(mode, { fromRenderer = false, userPickedMode = false } = {}) {
 
   if (!win) return;
 
-  win.setResizable(nextMode === 'chat');
+  win.setResizable(true);
 
   if (nextMode === 'chat') {
     win.setFocusable(true);
@@ -926,10 +927,15 @@ function createWindow() {
   win.on('will-resize', (event, newBounds) => {
     if (settings.mode !== 'focus') return;
 
+    const { minW, minH } = focusMinBounds;
+    if (!minW || !minH) return;
+    if (newBounds.width >= minW && newBounds.height >= minH) return;
+
     event.preventDefault();
-    win.webContents.send('yumiko:resize-attempt', {
-      width: Math.round(Number(newBounds?.width) || 0),
-      height: Math.round(Number(newBounds?.height) || 0)
+    win.setBounds({
+      ...newBounds,
+      width: Math.max(newBounds.width, minW),
+      height: Math.max(newBounds.height, minH)
     });
   });
 
@@ -1081,6 +1087,7 @@ if (!singleInstance) {
 
       const minW = Math.max(260, Math.round(requestedWidth));
       const minH = Math.max(260, Math.round(requestedHeight));
+      focusMinBounds = { minW, minH };
       win.setMinimumSize(minW, minH);
     });
 
