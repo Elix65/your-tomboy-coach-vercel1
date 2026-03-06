@@ -619,14 +619,16 @@ function setMode(mode, { fromRenderer = false, userPickedMode = false } = {}) {
 
   if (!win) return;
 
-  win.setResizable(true);
-
   if (nextMode === 'chat') {
+    win.setResizable(true);
     win.setFocusable(true);
     win.setIgnoreMouseEvents(false);
     win.setMinimumSize(0, 0);
-  } else if (focusMinBounds.minW > 0 && focusMinBounds.minH > 0) {
-    win.setMinimumSize(focusMinBounds.minW, focusMinBounds.minH);
+  } else {
+    win.setResizable(false);
+    if (focusMinBounds.minW > 0 && focusMinBounds.minH > 0) {
+      win.setMinimumSize(focusMinBounds.minW, focusMinBounds.minH);
+    }
   }
 
   applyWindowBehavior();
@@ -964,7 +966,10 @@ function createWindow() {
   });
 
   win.on('will-resize', (event, newBounds) => {
-    if (settings.mode !== 'focus') return;
+    if (settings.mode !== 'chat') {
+      event.preventDefault();
+      return;
+    }
 
     const { minW, minH } = focusMinBounds;
     if (!minW || !minH) return;
