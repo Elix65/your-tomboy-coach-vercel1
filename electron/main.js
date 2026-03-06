@@ -1050,6 +1050,34 @@ if (!singleInstance) {
         throw error;
       }
     });
+    ipcMain.handle('yumiko:chat-request-nudge', async (_event, payload) => {
+      const intervalMinutes = Number(payload?.intervalMinutes);
+      try {
+        return await withOverlayAccessToken((overlayAccessToken) => chatClient.requestNudge({
+          baseUrl: YUMIKO_WEB_ORIGIN,
+          overlayAccessToken,
+          intervalMinutes
+        }));
+      } catch (error) {
+        logAuthIssue('chat-request-nudge', error);
+        throw error;
+      }
+    });
+    ipcMain.handle('yumiko:chat-update-nudge-settings', async (_event, payload) => {
+      const intervalMinutes = Number(payload?.intervalMinutes);
+      const enabled = Boolean(payload?.enabled);
+      try {
+        return await withOverlayAccessToken((overlayAccessToken) => chatClient.updateNudgeSettings({
+          baseUrl: YUMIKO_WEB_ORIGIN,
+          overlayAccessToken,
+          enabled,
+          intervalMinutes
+        }));
+      } catch (error) {
+        logAuthIssue('chat-update-nudge-settings', error);
+        throw error;
+      }
+    });
     ipcMain.handle('yumiko:disconnect-overlay', async () => {
       await disconnectOverlayDevice();
       return getState();

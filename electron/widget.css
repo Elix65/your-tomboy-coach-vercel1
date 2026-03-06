@@ -128,6 +128,69 @@ body {
   pointer-events: none;
 }
 
+
+#yumiko-bubble-layer {
+  position: fixed;
+  right: 18px;
+  bottom: 180px;
+  z-index: 45;
+  pointer-events: none;
+  overflow: visible;
+  max-width: min(320px, calc(100vw - 36px));
+}
+
+.bubble {
+  position: relative;
+  max-width: 100%;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(220, 190, 255, 0.62);
+  background: linear-gradient(135deg, rgba(94, 54, 175, 0.95), rgba(145, 88, 255, 0.92));
+  color: #fbf7ff;
+  font-size: 13px;
+  line-height: 1.35;
+  box-shadow:
+    0 14px 30px rgba(18, 8, 44, 0.5),
+    0 0 20px rgba(183, 132, 255, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  opacity: 0;
+  transform: translateX(12px) translateY(6px) scale(0.96);
+  transition: opacity 0.24s ease, transform 0.24s ease;
+  pointer-events: none;
+}
+
+.bubble::after {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 22px;
+  width: 18px;
+  height: 18px;
+  border-left: 1px solid rgba(220, 190, 255, 0.62);
+  border-bottom: 1px solid rgba(220, 190, 255, 0.62);
+  background: rgba(114, 67, 196, 0.96);
+  transform: rotate(45deg);
+  border-bottom-left-radius: 4px;
+}
+
+.bubble-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  text-wrap: pretty;
+}
+
+.bubble.hidden {
+  opacity: 0;
+  transform: translateX(12px) translateY(6px) scale(0.96);
+}
+
+.bubble.visible {
+  opacity: 1;
+  transform: translateX(0) translateY(0) scale(1);
+}
+
 .mini-actions {
   position: absolute;
   right: 20px;
@@ -274,6 +337,16 @@ body {
   flex: 1;
 }
 
+
+#auto-message-interval {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 12px;
+}
+
 .panel-btn {
   border: 1px solid rgba(255, 255, 255, 0.3);
   background: rgba(255, 255, 255, 0.08);
@@ -376,4 +449,13 @@ body {
   overflow: hidden !important;
   clip: rect(0, 0, 0, 0);
   border: 0;
+}
+
+
+.yumiko-widget[data-mode="chat"] #yumiko-bubble-layer {
+  opacity: 0;
+}
+
+.yumiko-widget[data-mode="focus"] #yumiko-bubble-layer {
+  opacity: 1;
 }

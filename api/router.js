@@ -2137,6 +2137,140 @@ async function tirarMultiplePremiumHandler(req, res) {
   }
 }
 
+
+function buildOverlayNudgeMessage() {
+  const lines = [
+    '¿Seguimos un ratito? ✨ Estoy acá para vos.',
+    'Pequeño recordatorio waifu: respirá y volvemos con todo 💜',
+    'Yumiko reportándose~ ¿te ayudo con el próximo paso? 🌙',
+    'Te mando energía lila: un mini avance ahora vale oro ✨',
+    'Si querés, hacemos una pausa cortita y retomamos juntas 💫'
+  ];
+  return lines[Math.floor(Math.random() * lines.length)];
+}
+
+
+async function overlayNudgeSettingsHandler(req, res) {
+  try {
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: 'Supabase env vars are missing (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).' });
+    }
+
+    let auth;
+    try {
+      auth = await resolveOverlayOrSupabaseAuth(supabaseAdmin, req);
+    } catch (authError) {
+      return res.status(authError?.httpStatus || 401).json({ error: authError?.errorCode || 'invalid_token' });
+    }
+
+    const userId = auth.userId;
+    const deviceId = auth.deviceId || 'default';
+    const enabled = Boolean(req.body?.enabled);
+    const requestedInterval = Number(req.body?.interval_minutes);
+    const intervalMinutes = [10, 20, 40].includes(requestedInterval) ? requestedInterval : 20;
+
+    const { error: upsertErr } = await supabaseAdmin
+      .from('overlay_nudge_settings')
+      .upsert({
+        user_id: userId,
+        device_id: deviceId,
+        enabled,
+        interval_minutes: intervalMinutes
+      }, { onConflict: 'user_id,device_id' });
+
+    if (upsertErr) return res.status(500).json({ error: upsertErr.message || 'Error updating overlay nudge settings.' });
+    return res.status(200).json({ ok: true });
+  } catch (error) {
+    console.error('overlay-nudge-settings fatal:', error);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+async function overlayNudgeHandler(req, res) {
+  try {
+    if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
+
+    const supabaseAdmin = getSupabaseAdmin();
+    if (!supabaseAdmin) {
+      return res.status(500).json({ error: 'Supabase env vars are missing (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).' });
+    }
+
+    let auth;
+    try {
+      auth = await resolveOverlayOrSupabaseAuth(supabaseAdmin, req);
+    } catch (authError) {
+      return res.status(authError?.httpStatus || 401).json({ error: authError?.errorCode || 'invalid_token' });
+    }
+
+    const userId = auth.userId;
+    const deviceId = auth.deviceId || 'default';
+    const requestedInterval = Number(req.body?.interval_minutes);
+    const intervalMinutes = [10, 20, 40].includes(requestedInterval) ? requestedInterval : 20;
+
+    const { data: settingsRow, error: settingsErr } = await supabaseAdmin
+      .from('overlay_nudge_settings')
+      .select('enabled,interval_minutes,last_sent_at')
+      .eq('user_id', userId)
+      .eq('device_id', deviceId)
+      .maybeSingle();
+
+    if (settingsErr) return res.status(500).json({ error: settingsErr.message || 'Error reading overlay nudge settings.' });
+
+    const enabled = settingsRow?.enabled ?? true;
+    const persistedInterval = Number(settingsRow?.interval_minutes);
+    const effectiveInterval = [10, 20, 40].includes(persistedInterval) ? persistedInterval : intervalMinutes;
+
+    const now = Date.now();
+    const lastSentAtMs = settingsRow?.last_sent_at ? Date.parse(settingsRow.last_sent_at) : 0;
+    const elapsedMs = Number.isFinite(lastSentAtMs) ? now - lastSentAtMs : Number.MAX_SAFE_INTEGER;
+    const shouldSend = enabled && elapsedMs >= effectiveInterval * 60 * 1000;
+
+    const upsertPayload = {
+      user_id: userId,
+      device_id: deviceId,
+      enabled,
+      interval_minutes: intervalMinutes
+    };
+
+    if (!shouldSend) {
+      await supabaseAdmin
+        .from('overlay_nudge_settings')
+        .upsert(upsertPayload, { onConflict: 'user_id,device_id' });
+      return res.status(200).json({ message: null });
+    }
+
+    const message = buildOverlayNudgeMessage().slice(0, 140);
+
+    const { error: insertErr } = await supabaseAdmin
+      .from('messages')
+      .insert({
+        user_id: userId,
+        sender: 'yumiko',
+        content: message,
+        message_type: 'text'
+      });
+
+    if (insertErr) return res.status(500).json({ error: insertErr.message || 'Error persisting nudge message.' });
+
+    const { error: upsertErr } = await supabaseAdmin
+      .from('overlay_nudge_settings')
+      .upsert({
+        ...upsertPayload,
+        last_sent_at: new Date(now).toISOString()
+      }, { onConflict: 'user_id,device_id' });
+
+    if (upsertErr) return res.status(500).json({ error: upsertErr.message || 'Error updating overlay nudge settings.' });
+
+    return res.status(200).json({ message });
+  } catch (error) {
+    console.error('overlay-nudge fatal:', error);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
 module.exports = async function handler(req, res) {
   const action = getAction(req);
 
@@ -2188,6 +2322,12 @@ module.exports = async function handler(req, res) {
       case 'overlay-revoke-device':
         req.body = await getJsonBody(req);
         return overlayRevokeDeviceHandler(req, res);
+      case 'overlay-nudge':
+        req.body = await getJsonBody(req);
+        return overlayNudgeHandler(req, res);
+      case 'overlay-nudge-settings':
+        req.body = await getJsonBody(req);
+        return overlayNudgeSettingsHandler(req, res);
       case 'mp-init-point':
         return mpInitPointHandler(req, res);
       case 'mp-sync-voice':
