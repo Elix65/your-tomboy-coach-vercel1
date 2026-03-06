@@ -574,7 +574,7 @@ function hideBubble(reason = 'unspecified') {
   window.clearTimeout(bubbleHideTimer);
   bubbleHideTimer = null;
   if (!bubble) return;
-  console.info(`[yumiko][bubble] hidden reason=${reason}`, {
+  console.info(`[yumiko][bubble] hide reason=${reason}`, {
     mode: settings.mode
   });
   console.info('[yumiko][bubble] hide', {
@@ -1011,22 +1011,37 @@ async function requestAutoNudge() {
 
     if (typeof result?.message === 'string' && result.message.trim()) {
       const message = result.message.trim();
-      if (settings.mode === 'chat') {
-        console.info('[yumiko][bubble] skipped because mode=chat', {
-          message
+      const resolvedMode = toUiMode(settings.mode);
+      const bubbleDuration = 8000;
+      console.info('[yumiko][bubble] auto-show requested', {
+        message,
+        duration: bubbleDuration,
+        mode: resolvedMode
+      });
+
+      if (resolvedMode === 'chat') {
+        console.info('[yumiko][bubble] auto-show skipped reason=mode-chat', {
+          message,
+          mode: resolvedMode
         });
       } else {
-        console.info('[yumiko][bubble] auto-show start', {
+        console.info('[yumiko][bubble] auto-show executed', {
           message,
-          mode: settings.mode
+          duration: bubbleDuration,
+          mode: resolvedMode
         });
-        showBubble(message);
+        showBubble(message, bubbleDuration);
       }
-      contextCache.push({ role: 'assistant', content: result.message.trim() });
+      contextCache.push({ role: 'assistant', content: message });
       contextCache = contextCache.slice(-20);
-      if (settings.mode === 'chat') {
+      if (resolvedMode === 'chat') {
         addMessage('assistant', message);
       }
+    } else {
+      console.info('[yumiko][bubble] auto-show skipped reason=empty-message', {
+        mode: toUiMode(settings.mode),
+        message: result?.message ?? null
+      });
     }
   } catch (error) {
     console.warn('[yumiko][auto-message] nudge failed', error);
