@@ -143,8 +143,28 @@ function positionBubble() {
   );
   const maxTop = Math.max(minTop, window.innerHeight - bubbleHeight - 10);
 
-  bubbleLayer.style.left = `${clampToViewport(desiredLeft, minLeft, maxLeft)}px`;
-  bubbleLayer.style.top = `${clampToViewport(desiredTop, minTop, maxTop)}px`;
+  const nextLeft = clampToViewport(desiredLeft, minLeft, maxLeft);
+  const nextTop = clampToViewport(desiredTop, minTop, maxTop);
+
+  bubbleLayer.style.left = `${nextLeft}px`;
+  bubbleLayer.style.top = `${nextTop}px`;
+
+  const positionedRect = bubble.getBoundingClientRect();
+  console.info('[yumiko][bubble] show:positioned', {
+    top: nextTop,
+    left: nextLeft,
+    width: bubbleWidth,
+    height: bubbleHeight,
+    maxWidth: bubble.style.maxWidth || null,
+    boundingRect: {
+      top: positionedRect.top,
+      left: positionedRect.left,
+      right: positionedRect.right,
+      bottom: positionedRect.bottom,
+      width: positionedRect.width,
+      height: positionedRect.height
+    }
+  });
 }
 
 function scheduleBubblePosition() {
@@ -169,6 +189,17 @@ function clearAutoMessageScheduler() {
     window.clearTimeout(autoMessageScheduler);
     autoMessageScheduler = null;
   }
+}
+
+function getBubbleComputedStyleSnapshot() {
+  if (!bubble) return {};
+  const computed = window.getComputedStyle(bubble);
+  return {
+    opacity: computed.opacity,
+    visibility: computed.visibility,
+    display: computed.display,
+    zIndex: computed.zIndex
+  };
 }
 
 function getAutoMessageDueInfo() {
@@ -460,31 +491,54 @@ function updateFocusMinimumSize() {
   setFocusMinSize({ width: minW, height: minH });
 }
 
-function hideBubble() {
+function hideBubble(reason = 'unspecified') {
   window.clearTimeout(bubbleHideTimer);
   bubbleHideTimer = null;
   if (!bubble) return;
+  console.info('[yumiko][bubble] hide', {
+    reason,
+    mode: settings.mode,
+    className: bubble.className,
+    computedStyle: getBubbleComputedStyleSnapshot()
+  });
   bubble.classList.remove('visible');
   bubble.classList.add('hidden');
+  console.info('[yumiko][bubble] show:classes', {
+    phase: 'hide',
+    className: bubble.className,
+    computedStyle: getBubbleComputedStyleSnapshot()
+  });
 }
 
 function showBubble(text, duration = 8000) {
   if (!bubble || !bubbleText) return;
   const safeText = typeof text === 'string' ? text.trim() : '';
   if (!safeText) {
-    hideBubble();
+    hideBubble('empty-text');
     return;
   }
+
+  console.info('[yumiko][bubble] show:start', {
+    text: safeText,
+    duration,
+    className: bubble.className,
+    mode: settings.mode
+  });
 
   window.clearTimeout(bubbleHideTimer);
   bubbleText.textContent = safeText;
   bubble.classList.remove('hidden');
   scheduleBubblePosition();
   bubble.classList.add('visible');
+  console.info('[yumiko][bubble] show:classes', {
+    phase: 'show',
+    className: bubble.className,
+    computedStyle: getBubbleComputedStyleSnapshot()
+  });
 
   const timeoutMs = Number.isFinite(Number(duration)) ? Number(duration) : 8000;
   bubbleHideTimer = window.setTimeout(() => {
-    hideBubble();
+    hideBubble('timeout');
   }, Math.max(1000, timeoutMs));
 }
 
@@ -585,10 +639,19 @@ function onOutsideClick(event) {
 
 function setMode(nextMode, { source = 'ui' } = {}) {
   const mode = toUiMode(nextMode);
+  const previousMode = settings.mode;
   if (settings.mode === mode && source !== 'state-sync') {
     console.info('[yumiko][route] setMode noop', { mode, source });
   } else {
     console.info('[yumiko][route] setMode', { previousMode: settings.mode, nextMode: mode, source });
+  }
+
+  if (previousMode !== mode) {
+    console.info('[yumiko][mode] change', {
+      previousMode,
+      nextMode: mode,
+      source
+    });
   }
 
   settings.mode = mode;
@@ -622,7 +685,7 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   }
 
   if (mode === 'chat') {
-    hideBubble();
+    hideBubble('chat-open');
     markUserActivity();
     input?.focus();
   } else {
@@ -831,9 +894,22 @@ async function requestAutoNudge() {
   if (isNudgeInFlight || !window.yumikoOverlay?.chat?.requestNudge) return;
   isNudgeInFlight = true;
   try {
+    console.info('[yumiko][nudge] request:start', {
+      now: new Date().toISOString(),
+      mode: settings.mode,
+      autoMessageEnabled: settings.autoMessageEnabled,
+      intervalMinutes: settings.autoMessageIntervalMinutes,
+      lastUserActivityAt: new Date(lastUserActivityAt).toISOString()
+    });
+
     const result = await window.yumikoOverlay.chat.requestNudge({
       intervalMinutes: settings.autoMessageIntervalMinutes
     });
+    console.info('[yumiko][nudge] request:result', {
+      response: result,
+      message: result?.message ?? null
+    });
+
     if (typeof result?.message === 'string' && result.message.trim()) {
       showBubble(result.message.trim());
       contextCache.push({ role: 'assistant', content: result.message.trim() });
