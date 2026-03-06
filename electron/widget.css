@@ -131,46 +131,50 @@ body {
 
 #yumiko-bubble-layer {
   position: fixed;
-  right: 18px;
-  bottom: 180px;
+  left: 0;
+  top: 0;
   z-index: 45;
   pointer-events: none;
   overflow: visible;
-  max-width: min(320px, calc(100vw - 36px));
+  max-width: min(260px, calc(100vw - 28px));
 }
 
 .bubble {
   position: relative;
   max-width: 100%;
-  padding: 12px 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(220, 190, 255, 0.62);
-  background: linear-gradient(135deg, rgba(94, 54, 175, 0.95), rgba(145, 88, 255, 0.92));
-  color: #fbf7ff;
-  font-size: 13px;
-  line-height: 1.35;
+  width: min(232px, calc(100vw - 28px));
+  padding: 10px 13px;
+  border-radius: 19px;
+  border: 1px solid rgba(225, 204, 255, 0.7);
+  background:
+    radial-gradient(120% 130% at 15% 10%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 48%),
+    linear-gradient(145deg, rgba(114, 73, 206, 0.95), rgba(164, 122, 255, 0.9));
+  color: #fcf9ff;
+  font-size: 12px;
+  line-height: 1.4;
   box-shadow:
-    0 14px 30px rgba(18, 8, 44, 0.5),
-    0 0 20px rgba(183, 132, 255, 0.35),
+    0 12px 28px rgba(22, 10, 48, 0.4),
+    0 0 16px rgba(186, 144, 255, 0.24),
     0 0 0 1px rgba(255, 255, 255, 0.08) inset;
   opacity: 0;
-  transform: translateX(12px) translateY(6px) scale(0.96);
-  transition: opacity 0.24s ease, transform 0.24s ease;
+  transform: translateY(8px);
+  transition: opacity 0.26s ease, transform 0.26s ease;
   pointer-events: none;
 }
 
 .bubble::after {
   content: '';
   position: absolute;
-  left: -10px;
-  top: 22px;
-  width: 18px;
-  height: 18px;
-  border-left: 1px solid rgba(220, 190, 255, 0.62);
-  border-bottom: 1px solid rgba(220, 190, 255, 0.62);
-  background: rgba(114, 67, 196, 0.96);
+  left: -5px;
+  top: 58%;
+  width: 11px;
+  height: 11px;
+  border-left: 1px solid rgba(225, 204, 255, 0.7);
+  border-bottom: 1px solid rgba(225, 204, 255, 0.7);
+  background: rgba(145, 102, 232, 0.96);
   transform: rotate(45deg);
-  border-bottom-left-radius: 4px;
+  border-bottom-left-radius: 3px;
+  box-shadow: -2px 2px 6px rgba(109, 68, 182, 0.2);
 }
 
 .bubble-text {
@@ -183,12 +187,12 @@ body {
 
 .bubble.hidden {
   opacity: 0;
-  transform: translateX(12px) translateY(6px) scale(0.96);
+  transform: translateY(8px);
 }
 
 .bubble.visible {
   opacity: 1;
-  transform: translateX(0) translateY(0) scale(1);
+  transform: translateY(0);
 }
 
 .mini-actions {

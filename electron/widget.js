@@ -38,6 +38,7 @@ const img = document.getElementById('yumiko-character');
 const input = document.getElementById('yumiko-input');
 const send = document.getElementById('yumiko-send');
 const chatLog = document.getElementById('chat-log');
+const bubbleLayer = document.getElementById('yumiko-bubble-layer');
 const bubble = document.getElementById('yumiko-bubble');
 const bubbleText = bubble?.querySelector('.bubble-text');
 
@@ -103,6 +104,45 @@ let minSizeRetryCount = 0;
 let lastGoodFocusFitSize = null;
 let ignoreNextResize = false;
 let bubbleHideTimer = null;
+let bubbleRepositionRaf = null;
+
+function clampToViewport(value, min, max) {
+  if (!Number.isFinite(value)) return min;
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return value;
+  if (max < min) return min;
+  return Math.min(max, Math.max(min, value));
+}
+
+function positionBubble() {
+  if (!bubbleLayer || !bubble || !mini || settings.mode !== 'focus') return;
+
+  const yumikoRect = mini.getBoundingClientRect();
+  if (!yumikoRect || yumikoRect.width <= 0 || yumikoRect.height <= 0) return;
+
+  const bubbleRect = bubble.getBoundingClientRect();
+  const bubbleWidth = Math.max(120, Math.round(bubbleRect.width || 220));
+  const bubbleHeight = Math.max(44, Math.round(bubbleRect.height || 64));
+
+  const desiredLeft = yumikoRect.left - bubbleWidth - 12;
+  const desiredTop = yumikoRect.top + (yumikoRect.height * 0.17);
+
+  const minLeft = 8;
+  const maxLeft = Math.max(minLeft, window.innerWidth - bubbleWidth - 8);
+  const minTop = 8;
+  const maxTop = Math.max(minTop, window.innerHeight - bubbleHeight - 8);
+
+  bubbleLayer.style.left = `${clampToViewport(desiredLeft, minLeft, maxLeft)}px`;
+  bubbleLayer.style.top = `${clampToViewport(desiredTop, minTop, maxTop)}px`;
+}
+
+function scheduleBubblePosition() {
+  if (!bubble || !bubbleLayer) return;
+  if (bubbleRepositionRaf != null) window.cancelAnimationFrame(bubbleRepositionRaf);
+  bubbleRepositionRaf = window.requestAnimationFrame(() => {
+    bubbleRepositionRaf = null;
+    positionBubble();
+  });
+}
 let autoMessageScheduler = null;
 let isNudgeInFlight = false;
 let lastUserActivityAt = Date.now();
@@ -354,6 +394,7 @@ function showBubble(text, duration = 8000) {
   window.clearTimeout(bubbleHideTimer);
   bubbleText.textContent = safeText;
   bubble.classList.remove('hidden');
+  scheduleBubblePosition();
   bubble.classList.add('visible');
 
   const timeoutMs = Number.isFinite(Number(duration)) ? Number(duration) : 8000;
@@ -495,6 +536,7 @@ function setMode(nextMode, { source = 'ui' } = {}) {
     input?.focus();
   } else {
     closeSettingsPanel();
+    scheduleBubblePosition();
   }
 
   if (source === 'ui' || source === 'hotkey') {
@@ -907,6 +949,7 @@ window.addEventListener('resize', () => {
   }
 
   requestFitDebounced('resize');
+  scheduleBubblePosition();
 });
 
 send?.addEventListener('click', submitMessage);
@@ -945,13 +988,20 @@ window.addEventListener('DOMContentLoaded', () => {
   if (img) {
     if (img.complete) {
       requestFitDebounced();
+      scheduleBubblePosition();
     } else {
-      img.addEventListener('load', requestFitDebounced, { once: true });
+      img.addEventListener('load', () => {
+        requestFitDebounced();
+        scheduleBubblePosition();
+      }, { once: true });
     }
   }
 
   if (typeof ResizeObserver !== 'undefined') {
-    resizeObserver = new ResizeObserver(() => requestFitDebounced());
+    resizeObserver = new ResizeObserver(() => {
+      requestFitDebounced();
+      scheduleBubblePosition();
+    });
     if (mini) resizeObserver.observe(mini);
     if (miniWrap) resizeObserver.observe(miniWrap);
     if (miniActions) resizeObserver.observe(miniActions);
@@ -992,6 +1042,7 @@ window.addEventListener('DOMContentLoaded', () => {
     .catch(() => setMode('focus', { source: 'state-sync' }));
 
   setMode(settings.mode || 'focus', { source: 'state-sync' });
+  scheduleBubblePosition();
   miniBaseSize = measureMiniBaseSize();
   if (miniBaseSize?.shouldResetScale) {
     setMiniScale(1);
