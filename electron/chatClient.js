@@ -138,8 +138,55 @@ async function sendMessage({ baseUrl, overlayAccessToken, message, contextMessag
   };
 }
 
+
+
+async function updateNudgeSettings({ baseUrl, overlayAccessToken, enabled, intervalMinutes }) {
+  const token = assertToken(overlayAccessToken);
+  const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
+  const settingsUrl = `${normalizedBaseUrl}/api/overlay/nudge-settings`;
+
+  const response = await withTimeout(CHAT_TIMEOUT_MS, (signal) => fetch(settingsUrl, {
+    method: 'POST',
+    headers: buildApiHeaders(token),
+    body: JSON.stringify({ enabled, interval_minutes: intervalMinutes }),
+    signal
+  }));
+
+  if (!response.ok) {
+    const responseBody = await response.text().catch(() => '');
+    throw buildHttpError({ response, requestUrl: settingsUrl, responseBody });
+  }
+
+  return parseJsonResponse(response, {});
+}
+
+async function requestNudge({ baseUrl, overlayAccessToken, intervalMinutes }) {
+  const token = assertToken(overlayAccessToken);
+  const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
+  const nudgeUrl = `${normalizedBaseUrl}/api/overlay/nudge`;
+
+  const response = await withTimeout(CHAT_TIMEOUT_MS, (signal) => fetch(nudgeUrl, {
+    method: 'POST',
+    headers: buildApiHeaders(token),
+    body: JSON.stringify({ interval_minutes: intervalMinutes }),
+    signal
+  }));
+
+  if (!response.ok) {
+    const responseBody = await response.text().catch(() => '');
+    throw buildHttpError({ response, requestUrl: nudgeUrl, responseBody });
+  }
+
+  const data = await parseJsonResponse(response, {});
+  return {
+    message: typeof data?.message === 'string' && data.message.trim() ? data.message.trim() : null
+  };
+}
+
 module.exports = {
   fetchHistory,
   sendMessage,
+  requestNudge,
+  updateNudgeSettings,
   normalizeToken
 };

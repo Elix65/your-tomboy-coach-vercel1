@@ -88,6 +88,14 @@
     {
       "source": "/api/overlay/revoke-device",
       "destination": "/api/router?action=overlay-revoke-device"
+    },
+    {
+      "source": "/api/overlay/nudge",
+      "destination": "/api/router?action=overlay-nudge"
+    },
+    {
+      "source": "/api/overlay/nudge-settings",
+      "destination": "/api/router?action=overlay-nudge-settings"
     }
   ]
 }

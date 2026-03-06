@@ -1,6 +1,10 @@
 const STORAGE_KEY = 'yumiko-widget-settings-v1';
 const MINI_SCALE_KEY = 'yumiko_mini_scale_v1';
-const DEFAULT_SETTINGS = { mode: 'focus' };
+const DEFAULT_SETTINGS = {
+  mode: 'focus',
+  autoMessageEnabled: false,
+  autoMessageIntervalMinutes: 20
+};
 const CHAT_WINDOW_SIZE = { width: 560, height: 380 };
 const MINI_SCALE_MIN = 0.35;
 const MINI_SCALE_MAX = 1;
@@ -20,6 +24,8 @@ const clickThroughToggle = document.getElementById('click-through-enabled');
 const shortcutsToggle = document.getElementById('shortcuts-enabled');
 const authStatus = document.getElementById('auth-status');
 const authActionButton = document.getElementById('auth-action');
+const autoMessageToggle = document.getElementById('auto-message-enabled');
+const autoMessageIntervalSelect = document.getElementById('auto-message-interval');
 
 const widget = document.getElementById('yumiko-widget');
 const mini = document.getElementById('yumiko-mini');
@@ -32,6 +38,8 @@ const img = document.getElementById('yumiko-character');
 const input = document.getElementById('yumiko-input');
 const send = document.getElementById('yumiko-send');
 const chatLog = document.getElementById('chat-log');
+const bubble = document.getElementById('yumiko-bubble');
+const bubbleText = bubble?.querySelector('.bubble-text');
 
 let isThinking = false;
 let contextCache = [];
@@ -73,6 +81,9 @@ function loadSettings() {
     if (!raw) return { ...DEFAULT_SETTINGS };
     const parsed = { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
     parsed.mode = toUiMode(parsed.mode);
+    parsed.autoMessageEnabled = Boolean(parsed.autoMessageEnabled);
+    const parsedInterval = Number(parsed.autoMessageIntervalMinutes);
+    parsed.autoMessageIntervalMinutes = [10, 20, 40].includes(parsedInterval) ? parsedInterval : 20;
     return parsed;
   } catch {
     return { ...DEFAULT_SETTINGS };
@@ -91,6 +102,11 @@ let fitRetryCount = 0;
 let minSizeRetryCount = 0;
 let lastGoodFocusFitSize = null;
 let ignoreNextResize = false;
+let bubbleHideTimer = null;
+let autoMessageScheduler = null;
+let isNudgeInFlight = false;
+let lastUserActivityAt = Date.now();
+
 
 function saveSettings() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
@@ -319,6 +335,37 @@ function updateFocusMinimumSize() {
   setFocusMinSize({ width: minW, height: minH });
 }
 
+function hideBubble() {
+  window.clearTimeout(bubbleHideTimer);
+  bubbleHideTimer = null;
+  if (!bubble) return;
+  bubble.classList.remove('visible');
+  bubble.classList.add('hidden');
+}
+
+function showBubble(text, duration = 8000) {
+  if (!bubble || !bubbleText) return;
+  const safeText = typeof text === 'string' ? text.trim() : '';
+  if (!safeText) {
+    hideBubble();
+    return;
+  }
+
+  window.clearTimeout(bubbleHideTimer);
+  bubbleText.textContent = safeText;
+  bubble.classList.remove('hidden');
+  bubble.classList.add('visible');
+
+  const timeoutMs = Number.isFinite(Number(duration)) ? Number(duration) : 8000;
+  bubbleHideTimer = window.setTimeout(() => {
+    hideBubble();
+  }, Math.max(1000, timeoutMs));
+}
+
+function markUserActivity() {
+  lastUserActivityAt = Date.now();
+}
+
 function addMessage(role, content, { thinking = false } = {}) {
   if (!chatLog) return null;
   const row = document.createElement('div');
@@ -443,6 +490,8 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   }
 
   if (mode === 'chat') {
+    hideBubble();
+    markUserActivity();
     input?.focus();
   } else {
     closeSettingsPanel();
@@ -504,6 +553,7 @@ async function submitMessage() {
   const message = input.value.trim();
   if (!message) return;
 
+  markUserActivity();
   addMessage('user', message);
   contextCache.push({ role: 'user', content: message });
   contextCache = contextCache.slice(-20);
@@ -527,6 +577,10 @@ async function submitMessage() {
       if (textNode) textNode.textContent = reply;
     } else {
       addMessage('assistant', reply);
+    }
+
+    if (settings.mode === 'focus') {
+      showBubble(reply);
     }
 
     contextCache.push({ role: 'assistant', content: reply });
@@ -622,6 +676,60 @@ async function exchangeCode(code) {
   }
 }
 
+async function persistAutoMessageSettings() {
+  try {
+    await window.yumikoOverlay?.chat?.updateNudgeSettings?.({
+      enabled: settings.autoMessageEnabled,
+      intervalMinutes: settings.autoMessageIntervalMinutes
+    });
+  } catch (error) {
+    console.warn('[yumiko][auto-message] settings sync failed', error);
+  }
+}
+
+function syncAutoMessageControls() {
+  if (autoMessageToggle) autoMessageToggle.checked = Boolean(settings.autoMessageEnabled);
+  if (autoMessageIntervalSelect) {
+    autoMessageIntervalSelect.value = String(settings.autoMessageIntervalMinutes || 20);
+  }
+}
+
+async function requestAutoNudge() {
+  if (isNudgeInFlight || !window.yumikoOverlay?.chat?.requestNudge) return;
+  isNudgeInFlight = true;
+  try {
+    const result = await window.yumikoOverlay.chat.requestNudge({
+      intervalMinutes: settings.autoMessageIntervalMinutes
+    });
+    if (typeof result?.message === 'string' && result.message.trim()) {
+      showBubble(result.message.trim());
+      contextCache.push({ role: 'assistant', content: result.message.trim() });
+      contextCache = contextCache.slice(-20);
+      if (settings.mode === 'chat') {
+        addMessage('assistant', result.message.trim());
+      }
+    }
+  } catch (error) {
+    console.warn('[yumiko][auto-message] nudge failed', error);
+  } finally {
+    isNudgeInFlight = false;
+  }
+}
+
+function startAutoMessageScheduler() {
+  window.clearInterval(autoMessageScheduler);
+  autoMessageScheduler = window.setInterval(() => {
+    if (!settings.autoMessageEnabled) return;
+    if (settings.mode === 'chat') return;
+
+    const intervalMinutes = Number(settings.autoMessageIntervalMinutes) || 20;
+    const idleMs = Date.now() - lastUserActivityAt;
+    if (idleMs < intervalMinutes * 60 * 1000) return;
+
+    requestAutoNudge();
+  }, 60 * 1000);
+}
+
 function syncHostState(state = {}) {
   console.info('[yumiko][renderer] state updated', { authState: state?.authState });
   renderAuthState(state);
@@ -632,6 +740,8 @@ function syncHostState(state = {}) {
   if (state.mode) {
     setMode(state.mode, { source: 'state-sync' });
   }
+
+  syncAutoMessageControls();
 }
 
 toggleSettingsButton?.addEventListener('click', () => {
@@ -669,6 +779,21 @@ shortcutsToggle?.addEventListener('change', () => {
   window.yumikoOverlay?.setShortcutsEnabled?.(shortcutsToggle.checked);
 });
 
+autoMessageToggle?.addEventListener('change', () => {
+  settings.autoMessageEnabled = autoMessageToggle.checked;
+  saveSettings();
+  markUserActivity();
+  persistAutoMessageSettings();
+});
+
+autoMessageIntervalSelect?.addEventListener('change', () => {
+  const nextValue = Number(autoMessageIntervalSelect.value);
+  settings.autoMessageIntervalMinutes = [10, 20, 40].includes(nextValue) ? nextValue : 20;
+  saveSettings();
+  markUserActivity();
+  persistAutoMessageSettings();
+});
+
 authActionButton?.addEventListener('click', async () => {
   authActionButton.disabled = true;
   try {
@@ -690,6 +815,7 @@ authActionButton?.addEventListener('click', async () => {
 });
 
 miniChatButton?.addEventListener('click', () => {
+  markUserActivity();
   setMode('chat', { source: 'ui' });
   input?.focus();
 });
@@ -758,6 +884,11 @@ window.addEventListener('keydown', (event) => {
   }
 });
 
+
+window.addEventListener('mousedown', () => {
+  markUserActivity();
+}, { capture: true });
+
 window.addEventListener('resize', () => {
   if (settings.mode !== 'focus') return;
 
@@ -799,12 +930,17 @@ window.addEventListener('keydown', handleEscapeToFocus);
 window.yumikoWidget = {
   setMode: (mode) => setMode(mode, { source: 'state-sync' }),
   getSettings: () => ({ ...settings }),
-  requestFit
+  requestFit,
+  showBubble,
+  hideBubble
 };
 
 window.addEventListener('DOMContentLoaded', () => {
   setSettingsPanelHidden(true);
   setMiniScale(userScale, { persist: false });
+  syncAutoMessageControls();
+  startAutoMessageScheduler();
+  persistAutoMessageSettings();
 
   if (img) {
     if (img.complete) {
