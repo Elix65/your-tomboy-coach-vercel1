@@ -136,49 +136,40 @@ body {
   z-index: 45;
   pointer-events: none;
   overflow: visible;
-  max-width: min(260px, calc(100vw - 28px));
+  max-width: min(230px, calc(100vw - 20px));
 }
 
 .bubble {
   position: relative;
-  max-width: 100%;
-  width: min(232px, calc(100vw - 28px));
-  padding: 10px 13px;
-  border-radius: 19px;
-  border: 1px solid rgba(225, 204, 255, 0.7);
+  width: clamp(170px, 38vw, 220px);
+  max-width: min(220px, calc(100vw - 20px));
+  min-height: 56px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(217, 196, 255, 0.55);
   background:
-    radial-gradient(120% 130% at 15% 10%, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 48%),
-    linear-gradient(145deg, rgba(114, 73, 206, 0.95), rgba(164, 122, 255, 0.9));
-  color: #fcf9ff;
+    radial-gradient(135% 130% at 10% 12%, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 52%),
+    linear-gradient(165deg, rgba(50, 31, 86, 0.78), rgba(27, 20, 46, 0.88));
+  color: #fdf8ff;
   font-size: 12px;
-  line-height: 1.4;
+  line-height: 1.35;
+  backdrop-filter: blur(10px);
   box-shadow:
-    0 12px 28px rgba(22, 10, 48, 0.4),
-    0 0 16px rgba(186, 144, 255, 0.24),
-    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+    0 12px 28px rgba(15, 9, 29, 0.44),
+    0 0 16px rgba(178, 141, 255, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(9px) scale(0.98);
   transition: opacity 0.26s ease, transform 0.26s ease;
   pointer-events: none;
 }
 
-.bubble::after {
-  content: '';
-  position: absolute;
-  left: -5px;
-  top: 58%;
-  width: 11px;
-  height: 11px;
-  border-left: 1px solid rgba(225, 204, 255, 0.7);
-  border-bottom: 1px solid rgba(225, 204, 255, 0.7);
-  background: rgba(145, 102, 232, 0.96);
-  transform: rotate(45deg);
-  border-bottom-left-radius: 3px;
-  box-shadow: -2px 2px 6px rgba(109, 68, 182, 0.2);
-}
-
 .bubble-text {
   margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -187,12 +178,12 @@ body {
 
 .bubble.hidden {
   opacity: 0;
-  transform: translateY(8px);
+  transform: translateY(9px) scale(0.98);
 }
 
 .bubble.visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
 }
 
 .mini-actions {

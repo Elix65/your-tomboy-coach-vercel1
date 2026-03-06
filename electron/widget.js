@@ -10,6 +10,7 @@ const DEFAULT_SETTINGS = {
   autoMessageEnabled: false,
   autoMessageIntervalMinutes: 20
 };
+const AUTO_MESSAGE_INTERVAL_OPTIONS = [1, 2, 5, 10, 20];
 const CHAT_WINDOW_SIZE = { width: 560, height: 380 };
 const MINI_SCALE_MIN = 0.35;
 const MINI_SCALE_MAX = 1;
@@ -89,7 +90,7 @@ function loadSettings() {
     parsed.mode = toUiMode(parsed.mode);
     parsed.autoMessageEnabled = Boolean(parsed.autoMessageEnabled);
     const parsedInterval = Number(parsed.autoMessageIntervalMinutes);
-    parsed.autoMessageIntervalMinutes = [10, 20, 40].includes(parsedInterval) ? parsedInterval : 20;
+    parsed.autoMessageIntervalMinutes = AUTO_MESSAGE_INTERVAL_OPTIONS.includes(parsedInterval) ? parsedInterval : 20;
     return parsed;
   } catch {
     return { ...DEFAULT_SETTINGS };
@@ -121,20 +122,23 @@ function clampToViewport(value, min, max) {
 function positionBubble() {
   if (!bubbleLayer || !bubble || !mini || settings.mode !== 'focus') return;
 
-  const yumikoRect = mini.getBoundingClientRect();
+  const yumikoRect = (img?.getBoundingClientRect?.() || mini.getBoundingClientRect());
   if (!yumikoRect || yumikoRect.width <= 0 || yumikoRect.height <= 0) return;
 
   const bubbleRect = bubble.getBoundingClientRect();
-  const bubbleWidth = Math.max(120, Math.round(bubbleRect.width || 220));
-  const bubbleHeight = Math.max(44, Math.round(bubbleRect.height || 64));
+  const bubbleWidth = Math.max(170, Math.round(bubbleRect.width || 210));
+  const bubbleHeight = Math.max(56, Math.round(bubbleRect.height || 92));
 
-  const desiredLeft = yumikoRect.left - bubbleWidth - 12;
-  const desiredTop = yumikoRect.top + (yumikoRect.height * 0.17);
+  const desiredLeft = (yumikoRect.left + (yumikoRect.width * 0.5)) - (bubbleWidth * 0.5);
+  const desiredTop = yumikoRect.top + (yumikoRect.height * 0.64);
 
-  const minLeft = 8;
-  const maxLeft = Math.max(minLeft, window.innerWidth - bubbleWidth - 8);
-  const minTop = 8;
-  const maxTop = Math.max(minTop, window.innerHeight - bubbleHeight - 8);
+  const minLeft = 10;
+  const maxLeft = Math.max(minLeft, window.innerWidth - bubbleWidth - 10);
+  const minTop = Math.min(
+    Math.max(10, yumikoRect.top + (yumikoRect.height * 0.48)),
+    Math.max(10, window.innerHeight - bubbleHeight - 10)
+  );
+  const maxTop = Math.max(minTop, window.innerHeight - bubbleHeight - 10);
 
   bubbleLayer.style.left = `${clampToViewport(desiredLeft, minLeft, maxLeft)}px`;
   bubbleLayer.style.top = `${clampToViewport(desiredTop, minTop, maxTop)}px`;
@@ -835,7 +839,7 @@ autoMessageToggle?.addEventListener('change', () => {
 
 autoMessageIntervalSelect?.addEventListener('change', () => {
   const nextValue = Number(autoMessageIntervalSelect.value);
-  settings.autoMessageIntervalMinutes = [10, 20, 40].includes(nextValue) ? nextValue : 20;
+  settings.autoMessageIntervalMinutes = AUTO_MESSAGE_INTERVAL_OPTIONS.includes(nextValue) ? nextValue : 20;
   saveSettings();
   markUserActivity();
   persistAutoMessageSettings();
