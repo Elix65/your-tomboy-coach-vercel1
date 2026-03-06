@@ -1,3 +1,8 @@
+console.log('SOURCE_WIDGET_JS_RUNNING', {
+  href: window.location.href,
+  isPackagedLikely: window.location.href.includes('app.asar')
+});
+
 const STORAGE_KEY = 'yumiko-widget-settings-v1';
 const MINI_SCALE_KEY = 'yumiko_mini_scale_v1';
 const DEFAULT_SETTINGS = {

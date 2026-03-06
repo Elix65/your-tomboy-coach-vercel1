@@ -908,6 +908,15 @@ function handleArgvForDeepLink(argv = []) {
 function createWindow() {
   ensureInteractiveStartup();
 
+  const runtimeSource = app.isPackaged ? 'packaged-app.asar' : 'electron-source';
+  console.info('[yumiko][bootstrap] source', {
+    runtimeSource,
+    isPackaged: app.isPackaged,
+    appPath: app.getAppPath(),
+    dirname: __dirname,
+    argv: process.argv
+  });
+
   const bounds = getInitialBounds();
   win = new BrowserWindow({
     ...bounds,

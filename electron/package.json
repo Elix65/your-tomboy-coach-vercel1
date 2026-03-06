@@ -12,9 +12,11 @@
   "private": true,
   "main": "main.js",
   "scripts": {
-    "dev": "electron .",
-    "build:win": "electron-builder --win --publish never",
-    "start": "electron ."
+    "dev": "electron . --source=electron-dev",
+    "start": "npm run dev",
+    "build": "electron-builder --dir --win --publish never",
+    "dist": "electron-builder --win --publish never",
+    "build:win": "npm run dist"
   },
   "devDependencies": {
     "electron": "^32.3.3",
