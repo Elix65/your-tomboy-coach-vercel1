@@ -4,6 +4,7 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
   setMode: (mode) => ipcRenderer.send('yumiko:set-mode', mode),
   setOverlayEnabled: (enabled) => ipcRenderer.send('yumiko:set-overlay-enabled', enabled),
   setShortcutsEnabled: (enabled) => ipcRenderer.send('yumiko:set-shortcuts-enabled', enabled),
+  setChatHotkey: (hotkey) => ipcRenderer.invoke('yumiko:set-chat-hotkey', hotkey),
   setClickThroughEnabled: (enabled) => ipcRenderer.send('yumiko:set-click-through-enabled', enabled),
   setWindowSize: (size) => ipcRenderer.send('yumiko:set-window-size', size),
   setMinimumSize: (size) => ipcRenderer.send('yumiko:set-minimum-size', size),
@@ -53,5 +54,11 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on('yumiko:mini-scale', listener);
     return () => ipcRenderer.removeListener('yumiko:mini-scale', listener);
+  },
+
+  onFocusInput: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('yumiko:focus-input', listener);
+    return () => ipcRenderer.removeListener('yumiko:focus-input', listener);
   },
 });
