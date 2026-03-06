@@ -24,6 +24,8 @@ const DEV_FIT_LOG = window.location.search.includes('dev=1') || localStorage.get
 const AUTO_MESSAGE_MIN_TICK_MS = 5 * 1000;
 const AUTO_MESSAGE_MAX_TICK_MS = 10 * 1000;
 const DEV_AUTO_MESSAGE_LOG = true;
+const AUTO_ACTIVITY_MODE_KEY = 'yumiko_auto_message_recent_activity_mode';
+const AUTO_ACTIVITY_WEAK_WINDOW_KEY = 'yumiko_auto_message_weak_activity_ms';
 
 const settingsPanel = document.getElementById('settings-panel');
 const toggleSettingsButton = document.getElementById('toggle-settings');
@@ -157,7 +159,29 @@ function scheduleBubblePosition() {
 }
 let autoMessageScheduler = null;
 let isNudgeInFlight = false;
-let lastUserActivityAt = Date.now();
+let lastStrongUserActivityAt = Date.now();
+let lastWeakUserActivityAt = 0;
+
+function getRecentActivityMode() {
+  if (window.location.search.includes('auto_message_mode=ignore') || localStorage.getItem(AUTO_ACTIVITY_MODE_KEY) === 'ignore') {
+    return 'ignore';
+  }
+  if (window.location.search.includes('auto_message_mode=relaxed') || localStorage.getItem(AUTO_ACTIVITY_MODE_KEY) === 'relaxed') {
+    return 'relaxed';
+  }
+  return 'normal';
+}
+
+function getWeakActivityWindowMs(intervalMs, mode) {
+  const configuredMs = Number(localStorage.getItem(AUTO_ACTIVITY_WEAK_WINDOW_KEY));
+  if (Number.isFinite(configuredMs) && configuredMs >= 0) {
+    return configuredMs;
+  }
+  if (mode === 'relaxed') {
+    return Math.min(7 * 1000, Math.round(intervalMs * 0.08));
+  }
+  return Math.min(20 * 1000, Math.round(intervalMs * 0.2));
+}
 
 function logAutoMessageDebug(label, payload = {}) {
   if (!DEV_AUTO_MESSAGE_LOG) return;
@@ -173,9 +197,30 @@ function clearAutoMessageScheduler() {
 
 function getAutoMessageDueInfo() {
   const intervalMinutes = Number(settings.autoMessageIntervalMinutes) || 20;
-  const dueAt = lastUserActivityAt + (intervalMinutes * 60 * 1000);
+  const intervalMs = intervalMinutes * 60 * 1000;
+  const mode = getRecentActivityMode();
+  const strongThresholdMs = mode === 'ignore'
+    ? 0
+    : mode === 'relaxed'
+      ? Math.min(20 * 1000, Math.round(intervalMs * 0.25))
+      : intervalMs;
+  const weakThresholdMs = mode === 'ignore' ? 0 : getWeakActivityWindowMs(intervalMs, mode);
+
+  const strongDueAt = lastStrongUserActivityAt + strongThresholdMs;
+  const weakDueAt = lastWeakUserActivityAt + weakThresholdMs;
   const now = Date.now();
-  return { now, intervalMinutes, dueAt, remainingMs: dueAt - now };
+  return {
+    now,
+    intervalMinutes,
+    mode,
+    intervalMs,
+    strongThresholdMs,
+    weakThresholdMs,
+    strongDueAt,
+    weakDueAt,
+    strongRemainingMs: strongDueAt - now,
+    weakRemainingMs: weakDueAt - now
+  };
 }
 
 function getAutoMessageSkipReason() {
@@ -183,17 +228,26 @@ function getAutoMessageSkipReason() {
   if (settings.mode === 'chat') return 'chat-open';
   if (isNudgeInFlight) return 'nudge-in-flight';
 
-  const { remainingMs } = getAutoMessageDueInfo();
-  if (remainingMs > 0) return 'recent-user-activity';
+  const { strongRemainingMs, weakRemainingMs } = getAutoMessageDueInfo();
+  if (strongRemainingMs > 0) return 'recent-user-activity:strong';
+  if (weakRemainingMs > 0) return 'recent-user-activity:weak';
   return '';
 }
 
 function scheduleNextAutoMessageTick({ reason = 'unknown' } = {}) {
   clearAutoMessageScheduler();
 
-  const { now, dueAt, remainingMs } = getAutoMessageDueInfo();
+  const {
+    now,
+    mode,
+    strongDueAt,
+    weakDueAt,
+    strongRemainingMs,
+    weakRemainingMs
+  } = getAutoMessageDueInfo();
   const skipReason = getAutoMessageSkipReason();
-  const delayMs = skipReason === 'recent-user-activity'
+  const remainingMs = skipReason === 'recent-user-activity:weak' ? weakRemainingMs : strongRemainingMs;
+  const delayMs = skipReason.startsWith('recent-user-activity')
     ? clamp(remainingMs, AUTO_MESSAGE_MIN_TICK_MS, AUTO_MESSAGE_MAX_TICK_MS)
     : AUTO_MESSAGE_MIN_TICK_MS;
 
@@ -201,10 +255,15 @@ function scheduleNextAutoMessageTick({ reason = 'unknown' } = {}) {
 
   logAutoMessageDebug('scheduler-scheduled', {
     reason,
+    recentActivityMode: mode,
     schedulerTickInMs: delayMs,
     now: new Date(now).toISOString(),
-    lastUserActivityAt: new Date(lastUserActivityAt).toISOString(),
-    nextDueTime: new Date(dueAt).toISOString(),
+    lastStrongUserActivityAt: new Date(lastStrongUserActivityAt).toISOString(),
+    lastWeakUserActivityAt: lastWeakUserActivityAt ? new Date(lastWeakUserActivityAt).toISOString() : null,
+    strongDueTime: new Date(strongDueAt).toISOString(),
+    weakDueTime: new Date(weakDueAt).toISOString(),
+    strongRemainingMs,
+    weakRemainingMs,
     skipReason: skipReason || 'none'
   });
 }
@@ -212,18 +271,38 @@ function scheduleNextAutoMessageTick({ reason = 'unknown' } = {}) {
 async function runAutoMessageSchedulerTick() {
   autoMessageScheduler = null;
 
-  const { now, dueAt, remainingMs } = getAutoMessageDueInfo();
+  const {
+    now,
+    mode,
+    strongDueAt,
+    weakDueAt,
+    strongRemainingMs,
+    weakRemainingMs
+  } = getAutoMessageDueInfo();
   const skipReason = getAutoMessageSkipReason();
   logAutoMessageDebug('scheduler-tick', {
     schedulerTick: 'run',
+    recentActivityMode: mode,
     now: new Date(now).toISOString(),
-    lastUserActivityAt: new Date(lastUserActivityAt).toISOString(),
-    nextDueTime: new Date(dueAt).toISOString(),
-    remainingMs,
+    lastStrongUserActivityAt: new Date(lastStrongUserActivityAt).toISOString(),
+    lastWeakUserActivityAt: lastWeakUserActivityAt ? new Date(lastWeakUserActivityAt).toISOString() : null,
+    strongDueTime: new Date(strongDueAt).toISOString(),
+    weakDueTime: new Date(weakDueAt).toISOString(),
+    strongRemainingMs,
+    weakRemainingMs,
     skipReason: skipReason || 'none'
   });
 
   if (skipReason) {
+    if (skipReason.startsWith('recent-user-activity')) {
+      const remainingMs = skipReason === 'recent-user-activity:weak' ? weakRemainingMs : strongRemainingMs;
+      logAutoMessageDebug('skip-recent-user-activity', {
+        skipReason,
+        remainingMsUntilAllowed: Math.max(0, remainingMs),
+        lastStrongUserActivityAt: new Date(lastStrongUserActivityAt).toISOString(),
+        lastWeakUserActivityAt: lastWeakUserActivityAt ? new Date(lastWeakUserActivityAt).toISOString() : null
+      });
+    }
     scheduleNextAutoMessageTick({ reason: `skip:${skipReason}` });
     return;
   }
@@ -488,14 +567,29 @@ function showBubble(text, duration = 8000) {
   }, Math.max(1000, timeoutMs));
 }
 
-function markUserActivity() {
-  lastUserActivityAt = Date.now();
-  logAutoMessageDebug('user-activity', {
-    now: new Date(lastUserActivityAt).toISOString(),
-    lastUserActivityAt: new Date(lastUserActivityAt).toISOString(),
-    nextDueTime: new Date(getAutoMessageDueInfo().dueAt).toISOString()
+function markUserActivity({ event = 'unknown', strength = 'strong' } = {}) {
+  const now = Date.now();
+  if (strength === 'weak') {
+    lastWeakUserActivityAt = now;
+  } else {
+    lastStrongUserActivityAt = now;
+    lastWeakUserActivityAt = now;
+  }
+
+  const dueInfo = getAutoMessageDueInfo();
+  logAutoMessageDebug('user-activity-updated', {
+    event,
+    strength,
+    now: new Date(now).toISOString(),
+    recentActivityMode: dueInfo.mode,
+    lastStrongUserActivityAt: new Date(lastStrongUserActivityAt).toISOString(),
+    lastWeakUserActivityAt: lastWeakUserActivityAt ? new Date(lastWeakUserActivityAt).toISOString() : null,
+    strongDueTime: new Date(dueInfo.strongDueAt).toISOString(),
+    weakDueTime: new Date(dueInfo.weakDueAt).toISOString(),
+    strongRemainingMs: dueInfo.strongRemainingMs,
+    weakRemainingMs: dueInfo.weakRemainingMs
   });
-  scheduleNextAutoMessageTick({ reason: 'user-activity' });
+  scheduleNextAutoMessageTick({ reason: `user-activity:${strength}:${event}` });
 }
 
 function addMessage(role, content, { thinking = false } = {}) {
@@ -623,7 +717,7 @@ function setMode(nextMode, { source = 'ui' } = {}) {
 
   if (mode === 'chat') {
     hideBubble();
-    markUserActivity();
+    markUserActivity({ event: 'open-chat-mode', strength: 'strong' });
     input?.focus();
   } else {
     closeSettingsPanel();
@@ -686,7 +780,7 @@ async function submitMessage() {
   const message = input.value.trim();
   if (!message) return;
 
-  markUserActivity();
+  markUserActivity({ event: 'submit-message', strength: 'strong' });
   addMessage('user', message);
   contextCache.push({ role: 'user', content: message });
   contextCache = contextCache.slice(-20);
@@ -905,7 +999,7 @@ shortcutsToggle?.addEventListener('change', () => {
 autoMessageToggle?.addEventListener('change', () => {
   settings.autoMessageEnabled = autoMessageToggle.checked;
   saveSettings();
-  markUserActivity();
+  markUserActivity({ event: 'toggle-auto-message-enabled', strength: 'weak' });
   persistAutoMessageSettings();
 });
 
@@ -913,7 +1007,7 @@ autoMessageIntervalSelect?.addEventListener('change', () => {
   const nextValue = Number(autoMessageIntervalSelect.value);
   settings.autoMessageIntervalMinutes = AUTO_MESSAGE_INTERVAL_OPTIONS.includes(nextValue) ? nextValue : 20;
   saveSettings();
-  markUserActivity();
+  markUserActivity({ event: 'change-auto-message-interval', strength: 'weak' });
   persistAutoMessageSettings();
 });
 
@@ -938,7 +1032,7 @@ authActionButton?.addEventListener('click', async () => {
 });
 
 miniChatButton?.addEventListener('click', () => {
-  markUserActivity();
+  markUserActivity({ event: 'mini-chat-button', strength: 'strong' });
   setMode('chat', { source: 'ui' });
   input?.focus();
 });
@@ -1009,7 +1103,7 @@ window.addEventListener('keydown', (event) => {
 
 
 window.addEventListener('mousedown', () => {
-  markUserActivity();
+  markUserActivity({ event: 'window-mousedown', strength: 'weak' });
 }, { capture: true });
 
 window.addEventListener('resize', () => {
