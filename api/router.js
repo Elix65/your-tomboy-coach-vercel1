@@ -2138,15 +2138,98 @@ async function tirarMultiplePremiumHandler(req, res) {
 }
 
 
-function buildOverlayNudgeMessage() {
-  const lines = [
-    '¿Seguimos un ratito? ✨ Estoy acá para vos.',
-    'Pequeño recordatorio waifu: respirá y volvemos con todo 💜',
-    'Yumiko reportándose~ ¿te ayudo con el próximo paso? 🌙',
-    'Te mando energía lila: un mini avance ahora vale oro ✨',
-    'Si querés, hacemos una pausa cortita y retomamos juntas 💫'
-  ];
-  return lines[Math.floor(Math.random() * lines.length)];
+const OVERLAY_GENERIC_NUDGE_LINES = [
+  '¿Seguimos un ratito?',
+  'Mini empujoncito: volvemos cuando quieras.',
+  'Acá estoy para seguir cuando te sirva.',
+  '¿Querés retomar con un paso cortito?',
+  'Si querés, lo retomamos juntas.'
+];
+
+const CONTEXTUAL_BUCKETS = ['contextual-question', 'contextual-followup', 'contextual-reminder'];
+const TRIVIAL_MESSAGE_RE = /^(ok(ay)?|dale|si|sí|jaja+|jeje+|jj+|xd+|uhm+|mmm+|listo|va|bien|genial|👍|👌|🙂|😂|🙏|gracias)[.!?\s]*$/i;
+
+function clampNudgeLength(text, maxLen = 120) {
+  const normalized = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!normalized) return '';
+  if (normalized.length <= maxLen) return normalized;
+  return `${normalized.slice(0, Math.max(0, maxLen - 1)).trimEnd()}…`;
+}
+
+function isTrivialMessage(content) {
+  const normalized = String(content || '').replace(/\s+/g, ' ').trim();
+  if (!normalized) return true;
+  return normalized.length <= 14 && TRIVIAL_MESSAGE_RE.test(normalized);
+}
+
+function extractEntityCandidate(content = '') {
+  const source = String(content || '').replace(/\s+/g, ' ').trim();
+  if (!source) return '';
+
+  const modelLike = source.match(/\b([A-ZÁÉÍÓÚÑ]{2,}|[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)(?:\s+[A-Z0-9ÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ+-]*){0,3}\b/g);
+  if (Array.isArray(modelLike) && modelLike.length) {
+    const best = modelLike.find((item) => /\d/.test(item)) || modelLike[0];
+    return clampNudgeLength(best, 40);
+  }
+
+  const compact = source.replace(/[¿?¡!.,;:]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!compact) return '';
+  const words = compact.split(' ').filter(Boolean);
+  if (!words.length) return '';
+  return clampNudgeLength(words.slice(0, Math.min(words.length, 5)).join(' '), 40);
+}
+
+function buildConversationNudgeContext(messages = []) {
+  const recent = Array.isArray(messages) ? messages.slice(-20) : [];
+  const userMessages = [...recent]
+    .reverse()
+    .filter((item) => item?.sender === 'user' && !isTrivialMessage(item?.content));
+
+  const latestUser = userMessages[0] || null;
+  if (!latestUser) return null;
+
+  const topic = extractEntityCandidate(latestUser.content);
+  const pendingQuestion = userMessages.find((item) => String(item?.content || '').includes('?'));
+
+  return {
+    topic,
+    pendingQuestion: pendingQuestion ? clampNudgeLength(String(pendingQuestion.content || ''), 80) : '',
+    hasPendingQuestion: Boolean(pendingQuestion),
+    hasDecisionHint: /\b(elegir|decidir|comprar|seguir|después|luego|opción|opciones|plan|paso)\b/i.test(String(latestUser.content || ''))
+  };
+}
+
+function pickGenericNudge(lastMessage = '') {
+  const candidates = OVERLAY_GENERIC_NUDGE_LINES.filter((line) => line !== lastMessage);
+  const pool = candidates.length ? candidates : OVERLAY_GENERIC_NUDGE_LINES;
+  return {
+    bucket: 'generic-presence',
+    message: pool[Math.floor(Math.random() * pool.length)]
+  };
+}
+
+function buildContextualNudge(context, { lastBucket = '', lastMessage = '' } = {}) {
+  if (!context?.topic) return pickGenericNudge(lastMessage);
+
+  const lastIndex = CONTEXTUAL_BUCKETS.indexOf(lastBucket);
+  const nextIndex = lastIndex >= 0 ? (lastIndex + 1) % CONTEXTUAL_BUCKETS.length : 0;
+  const suggestedBucket = context.hasPendingQuestion ? 'contextual-question' : CONTEXTUAL_BUCKETS[nextIndex];
+  const bucket = suggestedBucket === lastBucket
+    ? CONTEXTUAL_BUCKETS[(nextIndex + 1) % CONTEXTUAL_BUCKETS.length]
+    : suggestedBucket;
+
+  const byBucket = {
+    'contextual-question': `¿Seguimos con lo de ${context.topic}?`,
+    'contextual-followup': `Me quedé pensando en ${context.topic}.`,
+    'contextual-reminder': context.hasDecisionHint
+      ? `Si querés, definimos el próximo paso con ${context.topic}.`
+      : `Cuando quieras, retomamos ${context.topic}.`
+  };
+
+  const base = byBucket[bucket] || byBucket['contextual-question'];
+  const safeMessage = clampNudgeLength(base, 120);
+  if (!safeMessage || safeMessage === lastMessage) return pickGenericNudge(lastMessage);
+  return { bucket, message: safeMessage };
 }
 
 
@@ -2212,7 +2295,7 @@ async function overlayNudgeHandler(req, res) {
 
     const { data: settingsRow, error: settingsErr } = await supabaseAdmin
       .from('overlay_nudge_settings')
-      .select('enabled,interval_minutes,last_sent_at')
+      .select('enabled,interval_minutes,last_sent_at,last_nudge_bucket,last_nudge_message')
       .eq('user_id', userId)
       .eq('device_id', deviceId)
       .maybeSingle();
@@ -2242,7 +2325,20 @@ async function overlayNudgeHandler(req, res) {
       return res.status(200).json({ message: null });
     }
 
-    const message = buildOverlayNudgeMessage().slice(0, 140);
+    const { data: recentMessages, error: recentMessagesErr } = await supabaseAdmin
+      .from('messages')
+      .select('sender,content,created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(25);
+
+    if (recentMessagesErr) return res.status(500).json({ error: recentMessagesErr.message || 'Error loading recent conversation context.' });
+
+    const nudgeContext = buildConversationNudgeContext([...(recentMessages || [])].reverse());
+    const { bucket, message } = buildContextualNudge(nudgeContext, {
+      lastBucket: settingsRow?.last_nudge_bucket || '',
+      lastMessage: String(settingsRow?.last_nudge_message || '').trim()
+    });
 
     const { error: insertErr } = await supabaseAdmin
       .from('messages')
@@ -2259,7 +2355,9 @@ async function overlayNudgeHandler(req, res) {
       .from('overlay_nudge_settings')
       .upsert({
         ...upsertPayload,
-        last_sent_at: new Date(now).toISOString()
+        last_sent_at: new Date(now).toISOString(),
+        last_nudge_bucket: bucket,
+        last_nudge_message: message
       }, { onConflict: 'user_id,device_id' });
 
     if (upsertErr) return res.status(500).json({ error: upsertErr.message || 'Error updating overlay nudge settings.' });
