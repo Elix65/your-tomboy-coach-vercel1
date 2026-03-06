@@ -739,6 +739,25 @@ function onOutsideClick(event) {
   closeSettingsPanel();
 }
 
+function focusChatInputReliable({ reason = 'unknown', sendAck = false } = {}) {
+  window.requestAnimationFrame(() => {
+    window.setTimeout(() => {
+      if (!input) return;
+      console.info('[yumiko][renderer] input focus attempted', { reason });
+      input.focus();
+      const end = input.value?.length || 0;
+      if (typeof input.setSelectionRange === 'function') {
+        input.setSelectionRange(end, end);
+      }
+      const focused = document.activeElement === input;
+      console.info('[yumiko][renderer] input focus success', { reason, focused });
+      if (sendAck) {
+        window.yumikoOverlay?.chatReady?.();
+      }
+    }, 0);
+  });
+}
+
 function setMode(nextMode, { source = 'ui' } = {}) {
   const mode = toUiMode(nextMode);
   const previousMode = settings.mode;
@@ -791,7 +810,7 @@ function setMode(nextMode, { source = 'ui' } = {}) {
     markUserActivity({ event: 'open-chat-mode', strength: 'strong' });
     hideBubble('chat-open');
     markUserActivity();
-    input?.focus();
+    focusChatInputReliable({ reason: `setMode:${source}` });
   } else {
     closeSettingsPanel();
     scheduleBubblePosition();
@@ -1252,7 +1271,7 @@ authActionButton?.addEventListener('click', async () => {
 miniChatButton?.addEventListener('click', () => {
   markUserActivity({ event: 'mini-chat-button', strength: 'strong' });
   setMode('chat', { source: 'ui' });
-  input?.focus();
+  focusChatInputReliable({ reason: 'mini-chat-button' });
 });
 
 miniMicButton?.addEventListener('click', () => {
@@ -1404,7 +1423,13 @@ window.addEventListener('DOMContentLoaded', () => {
   window.yumikoOverlay?.onStateUpdated?.(syncHostState);
   window.yumikoOverlay?.onFocusInput?.(() => {
     setMode('chat', { source: 'state-sync' });
-    input?.focus();
+    focusChatInputReliable({ reason: 'main:focus-input' });
+  });
+  window.yumikoOverlay?.onOpenChatFromHotkey?.((payload) => {
+    const alreadyInChat = Boolean(payload?.alreadyInChat);
+    console.info('[yumiko][renderer] chat mode entered', { source: 'hotkey', alreadyInChat });
+    setMode('chat', { source: 'hotkey' });
+    focusChatInputReliable({ reason: alreadyInChat ? 'hotkey:already-chat' : 'hotkey:open-chat', sendAck: true });
   });
   window.addEventListener('yumiko:auth-code', (event) => {
     const code = typeof event?.detail?.code === 'string' ? event.detail.code : '';

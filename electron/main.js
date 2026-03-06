@@ -655,18 +655,32 @@ function focusChatInput() {
   win.webContents.send('yumiko:focus-input');
 }
 
+function requestWindowFocusForChat(reason = 'unknown') {
+  if (!win || win.isDestroyed()) return;
+  console.info('[yumiko][window] focus requested', { reason });
+  win.setIgnoreMouseEvents(false);
+  win.setFocusable(true);
+  win.show();
+  win.focus();
+  win.webContents.focus();
+}
+
 function openChatAndFocusInput() {
   if (!win || win.isDestroyed()) return;
 
+  console.info('[yumiko][hotkey] open-chat triggered');
+
   settings.visible = true;
   writeSettings();
-  win.show();
-  win.focus();
+  requestWindowFocusForChat('hotkey:open-chat:start');
 
   const currentMode = settings.mode;
   setMode('chat', { userPickedMode: true });
-  if (currentMode === 'chat') {
-    focusChatInput();
+  if (!win.webContents.isLoading()) {
+    if (currentMode === 'chat') {
+      focusChatInput();
+    }
+    win.webContents.send('yumiko:open-chat-from-hotkey', { alreadyInChat: currentMode === 'chat' });
   }
 }
 
@@ -1231,6 +1245,11 @@ if (!singleInstance) {
     });
     ipcMain.on('yumiko:set-focus-min-size', (_event, payload) => {
       setFocusMinimumBounds(payload);
+    });
+    ipcMain.on('yumiko:chat-ready', () => {
+      console.info('[yumiko][window] chat-ready ack received');
+      requestWindowFocusForChat('renderer:chat-ready');
+      console.info('[yumiko][window] focus reaffirmed');
     });
 
     handleArgvForDeepLink(process.argv);
