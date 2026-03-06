@@ -808,7 +808,6 @@ function setMode(nextMode, { source = 'ui' } = {}) {
 async function loadChatHistory() {
   try {
     const result = await window.yumikoOverlay?.chat?.getHistory?.();
-
     const records = Array.isArray(result?.records)
       ? result.records
       : Array.isArray(result?.messages)
@@ -841,6 +840,38 @@ async function loadChatHistory() {
     }
     renderMessages([]);
   }
+}
+
+function normalizeHistoryRecords(result) {
+  const records = Array.isArray(result?.records)
+    ? result.records
+    : Array.isArray(result?.messages)
+      ? result.messages
+      : [];
+
+  return records
+    .map(({ sender, role, content }) => ({
+      role: sender === 'user' || role === 'user' ? 'user' : 'assistant',
+      content: typeof content === 'string' ? content.trim() : ''
+    }))
+    .filter((item) => item.content);
+}
+
+function findLatestAssistantAfterBaseline(messages, baselineSize, baselineTail) {
+  if (!Array.isArray(messages) || messages.length === 0) return '';
+
+  const latestAssistant = [...messages].reverse().find((item) => item?.role === 'assistant' && item.content);
+  if (!latestAssistant?.content) return '';
+
+  if (messages.length > baselineSize) {
+    return latestAssistant.content;
+  }
+
+  if (!baselineTail.includes(latestAssistant.content)) {
+    return latestAssistant.content;
+  }
+
+  return '';
 }
 
 async function submitMessage() {
@@ -993,27 +1024,52 @@ async function requestAutoNudge() {
   if (isNudgeInFlight || !window.yumikoOverlay?.chat?.requestNudge) return;
   isNudgeInFlight = true;
   try {
-    console.info('[yumiko][nudge] request:start', {
+    const baselineContextSize = contextCache.length;
+    const baselineAssistantTail = contextCache
+      .filter((item) => item?.role === 'assistant' && typeof item.content === 'string' && item.content.trim())
+      .slice(-5)
+      .map((item) => item.content.trim());
+
+    console.info('[yumiko][nudge] real-flow:start', {
       now: new Date().toISOString(),
       mode: settings.mode,
       autoMessageEnabled: settings.autoMessageEnabled,
       intervalMinutes: settings.autoMessageIntervalMinutes,
-      lastUserActivityAt: new Date(lastUserActivityAt).toISOString()
+      baselineContextSize,
+      baselineAssistantTail
     });
 
     const result = await window.yumikoOverlay.chat.requestNudge({
       intervalMinutes: settings.autoMessageIntervalMinutes
     });
-    console.info('[yumiko][nudge] result', {
+    let message = typeof result?.message === 'string' && result.message.trim()
+      ? result.message.trim()
+      : '';
+
+    let messageSource = message ? 'request-nudge-response' : 'history-confirmation';
+
+    if (!message) {
+      const historyResult = await window.yumikoOverlay?.chat?.getHistory?.();
+      const historyMessages = normalizeHistoryRecords(historyResult);
+      message = findLatestAssistantAfterBaseline(historyMessages, baselineContextSize, baselineAssistantTail);
+      if (historyMessages.length > 0) {
+        contextCache = historyMessages.slice(-20);
+      }
+      if (!message) {
+        messageSource = 'none';
+      }
+    }
+
+    console.info('[yumiko][nudge] real-flow:result', {
       response: result,
-      message: result?.message ?? null
+      message: message || null,
+      messageSource
     });
 
-    if (typeof result?.message === 'string' && result.message.trim()) {
-      const message = result.message.trim();
+    if (message) {
       const resolvedMode = toUiMode(settings.mode);
-      const bubbleDuration = 8000;
-      console.info('[yumiko][bubble] auto-show requested', {
+      const bubbleDuration = 10000;
+      console.info('[yumiko][bubble] auto-show dispatched', {
         message,
         duration: bubbleDuration,
         mode: resolvedMode
@@ -1032,8 +1088,14 @@ async function requestAutoNudge() {
         });
         showBubble(message, bubbleDuration);
       }
-      contextCache.push({ role: 'assistant', content: message });
-      contextCache = contextCache.slice(-20);
+      if (!contextCache.some((item, index) => (
+        item?.role === 'assistant'
+        && item?.content === message
+        && index >= Math.max(0, contextCache.length - 5)
+      ))) {
+        contextCache.push({ role: 'assistant', content: message });
+        contextCache = contextCache.slice(-20);
+      }
       if (resolvedMode === 'chat') {
         addMessage('assistant', message);
       }
