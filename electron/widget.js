@@ -574,6 +574,9 @@ function hideBubble(reason = 'unspecified') {
   window.clearTimeout(bubbleHideTimer);
   bubbleHideTimer = null;
   if (!bubble) return;
+  console.info(`[yumiko][bubble] hidden reason=${reason}`, {
+    mode: settings.mode
+  });
   console.info('[yumiko][bubble] hide', {
     reason,
     mode: settings.mode,
@@ -1001,17 +1004,28 @@ async function requestAutoNudge() {
     const result = await window.yumikoOverlay.chat.requestNudge({
       intervalMinutes: settings.autoMessageIntervalMinutes
     });
-    console.info('[yumiko][nudge] request:result', {
+    console.info('[yumiko][nudge] result', {
       response: result,
       message: result?.message ?? null
     });
 
     if (typeof result?.message === 'string' && result.message.trim()) {
-      showBubble(result.message.trim());
+      const message = result.message.trim();
+      if (settings.mode === 'chat') {
+        console.info('[yumiko][bubble] skipped because mode=chat', {
+          message
+        });
+      } else {
+        console.info('[yumiko][bubble] auto-show start', {
+          message,
+          mode: settings.mode
+        });
+        showBubble(message);
+      }
       contextCache.push({ role: 'assistant', content: result.message.trim() });
       contextCache = contextCache.slice(-20);
       if (settings.mode === 'chat') {
-        addMessage('assistant', result.message.trim());
+        addMessage('assistant', message);
       }
     }
   } catch (error) {
