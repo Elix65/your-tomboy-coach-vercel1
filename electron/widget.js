@@ -21,6 +21,9 @@ const MINI_MIN_HEIGHT = 320;
 const MINI_RETRY_LIMIT = 10;
 const MINI_MIN_SIZE_RETRY_LIMIT = 5;
 const DEV_FIT_LOG = window.location.search.includes('dev=1') || localStorage.getItem('yumiko_debug_fit') === '1';
+const AUTO_MESSAGE_MIN_TICK_MS = 5 * 1000;
+const AUTO_MESSAGE_MAX_TICK_MS = 10 * 1000;
+const DEV_AUTO_MESSAGE_LOG = true;
 
 const settingsPanel = document.getElementById('settings-panel');
 const toggleSettingsButton = document.getElementById('toggle-settings');
@@ -155,6 +158,79 @@ function scheduleBubblePosition() {
 let autoMessageScheduler = null;
 let isNudgeInFlight = false;
 let lastUserActivityAt = Date.now();
+
+function logAutoMessageDebug(label, payload = {}) {
+  if (!DEV_AUTO_MESSAGE_LOG) return;
+  console.info(`[yumiko][auto-message][debug] ${label}`, payload);
+}
+
+function clearAutoMessageScheduler() {
+  if (autoMessageScheduler) {
+    window.clearTimeout(autoMessageScheduler);
+    autoMessageScheduler = null;
+  }
+}
+
+function getAutoMessageDueInfo() {
+  const intervalMinutes = Number(settings.autoMessageIntervalMinutes) || 20;
+  const dueAt = lastUserActivityAt + (intervalMinutes * 60 * 1000);
+  const now = Date.now();
+  return { now, intervalMinutes, dueAt, remainingMs: dueAt - now };
+}
+
+function getAutoMessageSkipReason() {
+  if (!settings.autoMessageEnabled) return 'disabled';
+  if (settings.mode === 'chat') return 'chat-open';
+  if (isNudgeInFlight) return 'nudge-in-flight';
+
+  const { remainingMs } = getAutoMessageDueInfo();
+  if (remainingMs > 0) return 'recent-user-activity';
+  return '';
+}
+
+function scheduleNextAutoMessageTick({ reason = 'unknown' } = {}) {
+  clearAutoMessageScheduler();
+
+  const { now, dueAt, remainingMs } = getAutoMessageDueInfo();
+  const skipReason = getAutoMessageSkipReason();
+  const delayMs = skipReason === 'recent-user-activity'
+    ? clamp(remainingMs, AUTO_MESSAGE_MIN_TICK_MS, AUTO_MESSAGE_MAX_TICK_MS)
+    : AUTO_MESSAGE_MIN_TICK_MS;
+
+  autoMessageScheduler = window.setTimeout(runAutoMessageSchedulerTick, delayMs);
+
+  logAutoMessageDebug('scheduler-scheduled', {
+    reason,
+    schedulerTickInMs: delayMs,
+    now: new Date(now).toISOString(),
+    lastUserActivityAt: new Date(lastUserActivityAt).toISOString(),
+    nextDueTime: new Date(dueAt).toISOString(),
+    skipReason: skipReason || 'none'
+  });
+}
+
+async function runAutoMessageSchedulerTick() {
+  autoMessageScheduler = null;
+
+  const { now, dueAt, remainingMs } = getAutoMessageDueInfo();
+  const skipReason = getAutoMessageSkipReason();
+  logAutoMessageDebug('scheduler-tick', {
+    schedulerTick: 'run',
+    now: new Date(now).toISOString(),
+    lastUserActivityAt: new Date(lastUserActivityAt).toISOString(),
+    nextDueTime: new Date(dueAt).toISOString(),
+    remainingMs,
+    skipReason: skipReason || 'none'
+  });
+
+  if (skipReason) {
+    scheduleNextAutoMessageTick({ reason: `skip:${skipReason}` });
+    return;
+  }
+
+  await requestAutoNudge();
+  scheduleNextAutoMessageTick({ reason: 'post-request' });
+}
 
 
 function saveSettings() {
@@ -414,6 +490,12 @@ function showBubble(text, duration = 8000) {
 
 function markUserActivity() {
   lastUserActivityAt = Date.now();
+  logAutoMessageDebug('user-activity', {
+    now: new Date(lastUserActivityAt).toISOString(),
+    lastUserActivityAt: new Date(lastUserActivityAt).toISOString(),
+    nextDueTime: new Date(getAutoMessageDueInfo().dueAt).toISOString()
+  });
+  scheduleNextAutoMessageTick({ reason: 'user-activity' });
 }
 
 function addMessage(role, content, { thinking = false } = {}) {
@@ -768,17 +850,7 @@ async function requestAutoNudge() {
 }
 
 function startAutoMessageScheduler() {
-  window.clearInterval(autoMessageScheduler);
-  autoMessageScheduler = window.setInterval(() => {
-    if (!settings.autoMessageEnabled) return;
-    if (settings.mode === 'chat') return;
-
-    const intervalMinutes = Number(settings.autoMessageIntervalMinutes) || 20;
-    const idleMs = Date.now() - lastUserActivityAt;
-    if (idleMs < intervalMinutes * 60 * 1000) return;
-
-    requestAutoNudge();
-  }, 60 * 1000);
+  scheduleNextAutoMessageTick({ reason: 'start' });
 }
 
 function syncHostState(state = {}) {
