@@ -26,6 +26,7 @@ const AUTO_MESSAGE_MAX_TICK_MS = 10 * 1000;
 const DEV_AUTO_MESSAGE_LOG = true;
 const AUTO_ACTIVITY_MODE_KEY = 'yumiko_auto_message_recent_activity_mode';
 const AUTO_ACTIVITY_WEAK_WINDOW_KEY = 'yumiko_auto_message_weak_activity_ms';
+const DEFAULT_CHAT_HOTKEY = 'Control+Shift+J';
 
 const settingsPanel = document.getElementById('settings-panel');
 const toggleSettingsButton = document.getElementById('toggle-settings');
@@ -33,6 +34,10 @@ const quitAppButton = document.getElementById('quit-app');
 const overlayToggle = document.getElementById('overlay-enabled');
 const clickThroughToggle = document.getElementById('click-through-enabled');
 const shortcutsToggle = document.getElementById('shortcuts-enabled');
+const chatHotkeyInput = document.getElementById('chat-hotkey');
+const chatHotkeySaveButton = document.getElementById('chat-hotkey-save');
+const chatHotkeyResetButton = document.getElementById('chat-hotkey-reset');
+const chatHotkeyError = document.getElementById('chat-hotkey-error');
 const authStatus = document.getElementById('auth-status');
 const authActionButton = document.getElementById('auth-action');
 const autoMessageToggle = document.getElementById('auto-message-enabled');
@@ -1116,12 +1121,30 @@ function startAutoMessageScheduler() {
   scheduleNextAutoMessageTick({ reason: 'start' });
 }
 
+function renderChatHotkeyError(message = '') {
+  if (!chatHotkeyError) return;
+  const text = typeof message === 'string' ? message.trim() : '';
+  chatHotkeyError.textContent = text;
+  chatHotkeyError.hidden = !text;
+}
+
+async function persistChatHotkey(hotkey) {
+  const normalized = typeof hotkey === 'string' && hotkey.trim() ? hotkey.trim() : DEFAULT_CHAT_HOTKEY;
+  const result = await window.yumikoOverlay?.setChatHotkey?.(normalized);
+  if (chatHotkeyInput) {
+    chatHotkeyInput.value = result?.hotkey || normalized;
+  }
+  renderChatHotkeyError(result?.error || '');
+}
+
 function syncHostState(state = {}) {
   console.info('[yumiko][renderer] state updated', { authState: state?.authState });
   renderAuthState(state);
   if (overlayToggle) overlayToggle.checked = Boolean(state.overlayEnabled);
   if (clickThroughToggle) clickThroughToggle.checked = Boolean(state.clickThroughPreferred ?? state.clickThroughEnabled);
   if (shortcutsToggle) shortcutsToggle.checked = Boolean(state.shortcutsEnabled);
+  if (chatHotkeyInput) chatHotkeyInput.value = state.chatHotkey || DEFAULT_CHAT_HOTKEY;
+  renderChatHotkeyError(state.shortcutRegistrationError || '');
 
   if (state.mode) {
     setMode(state.mode, { source: 'state-sync' });
@@ -1163,6 +1186,32 @@ clickThroughToggle?.addEventListener('change', () => {
 
 shortcutsToggle?.addEventListener('change', () => {
   window.yumikoOverlay?.setShortcutsEnabled?.(shortcutsToggle.checked);
+});
+
+chatHotkeySaveButton?.addEventListener('click', async () => {
+  try {
+    await persistChatHotkey(chatHotkeyInput?.value || DEFAULT_CHAT_HOTKEY);
+  } catch (error) {
+    renderChatHotkeyError(error instanceof Error ? error.message : String(error));
+  }
+});
+
+chatHotkeyInput?.addEventListener('keydown', async (event) => {
+  if (event.key !== 'Enter') return;
+  event.preventDefault();
+  try {
+    await persistChatHotkey(chatHotkeyInput?.value || DEFAULT_CHAT_HOTKEY);
+  } catch (error) {
+    renderChatHotkeyError(error instanceof Error ? error.message : String(error));
+  }
+});
+
+chatHotkeyResetButton?.addEventListener('click', async () => {
+  try {
+    await persistChatHotkey(DEFAULT_CHAT_HOTKEY);
+  } catch (error) {
+    renderChatHotkeyError(error instanceof Error ? error.message : String(error));
+  }
 });
 
 autoMessageToggle?.addEventListener('change', () => {
@@ -1353,6 +1402,10 @@ window.addEventListener('DOMContentLoaded', () => {
   }
 
   window.yumikoOverlay?.onStateUpdated?.(syncHostState);
+  window.yumikoOverlay?.onFocusInput?.(() => {
+    setMode('chat', { source: 'state-sync' });
+    input?.focus();
+  });
   window.addEventListener('yumiko:auth-code', (event) => {
     const code = typeof event?.detail?.code === 'string' ? event.detail.code : '';
     exchangeCode(code);

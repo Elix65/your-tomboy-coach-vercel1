@@ -37,6 +37,7 @@ const defaultSettings = {
   overlayEnabled: true,
   clickThroughPreferred: false,
   shortcutsEnabled: true,
+  chatHotkey: 'Control+Shift+J',
   visible: true,
   bounds: null,
   hasCompletedFirstRun: false,
@@ -68,12 +69,20 @@ function resolveYumikoWebOrigin(persistedSettings = {}) {
 
 const SHORTCUTS = {
   toggleVisible: 'CommandOrControl+Shift+Y',
-  toggleMode: 'CommandOrControl+Shift+M',
+  defaultChatFocus: 'Control+Shift+J',
   forceQuit: 'CommandOrControl+Shift+Q',
   panicReset: 'Control+Alt+R',
   panicSafeMode: 'CommandOrControl+Alt+Shift+S',
   emergencyClickThrough: 'CommandOrControl+Alt+C'
 };
+
+let registeredChatHotkey = null;
+let shortcutRegistrationError = '';
+
+function normalizeChatHotkey(value) {
+  const raw = typeof value === 'string' ? value.trim() : '';
+  return raw || SHORTCUTS.defaultChatFocus;
+}
 
 function safeBounds(bounds, reason = 'unknown') {
   const fallback = { x: 80, y: 80, width: 420, height: 420 };
@@ -194,6 +203,7 @@ function readSettings() {
       clickThroughPreferred: Boolean(parsed.clickThroughPreferred ?? parsed.clickThroughEnabled),
       mode: migratedMode,
       userPickedMode,
+      chatHotkey: normalizeChatHotkey(parsed.chatHotkey),
       yumikoWebOrigin: resolveYumikoWebOrigin(parsed)
     };
 
@@ -310,6 +320,8 @@ function clearAuth() {
 function getState() {
   return {
     ...settings,
+    chatHotkey: normalizeChatHotkey(settings.chatHotkey),
+    shortcutRegistrationError,
     authState: { ...authState }
   };
 }
@@ -638,9 +650,45 @@ function setMode(mode, { fromRenderer = false, userPickedMode = false } = {}) {
   }
 }
 
+function focusChatInput() {
+  if (!win || win.isDestroyed() || win.webContents.isLoading()) return;
+  win.webContents.send('yumiko:focus-input');
+}
+
+function openChatAndFocusInput() {
+  if (!win || win.isDestroyed()) return;
+
+  settings.visible = true;
+  writeSettings();
+  win.show();
+  win.focus();
+
+  const currentMode = settings.mode;
+  setMode('chat', { userPickedMode: true });
+  if (currentMode === 'chat') {
+    focusChatInput();
+  }
+}
+
+function registerChatHotkey() {
+  const chatHotkey = normalizeChatHotkey(settings.chatHotkey);
+  settings.chatHotkey = chatHotkey;
+  registeredChatHotkey = null;
+  shortcutRegistrationError = '';
+
+  const registered = globalShortcut.register(chatHotkey, openChatAndFocusInput);
+  if (!registered) {
+    shortcutRegistrationError = `No se pudo registrar el atajo de chat (${chatHotkey}). Está en uso por otra app o el sistema. Cambialo desde Settings.`;
+    console.error('[yumiko][shortcuts] chat hotkey registration failed', { chatHotkey });
+    return;
+  }
+
+  registeredChatHotkey = chatHotkey;
+}
+
 function updateGlobalShortcuts() {
   globalShortcut.unregister(SHORTCUTS.toggleVisible);
-  globalShortcut.unregister(SHORTCUTS.toggleMode);
+  if (registeredChatHotkey) globalShortcut.unregister(registeredChatHotkey);
   globalShortcut.unregister(SHORTCUTS.forceQuit);
   globalShortcut.unregister(SHORTCUTS.panicReset);
   globalShortcut.unregister(SHORTCUTS.panicSafeMode);
@@ -671,11 +719,26 @@ function updateGlobalShortcuts() {
   }
 
   if (!settings.shortcutsEnabled) {
+    shortcutRegistrationError = '';
     return;
   }
 
   globalShortcut.register(SHORTCUTS.toggleVisible, toggleVisible);
-  globalShortcut.register(SHORTCUTS.toggleMode, toggleMode);
+  registerChatHotkey();
+}
+
+function setChatHotkey(nextHotkey) {
+  const normalizedHotkey = normalizeChatHotkey(nextHotkey);
+  settings.chatHotkey = normalizedHotkey;
+  writeSettings();
+  updateGlobalShortcuts();
+  broadcastState();
+  refreshTrayMenu();
+  return {
+    ok: !shortcutRegistrationError,
+    hotkey: settings.chatHotkey,
+    error: shortcutRegistrationError
+  };
 }
 
 function setShortcutsEnabled(enabled) {
@@ -731,6 +794,7 @@ function showAndFocusChat() {
   win.show();
   win.focus();
   setMode('chat', { userPickedMode: true });
+  focusChatInput();
 }
 
 function showChatInactive() {
@@ -745,7 +809,7 @@ function refreshTrayMenu() {
   if (!tray || !win) return;
   const contextMenu = Menu.buildFromTemplate([
     { label: win.isVisible() ? 'Hide' : 'Show', click: toggleVisible },
-    { label: 'Toggle Focus/Chat', click: toggleMode },
+    { label: `Abrir chat + foco input (${settings.chatHotkey || SHORTCUTS.defaultChatFocus})`, click: openChatAndFocusInput },
     {
       label: 'Modo Overlay (Siempre arriba)',
       type: 'checkbox',
@@ -1122,6 +1186,7 @@ if (!singleInstance) {
       setMode(mode, { fromRenderer: true, userPickedMode: true });
     });
     ipcMain.on('yumiko:set-shortcuts-enabled', (_event, enabled) => setShortcutsEnabled(enabled));
+    ipcMain.handle('yumiko:set-chat-hotkey', (_event, hotkey) => setChatHotkey(hotkey));
     ipcMain.on('yumiko:set-click-through-enabled', (_event, enabled) => setClickThroughEnabled(enabled));
     ipcMain.on('yumiko:set-overlay-enabled', (_event, enabled) => setOverlayEnabled(enabled));
     ipcMain.on('yumiko:complete-first-run', () => completeFirstRun());
