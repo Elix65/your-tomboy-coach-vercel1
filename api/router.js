@@ -2372,16 +2372,25 @@ async function overlayNudgeHandler(req, res) {
       lastMessage: String(settingsRow?.last_nudge_message || '').trim()
     });
 
-    const { error: insertErr } = await supabaseAdmin
+    const { data: insertedMessage, error: insertErr } = await supabaseAdmin
       .from('messages')
       .insert({
         user_id: userId,
         sender: 'yumiko',
         content: message,
         message_type: 'text'
-      });
+      })
+      .select('id,created_at')
+      .single();
 
     if (insertErr) return res.status(500).json({ error: insertErr.message || 'Error persisting nudge message.' });
+
+    console.info('[yumiko][auto-nudge] persisted new message id=' + String(insertedMessage?.id || ''), {
+      messageId: insertedMessage?.id || null,
+      createdAt: insertedMessage?.created_at || null,
+      bucket,
+      effectiveInterval
+    });
 
     const { error: upsertErr } = await supabaseAdmin
       .from('overlay_nudge_settings')
@@ -2401,7 +2410,11 @@ async function overlayNudgeHandler(req, res) {
       effectiveInterval
     });
 
-    return res.status(200).json({ message });
+    return res.status(200).json({
+      message,
+      message_id: insertedMessage?.id || null,
+      created_at: insertedMessage?.created_at || null
+    });
   } catch (error) {
     console.error('overlay-nudge fatal:', error);
     return res.status(500).json({ error: 'Internal error' });

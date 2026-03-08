@@ -179,7 +179,9 @@ async function requestNudge({ baseUrl, overlayAccessToken, intervalMinutes }) {
 
   const data = await parseJsonResponse(response, {});
   return {
-    message: typeof data?.message === 'string' && data.message.trim() ? data.message.trim() : null
+    message: typeof data?.message === 'string' && data.message.trim() ? data.message.trim() : null,
+    messageId: data?.message_id == null ? null : String(data.message_id),
+    createdAt: typeof data?.created_at === 'string' ? data.created_at : null
   };
 }
 

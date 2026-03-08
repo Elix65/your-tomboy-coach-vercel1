@@ -759,9 +759,24 @@ function clearMessages() {
 
 function renderMessages(messages = []) {
   clearMessages();
-  messages.forEach(({ role, content }) => {
+  let previousRole = '';
+
+  messages.forEach(({ id, createdAt, role, content }, index) => {
     if ((role === 'user' || role === 'assistant') && typeof content === 'string') {
+      if (role === 'assistant' && previousRole === 'assistant') {
+        console.info('[yumiko][chat] detected grouped assistant messages reason=consecutive-assistant', {
+          previousIndex: index - 1,
+          index,
+          messageId: id || null
+        });
+      }
+      console.info('[yumiko][chat] rendering message id=' + String(id || `idx-${index}`), {
+        index,
+        role,
+        createdAt: createdAt || null
+      });
       addMessage(role, content);
+      previousRole = role;
     }
   });
 
@@ -953,22 +968,13 @@ function setMode(nextMode, { source = 'ui' } = {}) {
 async function loadChatHistory() {
   try {
     const result = await window.yumikoOverlay?.chat?.getHistory?.();
-    const records = Array.isArray(result?.records)
-      ? result.records
-      : Array.isArray(result?.messages)
-        ? result.messages
-        : [];
+    const messages = normalizeHistoryRecords(result);
 
-    const messages = records.map(({ sender, role, content }) => ({
-      role: sender === 'user' || role === 'user' ? 'user' : 'assistant',
-      content: typeof content === 'string' ? content : ''
-    })).filter((item) => item.content);
-
-    contextCache = messages.slice(-20);
+    contextCache = messages.slice(-20).map((item) => ({ role: item.role, content: item.content }));
     renderMessages(messages);
 
     console.info('[yumiko][widget] history loaded', {
-      records: records.length,
+      records: messages.length,
       contextCache: contextCache.length
     });
   } catch (error) {
@@ -994,12 +1000,19 @@ function normalizeHistoryRecords(result) {
       ? result.messages
       : [];
 
-  return records
-    .map(({ sender, role, content }) => ({
+  console.info('[yumiko][history] received records count=' + String(records.length));
+
+  const normalized = records
+    .map(({ id, created_at: createdAt, sender, role, content }) => ({
+      id: id == null ? '' : String(id),
+      createdAt: typeof createdAt === 'string' ? createdAt : '',
       role: sender === 'user' || role === 'user' ? 'user' : 'assistant',
       content: typeof content === 'string' ? content.trim() : ''
     }))
     .filter((item) => item.content);
+
+  console.info('[yumiko][history] normalize result count=' + String(normalized.length));
+  return normalized;
 }
 
 function findLatestAssistantAfterBaseline(messages, baselineSize, baselineTail) {
@@ -1220,7 +1233,7 @@ async function requestAutoNudge() {
       const historyMessages = normalizeHistoryRecords(historyResult);
       message = findLatestAssistantAfterBaseline(historyMessages, baselineContextSize, baselineAssistantTail);
       if (historyMessages.length > 0) {
-        contextCache = historyMessages.slice(-20);
+        contextCache = historyMessages.slice(-20).map((item) => ({ role: item.role, content: item.content }));
       }
       if (!message) {
         messageSource = 'none';
