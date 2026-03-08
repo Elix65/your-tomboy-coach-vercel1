@@ -128,6 +128,11 @@ let lastAssistantMessageIdShownInBubble = '';
 let lastAssistantMessageAt = 0;
 let lastAssistantMessageText = '';
 let pendingAssistantReplyAfterUserMessage = false;
+let lastLocalModeIntent = {
+  mode: toUiMode(settings.mode),
+  source: 'init',
+  at: 0
+};
 
 function clampToViewport(value, min, max) {
   if (!Number.isFinite(value)) return min;
@@ -852,6 +857,12 @@ function focusChatInputRobust({ reason = 'unknown', sendAck = false } = {}) {
 function setMode(nextMode, { source = 'ui' } = {}) {
   const mode = toUiMode(nextMode);
   const previousMode = settings.mode;
+  console.info('[yumiko][mode] before change', {
+    previousMode,
+    requestedMode: nextMode,
+    normalizedMode: mode,
+    source
+  });
   if (settings.mode === mode && source !== 'state-sync') {
     console.info('[yumiko][route] setMode noop', { mode, source });
   } else {
@@ -867,6 +878,13 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   }
 
   settings.mode = mode;
+  if (source !== 'state-sync') {
+    lastLocalModeIntent = {
+      mode,
+      source,
+      at: Date.now()
+    };
+  }
   saveSettings();
 
   if (widget) {
@@ -921,6 +939,15 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   } else {
     requestFitDebounced();
   }
+
+  console.info('[yumiko][mode] after change', {
+    previousMode,
+    currentMode: settings.mode,
+    source,
+    widgetMode: widget?.dataset?.mode || null,
+    chatHidden: chat?.hidden ?? null,
+    miniHidden: mini?.hidden ?? null
+  });
 }
 
 async function loadChatHistory() {
@@ -1285,7 +1312,33 @@ function syncHostState(state = {}) {
   renderChatHotkeyError(state.shortcutRegistrationError || '');
 
   if (state.mode) {
-    setMode(state.mode, { source: 'state-sync' });
+    const incomingMode = toUiMode(state.mode);
+    const currentMode = toUiMode(settings.mode);
+    const localIntentAgeMs = Date.now() - lastLocalModeIntent.at;
+    const shouldIgnoreStaleSync = incomingMode !== currentMode
+      && lastLocalModeIntent.mode === currentMode
+      && localIntentAgeMs >= 0
+      && localIntentAgeMs < 2000;
+
+    if (shouldIgnoreStaleSync) {
+      console.info('[yumiko][mode] state-sync applied', {
+        applied: false,
+        reason: 'stale-host-mode',
+        incomingMode,
+        currentMode,
+        lastLocalModeIntent,
+        localIntentAgeMs
+      });
+    } else {
+      console.info('[yumiko][mode] state-sync applied', {
+        applied: true,
+        incomingMode,
+        currentMode,
+        lastLocalModeIntent,
+        localIntentAgeMs
+      });
+      setMode(incomingMode, { source: 'state-sync' });
+    }
   }
 
   syncAutoMessageControls();
@@ -1495,6 +1548,10 @@ input?.addEventListener('keydown', (event) => {
 function handleEscapeToFocus(event) {
   if (event.key !== 'Escape' || settings.mode !== 'chat') return;
   event.preventDefault();
+  console.info('[yumiko][mode] close-chat -> focus', {
+    source: 'hotkey',
+    trigger: 'escape'
+  });
   setMode('focus', { source: 'hotkey' });
 }
 
@@ -1547,12 +1604,18 @@ window.addEventListener('DOMContentLoaded', () => {
   window.yumikoOverlay?.onToggleChatFromHotkey?.((payload) => {
     const targetMode = payload?.targetMode === 'focus' ? 'focus' : 'chat';
     if (targetMode === 'chat') {
+      console.info('[yumiko][mode] hotkey toggle -> chat', {
+        previousMode: settings.mode
+      });
       console.info('[yumiko][renderer] switching to chat', { source: 'hotkey' });
       setMode('chat', { source: 'hotkey' });
       focusChatInputRobust({ reason: 'hotkey:toggle-chat', sendAck: true });
       return;
     }
 
+    console.info('[yumiko][mode] hotkey toggle -> focus', {
+      previousMode: settings.mode
+    });
     console.info('[yumiko][renderer] switching to focus', { source: 'hotkey' });
     setMode('focus', { source: 'hotkey' });
   });
