@@ -665,22 +665,34 @@ function requestWindowFocusForChat(reason = 'unknown') {
   win.webContents.focus();
 }
 
-function openChatAndFocusInput() {
+function toggleChatFromHotkey() {
   if (!win || win.isDestroyed()) return;
 
-  console.info('[yumiko][hotkey] open-chat triggered');
+  console.info('[yumiko][hotkey] toggle triggered');
+  console.info('[yumiko][hotkey] current mode before toggle', { mode: settings.mode });
+
+  const currentMode = settings.mode;
+  if (currentMode === 'chat') {
+    setMode('focus', { userPickedMode: true });
+    if (!win.webContents.isLoading()) {
+      win.webContents.send('yumiko:toggle-chat-from-hotkey', {
+        targetMode: 'focus',
+        previousMode: currentMode
+      });
+    }
+    return;
+  }
 
   settings.visible = true;
   writeSettings();
   requestWindowFocusForChat('hotkey:open-chat:start');
 
-  const currentMode = settings.mode;
   setMode('chat', { userPickedMode: true });
   if (!win.webContents.isLoading()) {
-    if (currentMode === 'chat') {
-      focusChatInput();
-    }
-    win.webContents.send('yumiko:open-chat-from-hotkey', { alreadyInChat: currentMode === 'chat' });
+    win.webContents.send('yumiko:toggle-chat-from-hotkey', {
+      targetMode: 'chat',
+      previousMode: currentMode
+    });
   }
 }
 
@@ -690,7 +702,7 @@ function registerChatHotkey() {
   registeredChatHotkey = null;
   shortcutRegistrationError = '';
 
-  const registered = globalShortcut.register(chatHotkey, openChatAndFocusInput);
+  const registered = globalShortcut.register(chatHotkey, toggleChatFromHotkey);
   if (!registered) {
     shortcutRegistrationError = `No se pudo registrar el atajo de chat (${chatHotkey}). Está en uso por otra app o el sistema. Cambialo desde Settings.`;
     console.error('[yumiko][shortcuts] chat hotkey registration failed', { chatHotkey });
@@ -823,7 +835,7 @@ function refreshTrayMenu() {
   if (!tray || !win) return;
   const contextMenu = Menu.buildFromTemplate([
     { label: win.isVisible() ? 'Hide' : 'Show', click: toggleVisible },
-    { label: `Abrir chat + foco input (${settings.chatHotkey || SHORTCUTS.defaultChatFocus})`, click: openChatAndFocusInput },
+    { label: `Abrir chat + foco input (${settings.chatHotkey || SHORTCUTS.defaultChatFocus})`, click: toggleChatFromHotkey },
     {
       label: 'Modo Overlay (Siempre arriba)',
       type: 'checkbox',
