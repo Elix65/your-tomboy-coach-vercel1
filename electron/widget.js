@@ -739,22 +739,39 @@ function onOutsideClick(event) {
   closeSettingsPanel();
 }
 
-function focusChatInputReliable({ reason = 'unknown', sendAck = false } = {}) {
+function focusChatInputRobust({ reason = 'unknown', sendAck = false } = {}) {
+  const tryFocus = (attempt = 'unknown') => {
+    const chatInput = input || chat?.querySelector('textarea, input[type="text"], input:not([type])');
+    if (!chatInput) {
+      console.warn('[yumiko][renderer] input focus failed', { reason, attempt, missingInput: true });
+      return false;
+    }
+
+    console.info('[yumiko][renderer] input focus attempt', { reason, attempt });
+    chatInput.focus();
+    const end = chatInput.value?.length || 0;
+    if (typeof chatInput.setSelectionRange === 'function') {
+      chatInput.setSelectionRange(end, end);
+    }
+
+    const focused = document.activeElement === chatInput;
+    if (focused) {
+      console.info('[yumiko][renderer] input focus success', { reason, attempt });
+    }
+    return focused;
+  };
+
   window.requestAnimationFrame(() => {
+    const firstOk = tryFocus('raf');
     window.setTimeout(() => {
-      if (!input) return;
-      console.info('[yumiko][renderer] input focus attempted', { reason });
-      input.focus();
-      const end = input.value?.length || 0;
-      if (typeof input.setSelectionRange === 'function') {
-        input.setSelectionRange(end, end);
+      const secondOk = tryFocus('timeout-30ms');
+      if (!firstOk && !secondOk) {
+        console.warn('[yumiko][renderer] input focus failed', { reason, attempt: 'all' });
       }
-      const focused = document.activeElement === input;
-      console.info('[yumiko][renderer] input focus success', { reason, focused });
       if (sendAck) {
         window.yumikoOverlay?.chatReady?.();
       }
-    }, 0);
+    }, 30);
   });
 }
 
@@ -810,7 +827,7 @@ function setMode(nextMode, { source = 'ui' } = {}) {
     markUserActivity({ event: 'open-chat-mode', strength: 'strong' });
     hideBubble('chat-open');
     markUserActivity();
-    focusChatInputReliable({ reason: `setMode:${source}` });
+    focusChatInputRobust({ reason: `setMode:${source}` });
   } else {
     closeSettingsPanel();
     scheduleBubblePosition();
@@ -1271,7 +1288,7 @@ authActionButton?.addEventListener('click', async () => {
 miniChatButton?.addEventListener('click', () => {
   markUserActivity({ event: 'mini-chat-button', strength: 'strong' });
   setMode('chat', { source: 'ui' });
-  focusChatInputReliable({ reason: 'mini-chat-button' });
+  focusChatInputRobust({ reason: 'mini-chat-button' });
 });
 
 miniMicButton?.addEventListener('click', () => {
@@ -1423,13 +1440,19 @@ window.addEventListener('DOMContentLoaded', () => {
   window.yumikoOverlay?.onStateUpdated?.(syncHostState);
   window.yumikoOverlay?.onFocusInput?.(() => {
     setMode('chat', { source: 'state-sync' });
-    focusChatInputReliable({ reason: 'main:focus-input' });
+    focusChatInputRobust({ reason: 'main:focus-input' });
   });
-  window.yumikoOverlay?.onOpenChatFromHotkey?.((payload) => {
-    const alreadyInChat = Boolean(payload?.alreadyInChat);
-    console.info('[yumiko][renderer] chat mode entered', { source: 'hotkey', alreadyInChat });
-    setMode('chat', { source: 'hotkey' });
-    focusChatInputReliable({ reason: alreadyInChat ? 'hotkey:already-chat' : 'hotkey:open-chat', sendAck: true });
+  window.yumikoOverlay?.onToggleChatFromHotkey?.((payload) => {
+    const targetMode = payload?.targetMode === 'focus' ? 'focus' : 'chat';
+    if (targetMode === 'chat') {
+      console.info('[yumiko][renderer] switching to chat', { source: 'hotkey' });
+      setMode('chat', { source: 'hotkey' });
+      focusChatInputRobust({ reason: 'hotkey:toggle-chat', sendAck: true });
+      return;
+    }
+
+    console.info('[yumiko][renderer] switching to focus', { source: 'hotkey' });
+    setMode('focus', { source: 'hotkey' });
   });
   window.addEventListener('yumiko:auth-code', (event) => {
     const code = typeof event?.detail?.code === 'string' ? event.detail.code : '';
