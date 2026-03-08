@@ -11,6 +11,7 @@ const DEFAULT_SETTINGS = {
   autoMessageIntervalMinutes: 20
 };
 const AUTO_MESSAGE_INTERVAL_OPTIONS = [1, 2, 5, 10, 20];
+const RECENT_FOCUS_REPLY_CARRY_WINDOW_MS = 7000;
 const CHAT_WINDOW_SIZE = { width: 560, height: 380 };
 const MINI_SCALE_MIN = 0.35;
 const MINI_SCALE_MAX = 1;
@@ -121,6 +122,12 @@ let lastGoodFocusFitSize = null;
 let ignoreNextResize = false;
 let bubbleHideTimer = null;
 let bubbleRepositionRaf = null;
+let assistantMessageSequence = 0;
+let lastAssistantMessageId = '';
+let lastAssistantMessageIdShownInBubble = '';
+let lastAssistantMessageAt = 0;
+let lastAssistantMessageText = '';
+let pendingAssistantReplyAfterUserMessage = false;
 
 function clampToViewport(value, min, max) {
   if (!Number.isFinite(value)) return min;
@@ -629,6 +636,111 @@ function showBubble(text, duration = 8000) {
   }, Math.max(1000, timeoutMs));
 }
 
+
+function normalizeAssistantMessageId(messageId = '', fallbackText = '') {
+  const trimmedId = typeof messageId === 'string' ? messageId.trim() : '';
+  if (trimmedId) return trimmedId;
+  assistantMessageSequence += 1;
+  const compactText = typeof fallbackText === 'string' ? fallbackText.trim().slice(0, 64) : '';
+  return `assistant-${Date.now()}-${assistantMessageSequence}-${compactText}`;
+}
+
+function registerAssistantReplyForCarry({ text = '', messageId = '', at = Date.now() } = {}) {
+  const safeText = typeof text === 'string' ? text.trim() : '';
+  if (!safeText) return null;
+
+  const normalizedId = normalizeAssistantMessageId(messageId, safeText);
+  lastAssistantMessageId = normalizedId;
+  lastAssistantMessageAt = Number.isFinite(Number(at)) ? Number(at) : Date.now();
+  lastAssistantMessageText = safeText;
+
+  console.info('[yumiko][reply-carry] assistant reply received', {
+    messageId: normalizedId,
+    at: new Date(lastAssistantMessageAt).toISOString(),
+    mode: settings.mode
+  });
+
+  return {
+    id: normalizedId,
+    at: lastAssistantMessageAt,
+    text: safeText
+  };
+}
+
+function showStoredAssistantReplyInFocus({ reason = 'focus-return' } = {}) {
+  const messageId = typeof lastAssistantMessageId === 'string' ? lastAssistantMessageId.trim() : '';
+  if (!pendingAssistantReplyAfterUserMessage) {
+    return false;
+  }
+  const now = Date.now();
+  const hasText = Boolean(lastAssistantMessageText && lastAssistantMessageText.trim());
+  const ageMs = now - (Number(lastAssistantMessageAt) || 0);
+  const hasFreshReply = hasText && Number.isFinite(ageMs) && ageMs >= 0 && ageMs <= RECENT_FOCUS_REPLY_CARRY_WINDOW_MS;
+
+  const currentMessageId = messageId;
+
+  if (!hasFreshReply) {
+    if (hasText) {
+      console.info('[yumiko][reply-carry] skipped expired', {
+        reason,
+        ageMs,
+        windowMs: RECENT_FOCUS_REPLY_CARRY_WINDOW_MS,
+        mode: settings.mode
+      });
+    }
+    pendingAssistantReplyAfterUserMessage = false;
+    return false;
+  }
+
+  if (lastAssistantMessageIdShownInBubble === currentMessageId) {
+    console.info('[yumiko][reply-carry] skipped duplicate', {
+      reason,
+      messageId: currentMessageId,
+      mode: settings.mode
+    });
+    pendingAssistantReplyAfterUserMessage = false;
+    return false;
+  }
+
+  console.info('[yumiko][reply-carry] showing on focus return', {
+    reason,
+    messageId: currentMessageId,
+    durationMs: RECENT_FOCUS_REPLY_CARRY_WINDOW_MS
+  });
+  showBubble(lastAssistantMessageText, RECENT_FOCUS_REPLY_CARRY_WINDOW_MS);
+  lastAssistantMessageIdShownInBubble = currentMessageId;
+  pendingAssistantReplyAfterUserMessage = false;
+  return true;
+}
+
+function handleAssistantReplyCarry({ text = '', messageId = '', at = Date.now() } = {}) {
+  const stored = registerAssistantReplyForCarry({ text, messageId, at });
+  if (!stored) return;
+
+  if (settings.mode === 'focus') {
+    if (lastAssistantMessageIdShownInBubble === stored.id) {
+      console.info('[yumiko][reply-carry] skipped duplicate', {
+        reason: 'assistant-reply-focus',
+        messageId: stored.id,
+        mode: settings.mode
+      });
+      return;
+    }
+    showBubble(stored.text, RECENT_FOCUS_REPLY_CARRY_WINDOW_MS);
+    lastAssistantMessageIdShownInBubble = stored.id;
+    pendingAssistantReplyAfterUserMessage = false;
+    return;
+  }
+
+  if (pendingAssistantReplyAfterUserMessage) {
+    console.info('[yumiko][reply-carry] stored for focus carry-over', {
+      messageId: stored.id,
+      at: new Date(stored.at).toISOString(),
+      mode: settings.mode
+    });
+  }
+}
+
 function markUserActivity({ event = 'unknown', strength = 'strong' } = {}) {
   const now = Date.now();
   if (strength === 'weak') {
@@ -831,6 +943,9 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   } else {
     closeSettingsPanel();
     scheduleBubblePosition();
+    if (previousMode === 'chat') {
+      showStoredAssistantReplyInFocus({ reason: `mode-switch:${source}` });
+    }
   }
 
   if (source === 'ui' || source === 'hotkey') {
@@ -921,6 +1036,11 @@ async function submitMessage() {
   if (!message) return;
 
   markUserActivity({ event: 'submit-message', strength: 'strong' });
+  pendingAssistantReplyAfterUserMessage = true;
+  console.info('[yumiko][reply-carry] user message sent', {
+    mode: settings.mode,
+    at: new Date().toISOString()
+  });
   addMessage('user', message);
   contextCache.push({ role: 'user', content: message });
   contextCache = contextCache.slice(-20);
@@ -946,9 +1066,19 @@ async function submitMessage() {
       addMessage('assistant', reply);
     }
 
-    if (settings.mode === 'focus') {
-      showBubble(reply);
-    }
+    const replyMessageId = typeof result?.replyId === 'string'
+      ? result.replyId
+      : typeof result?.messageId === 'string'
+        ? result.messageId
+        : typeof result?.id === 'string'
+          ? result.id
+          : '';
+
+    handleAssistantReplyCarry({
+      text: reply,
+      messageId: replyMessageId,
+      at: Date.now()
+    });
 
     contextCache.push({ role: 'assistant', content: reply });
     contextCache = contextCache.slice(-20);
@@ -968,6 +1098,7 @@ async function submitMessage() {
     } else {
       addMessage('assistant', fallback);
     }
+    pendingAssistantReplyAfterUserMessage = false;
     if (authCode) {
       console.warn(`[yumiko][auth] ${authCode} on widget sendMessage`);
     }
