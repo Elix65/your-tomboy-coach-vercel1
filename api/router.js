@@ -2146,6 +2146,7 @@ const OVERLAY_GENERIC_NUDGE_LINES = [
   'Si querés, lo retomamos juntas.'
 ];
 
+const OVERLAY_NUDGE_INTERVAL_OPTIONS = [1, 2, 5, 10, 20, 40];
 const CONTEXTUAL_BUCKETS = ['contextual-question', 'contextual-followup', 'contextual-reminder'];
 const TRIVIAL_MESSAGE_RE = /^(ok(ay)?|dale|si|sí|jaja+|jeje+|jj+|xd+|uhm+|mmm+|listo|va|bien|genial|👍|👌|🙂|😂|🙏|gracias)[.!?\s]*$/i;
 
@@ -2200,11 +2201,16 @@ function buildConversationNudgeContext(messages = []) {
 }
 
 function pickGenericNudge(lastMessage = '') {
-  const candidates = OVERLAY_GENERIC_NUDGE_LINES.filter((line) => line !== lastMessage);
-  const pool = candidates.length ? candidates : OVERLAY_GENERIC_NUDGE_LINES;
+  const candidates = OVERLAY_GENERIC_NUDGE_LINES
+    .map((line, index) => ({ line, bucket: `generic-presence-${index + 1}` }))
+    .filter((entry) => entry.line !== lastMessage);
+  const pool = candidates.length
+    ? candidates
+    : OVERLAY_GENERIC_NUDGE_LINES.map((line, index) => ({ line, bucket: `generic-presence-${index + 1}` }));
+  const chosen = pool[Math.floor(Math.random() * pool.length)] || pool[0];
   return {
-    bucket: 'generic-presence',
-    message: pool[Math.floor(Math.random() * pool.length)]
+    bucket: chosen?.bucket || 'generic-presence-1',
+    message: chosen?.line || OVERLAY_GENERIC_NUDGE_LINES[0]
   };
 }
 
@@ -2253,7 +2259,7 @@ async function overlayNudgeSettingsHandler(req, res) {
     const deviceId = auth.deviceId || 'default';
     const enabled = Boolean(req.body?.enabled);
     const requestedInterval = Number(req.body?.interval_minutes);
-    const intervalMinutes = [10, 20, 40].includes(requestedInterval) ? requestedInterval : 20;
+    const intervalMinutes = OVERLAY_NUDGE_INTERVAL_OPTIONS.includes(requestedInterval) ? requestedInterval : 20;
 
     const { error: upsertErr } = await supabaseAdmin
       .from('overlay_nudge_settings')
@@ -2291,7 +2297,7 @@ async function overlayNudgeHandler(req, res) {
     const userId = auth.userId;
     const deviceId = auth.deviceId || 'default';
     const requestedInterval = Number(req.body?.interval_minutes);
-    const intervalMinutes = [10, 20, 40].includes(requestedInterval) ? requestedInterval : 20;
+    const intervalMinutes = OVERLAY_NUDGE_INTERVAL_OPTIONS.includes(requestedInterval) ? requestedInterval : 20;
 
     const { data: settingsRow, error: settingsErr } = await supabaseAdmin
       .from('overlay_nudge_settings')
@@ -2304,7 +2310,7 @@ async function overlayNudgeHandler(req, res) {
 
     const enabled = settingsRow?.enabled ?? true;
     const persistedInterval = Number(settingsRow?.interval_minutes);
-    const effectiveInterval = [10, 20, 40].includes(persistedInterval) ? persistedInterval : intervalMinutes;
+    const effectiveInterval = OVERLAY_NUDGE_INTERVAL_OPTIONS.includes(persistedInterval) ? persistedInterval : intervalMinutes;
 
     const now = Date.now();
     const lastSentAtMs = settingsRow?.last_sent_at ? Date.parse(settingsRow.last_sent_at) : 0;
@@ -2318,7 +2324,26 @@ async function overlayNudgeHandler(req, res) {
       interval_minutes: intervalMinutes
     };
 
+    console.info('[yumiko][auto-nudge] request:start', {
+      userId,
+      deviceId,
+      enabled,
+      requestedInterval,
+      intervalMinutes,
+      effectiveInterval,
+      now: new Date(now).toISOString(),
+      lastSentAt: settingsRow?.last_sent_at || null,
+      elapsedMs
+    });
+
     if (!shouldSend) {
+      const skipReason = !enabled ? 'disabled' : 'interval-not-elapsed';
+      console.info('[yumiko][auto-nudge] skipped reason=' + skipReason, {
+        enabled,
+        elapsedMs,
+        requiredMs: effectiveInterval * 60 * 1000,
+        effectiveInterval
+      });
       await supabaseAdmin
         .from('overlay_nudge_settings')
         .upsert(upsertPayload, { onConflict: 'user_id,device_id' });
@@ -2335,6 +2360,13 @@ async function overlayNudgeHandler(req, res) {
     if (recentMessagesErr) return res.status(500).json({ error: recentMessagesErr.message || 'Error loading recent conversation context.' });
 
     const nudgeContext = buildConversationNudgeContext([...(recentMessages || [])].reverse());
+    console.info('[yumiko][auto-nudge] previous last_nudge_bucket=' + String(settingsRow?.last_nudge_bucket || ''));
+    console.info('[yumiko][auto-nudge] previous last_nudge_message=' + String(settingsRow?.last_nudge_message || ''));
+    console.info('[yumiko][auto-nudge] allowing consecutive nudge without user reply', {
+      hasRecentUserContext: Boolean(nudgeContext?.topic),
+      hasPendingQuestion: Boolean(nudgeContext?.hasPendingQuestion)
+    });
+
     const { bucket, message } = buildContextualNudge(nudgeContext, {
       lastBucket: settingsRow?.last_nudge_bucket || '',
       lastMessage: String(settingsRow?.last_nudge_message || '').trim()
@@ -2361,6 +2393,13 @@ async function overlayNudgeHandler(req, res) {
       }, { onConflict: 'user_id,device_id' });
 
     if (upsertErr) return res.status(500).json({ error: upsertErr.message || 'Error updating overlay nudge settings.' });
+
+    console.info('[yumiko][auto-nudge] result', {
+      sent: true,
+      bucket,
+      message,
+      effectiveInterval
+    });
 
     return res.status(200).json({ message });
   } catch (error) {
