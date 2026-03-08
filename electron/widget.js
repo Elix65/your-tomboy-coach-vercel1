@@ -270,87 +270,49 @@ function getAutoMessageSkipReason() {
   if (!settings.autoMessageEnabled) return 'disabled';
   if (settings.mode === 'chat') return 'chat-open';
   if (isNudgeInFlight) return 'nudge-in-flight';
-
-  const { strongRemainingMs, weakRemainingMs } = getAutoMessageDueInfo();
-  if (strongRemainingMs > 0) return 'recent-user-activity:strong';
-  if (weakRemainingMs > 0) return 'recent-user-activity:weak';
   return '';
 }
 
 function scheduleNextAutoMessageTick({ reason = 'unknown' } = {}) {
   clearAutoMessageScheduler();
-
-  const {
-    now,
-    mode,
-    strongDueAt,
-    weakDueAt,
-    strongRemainingMs,
-    weakRemainingMs
-  } = getAutoMessageDueInfo();
-  const skipReason = getAutoMessageSkipReason();
-  const remainingMs = skipReason === 'recent-user-activity:weak' ? weakRemainingMs : strongRemainingMs;
-  const delayMs = skipReason.startsWith('recent-user-activity')
-    ? clamp(remainingMs, AUTO_MESSAGE_MIN_TICK_MS, AUTO_MESSAGE_MAX_TICK_MS)
-    : AUTO_MESSAGE_MIN_TICK_MS;
-
+  const delayMs = AUTO_MESSAGE_MIN_TICK_MS;
   autoMessageScheduler = window.setTimeout(runAutoMessageSchedulerTick, delayMs);
 
   logAutoMessageDebug('scheduler-scheduled', {
     reason,
-    recentActivityMode: mode,
     schedulerTickInMs: delayMs,
-    now: new Date(now).toISOString(),
-    lastStrongUserActivityAt: new Date(lastStrongUserActivityAt).toISOString(),
-    lastWeakUserActivityAt: lastWeakUserActivityAt ? new Date(lastWeakUserActivityAt).toISOString() : null,
-    strongDueTime: new Date(strongDueAt).toISOString(),
-    weakDueTime: new Date(weakDueAt).toISOString(),
-    strongRemainingMs,
-    weakRemainingMs,
-    skipReason: skipReason || 'none'
+    skipReason: getAutoMessageSkipReason() || 'none'
   });
 }
 
 async function runAutoMessageSchedulerTick() {
   autoMessageScheduler = null;
-
-  const {
-    now,
-    mode,
-    strongDueAt,
-    weakDueAt,
-    strongRemainingMs,
-    weakRemainingMs
-  } = getAutoMessageDueInfo();
   const skipReason = getAutoMessageSkipReason();
-  logAutoMessageDebug('scheduler-tick', {
-    schedulerTick: 'run',
-    recentActivityMode: mode,
-    now: new Date(now).toISOString(),
-    lastStrongUserActivityAt: new Date(lastStrongUserActivityAt).toISOString(),
-    lastWeakUserActivityAt: lastWeakUserActivityAt ? new Date(lastWeakUserActivityAt).toISOString() : null,
-    strongDueTime: new Date(strongDueAt).toISOString(),
-    weakDueTime: new Date(weakDueAt).toISOString(),
-    strongRemainingMs,
-    weakRemainingMs,
-    skipReason: skipReason || 'none'
+
+  console.info('[yumiko][auto-nudge] tick', {
+    now: new Date().toISOString(),
+    mode: settings.mode,
+    autoMessageEnabled: settings.autoMessageEnabled,
+    intervalMinutes: settings.autoMessageIntervalMinutes,
+    isNudgeInFlight
   });
 
   if (skipReason) {
-    if (skipReason.startsWith('recent-user-activity')) {
-      const remainingMs = skipReason === 'recent-user-activity:weak' ? weakRemainingMs : strongRemainingMs;
-      logAutoMessageDebug('skip-recent-user-activity', {
-        skipReason,
-        remainingMsUntilAllowed: Math.max(0, remainingMs),
-        lastStrongUserActivityAt: new Date(lastStrongUserActivityAt).toISOString(),
-        lastWeakUserActivityAt: lastWeakUserActivityAt ? new Date(lastWeakUserActivityAt).toISOString() : null
-      });
-    }
+    console.info('[yumiko][auto-nudge] skipped reason=' + skipReason, {
+      mode: settings.mode,
+      autoMessageEnabled: settings.autoMessageEnabled,
+      isNudgeInFlight
+    });
     scheduleNextAutoMessageTick({ reason: `skip:${skipReason}` });
     return;
   }
 
-  await requestAutoNudge();
+  const nudgeResult = await requestAutoNudge();
+  console.info('[yumiko][auto-nudge] result', {
+    sent: Boolean(nudgeResult?.sent),
+    reason: nudgeResult?.reason || null,
+    messageSource: nudgeResult?.messageSource || null
+  });
   scheduleNextAutoMessageTick({ reason: 'post-request' });
 }
 
@@ -1193,7 +1155,13 @@ function syncAutoMessageControls() {
 }
 
 async function requestAutoNudge() {
-  if (isNudgeInFlight || !window.yumikoOverlay?.chat?.requestNudge) return;
+  if (isNudgeInFlight) {
+    return { sent: false, reason: 'in-flight' };
+  }
+  if (!window.yumikoOverlay?.chat?.requestNudge) {
+    return { sent: false, reason: 'missing-bridge' };
+  }
+
   isNudgeInFlight = true;
   try {
     const baselineContextSize = contextCache.length;
@@ -1271,14 +1239,17 @@ async function requestAutoNudge() {
       if (resolvedMode === 'chat') {
         addMessage('assistant', message);
       }
-    } else {
-      console.info('[yumiko][bubble] auto-show skipped reason=empty-message', {
-        mode: toUiMode(settings.mode),
-        message: result?.message ?? null
-      });
+      return { sent: true, reason: 'message-generated', messageSource };
     }
+
+    console.info('[yumiko][bubble] auto-show skipped reason=empty-message', {
+      mode: toUiMode(settings.mode),
+      message: result?.message ?? null
+    });
+    return { sent: false, reason: 'empty-message', messageSource };
   } catch (error) {
     console.warn('[yumiko][auto-message] nudge failed', error);
+    return { sent: false, reason: 'request-failed' };
   } finally {
     isNudgeInFlight = false;
   }
