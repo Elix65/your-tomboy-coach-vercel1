@@ -45,8 +45,8 @@ const shortcutsToggle = document.getElementById('shortcuts-enabled');
 const shortcutsList = document.getElementById('shortcuts-list');
 const shortcutsResetButton = document.getElementById('shortcuts-reset');
 const shortcutsError = document.getElementById('shortcuts-error');
-const authStatus = document.getElementById('auth-status');
-const authActionButton = document.getElementById('auth-action');
+let authStatus = document.getElementById('auth-status');
+let authActionButton = document.getElementById('auth-action');
 const autoMessageToggle = document.getElementById('auto-message-enabled');
 const autoMessageIntervalSelect = document.getElementById('auto-message-interval');
 const sideImageModeSelect = document.getElementById('side-image-mode');
@@ -76,6 +76,7 @@ let overlayConnected = false;
 let currentAuthState = { connected: false, user_id: '', device_id: '', device_name: '' };
 let isAuthExchangeInProgress = false;
 const processedAuthCodes = new Set();
+let authActionBound = false;
 
 const AUTH_MISSING_MESSAGE = 'No conectado. Abrí Settings > Vincular';
 const AUTH_INVALID_MESSAGE = 'Sesión expirada. Vinculá de nuevo';
@@ -1227,7 +1228,68 @@ function abbreviateUserId(value) {
   return `${value.slice(0, 6)}…${value.slice(-4)}`;
 }
 
+function ensureLinkingSettingsSection() {
+  if (!settingsPanel) return;
+
+  authStatus = document.getElementById('auth-status');
+  authActionButton = document.getElementById('auth-action');
+  if (authStatus && authActionButton) return;
+
+  const section = document.createElement('section');
+  section.className = 'settings-group';
+  section.setAttribute('aria-label', 'Vinculación');
+  section.innerHTML = `
+    <strong class="settings-group-title">Vinculación</strong>
+    <div class="auth-row">
+      <span id="auth-status" class="auth-status">No conectado</span>
+      <button id="auth-action" class="panel-btn" type="button">Vincular</button>
+    </div>
+  `;
+
+  const imageSectionTitle = Array.from(settingsPanel.querySelectorAll('.settings-group-title'))
+    .find((title) => title.textContent?.trim() === 'Imagen');
+  const imageSection = imageSectionTitle?.closest('.settings-group');
+
+  if (imageSection?.parentNode === settingsPanel) {
+    imageSection.insertAdjacentElement('afterend', section);
+  } else {
+    settingsPanel.appendChild(section);
+  }
+
+  authStatus = section.querySelector('#auth-status');
+  authActionButton = section.querySelector('#auth-action');
+}
+
+function bindAuthActionButton() {
+  if (!authActionButton || authActionBound) return;
+
+  authActionButton.addEventListener('click', async () => {
+    authActionButton.disabled = true;
+    try {
+      if (!overlayConnected) {
+        await window.yumikoOverlay?.openOverlayConnect?.();
+        return;
+      }
+
+      await window.yumikoOverlay?.disconnect?.();
+      const nextState = await window.yumikoOverlay?.getState?.();
+      syncHostState(nextState || {});
+      renderMessages([]);
+      addMessage('assistant', AUTH_MISSING_MESSAGE);
+    } catch (error) {
+      console.error('[yumiko][auth] auth action failed', error);
+    } finally {
+      if (authActionButton) authActionButton.disabled = isAuthExchangeInProgress;
+    }
+  });
+
+  authActionBound = true;
+}
+
 function renderAuthState(state = {}) {
+  ensureLinkingSettingsSection();
+  bindAuthActionButton();
+
   const nextAuthState = state?.authState && typeof state.authState === 'object'
     ? state.authState
     : state;
@@ -1603,26 +1665,6 @@ sideImageModeSelect?.addEventListener('change', () => {
   updateCharacterImageForBounds(lastKnownBounds, { force: true });
 });
 
-authActionButton?.addEventListener('click', async () => {
-  authActionButton.disabled = true;
-  try {
-    if (!overlayConnected) {
-      await window.yumikoOverlay?.openOverlayConnect?.();
-      return;
-    }
-
-    await window.yumikoOverlay?.disconnect?.();
-    const nextState = await window.yumikoOverlay?.getState?.();
-    syncHostState(nextState || {});
-    renderMessages([]);
-    addMessage('assistant', AUTH_MISSING_MESSAGE);
-  } catch (error) {
-    console.error('[yumiko][auth] auth action failed', error);
-  } finally {
-    if (authActionButton) authActionButton.disabled = isAuthExchangeInProgress;
-  }
-});
-
 miniChatButton?.addEventListener('click', () => {
   markUserActivity({ event: 'mini-chat-button', strength: 'strong' });
   setMode('chat', { source: 'ui' });
@@ -1750,6 +1792,9 @@ window.yumikoWidget = {
 };
 
 window.addEventListener('DOMContentLoaded', () => {
+  ensureLinkingSettingsSection();
+  bindAuthActionButton();
+
   setSettingsPanelHidden(true);
   setMiniScale(userScale, { persist: false });
   syncAutoMessageControls();
@@ -1837,6 +1882,11 @@ window.addEventListener('DOMContentLoaded', () => {
   window.yumikoOverlay?.getState?.()
     .then((state) => {
       syncHostState(state);
+      if (!state?.authState) {
+        window.yumikoOverlay?.getAuthStatus?.()
+          .then((authState) => renderAuthState({ authState }))
+          .catch((error) => console.warn('[yumiko][auth] getAuthStatus fallback failed', error));
+      }
       if (!state?.mode) {
         setMode('focus', { source: 'state-sync' });
       }
