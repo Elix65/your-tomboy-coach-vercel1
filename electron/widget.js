@@ -76,7 +76,6 @@ let overlayConnected = false;
 let currentAuthState = { connected: false, user_id: '', device_id: '', device_name: '' };
 let isAuthExchangeInProgress = false;
 const processedAuthCodes = new Set();
-let authActionBound = false;
 
 const AUTH_MISSING_MESSAGE = 'No conectado. Abrí Settings > Vincular';
 const AUTH_INVALID_MESSAGE = 'Sesión expirada. Vinculá de nuevo';
@@ -1231,46 +1230,92 @@ function abbreviateUserId(value) {
 function ensureLinkingSettingsSection() {
   if (!settingsPanel) return;
 
+  let section = Array.from(settingsPanel.querySelectorAll('.settings-group'))
+    .find((item) => item.querySelector('.settings-group-title')?.textContent?.trim() === 'Vinculación');
+
   authStatus = document.getElementById('auth-status');
   authActionButton = document.getElementById('auth-action');
-  if (authStatus && authActionButton) return;
 
-  const section = document.createElement('section');
-  section.className = 'settings-group';
-  section.setAttribute('aria-label', 'Vinculación');
-  section.innerHTML = `
-    <strong class="settings-group-title">Vinculación</strong>
-    <div class="auth-row">
-      <span id="auth-status" class="auth-status">No conectado</span>
-      <button id="auth-action" class="panel-btn" type="button">Vincular</button>
-    </div>
-  `;
+  console.info('[yumiko][auth][debug] ensureLinkingSettingsSection:start', {
+    hasSection: Boolean(section),
+    hasAuthStatus: Boolean(authStatus),
+    hasAuthAction: Boolean(authActionButton)
+  });
 
-  const imageSectionTitle = Array.from(settingsPanel.querySelectorAll('.settings-group-title'))
-    .find((title) => title.textContent?.trim() === 'Imagen');
-  const imageSection = imageSectionTitle?.closest('.settings-group');
+  if (!section) {
+    section = document.createElement('section');
+    section.className = 'settings-group';
+    section.setAttribute('aria-label', 'Vinculación');
+    section.innerHTML = `
+      <strong class="settings-group-title">Vinculación</strong>
+      <div class="auth-row">
+        <span id="auth-status" class="auth-status">No vinculado</span>
+        <button id="auth-action" class="panel-btn" type="button">Vincular</button>
+      </div>
+    `;
 
-  if (imageSection?.parentNode === settingsPanel) {
-    imageSection.insertAdjacentElement('afterend', section);
-  } else {
-    settingsPanel.appendChild(section);
+    const imageSectionTitle = Array.from(settingsPanel.querySelectorAll('.settings-group-title'))
+      .find((title) => title.textContent?.trim() === 'Imagen');
+    const imageSection = imageSectionTitle?.closest('.settings-group');
+
+    if (imageSection?.parentNode === settingsPanel) {
+      imageSection.insertAdjacentElement('afterend', section);
+    } else {
+      settingsPanel.appendChild(section);
+    }
   }
 
   authStatus = section.querySelector('#auth-status');
+  if (!authStatus) {
+    authStatus = document.createElement('span');
+    authStatus.id = 'auth-status';
+    authStatus.className = 'auth-status';
+    authStatus.textContent = 'No vinculado';
+  }
+
   authActionButton = section.querySelector('#auth-action');
+  if (!authActionButton) {
+    authActionButton = document.createElement('button');
+    authActionButton.id = 'auth-action';
+    authActionButton.className = 'panel-btn';
+    authActionButton.type = 'button';
+    authActionButton.textContent = 'Vincular';
+  }
+
+  let authRow = section.querySelector('.auth-row');
+  if (!authRow) {
+    authRow = document.createElement('div');
+    authRow.className = 'auth-row';
+    section.appendChild(authRow);
+  }
+
+  if (!authStatus.parentNode || authStatus.parentNode !== authRow) {
+    authRow.appendChild(authStatus);
+  }
+
+  if (!authActionButton.parentNode || authActionButton.parentNode !== authRow) {
+    authRow.appendChild(authActionButton);
+  }
+
+  console.info('[yumiko][auth][debug] ensureLinkingSettingsSection:done', {
+    hasAuthStatus: Boolean(authStatus),
+    hasAuthAction: Boolean(authActionButton)
+  });
 }
 
 function bindAuthActionButton() {
-  if (!authActionButton || authActionBound) return;
+  if (!authActionButton) return;
 
-  authActionButton.addEventListener('click', async () => {
+  authActionButton.onclick = async () => {
     authActionButton.disabled = true;
     try {
       if (!overlayConnected) {
+        console.info('[yumiko][auth][debug] bindAuthActionButton:handler', { action: 'openOverlayConnect' });
         await window.yumikoOverlay?.openOverlayConnect?.();
         return;
       }
 
+      console.info('[yumiko][auth][debug] bindAuthActionButton:handler', { action: 'disconnect' });
       await window.yumikoOverlay?.disconnect?.();
       const nextState = await window.yumikoOverlay?.getState?.();
       syncHostState(nextState || {});
@@ -1281,18 +1326,39 @@ function bindAuthActionButton() {
     } finally {
       if (authActionButton) authActionButton.disabled = isAuthExchangeInProgress;
     }
-  });
-
-  authActionBound = true;
+  };
 }
 
-function renderAuthState(state = {}) {
-  ensureLinkingSettingsSection();
-  bindAuthActionButton();
+function isAuthStateComplete(authState) {
+  return Boolean(authState && typeof authState === 'object' && typeof authState.connected === 'boolean');
+}
 
-  const nextAuthState = state?.authState && typeof state.authState === 'object'
+async function renderAuthState(state = {}) {
+  ensureLinkingSettingsSection();
+
+  console.info('[yumiko][auth][debug] renderAuthState:received', {
+    state,
+    hasAuthStatus: Boolean(authStatus),
+    hasAuthAction: Boolean(authActionButton)
+  });
+
+  let nextAuthState = state?.authState && typeof state.authState === 'object'
     ? state.authState
     : state;
+
+  if (!isAuthStateComplete(nextAuthState)) {
+    try {
+      const fallbackAuthState = await window.yumikoOverlay?.getAuthStatus?.();
+      if (isAuthStateComplete(fallbackAuthState)) {
+        nextAuthState = fallbackAuthState;
+      }
+      console.info('[yumiko][auth][debug] renderAuthState:fallback:getAuthStatus', {
+        fallbackAuthState
+      });
+    } catch (error) {
+      console.warn('[yumiko][auth] getAuthStatus fallback failed', error);
+    }
+  }
 
   currentAuthState = {
     connected: Boolean(nextAuthState?.connected),
@@ -1305,14 +1371,22 @@ function renderAuthState(state = {}) {
 
   if (authStatus) {
     authStatus.textContent = overlayConnected
-      ? `Conectado (${abbreviateUserId(currentAuthState.user_id) || 'sin user_id'})`
-      : 'No conectado';
+      ? `Vinculado (${abbreviateUserId(currentAuthState.user_id) || 'sin user_id'})`
+      : 'No vinculado';
   }
 
   if (authActionButton) {
-    authActionButton.textContent = overlayConnected ? 'Desconectar' : 'Vincular';
+    const nextLabel = overlayConnected ? 'Desvincular' : 'Vincular';
+    authActionButton.textContent = nextLabel;
     authActionButton.disabled = isAuthExchangeInProgress;
+    console.info('[yumiko][auth][debug] renderAuthState:button', {
+      label: nextLabel,
+      disabled: authActionButton.disabled,
+      handler: overlayConnected ? 'disconnect' : 'openOverlayConnect'
+    });
   }
+
+  bindAuthActionButton();
 }
 
 async function exchangeCode(code) {
