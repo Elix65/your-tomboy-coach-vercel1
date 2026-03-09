@@ -5,7 +5,18 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
   setOverlayEnabled: (enabled) => ipcRenderer.send('yumiko:set-overlay-enabled', enabled),
   setShortcutsEnabled: (enabled) => ipcRenderer.send('yumiko:set-shortcuts-enabled', enabled),
   setShortcuts: (shortcuts) => ipcRenderer.invoke('yumiko:set-shortcuts', shortcuts),
-  resetShortcuts: () => ipcRenderer.invoke('yumiko:reset-shortcuts'),
+  resetShortcuts: async () => {
+    try {
+      return await ipcRenderer.invoke('yumiko:reset-shortcuts');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error || '');
+      if (message.includes("No handler registered for 'yumiko:reset-shortcuts'")) {
+        return ipcRenderer.invoke('yumiko:shortcuts-reset');
+      }
+      throw error;
+    }
+  },
+  getSettings: () => ipcRenderer.invoke('yumiko:get-settings'),
   setClickThroughEnabled: (enabled) => ipcRenderer.send('yumiko:set-click-through-enabled', enabled),
   setWindowSize: (size) => ipcRenderer.send('yumiko:set-window-size', size),
   setMinimumSize: (size) => ipcRenderer.send('yumiko:set-minimum-size', size),

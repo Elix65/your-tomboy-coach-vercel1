@@ -338,6 +338,18 @@ body {
 }
 
 
+.settings-group {
+  display: grid;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.settings-group-title {
+  color: #fff;
+  font-size: 12px;
+}
+
+
 .shortcuts-section {
   display: grid;
   gap: 8px;

@@ -966,6 +966,8 @@ function setShortcuts(nextShortcuts = {}) {
       ok: false,
       shortcuts: settings.shortcuts,
       statuses: shortcutStatuses,
+      shortcutsMeta: buildShortcutMetadata(settings.shortcuts),
+      state: getState(),
       error: shortcutRegistrationError
     };
   }
@@ -980,6 +982,8 @@ function setShortcuts(nextShortcuts = {}) {
     ok: !shortcutRegistrationError,
     shortcuts: settings.shortcuts,
     statuses: shortcutStatuses,
+    shortcutsMeta: buildShortcutMetadata(settings.shortcuts),
+    state: getState(),
     error: shortcutRegistrationError
   };
 }
@@ -1453,7 +1457,10 @@ if (!singleInstance) {
     });
     ipcMain.on('yumiko:set-shortcuts-enabled', (_event, enabled) => setShortcutsEnabled(enabled));
     ipcMain.handle('yumiko:set-shortcuts', (_event, shortcuts) => setShortcuts(shortcuts));
+    ipcMain.handle('yumiko:shortcuts-set', (_event, shortcuts) => setShortcuts(shortcuts));
     ipcMain.handle('yumiko:reset-shortcuts', () => resetShortcutsToDefaults());
+    ipcMain.handle('yumiko:shortcuts-reset', () => resetShortcutsToDefaults());
+    ipcMain.handle('yumiko:get-settings', () => getState());
     ipcMain.on('yumiko:set-click-through-enabled', (_event, enabled) => setClickThroughEnabled(enabled));
     ipcMain.on('yumiko:set-overlay-enabled', (_event, enabled) => setOverlayEnabled(enabled));
     ipcMain.on('yumiko:complete-first-run', () => completeFirstRun());
