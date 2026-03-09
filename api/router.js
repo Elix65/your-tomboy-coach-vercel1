@@ -1,9 +1,11 @@
-const fs = require('fs');
-const path = require('path');
 const crypto = require('crypto');
 const OpenAI = require('openai');
 const { createClient } = require('@supabase/supabase-js');
 const { getSupabaseAdminClient, getSupabaseAdminEnvState } = require('../lib/supabaseAdmin');
+const { buildYumikoSystemMessages } = require('../lib/yumikoPrompt');
+const { buildYumikoConversationContext } = require('../lib/conversationContext');
+const { generateAutoNudge } = require('../lib/nudgeEngine');
+const { persistMessage } = require('../lib/messageStore');
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -552,13 +554,6 @@ function calcularDia(startDate) {
   return diff;
 }
 
-function sanitizeMessages(messages = []) {
-  return messages
-    .filter((msg) => msg && (msg.role === 'user' || msg.role === 'assistant') && typeof msg.content === 'string')
-    .slice(-20)
-    .map((msg) => ({ role: msg.role, content: msg.content }));
-}
-
 function clampInt(n, min, max) {
   const x = Number(n);
   if (!Number.isFinite(x)) return min;
@@ -1072,33 +1067,65 @@ async function yumikoHandler(req, res) {
     }
 
     const dia = calcularDia(global.yumikoSession.challengeStart);
-    const promptPath = path.join(process.cwd(), 'prompt.txt');
-    const basePrompt = fs.readFileSync(promptPath, 'utf8');
+    const sessionContext = {
+      name: global.yumikoSession.name,
+      meta: global.yumikoSession.meta,
+      day: dia
+    };
 
-    const contextMessages = sanitizeMessages(incomingMessages);
-    const messages = [{ role: 'system', content: basePrompt }];
+    let audioMode = audioModeRaw === true;
 
-    if (global.yumikoSession.name) {
-      messages.push({ role: 'system', content: `El nombre del usuario es ${global.yumikoSession.name}.` });
+    let audioAllowed = false;
+    if (audioMode) {
+      try {
+        const matchedSubscription = await getActiveVoiceSubscription(supabaseAdmin, userId);
+        audioAllowed = Boolean(matchedSubscription);
+      } catch (subErr) {
+        return res.status(500).json({ error: subErr.message || 'Error validating voice subscription.' });
+      }
+
+      if (!audioAllowed) {
+        return res.status(402).json({ error: 'subscription_required', plan: VOICE_PLAN });
+      }
     }
 
-    if (global.yumikoSession.meta) {
-      messages.push({ role: 'system', content: `La meta del usuario es: ${global.yumikoSession.meta}.` });
-    }
+    await persistMessage(supabaseAdmin, {
+      userId,
+      sender: 'user',
+      content: message,
+      messageType: 'text'
+    });
 
-    if (dia) {
-      messages.push({ role: 'system', content: `Hoy es el día ${dia} del reto de 15 días.` });
-    }
+    const conversationContext = await buildYumikoConversationContext({ supabaseAdmin, userId, limit: 30 });
+    const frontendContextMessages = Array.isArray(incomingMessages)
+      ? incomingMessages
+        .filter((msg) => msg && (msg.role === 'user' || msg.role === 'assistant') && typeof msg.content === 'string')
+        .slice(-10)
+      : [];
 
-    if (summary) {
-      messages.push({ role: 'system', content: `Resumen de memoria previa del chat: ${summary}` });
-    }
+    const modelMessages = conversationContext.modelMessages.length > 0
+      ? conversationContext.modelMessages
+      : frontendContextMessages;
 
-    if (contextMessages.length > 0) {
-      messages.push(...contextMessages);
-    } else {
+    const messages = [
+      ...buildYumikoSystemMessages({ mode: 'chat-reply', session: sessionContext, summary }),
+      ...modelMessages,
+      {
+        role: 'system',
+        content: `Contexto compartido: tema_activo=${conversationContext.activeTopic || 'ninguno'} | pregunta_abierta=${conversationContext.openLoopQuestion || 'ninguna'} | pista_continuidad=${conversationContext.continuityHint || 'ninguna'}`
+      }
+    ];
+
+    if (!messages.some((msg) => msg.role === 'user')) {
       messages.push({ role: 'user', content: message });
     }
+
+    console.info('[yumiko][chat-reply] generation start', {
+      userId,
+      modelMessageCount: messages.length,
+      activeTopic: conversationContext.activeTopic || '',
+      hasPendingQuestion: Boolean(conversationContext.hasPendingQuestion)
+    });
 
     const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
       method: 'POST',
@@ -1120,50 +1147,19 @@ async function yumikoHandler(req, res) {
     }
 
     const reply = data?.choices?.[0]?.message?.content || 'Yumiko no generó respuesta.';
-    let audioMode = audioModeRaw === true;
-
-    let audioAllowed = false;
-    if (audioMode) {
-      try {
-        const matchedSubscription = await getActiveVoiceSubscription(supabaseAdmin, userId);
-        audioAllowed = Boolean(matchedSubscription);
-      } catch (subErr) {
-        return res.status(500).json({ error: subErr.message || 'Error validating voice subscription.' });
-      }
-
-      if (!audioAllowed) {
-        return res.status(402).json({ error: 'subscription_required', plan: VOICE_PLAN });
-      }
-    }
-
-    const { error: userInsertErr } = await supabaseAdmin
-      .from('messages')
-      .insert({
-        user_id: userId,
-        sender: 'user',
-        content: message,
-        message_type: 'text'
-      });
-
-    if (userInsertErr) {
-      return res.status(500).json({ error: userInsertErr.message || 'Error inserting user message.' });
-    }
+    console.info('[yumiko][chat-reply] generation result', {
+      userId,
+      replyLength: String(reply).length,
+      mode: 'chat-reply'
+    });
 
     if (!audioMode) {
-      const { data: yumikoInserted, error: yumikoInsertErr } = await supabaseAdmin
-        .from('messages')
-        .insert({
-          user_id: userId,
-          sender: 'yumiko',
-          content: reply,
-          message_type: 'text'
-        })
-        .select('id')
-        .single();
-
-      if (yumikoInsertErr) {
-        return res.status(500).json({ error: yumikoInsertErr.message || 'Error inserting Yumiko message.' });
-      }
+      const yumikoInserted = await persistMessage(supabaseAdmin, {
+        userId,
+        sender: 'yumiko',
+        content: reply,
+        messageType: 'text'
+      });
 
       console.info('[yumiko][auth]', {
         ...auth.tokenDebug,
@@ -1185,20 +1181,12 @@ async function yumikoHandler(req, res) {
     if (!elevenKey || !elevenVoiceId) {
       return res.status(500).json({ error: 'Missing ELEVENLABS_API_KEY or ELEVENLABS_VOICE_ID.' });
     }
-    const { data: insertedMsg, error: yumikoInsertErr } = await supabaseAdmin
-      .from('messages')
-      .insert({
-        user_id: userId,
-        sender: 'yumiko',
-        content: reply,
-        message_type: 'text'
-      })
-      .select('id')
-      .single();
-
-    if (yumikoInsertErr || !insertedMsg?.id) {
-      return res.status(500).json({ error: yumikoInsertErr?.message || 'Error inserting Yumiko message.' });
-    }
+    const insertedMsg = await persistMessage(supabaseAdmin, {
+      userId,
+      sender: 'yumiko',
+      content: reply,
+      messageType: 'text'
+    });
 
     const yumikoMessageId = insertedMsg.id;
     const mp3Buffer = await createElevenLabsMp3({ text: reply, apiKey: elevenKey, voiceId: elevenVoiceId });
@@ -2138,106 +2126,6 @@ async function tirarMultiplePremiumHandler(req, res) {
 }
 
 
-const OVERLAY_GENERIC_NUDGE_LINES = [
-  '¿Seguimos un ratito?',
-  'Mini empujoncito: volvemos cuando quieras.',
-  'Acá estoy para seguir cuando te sirva.',
-  '¿Querés retomar con un paso cortito?',
-  'Si querés, lo retomamos juntas.'
-];
-
-const OVERLAY_NUDGE_INTERVAL_OPTIONS = [1, 2, 5, 10, 20, 40];
-const CONTEXTUAL_BUCKETS = ['contextual-question', 'contextual-followup', 'contextual-reminder'];
-const TRIVIAL_MESSAGE_RE = /^(ok(ay)?|dale|si|sí|jaja+|jeje+|jj+|xd+|uhm+|mmm+|listo|va|bien|genial|👍|👌|🙂|😂|🙏|gracias)[.!?\s]*$/i;
-
-function clampNudgeLength(text, maxLen = 120) {
-  const normalized = String(text || '').replace(/\s+/g, ' ').trim();
-  if (!normalized) return '';
-  if (normalized.length <= maxLen) return normalized;
-  return `${normalized.slice(0, Math.max(0, maxLen - 1)).trimEnd()}…`;
-}
-
-function isTrivialMessage(content) {
-  const normalized = String(content || '').replace(/\s+/g, ' ').trim();
-  if (!normalized) return true;
-  return normalized.length <= 14 && TRIVIAL_MESSAGE_RE.test(normalized);
-}
-
-function extractEntityCandidate(content = '') {
-  const source = String(content || '').replace(/\s+/g, ' ').trim();
-  if (!source) return '';
-
-  const modelLike = source.match(/\b([A-ZÁÉÍÓÚÑ]{2,}|[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)(?:\s+[A-Z0-9ÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ+-]*){0,3}\b/g);
-  if (Array.isArray(modelLike) && modelLike.length) {
-    const best = modelLike.find((item) => /\d/.test(item)) || modelLike[0];
-    return clampNudgeLength(best, 40);
-  }
-
-  const compact = source.replace(/[¿?¡!.,;:]/g, ' ').replace(/\s+/g, ' ').trim();
-  if (!compact) return '';
-  const words = compact.split(' ').filter(Boolean);
-  if (!words.length) return '';
-  return clampNudgeLength(words.slice(0, Math.min(words.length, 5)).join(' '), 40);
-}
-
-function buildConversationNudgeContext(messages = []) {
-  const recent = Array.isArray(messages) ? messages.slice(-20) : [];
-  const userMessages = [...recent]
-    .reverse()
-    .filter((item) => item?.sender === 'user' && !isTrivialMessage(item?.content));
-
-  const latestUser = userMessages[0] || null;
-  if (!latestUser) return null;
-
-  const topic = extractEntityCandidate(latestUser.content);
-  const pendingQuestion = userMessages.find((item) => String(item?.content || '').includes('?'));
-
-  return {
-    topic,
-    pendingQuestion: pendingQuestion ? clampNudgeLength(String(pendingQuestion.content || ''), 80) : '',
-    hasPendingQuestion: Boolean(pendingQuestion),
-    hasDecisionHint: /\b(elegir|decidir|comprar|seguir|después|luego|opción|opciones|plan|paso)\b/i.test(String(latestUser.content || ''))
-  };
-}
-
-function pickGenericNudge(lastMessage = '') {
-  const candidates = OVERLAY_GENERIC_NUDGE_LINES
-    .map((line, index) => ({ line, bucket: `generic-presence-${index + 1}` }))
-    .filter((entry) => entry.line !== lastMessage);
-  const pool = candidates.length
-    ? candidates
-    : OVERLAY_GENERIC_NUDGE_LINES.map((line, index) => ({ line, bucket: `generic-presence-${index + 1}` }));
-  const chosen = pool[Math.floor(Math.random() * pool.length)] || pool[0];
-  return {
-    bucket: chosen?.bucket || 'generic-presence-1',
-    message: chosen?.line || OVERLAY_GENERIC_NUDGE_LINES[0]
-  };
-}
-
-function buildContextualNudge(context, { lastBucket = '', lastMessage = '' } = {}) {
-  if (!context?.topic) return pickGenericNudge(lastMessage);
-
-  const lastIndex = CONTEXTUAL_BUCKETS.indexOf(lastBucket);
-  const nextIndex = lastIndex >= 0 ? (lastIndex + 1) % CONTEXTUAL_BUCKETS.length : 0;
-  const suggestedBucket = context.hasPendingQuestion ? 'contextual-question' : CONTEXTUAL_BUCKETS[nextIndex];
-  const bucket = suggestedBucket === lastBucket
-    ? CONTEXTUAL_BUCKETS[(nextIndex + 1) % CONTEXTUAL_BUCKETS.length]
-    : suggestedBucket;
-
-  const byBucket = {
-    'contextual-question': `¿Seguimos con lo de ${context.topic}?`,
-    'contextual-followup': `Me quedé pensando en ${context.topic}.`,
-    'contextual-reminder': context.hasDecisionHint
-      ? `Si querés, definimos el próximo paso con ${context.topic}.`
-      : `Cuando quieras, retomamos ${context.topic}.`
-  };
-
-  const base = byBucket[bucket] || byBucket['contextual-question'];
-  const safeMessage = clampNudgeLength(base, 120);
-  if (!safeMessage || safeMessage === lastMessage) return pickGenericNudge(lastMessage);
-  return { bucket, message: safeMessage };
-}
-
 
 async function overlayNudgeSettingsHandler(req, res) {
   try {
@@ -2350,46 +2238,32 @@ async function overlayNudgeHandler(req, res) {
       return res.status(200).json({ message: null });
     }
 
-    const { data: recentMessages, error: recentMessagesErr } = await supabaseAdmin
-      .from('messages')
-      .select('sender,content,created_at')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(25);
+    const sessionContext = {
+      name: global.yumikoSession.name,
+      meta: global.yumikoSession.meta,
+      day: calcularDia(global.yumikoSession.challengeStart)
+    };
 
-    if (recentMessagesErr) return res.status(500).json({ error: recentMessagesErr.message || 'Error loading recent conversation context.' });
+    const conversationContext = await buildYumikoConversationContext({ supabaseAdmin, userId, limit: 30 });
 
-    const nudgeContext = buildConversationNudgeContext([...(recentMessages || [])].reverse());
     console.info('[yumiko][auto-nudge] previous last_nudge_bucket=' + String(settingsRow?.last_nudge_bucket || ''));
     console.info('[yumiko][auto-nudge] previous last_nudge_message=' + String(settingsRow?.last_nudge_message || ''));
-    console.info('[yumiko][auto-nudge] allowing consecutive nudge without user reply', {
-      hasRecentUserContext: Boolean(nudgeContext?.topic),
-      hasPendingQuestion: Boolean(nudgeContext?.hasPendingQuestion)
-    });
 
-    const { bucket, message } = buildContextualNudge(nudgeContext, {
-      lastBucket: settingsRow?.last_nudge_bucket || '',
+    const message = await generateAutoNudge({
+      apiKey: process.env.DEEPSEEK_KEY,
+      context: conversationContext,
+      session: sessionContext,
+      summary: '',
       lastMessage: String(settingsRow?.last_nudge_message || '').trim()
     });
 
-    const { data: insertedMessage, error: insertErr } = await supabaseAdmin
-      .from('messages')
-      .insert({
-        user_id: userId,
-        sender: 'yumiko',
-        content: message,
-        message_type: 'text'
-      })
-      .select('id,created_at')
-      .single();
+    const bucket = conversationContext.activeTopic ? 'context-shared-topic' : 'context-generic';
 
-    if (insertErr) return res.status(500).json({ error: insertErr.message || 'Error persisting nudge message.' });
-
-    console.info('[yumiko][auto-nudge] persisted new message id=' + String(insertedMessage?.id || ''), {
-      messageId: insertedMessage?.id || null,
-      createdAt: insertedMessage?.created_at || null,
-      bucket,
-      effectiveInterval
+    const insertedMessage = await persistMessage(supabaseAdmin, {
+      userId,
+      sender: 'yumiko',
+      content: message,
+      messageType: 'text'
     });
 
     const { error: upsertErr } = await supabaseAdmin
