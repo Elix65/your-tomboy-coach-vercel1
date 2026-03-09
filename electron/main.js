@@ -40,6 +40,8 @@ const defaultSettings = {
   chatHotkey: 'Control+Shift+J',
   visible: true,
   bounds: null,
+  overlayBounds: null,
+  chatBounds: null,
   hasCompletedFirstRun: false,
   yumikoWebOrigin: process.env.YUMIKO_WEB_ORIGIN || process.env.YUMIKO_CHAT_URL || DEFAULT_YUMIKO_WEB_ORIGIN,
   deviceId: '',
@@ -228,6 +230,7 @@ function readSettings() {
     const migratedMode = !userPickedMode && parsed.mode === 'chat'
       ? 'focus'
       : parsed.mode;
+    const migratedOverlayBounds = parsed.overlayBounds || parsed.bounds || null;
     const mergedSettings = {
       ...defaultSettings,
       ...parsed,
@@ -235,7 +238,9 @@ function readSettings() {
       mode: migratedMode,
       userPickedMode,
       chatHotkey: normalizeChatHotkey(parsed.chatHotkey),
-      yumikoWebOrigin: resolveYumikoWebOrigin(parsed)
+      yumikoWebOrigin: resolveYumikoWebOrigin(parsed),
+      overlayBounds: migratedOverlayBounds,
+      chatBounds: parsed.chatBounds || null
     };
 
     if (!mergedSettings.hasCompletedFirstRun) {
@@ -611,12 +616,37 @@ function getDefaultPosition() {
 
 function getInitialBounds() {
   const position = getDefaultPosition();
+  const activeBounds = settings.mode === 'chat'
+    ? (settings.chatBounds || settings.overlayBounds || settings.bounds)
+    : (settings.overlayBounds || settings.bounds);
+
   return {
     width: DEFAULT_BOUNDS.width,
     height: DEFAULT_BOUNDS.height,
     ...position,
-    ...(settings.bounds || {})
+    ...(activeBounds || {})
   };
+}
+
+function getBoundsForMode(mode) {
+  if (mode === 'chat') {
+    return settings.chatBounds || settings.overlayBounds || settings.bounds || null;
+  }
+  return settings.overlayBounds || settings.bounds || settings.chatBounds || null;
+}
+
+function persistBoundsForMode(mode, bounds) {
+  const normalizedBounds = safeBounds(bounds, `persist:${mode}`);
+
+  if (mode === 'chat') {
+    settings.chatBounds = normalizedBounds;
+  } else {
+    settings.overlayBounds = normalizedBounds;
+  }
+
+  settings.bounds = mode === settings.mode
+    ? normalizedBounds
+    : (getBoundsForMode(settings.mode) || normalizedBounds);
 }
 
 function broadcastState() {
@@ -656,15 +686,31 @@ function applyWindowBehavior() {
 
 function setMode(mode, { fromRenderer = false, userPickedMode = false } = {}) {
   const nextMode = mode === 'chat' ? 'chat' : 'focus';
+  const previousMode = settings.mode;
   console.info('[yumiko][mode] setMode', {
-    previousMode: settings.mode,
+    previousMode,
     nextMode,
     source: fromRenderer ? 'renderer' : 'main'
   });
+
+  if (win && !win.isDestroyed() && previousMode !== nextMode) {
+    persistBoundsForMode(previousMode, win.getBounds());
+  }
+
   settings.mode = nextMode;
   if (userPickedMode) {
     settings.userPickedMode = true;
   }
+
+  if (win && !win.isDestroyed() && previousMode !== nextMode) {
+    const modeBounds = getBoundsForMode(nextMode);
+    if (modeBounds) {
+      const safeModeBounds = safeBounds(modeBounds, `mode-switch:${previousMode}->${nextMode}`);
+      win.setBounds(clampBoundsToWorkArea(safeModeBounds), false);
+      persistBoundsForMode(nextMode, win.getBounds());
+    }
+  }
+
   writeSettings();
 
   if (!win) return;
@@ -920,7 +966,7 @@ function createTray() {
 
 function saveBounds() {
   if (!win) return;
-  settings.bounds = win.getBounds();
+  persistBoundsForMode(settings.mode, win.getBounds());
   writeSettings();
   broadcastState();
 }
