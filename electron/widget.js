@@ -59,7 +59,7 @@ const bubbleLayer = document.getElementById('yumiko-bubble-layer');
 const bubble = document.getElementById('yumiko-bubble');
 const bubbleText = bubble?.querySelector('.bubble-text');
 
-const LEFT_SCREEN_CHARACTER_SRC = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/derecha.png';
+const CHARACTER_SRC_WHEN_WINDOW_ON_LEFT = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/derecha.png';
 const SIDE_SWITCH_HYSTERESIS_PX = 48;
 
 let isThinking = false;
@@ -131,7 +131,7 @@ let lastAssistantMessageIdShownInBubble = '';
 let lastAssistantMessageAt = 0;
 let lastAssistantMessageText = '';
 let pendingAssistantReplyAfterUserMessage = false;
-let rightSideCharacterSrc = '';
+let characterSrcWhenWindowOnRight = '';
 let activeCharacterSide = null;
 let pendingCharacterSwapToken = 0;
 const preloadedCharacterImages = new Map();
@@ -194,12 +194,14 @@ function resolveCharacterSideFromBounds(bounds) {
 }
 
 function updateCharacterImageForBounds(bounds, { force = false } = {}) {
-  if (!img || !rightSideCharacterSrc) return;
+  if (!img || !characterSrcWhenWindowOnRight) return;
 
   const nextSide = resolveCharacterSideFromBounds(bounds);
   if (!force && nextSide === activeCharacterSide) return;
 
-  const nextSrc = nextSide === 'left-screen' ? LEFT_SCREEN_CHARACTER_SRC : rightSideCharacterSrc;
+  const nextSrc = nextSide === 'left-screen'
+    ? CHARACTER_SRC_WHEN_WINDOW_ON_LEFT
+    : characterSrcWhenWindowOnRight;
   const normalizedCurrent = img.currentSrc || img.src || '';
   if (!force && normalizedCurrent === nextSrc) {
     activeCharacterSide = nextSide;
@@ -1668,9 +1670,9 @@ window.addEventListener('DOMContentLoaded', () => {
   persistAutoMessageSettings();
 
   if (img) {
-    rightSideCharacterSrc = (img.getAttribute('src') || img.src || '').trim();
-    preloadCharacterImage(rightSideCharacterSrc);
-    preloadCharacterImage(LEFT_SCREEN_CHARACTER_SRC);
+    characterSrcWhenWindowOnRight = (img.getAttribute('src') || img.src || '').trim();
+    preloadCharacterImage(characterSrcWhenWindowOnRight);
+    preloadCharacterImage(CHARACTER_SRC_WHEN_WINDOW_ON_LEFT);
 
     if (img.complete) {
       requestFitDebounced();
