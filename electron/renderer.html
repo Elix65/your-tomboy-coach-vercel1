@@ -53,32 +53,43 @@
           <div id="shortcuts-list" class="shortcuts-list"></div>
           <p id="shortcuts-error" class="settings-error" hidden></p>
         </section>
-        <div class="toggle-row">
-          <label for="auto-message-enabled">Auto-mensajes Yumiko</label>
-          <input id="auto-message-enabled" type="checkbox" />
-        </div>
-        <div class="toggle-row">
-          <label for="auto-message-interval">Intervalo auto-mensaje</label>
-          <select id="auto-message-interval">
-            <option value="1">1 min</option>
-            <option value="2">2 min</option>
-            <option value="5">5 min</option>
-            <option value="10">10 min</option>
-            <option value="20" selected>20 min</option>
-          </select>
-        </div>
-        <div class="toggle-row">
-          <label for="side-image-mode">Imagen</label>
-          <select id="side-image-mode">
-            <option value="auto" selected>Auto</option>
-            <option value="left">Izquierda</option>
-            <option value="right">Derecha</option>
-          </select>
-        </div>
-        <div class="auth-row">
-          <span id="auth-status" class="auth-status">No conectado</span>
-          <button id="auth-action" class="panel-btn" type="button">Vincular</button>
-        </div>
+        <section class="settings-group" aria-label="Mensajes automáticos">
+          <strong class="settings-group-title">Mensajes automáticos</strong>
+          <div class="toggle-row">
+            <label for="auto-message-enabled">Auto-mensajes Yumiko</label>
+            <input id="auto-message-enabled" type="checkbox" />
+          </div>
+          <div class="toggle-row">
+            <label for="auto-message-interval">Intervalo auto-mensaje</label>
+            <select id="auto-message-interval">
+              <option value="1">1 min</option>
+              <option value="2">2 min</option>
+              <option value="5">5 min</option>
+              <option value="10">10 min</option>
+              <option value="20" selected>20 min</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="settings-group" aria-label="Imagen">
+          <strong class="settings-group-title">Imagen</strong>
+          <div class="toggle-row">
+            <label for="side-image-mode">Lado preferido</label>
+            <select id="side-image-mode">
+              <option value="auto" selected>Auto</option>
+              <option value="left">Izquierda</option>
+              <option value="right">Derecha</option>
+            </select>
+          </div>
+        </section>
+
+        <section class="settings-group" aria-label="Vinculación">
+          <strong class="settings-group-title">Vinculación</strong>
+          <div class="auth-row">
+            <span id="auth-status" class="auth-status">No conectado</span>
+            <button id="auth-action" class="panel-btn" type="button">Vincular</button>
+          </div>
+        </section>
       </div>
 
       <div id="chat-log" class="chat-log" aria-live="polite"></div>

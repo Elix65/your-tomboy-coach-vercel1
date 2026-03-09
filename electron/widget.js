@@ -1444,6 +1444,9 @@ function normalizeCapturedShortcut(event) {
 async function persistShortcuts(nextShortcuts) {
   const merged = { ...DEFAULT_SHORTCUTS, ...nextShortcuts };
   const result = await window.yumikoOverlay?.setShortcuts?.(merged);
+  if (result?.state) {
+    syncHostState(result.state);
+  }
   renderShortcutsError(result?.error || '');
   return result;
 }
@@ -1569,6 +1572,9 @@ window.addEventListener('keydown', async (event) => {
 shortcutsResetButton?.addEventListener('click', async () => {
   try {
     const result = await window.yumikoOverlay?.resetShortcuts?.();
+    if (result?.state) {
+      syncHostState(result.state);
+    }
     renderShortcutsError(result?.error || '');
   } catch (error) {
     renderShortcutsError(error instanceof Error ? error.message : String(error));
