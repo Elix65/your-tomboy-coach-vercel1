@@ -884,6 +884,7 @@ function saveBounds() {
   if (!win) return;
   settings.bounds = win.getBounds();
   writeSettings();
+  broadcastState();
 }
 
 function handleDeepLink(rawUrl) {
