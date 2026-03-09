@@ -28,7 +28,13 @@ const AUTO_MESSAGE_MAX_TICK_MS = 10 * 1000;
 const DEV_AUTO_MESSAGE_LOG = true;
 const AUTO_ACTIVITY_MODE_KEY = 'yumiko_auto_message_recent_activity_mode';
 const AUTO_ACTIVITY_WEAK_WINDOW_KEY = 'yumiko_auto_message_weak_activity_ms';
-const DEFAULT_CHAT_HOTKEY = 'Control+Shift+J';
+const DEFAULT_SHORTCUTS = {
+  panicReset: 'Control+Shift+R',
+  toggleChat: 'Control+Shift+J',
+  toggleClickable: 'Control+Shift+T',
+  sizeUp: 'Control++',
+  sizeDown: 'Control+-'
+};
 
 const settingsPanel = document.getElementById('settings-panel');
 const toggleSettingsButton = document.getElementById('toggle-settings');
@@ -36,10 +42,9 @@ const quitAppButton = document.getElementById('quit-app');
 const overlayToggle = document.getElementById('overlay-enabled');
 const clickThroughToggle = document.getElementById('click-through-enabled');
 const shortcutsToggle = document.getElementById('shortcuts-enabled');
-const chatHotkeyInput = document.getElementById('chat-hotkey');
-const chatHotkeySaveButton = document.getElementById('chat-hotkey-save');
-const chatHotkeyResetButton = document.getElementById('chat-hotkey-reset');
-const chatHotkeyError = document.getElementById('chat-hotkey-error');
+const shortcutsList = document.getElementById('shortcuts-list');
+const shortcutsResetButton = document.getElementById('shortcuts-reset');
+const shortcutsError = document.getElementById('shortcuts-error');
 const authStatus = document.getElementById('auth-status');
 const authActionButton = document.getElementById('auth-action');
 const autoMessageToggle = document.getElementById('auto-message-enabled');
@@ -1409,30 +1414,63 @@ function startAutoMessageScheduler() {
   scheduleNextAutoMessageTick({ reason: 'start' });
 }
 
-function renderChatHotkeyError(message = '') {
-  if (!chatHotkeyError) return;
+let shortcutCaptureTarget = '';
+
+function renderShortcutsError(message = '') {
+  if (!shortcutsError) return;
   const text = typeof message === 'string' ? message.trim() : '';
-  chatHotkeyError.textContent = text;
-  chatHotkeyError.hidden = !text;
+  shortcutsError.textContent = text;
+  shortcutsError.hidden = !text;
 }
 
-async function persistChatHotkey(hotkey) {
-  const normalized = typeof hotkey === 'string' && hotkey.trim() ? hotkey.trim() : DEFAULT_CHAT_HOTKEY;
-  const result = await window.yumikoOverlay?.setChatHotkey?.(normalized);
-  if (chatHotkeyInput) {
-    chatHotkeyInput.value = result?.hotkey || normalized;
-  }
-  renderChatHotkeyError(result?.error || '');
+function formatKeycap(accelerator = '') {
+  return String(accelerator || '').split('+').filter(Boolean).map((piece) => `<kbd>${piece}</kbd>`).join('<span class="plus">+</span>');
+}
+
+function normalizeCapturedShortcut(event) {
+  const parts = [];
+  if (event.ctrlKey) parts.push('Control');
+  if (event.shiftKey) parts.push('Shift');
+  if (event.altKey) parts.push('Alt');
+  if (event.metaKey) parts.push('Meta');
+
+  const key = event.key;
+  if (['Control', 'Shift', 'Alt', 'Meta'].includes(key)) return '';
+  const normalizedKey = key === ' ' ? 'Space' : (key.length === 1 ? key.toUpperCase() : key);
+  parts.push(normalizedKey);
+  return parts.join('+');
+}
+
+async function persistShortcuts(nextShortcuts) {
+  const merged = { ...DEFAULT_SHORTCUTS, ...nextShortcuts };
+  const result = await window.yumikoOverlay?.setShortcuts?.(merged);
+  renderShortcutsError(result?.error || '');
+  return result;
+}
+
+function renderShortcuts(shortcutsMeta = []) {
+  if (!shortcutsList) return;
+  shortcutsList.innerHTML = shortcutsMeta.map((shortcut) => {
+    const editableClass = shortcutCaptureTarget === shortcut.id ? 'is-capturing' : '';
+    return `<article class="shortcut-item ${editableClass}" data-shortcut-id="${shortcut.id}">
+      <div class="shortcut-item-head"><strong>${shortcut.name}</strong><span class="shortcut-status ${shortcut.status}">${shortcut.statusLabel}</span></div>
+      <div class="shortcut-combo">${formatKeycap(shortcut.accelerator)}</div>
+      <p class="shortcut-description">${shortcut.description}</p>
+      <button type="button" class="panel-btn shortcut-edit" data-shortcut-edit="${shortcut.id}">${shortcutCaptureTarget === shortcut.id ? 'Presioná combinación...' : 'Editar'}</button>
+    </article>`;
+  }).join('');
 }
 
 function syncHostState(state = {}) {
+  window.__yumikoLastState = state;
+  window.__yumikoLastShortcutsMeta = state.shortcutsMeta || [];
   console.info('[yumiko][renderer] state updated', { authState: state?.authState });
   renderAuthState(state);
   if (overlayToggle) overlayToggle.checked = Boolean(state.overlayEnabled);
   if (clickThroughToggle) clickThroughToggle.checked = Boolean(state.clickThroughPreferred ?? state.clickThroughEnabled);
   if (shortcutsToggle) shortcutsToggle.checked = Boolean(state.shortcutsEnabled);
-  if (chatHotkeyInput) chatHotkeyInput.value = state.chatHotkey || DEFAULT_CHAT_HOTKEY;
-  renderChatHotkeyError(state.shortcutRegistrationError || '');
+  renderShortcuts(state.shortcutsMeta || []);
+  renderShortcutsError(state.shortcutRegistrationError || '');
 
   if (state.mode) {
     const incomingMode = toUiMode(state.mode);
@@ -1504,31 +1542,39 @@ shortcutsToggle?.addEventListener('change', () => {
   window.yumikoOverlay?.setShortcutsEnabled?.(shortcutsToggle.checked);
 });
 
-chatHotkeySaveButton?.addEventListener('click', async () => {
-  try {
-    await persistChatHotkey(chatHotkeyInput?.value || DEFAULT_CHAT_HOTKEY);
-  } catch (error) {
-    renderChatHotkeyError(error instanceof Error ? error.message : String(error));
-  }
+shortcutsList?.addEventListener('click', (event) => {
+  const button = event.target?.closest?.('[data-shortcut-edit]');
+  if (!button) return;
+  shortcutCaptureTarget = button.getAttribute('data-shortcut-edit') || '';
+  renderShortcuts(window.__yumikoLastShortcutsMeta || []);
 });
 
-chatHotkeyInput?.addEventListener('keydown', async (event) => {
-  if (event.key !== 'Enter') return;
+window.addEventListener('keydown', async (event) => {
+  if (!shortcutCaptureTarget) return;
   event.preventDefault();
+  event.stopPropagation();
+  const accelerator = normalizeCapturedShortcut(event);
+  if (!accelerator) return;
+  const current = window.__yumikoLastState?.shortcuts || DEFAULT_SHORTCUTS;
+  const next = { ...current, [shortcutCaptureTarget]: accelerator };
   try {
-    await persistChatHotkey(chatHotkeyInput?.value || DEFAULT_CHAT_HOTKEY);
+    await persistShortcuts(next);
   } catch (error) {
-    renderChatHotkeyError(error instanceof Error ? error.message : String(error));
+    renderShortcutsError(error instanceof Error ? error.message : String(error));
+  } finally {
+    shortcutCaptureTarget = '';
+  }
+}, true);
+
+shortcutsResetButton?.addEventListener('click', async () => {
+  try {
+    const result = await window.yumikoOverlay?.resetShortcuts?.();
+    renderShortcutsError(result?.error || '');
+  } catch (error) {
+    renderShortcutsError(error instanceof Error ? error.message : String(error));
   }
 });
 
-chatHotkeyResetButton?.addEventListener('click', async () => {
-  try {
-    await persistChatHotkey(DEFAULT_CHAT_HOTKEY);
-  } catch (error) {
-    renderChatHotkeyError(error instanceof Error ? error.message : String(error));
-  }
-});
 
 autoMessageToggle?.addEventListener('change', () => {
   settings.autoMessageEnabled = autoMessageToggle.checked;
@@ -1734,6 +1780,12 @@ window.addEventListener('DOMContentLoaded', () => {
   window.yumikoOverlay?.onFocusInput?.(() => {
     setMode('chat', { source: 'state-sync' });
     focusChatInputRobust({ reason: 'main:focus-input' });
+  });
+  window.yumikoOverlay?.onShortcutFeedback?.((payload) => {
+    const message = typeof payload?.message === 'string' ? payload.message : '';
+    if (message) {
+      showBubble(message, { durationMs: 1800 });
+    }
   });
   window.yumikoOverlay?.onToggleChatFromHotkey?.((payload) => {
     const targetMode = payload?.targetMode === 'focus' ? 'focus' : 'chat';

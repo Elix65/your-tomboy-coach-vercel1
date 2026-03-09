@@ -38,6 +38,13 @@ const defaultSettings = {
   clickThroughPreferred: false,
   shortcutsEnabled: true,
   chatHotkey: 'Control+Shift+J',
+  shortcuts: {
+    panicReset: 'Control+Shift+R',
+    toggleChat: 'Control+Shift+J',
+    toggleClickable: 'Control+Shift+T',
+    sizeUp: 'Control++',
+    sizeDown: 'Control+-'
+  },
   visible: true,
   bounds: null,
   overlayBounds: null,
@@ -73,21 +80,105 @@ const SHORTCUTS = {
   toggleVisible: 'CommandOrControl+Shift+Y',
   defaultChatFocus: 'Control+Shift+J',
   forceQuit: 'CommandOrControl+Shift+Q',
-  panicReset: 'Control+Alt+R',
+  panicReset: 'Control+Shift+R',
   panicSafeMode: 'CommandOrControl+Alt+Shift+S',
   emergencyClickThrough: 'CommandOrControl+Alt+C'
+};
+
+const SHORTCUT_DEFINITIONS = {
+  panicReset: {
+    label: 'Reset de emergencia',
+    description: 'Reinicia la ventana y restaura el overlay.',
+    default: 'Control+Shift+R',
+    run: panicResetWindowAndRenderer
+  },
+  toggleChat: {
+    label: 'Abrir/cerrar chat',
+    description: 'Alterna entre modo foco y modo chat.',
+    default: 'Control+Shift+J',
+    run: toggleChatFromHotkey
+  },
+  toggleClickable: {
+    label: 'Alternar modo clickeable',
+    description: 'Activa o desactiva el click-through del overlay.',
+    default: 'Control+Shift+T',
+    run: () => {
+      const isClickable = Boolean(settings.clickThroughPreferred);
+      setClickThroughEnabled(!isClickable);
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('yumiko:shortcut-feedback', {
+          message: `Modo clickeable: ${isClickable ? 'ON' : 'OFF'}`
+        });
+      }
+    }
+  },
+  sizeUp: {
+    label: 'Aumentar tamaño',
+    description: 'Aumenta el tamaño de Yumiko mini.',
+    default: 'Control++',
+    run: () => {
+      if (!win || win.isDestroyed()) return;
+      win.webContents.send('yumiko:mini-scale', { delta: +0.05 });
+    }
+  },
+  sizeDown: {
+    label: 'Reducir tamaño',
+    description: 'Reduce el tamaño de Yumiko mini.',
+    default: 'Control+-',
+    run: () => {
+      if (!win || win.isDestroyed()) return;
+      win.webContents.send('yumiko:mini-scale', { delta: -0.05 });
+    }
+  }
 };
 
 const OVERLAY_TOPMOST_LEVEL = 'screen-saver';
 const OVERLAY_TOPMOST_INTERVAL_MS = 1800;
 
-let registeredChatHotkey = null;
 let shortcutRegistrationError = '';
+let shortcutStatuses = {};
+let registeredShortcutMap = {};
 let topmostReassertInterval = null;
 
 function normalizeChatHotkey(value) {
   const raw = typeof value === 'string' ? value.trim() : '';
   return raw || SHORTCUTS.defaultChatFocus;
+}
+
+function getDefaultShortcuts() {
+  return Object.fromEntries(
+    Object.entries(SHORTCUT_DEFINITIONS).map(([id, definition]) => [id, definition.default])
+  );
+}
+
+function normalizeShortcuts(shortcuts = {}) {
+  const defaults = getDefaultShortcuts();
+  const normalized = { ...defaults };
+  for (const shortcutId of Object.keys(defaults)) {
+    const value = shortcuts?.[shortcutId];
+    if (typeof value === 'string' && value.trim()) {
+      normalized[shortcutId] = value.trim();
+    }
+  }
+  return normalized;
+}
+
+function getDuplicateShortcutIds(shortcuts = {}) {
+  const seen = new Map();
+  const duplicates = new Set();
+
+  for (const [shortcutId, accelerator] of Object.entries(shortcuts)) {
+    const normalized = String(accelerator || '').trim().toLowerCase();
+    if (!normalized) continue;
+    if (seen.has(normalized)) {
+      duplicates.add(shortcutId);
+      duplicates.add(seen.get(normalized));
+      continue;
+    }
+    seen.set(normalized, shortcutId);
+  }
+
+  return duplicates;
 }
 
 function safeBounds(bounds, reason = 'unknown') {
@@ -238,6 +329,7 @@ function readSettings() {
       mode: migratedMode,
       userPickedMode,
       chatHotkey: normalizeChatHotkey(parsed.chatHotkey),
+      shortcuts: normalizeShortcuts(parsed.shortcuts || { toggleChat: parsed.chatHotkey }),
       yumikoWebOrigin: resolveYumikoWebOrigin(parsed),
       overlayBounds: migratedOverlayBounds,
       chatBounds: parsed.chatBounds || null
@@ -277,6 +369,8 @@ function setFocusMinimumBounds(payload) {
 }
 const YUMIKO_WEB_ORIGIN = resolveYumikoWebOrigin(settings);
 settings.yumikoWebOrigin = YUMIKO_WEB_ORIGIN;
+settings.shortcuts = normalizeShortcuts(settings.shortcuts || { toggleChat: settings.chatHotkey });
+settings.chatHotkey = settings.shortcuts.toggleChat;
 
 function writeSettings() {
   fs.mkdirSync(app.getPath('userData'), { recursive: true });
@@ -356,7 +450,10 @@ function clearAuth() {
 function getState() {
   return {
     ...settings,
-    chatHotkey: normalizeChatHotkey(settings.chatHotkey),
+    chatHotkey: normalizeChatHotkey(settings.shortcuts?.toggleChat || settings.chatHotkey),
+    shortcuts: normalizeShortcuts(settings.shortcuts),
+    shortcutStatuses,
+    shortcutsMeta: buildShortcutMetadata(settings.shortcuts),
     shortcutRegistrationError,
     authState: { ...authState }
   };
@@ -780,53 +877,52 @@ function toggleChatFromHotkey() {
   }
 }
 
-function registerChatHotkey() {
-  const chatHotkey = normalizeChatHotkey(settings.chatHotkey);
-  settings.chatHotkey = chatHotkey;
-  registeredChatHotkey = null;
-  shortcutRegistrationError = '';
+function buildShortcutMetadata(shortcuts = settings.shortcuts) {
+  return Object.entries(SHORTCUT_DEFINITIONS).map(([id, definition]) => ({
+    id,
+    name: definition.label,
+    description: definition.description,
+    accelerator: shortcuts?.[id] || definition.default,
+    status: shortcutStatuses[id] || 'active',
+    statusLabel: (shortcutStatuses[id] || 'active') === 'active' ? 'Activo' : 'No disponible'
+  }));
+}
 
-  const registered = globalShortcut.register(chatHotkey, toggleChatFromHotkey);
-  if (!registered) {
-    shortcutRegistrationError = `No se pudo registrar el atajo de chat (${chatHotkey}). Está en uso por otra app o el sistema. Cambialo desde Settings.`;
-    console.error('[yumiko][shortcuts] chat hotkey registration failed', { chatHotkey });
-    return;
+function unregisterRegisteredShortcuts() {
+  for (const [shortcutId, accelerator] of Object.entries(registeredShortcutMap)) {
+    if (!accelerator) continue;
+    globalShortcut.unregister(accelerator);
+    shortcutStatuses[shortcutId] = 'unavailable';
   }
-
-  registeredChatHotkey = chatHotkey;
+  registeredShortcutMap = {};
 }
 
 function updateGlobalShortcuts() {
   globalShortcut.unregister(SHORTCUTS.toggleVisible);
-  if (registeredChatHotkey) globalShortcut.unregister(registeredChatHotkey);
   globalShortcut.unregister(SHORTCUTS.forceQuit);
-  globalShortcut.unregister(SHORTCUTS.panicReset);
   globalShortcut.unregister(SHORTCUTS.panicSafeMode);
   globalShortcut.unregister(SHORTCUTS.emergencyClickThrough);
-  globalShortcut.unregister('CommandOrControl+Alt+=');
-  globalShortcut.unregister('CommandOrControl+Alt+-');
   globalShortcut.unregister('CommandOrControl+Alt+0');
+  unregisterRegisteredShortcuts();
 
   globalShortcut.register(SHORTCUTS.forceQuit, quitApp);
-  globalShortcut.register(SHORTCUTS.panicReset, panicResetWindowAndRenderer);
   globalShortcut.register(SHORTCUTS.panicSafeMode, panicDisableOverlayAndClickThrough);
   globalShortcut.register(SHORTCUTS.emergencyClickThrough, () => {
     setClickThroughEnabled(!settings.clickThroughPreferred);
   });
   if (win && !win.isDestroyed()) {
-    globalShortcut.register('CommandOrControl+Alt+=', () => {
-      if (!win || win.isDestroyed()) return;
-      win.webContents.send('yumiko:mini-scale', { delta: +0.05 });
-    });
-    globalShortcut.register('CommandOrControl+Alt+-', () => {
-      if (!win || win.isDestroyed()) return;
-      win.webContents.send('yumiko:mini-scale', { delta: -0.05 });
-    });
     globalShortcut.register('CommandOrControl+Alt+0', () => {
       if (!win || win.isDestroyed()) return;
       win.webContents.send('yumiko:mini-scale', { set: 1 });
     });
   }
+
+  settings.shortcuts = normalizeShortcuts(settings.shortcuts || { toggleChat: settings.chatHotkey });
+  settings.chatHotkey = settings.shortcuts.toggleChat;
+
+  shortcutRegistrationError = '';
+  shortcutStatuses = Object.fromEntries(Object.keys(SHORTCUT_DEFINITIONS).map((id) => [id, 'active']));
+  const duplicateIds = getDuplicateShortcutIds(settings.shortcuts);
 
   if (!settings.shortcutsEnabled) {
     shortcutRegistrationError = '';
@@ -834,21 +930,62 @@ function updateGlobalShortcuts() {
   }
 
   globalShortcut.register(SHORTCUTS.toggleVisible, toggleVisible);
-  registerChatHotkey();
+
+  for (const [shortcutId, definition] of Object.entries(SHORTCUT_DEFINITIONS)) {
+    const accelerator = settings.shortcuts[shortcutId];
+    if (duplicateIds.has(shortcutId)) {
+      shortcutStatuses[shortcutId] = 'unavailable';
+      continue;
+    }
+
+    const registered = globalShortcut.register(accelerator, definition.run);
+    if (!registered) {
+      shortcutStatuses[shortcutId] = 'unavailable';
+      continue;
+    }
+
+    registeredShortcutMap[shortcutId] = accelerator;
+  }
+
+  const unavailable = Object.entries(shortcutStatuses)
+    .filter(([, status]) => status !== 'active')
+    .map(([id]) => SHORTCUT_DEFINITIONS[id]?.label || id);
+  if (unavailable.length) {
+    shortcutRegistrationError = `Atajos no disponibles: ${unavailable.join(', ')}.`;
+  }
 }
 
-function setChatHotkey(nextHotkey) {
-  const normalizedHotkey = normalizeChatHotkey(nextHotkey);
-  settings.chatHotkey = normalizedHotkey;
+function setShortcuts(nextShortcuts = {}) {
+  const normalizedShortcuts = normalizeShortcuts(nextShortcuts);
+  const duplicates = [...getDuplicateShortcutIds(normalizedShortcuts)];
+  if (duplicates.length) {
+    const duplicateNames = duplicates.map((id) => SHORTCUT_DEFINITIONS[id]?.label || id);
+    shortcutRegistrationError = `Hay atajos duplicados: ${duplicateNames.join(', ')}.`;
+    broadcastState();
+    return {
+      ok: false,
+      shortcuts: settings.shortcuts,
+      statuses: shortcutStatuses,
+      error: shortcutRegistrationError
+    };
+  }
+
+  settings.shortcuts = normalizedShortcuts;
+  settings.chatHotkey = settings.shortcuts.toggleChat;
   writeSettings();
   updateGlobalShortcuts();
   broadcastState();
   refreshTrayMenu();
   return {
     ok: !shortcutRegistrationError,
-    hotkey: settings.chatHotkey,
+    shortcuts: settings.shortcuts,
+    statuses: shortcutStatuses,
     error: shortcutRegistrationError
   };
+}
+
+function resetShortcutsToDefaults() {
+  return setShortcuts(getDefaultShortcuts());
 }
 
 function setShortcutsEnabled(enabled) {
@@ -919,7 +1056,7 @@ function refreshTrayMenu() {
   if (!tray || !win) return;
   const contextMenu = Menu.buildFromTemplate([
     { label: win.isVisible() ? 'Hide' : 'Show', click: toggleVisible },
-    { label: `Abrir chat + foco input (${settings.chatHotkey || SHORTCUTS.defaultChatFocus})`, click: toggleChatFromHotkey },
+    { label: `Abrir chat + foco input (${settings.shortcuts?.toggleChat || SHORTCUTS.defaultChatFocus})`, click: toggleChatFromHotkey },
     {
       label: 'Modo Overlay (Siempre arriba)',
       type: 'checkbox',
@@ -1315,7 +1452,8 @@ if (!singleInstance) {
       setMode(mode, { fromRenderer: true, userPickedMode: true });
     });
     ipcMain.on('yumiko:set-shortcuts-enabled', (_event, enabled) => setShortcutsEnabled(enabled));
-    ipcMain.handle('yumiko:set-chat-hotkey', (_event, hotkey) => setChatHotkey(hotkey));
+    ipcMain.handle('yumiko:set-shortcuts', (_event, shortcuts) => setShortcuts(shortcuts));
+    ipcMain.handle('yumiko:reset-shortcuts', () => resetShortcutsToDefaults());
     ipcMain.on('yumiko:set-click-through-enabled', (_event, enabled) => setClickThroughEnabled(enabled));
     ipcMain.on('yumiko:set-overlay-enabled', (_event, enabled) => setOverlayEnabled(enabled));
     ipcMain.on('yumiko:complete-first-run', () => completeFirstRun());

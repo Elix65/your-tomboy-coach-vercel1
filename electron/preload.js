@@ -4,7 +4,8 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
   setMode: (mode) => ipcRenderer.send('yumiko:set-mode', mode),
   setOverlayEnabled: (enabled) => ipcRenderer.send('yumiko:set-overlay-enabled', enabled),
   setShortcutsEnabled: (enabled) => ipcRenderer.send('yumiko:set-shortcuts-enabled', enabled),
-  setChatHotkey: (hotkey) => ipcRenderer.invoke('yumiko:set-chat-hotkey', hotkey),
+  setShortcuts: (shortcuts) => ipcRenderer.invoke('yumiko:set-shortcuts', shortcuts),
+  resetShortcuts: () => ipcRenderer.invoke('yumiko:reset-shortcuts'),
   setClickThroughEnabled: (enabled) => ipcRenderer.send('yumiko:set-click-through-enabled', enabled),
   setWindowSize: (size) => ipcRenderer.send('yumiko:set-window-size', size),
   setMinimumSize: (size) => ipcRenderer.send('yumiko:set-minimum-size', size),
@@ -60,6 +61,11 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
     const listener = (_event, payload) => callback(payload);
     ipcRenderer.on('yumiko:focus-input', listener);
     return () => ipcRenderer.removeListener('yumiko:focus-input', listener);
+  },
+  onShortcutFeedback: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('yumiko:shortcut-feedback', listener);
+    return () => ipcRenderer.removeListener('yumiko:shortcut-feedback', listener);
   },
   onToggleChatFromHotkey: (callback) => {
     const listener = (_event, payload) => callback(payload);

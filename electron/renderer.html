@@ -45,15 +45,14 @@
           <input id="shortcuts-enabled" type="checkbox" />
         </div>
 
-        <div class="toggle-row">
-          <label for="chat-hotkey">Atajo abrir chat</label>
-          <input id="chat-hotkey" type="text" placeholder="Control+Shift+J" />
-        </div>
-        <div class="auth-row">
-          <button id="chat-hotkey-save" class="panel-btn" type="button">Guardar atajo</button>
-          <button id="chat-hotkey-reset" class="panel-btn" type="button">Restablecer</button>
-        </div>
-        <p id="chat-hotkey-error" class="settings-error" hidden></p>
+        <section class="shortcuts-section" aria-label="Atajos globales">
+          <div class="shortcuts-header">
+            <strong>Atajos globales</strong>
+            <button id="shortcuts-reset" class="panel-btn" type="button">Restaurar predeterminados</button>
+          </div>
+          <div id="shortcuts-list" class="shortcuts-list"></div>
+          <p id="shortcuts-error" class="settings-error" hidden></p>
+        </section>
         <div class="toggle-row">
           <label for="auto-message-enabled">Auto-mensajes Yumiko</label>
           <input id="auto-message-enabled" type="checkbox" />
