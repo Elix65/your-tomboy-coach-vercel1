@@ -1230,34 +1230,54 @@ function abbreviateUserId(value) {
 function ensureLinkingSettingsSection() {
   if (!settingsPanel) return;
 
-  let section = Array.from(settingsPanel.querySelectorAll('.settings-group'))
-    .find((item) => item.querySelector('.settings-group-title')?.textContent?.trim() === 'Vinculación');
+  let section = document.getElementById('linking-settings-section');
+  if (!section) {
+    section = Array.from(settingsPanel.querySelectorAll('.settings-group'))
+      .find((item) => item.querySelector('.settings-group-title')?.textContent?.trim() === 'Vinculación');
+  }
 
   authStatus = document.getElementById('auth-status');
   authActionButton = document.getElementById('auth-action');
 
-  console.info('[yumiko][auth][debug] ensureLinkingSettingsSection:start', {
+  console.info('[yumiko][auth][debug] auth section rendered', {
     hasSection: Boolean(section),
     hasAuthStatus: Boolean(authStatus),
     hasAuthAction: Boolean(authActionButton)
   });
 
+  if (!section || !authStatus || !authActionButton) {
+    console.warn('[yumiko][auth][debug] auth section missing in template, running fallback ensure');
+  }
+
   if (!section) {
     section = document.createElement('section');
+    section.id = 'linking-settings-section';
     section.className = 'settings-group';
     section.setAttribute('aria-label', 'Vinculación');
-    section.innerHTML = `
-      <strong class="settings-group-title">Vinculación</strong>
-      <div class="auth-row">
-        <span id="auth-status" class="auth-status">No vinculado</span>
-        <button id="auth-action" class="panel-btn" type="button">Vincular</button>
-      </div>
-    `;
 
-    const imageSectionTitle = Array.from(settingsPanel.querySelectorAll('.settings-group-title'))
-      .find((title) => title.textContent?.trim() === 'Imagen');
-    const imageSection = imageSectionTitle?.closest('.settings-group');
+    const title = document.createElement('strong');
+    title.className = 'settings-group-title';
+    title.textContent = 'Vinculación';
 
+    const authRow = document.createElement('div');
+    authRow.id = 'auth-row';
+    authRow.className = 'auth-row';
+
+    const status = document.createElement('span');
+    status.id = 'auth-status';
+    status.className = 'auth-status';
+    status.textContent = 'No vinculado';
+
+    const action = document.createElement('button');
+    action.id = 'auth-action';
+    action.className = 'panel-btn';
+    action.type = 'button';
+    action.textContent = 'Vincular';
+
+    authRow.append(status, action);
+    section.append(title, authRow);
+
+    const imageSection = document.querySelector('#side-image-mode')?.closest('.settings-group');
     if (imageSection?.parentNode === settingsPanel) {
       imageSection.insertAdjacentElement('afterend', section);
     } else {
@@ -1265,7 +1285,17 @@ function ensureLinkingSettingsSection() {
     }
   }
 
-  authStatus = section.querySelector('#auth-status');
+  let authRow = section.querySelector('#auth-row') || section.querySelector('.auth-row');
+  authStatus = section.querySelector('#auth-status') || authStatus;
+  authActionButton = section.querySelector('#auth-action') || authActionButton;
+
+  if (!authRow) {
+    authRow = document.createElement('div');
+    authRow.id = 'auth-row';
+    authRow.className = 'auth-row';
+    section.appendChild(authRow);
+  }
+
   if (!authStatus) {
     authStatus = document.createElement('span');
     authStatus.id = 'auth-status';
@@ -1273,20 +1303,12 @@ function ensureLinkingSettingsSection() {
     authStatus.textContent = 'No vinculado';
   }
 
-  authActionButton = section.querySelector('#auth-action');
   if (!authActionButton) {
     authActionButton = document.createElement('button');
     authActionButton.id = 'auth-action';
     authActionButton.className = 'panel-btn';
     authActionButton.type = 'button';
     authActionButton.textContent = 'Vincular';
-  }
-
-  let authRow = section.querySelector('.auth-row');
-  if (!authRow) {
-    authRow = document.createElement('div');
-    authRow.className = 'auth-row';
-    section.appendChild(authRow);
   }
 
   if (!authStatus.parentNode || authStatus.parentNode !== authRow) {
@@ -1297,10 +1319,35 @@ function ensureLinkingSettingsSection() {
     authRow.appendChild(authActionButton);
   }
 
-  console.info('[yumiko][auth][debug] ensureLinkingSettingsSection:done', {
-    hasAuthStatus: Boolean(authStatus),
-    hasAuthAction: Boolean(authActionButton)
+  const isInVisibleSettingsContainer = section.closest('#settings-panel') === settingsPanel;
+  console.info('[yumiko][auth][debug] auth button found/created', {
+    hasAuthAction: Boolean(authActionButton),
+    text: authActionButton?.textContent || ''
   });
+  console.info('[yumiko][auth][debug] auth button appended to visible settings container', {
+    isInVisibleSettingsContainer,
+    parentId: authActionButton?.parentElement?.id || authActionButton?.parentElement?.className || ''
+  });
+
+  if (authActionButton) {
+    const computed = window.getComputedStyle(authActionButton);
+    console.info('[yumiko][auth][debug] auth button computed style', {
+      display: computed.display,
+      visibility: computed.visibility,
+      opacity: computed.opacity,
+      height: computed.height,
+      width: computed.width
+    });
+  }
+
+  if (section) {
+    window.__yumikoAuthSectionHtml = section.outerHTML;
+    console.info('[yumiko][auth][debug] auth section html snapshot', {
+      html: window.__yumikoAuthSectionHtml
+    });
+  }
+
+  bindAuthActionButton();
 }
 
 function bindAuthActionButton() {
@@ -1648,6 +1695,20 @@ function syncHostState(state = {}) {
 
 toggleSettingsButton?.addEventListener('click', () => {
   setSettingsPanelHidden(!settingsPanel?.hidden);
+  const section = document.getElementById('linking-settings-section');
+  const button = document.getElementById('auth-action');
+  if (section && button) {
+    const computed = window.getComputedStyle(button);
+    console.info('[yumiko][auth][debug] auth button computed style', {
+      event: 'toggle-settings',
+      display: computed.display,
+      visibility: computed.visibility,
+      opacity: computed.opacity,
+      height: computed.height,
+      width: computed.width,
+      panelHidden: Boolean(settingsPanel?.hidden)
+    });
+  }
 });
 
 quitAppButton?.addEventListener('click', (event) => {
