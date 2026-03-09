@@ -8,7 +8,8 @@ const MINI_SCALE_KEY = 'yumiko_mini_scale_v1';
 const DEFAULT_SETTINGS = {
   mode: 'focus',
   autoMessageEnabled: false,
-  autoMessageIntervalMinutes: 20
+  autoMessageIntervalMinutes: 20,
+  sideImageMode: 'auto'
 };
 const AUTO_MESSAGE_INTERVAL_OPTIONS = [1, 2, 5, 10, 20];
 const RECENT_FOCUS_REPLY_CARRY_WINDOW_MS = 7000;
@@ -43,6 +44,7 @@ const authStatus = document.getElementById('auth-status');
 const authActionButton = document.getElementById('auth-action');
 const autoMessageToggle = document.getElementById('auto-message-enabled');
 const autoMessageIntervalSelect = document.getElementById('auto-message-interval');
+const sideImageModeSelect = document.getElementById('side-image-mode');
 
 const widget = document.getElementById('yumiko-widget');
 const mini = document.getElementById('yumiko-mini');
@@ -59,7 +61,8 @@ const bubbleLayer = document.getElementById('yumiko-bubble-layer');
 const bubble = document.getElementById('yumiko-bubble');
 const bubbleText = bubble?.querySelector('.bubble-text');
 
-const CHARACTER_SRC_WHEN_WINDOW_ON_LEFT = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/derecha.png';
+const CHARACTER_SRC_WHEN_WINDOW_ON_LEFT = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png';
+const CHARACTER_SRC_WHEN_WINDOW_ON_RIGHT = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/overlay1.png';
 const SIDE_SWITCH_HYSTERESIS_PX = 48;
 
 let isThinking = false;
@@ -105,10 +108,15 @@ function loadSettings() {
     parsed.autoMessageEnabled = Boolean(parsed.autoMessageEnabled);
     const parsedInterval = Number(parsed.autoMessageIntervalMinutes);
     parsed.autoMessageIntervalMinutes = AUTO_MESSAGE_INTERVAL_OPTIONS.includes(parsedInterval) ? parsedInterval : 20;
+    parsed.sideImageMode = normalizeSideImageMode(parsed.sideImageMode);
     return parsed;
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
+}
+
+function normalizeSideImageMode(value) {
+  return value === 'left' || value === 'right' ? value : 'auto';
 }
 
 let settings = loadSettings();
@@ -131,10 +139,10 @@ let lastAssistantMessageIdShownInBubble = '';
 let lastAssistantMessageAt = 0;
 let lastAssistantMessageText = '';
 let pendingAssistantReplyAfterUserMessage = false;
-let characterSrcWhenWindowOnRight = '';
 let activeCharacterSide = null;
 let pendingCharacterSwapToken = 0;
 const preloadedCharacterImages = new Map();
+let lastKnownBounds = null;
 let lastLocalModeIntent = {
   mode: toUiMode(settings.mode),
   source: 'init',
@@ -194,21 +202,38 @@ function resolveCharacterSideFromBounds(bounds) {
 }
 
 function updateCharacterImageForBounds(bounds, { force = false } = {}) {
-  if (!img || !characterSrcWhenWindowOnRight) return;
+  if (!img) return;
 
-  const nextSide = resolveCharacterSideFromBounds(bounds);
-  if (!force && nextSide === activeCharacterSide) return;
+  const sideImageMode = normalizeSideImageMode(settings.sideImageMode);
+  const resolvedSide = sideImageMode === 'auto'
+    ? resolveCharacterSideFromBounds(bounds)
+    : (sideImageMode === 'left' ? 'left-screen' : 'right-screen');
 
-  const nextSrc = nextSide === 'left-screen'
+  if (!force && resolvedSide === activeCharacterSide) return;
+
+  const nextSrc = resolvedSide === 'left-screen'
     ? CHARACTER_SRC_WHEN_WINDOW_ON_LEFT
-    : characterSrcWhenWindowOnRight;
+    : CHARACTER_SRC_WHEN_WINDOW_ON_RIGHT;
   const normalizedCurrent = img.currentSrc || img.src || '';
+
+  const width = Number(bounds?.width);
+  const x = Number(bounds?.x);
+  const windowCenterX = Number.isFinite(width) && Number.isFinite(x) ? x + (width / 2) : null;
+  const screenCenterX = window.screen.availLeft + (window.screen.availWidth / 2);
+  console.info('[yumiko][image-side] resolve', {
+    windowCenterX,
+    screenCenterX,
+    resolvedSide,
+    sideImageMode,
+    chosenImageSrc: nextSrc
+  });
+
   if (!force && normalizedCurrent === nextSrc) {
-    activeCharacterSide = nextSide;
+    activeCharacterSide = resolvedSide;
     return;
   }
 
-  activeCharacterSide = nextSide;
+  activeCharacterSide = resolvedSide;
   const swapToken = ++pendingCharacterSwapToken;
 
   preloadCharacterImage(nextSrc).finally(() => {
@@ -1274,6 +1299,9 @@ function syncAutoMessageControls() {
   if (autoMessageIntervalSelect) {
     autoMessageIntervalSelect.value = String(settings.autoMessageIntervalMinutes || 20);
   }
+  if (sideImageModeSelect) {
+    sideImageModeSelect.value = normalizeSideImageMode(settings.sideImageMode);
+  }
 }
 
 async function requestAutoNudge() {
@@ -1437,7 +1465,8 @@ function syncHostState(state = {}) {
   }
 
   syncAutoMessageControls();
-  updateCharacterImageForBounds(state.bounds);
+  lastKnownBounds = state.bounds || lastKnownBounds;
+  updateCharacterImageForBounds(lastKnownBounds);
 }
 
 toggleSettingsButton?.addEventListener('click', () => {
@@ -1514,6 +1543,12 @@ autoMessageIntervalSelect?.addEventListener('change', () => {
   saveSettings();
   markUserActivity({ event: 'change-auto-message-interval', strength: 'weak' });
   persistAutoMessageSettings();
+});
+
+sideImageModeSelect?.addEventListener('change', () => {
+  settings.sideImageMode = normalizeSideImageMode(sideImageModeSelect.value);
+  saveSettings();
+  updateCharacterImageForBounds(lastKnownBounds, { force: true });
 });
 
 authActionButton?.addEventListener('click', async () => {
@@ -1670,8 +1705,7 @@ window.addEventListener('DOMContentLoaded', () => {
   persistAutoMessageSettings();
 
   if (img) {
-    characterSrcWhenWindowOnRight = (img.getAttribute('src') || img.src || '').trim();
-    preloadCharacterImage(characterSrcWhenWindowOnRight);
+    preloadCharacterImage(CHARACTER_SRC_WHEN_WINDOW_ON_RIGHT);
     preloadCharacterImage(CHARACTER_SRC_WHEN_WINDOW_ON_LEFT);
 
     if (img.complete) {
