@@ -76,8 +76,12 @@ const SHORTCUTS = {
   emergencyClickThrough: 'CommandOrControl+Alt+C'
 };
 
+const OVERLAY_TOPMOST_LEVEL = 'screen-saver';
+const OVERLAY_TOPMOST_INTERVAL_MS = 1800;
+
 let registeredChatHotkey = null;
 let shortcutRegistrationError = '';
+let topmostReassertInterval = null;
 
 function normalizeChatHotkey(value) {
   const raw = typeof value === 'string' ? value.trim() : '';
@@ -169,7 +173,7 @@ function panicResetWindowAndRenderer() {
   if (win && !win.isDestroyed()) {
     win.setIgnoreMouseEvents(false);
     if (settings.overlayEnabled) {
-      win.setAlwaysOnTop(true, 'floating');
+      enforceOverlayTopmost('panic-reset');
     }
     win.setResizable(false);
     win.show();
@@ -178,6 +182,33 @@ function panicResetWindowAndRenderer() {
   }
 
   setMode('focus');
+}
+
+function stopTopmostReassertInterval() {
+  if (!topmostReassertInterval) return;
+  clearInterval(topmostReassertInterval);
+  topmostReassertInterval = null;
+}
+
+function ensureTopmostReassertInterval() {
+  if (topmostReassertInterval) return;
+  topmostReassertInterval = setInterval(() => {
+    enforceOverlayTopmost('interval-reassert', { skipIfHidden: true });
+  }, OVERLAY_TOPMOST_INTERVAL_MS);
+}
+
+function enforceOverlayTopmost(reason, { skipIfHidden = false } = {}) {
+  if (!win || win.isDestroyed() || !settings.overlayEnabled) return;
+  if (skipIfHidden && !win.isVisible()) return;
+
+  win.setAlwaysOnTop(true, OVERLAY_TOPMOST_LEVEL, 1);
+  win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+
+  if (!win.isMinimized() && win.isVisible()) {
+    win.moveTop();
+  }
+
+  console.info('[yumiko][window] topmost reaffirmed', { reason, level: OVERLAY_TOPMOST_LEVEL });
 }
 
 function quitApp() {
@@ -596,7 +627,14 @@ function broadcastState() {
 function applyWindowBehavior() {
   if (!win) return;
 
-  win.setAlwaysOnTop(Boolean(settings.overlayEnabled), 'floating');
+  if (settings.overlayEnabled) {
+    enforceOverlayTopmost('apply-window-behavior');
+    ensureTopmostReassertInterval();
+  } else {
+    stopTopmostReassertInterval();
+    win.setAlwaysOnTop(false);
+    win.setVisibleOnAllWorkspaces(false);
+  }
 
   const canUseClickThrough = settings.hasCompletedFirstRun;
   const enableClickThrough = canUseClickThrough
@@ -1027,6 +1065,7 @@ function createWindow() {
   });
 
   win.setMenuBarVisibility(false);
+  win.setFullScreenable(false);
   if (typeof win.setHasShadow === 'function') {
     win.setHasShadow(false);
   }
@@ -1047,6 +1086,8 @@ function createWindow() {
   win.on('move', saveBounds);
   win.on('resize', saveBounds);
   win.on('show', () => {
+    ensureTopmostReassertInterval();
+    enforceOverlayTopmost('event:show');
     settings.visible = true;
     writeSettings();
     broadcastState();
@@ -1057,6 +1098,21 @@ function createWindow() {
     writeSettings();
     broadcastState();
     refreshTrayMenu();
+  });
+  win.on('blur', () => {
+    ensureTopmostReassertInterval();
+    enforceOverlayTopmost('event:blur', { skipIfHidden: true });
+  });
+  win.on('focus', () => {
+    ensureTopmostReassertInterval();
+    enforceOverlayTopmost('event:focus', { skipIfHidden: true });
+  });
+  win.on('restore', () => {
+    ensureTopmostReassertInterval();
+    enforceOverlayTopmost('event:restore');
+  });
+  win.on('minimize', () => {
+    stopTopmostReassertInterval();
   });
   win.on('close', (event) => {
     if (!isQuitting) {
@@ -1270,6 +1326,7 @@ if (!singleInstance) {
 }
 
 app.on('will-quit', () => {
+  stopTopmostReassertInterval();
   globalShortcut.unregisterAll();
 });
 
