@@ -59,7 +59,7 @@ const bubbleLayer = document.getElementById('yumiko-bubble-layer');
 const bubble = document.getElementById('yumiko-bubble');
 const bubbleText = bubble?.querySelector('.bubble-text');
 
-const LEFT_SIDE_CHARACTER_SRC = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/derecha.png';
+const LEFT_SCREEN_CHARACTER_SRC = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/derecha.png';
 const SIDE_SWITCH_HYSTERESIS_PX = 48;
 
 let isThinking = false;
@@ -199,7 +199,7 @@ function updateCharacterImageForBounds(bounds, { force = false } = {}) {
   const nextSide = resolveCharacterSideFromBounds(bounds);
   if (!force && nextSide === activeCharacterSide) return;
 
-  const nextSrc = nextSide === 'left-screen' ? LEFT_SIDE_CHARACTER_SRC : rightSideCharacterSrc;
+  const nextSrc = nextSide === 'left-screen' ? LEFT_SCREEN_CHARACTER_SRC : rightSideCharacterSrc;
   const normalizedCurrent = img.currentSrc || img.src || '';
   if (!force && normalizedCurrent === nextSrc) {
     activeCharacterSide = nextSide;
@@ -1670,7 +1670,7 @@ window.addEventListener('DOMContentLoaded', () => {
   if (img) {
     rightSideCharacterSrc = (img.getAttribute('src') || img.src || '').trim();
     preloadCharacterImage(rightSideCharacterSrc);
-    preloadCharacterImage(LEFT_SIDE_CHARACTER_SRC);
+    preloadCharacterImage(LEFT_SCREEN_CHARACTER_SRC);
 
     if (img.complete) {
       requestFitDebounced();
