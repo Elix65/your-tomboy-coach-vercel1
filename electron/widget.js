@@ -59,6 +59,9 @@ const bubbleLayer = document.getElementById('yumiko-bubble-layer');
 const bubble = document.getElementById('yumiko-bubble');
 const bubbleText = bubble?.querySelector('.bubble-text');
 
+const LEFT_SIDE_CHARACTER_SRC = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/derecha.png';
+const SIDE_SWITCH_HYSTERESIS_PX = 48;
+
 let isThinking = false;
 let contextCache = [];
 let overlayConnected = false;
@@ -128,6 +131,10 @@ let lastAssistantMessageIdShownInBubble = '';
 let lastAssistantMessageAt = 0;
 let lastAssistantMessageText = '';
 let pendingAssistantReplyAfterUserMessage = false;
+let rightSideCharacterSrc = '';
+let activeCharacterSide = null;
+let pendingCharacterSwapToken = 0;
+const preloadedCharacterImages = new Map();
 let lastLocalModeIntent = {
   mode: toUiMode(settings.mode),
   source: 'init',
@@ -139,6 +146,79 @@ function clampToViewport(value, min, max) {
   if (!Number.isFinite(min) || !Number.isFinite(max)) return value;
   if (max < min) return min;
   return Math.min(max, Math.max(min, value));
+}
+
+function preloadCharacterImage(src) {
+  const normalizedSrc = typeof src === 'string' ? src.trim() : '';
+  if (!normalizedSrc) return Promise.resolve();
+  if (preloadedCharacterImages.has(normalizedSrc)) {
+    return preloadedCharacterImages.get(normalizedSrc);
+  }
+
+  const preloadPromise = new Promise((resolve) => {
+    const preloadImg = new Image();
+    preloadImg.decoding = 'async';
+    preloadImg.src = normalizedSrc;
+    const done = () => resolve();
+    if (preloadImg.decode) {
+      preloadImg.decode().then(done).catch(done);
+      return;
+    }
+    preloadImg.addEventListener('load', done, { once: true });
+    preloadImg.addEventListener('error', done, { once: true });
+  });
+
+  preloadedCharacterImages.set(normalizedSrc, preloadPromise);
+  return preloadPromise;
+}
+
+function resolveCharacterSideFromBounds(bounds) {
+  const width = Number(bounds?.width);
+  const x = Number(bounds?.x);
+  if (!Number.isFinite(width) || !Number.isFinite(x) || width <= 0) {
+    return activeCharacterSide || 'right-screen';
+  }
+
+  const overlayCenterX = x + (width / 2);
+  const screenCenterX = window.screen.availLeft + (window.screen.availWidth / 2);
+  const delta = overlayCenterX - screenCenterX;
+
+  if (activeCharacterSide === 'left-screen') {
+    return delta > SIDE_SWITCH_HYSTERESIS_PX ? 'right-screen' : 'left-screen';
+  }
+  if (activeCharacterSide === 'right-screen') {
+    return delta < -SIDE_SWITCH_HYSTERESIS_PX ? 'left-screen' : 'right-screen';
+  }
+
+  return delta < 0 ? 'left-screen' : 'right-screen';
+}
+
+function updateCharacterImageForBounds(bounds, { force = false } = {}) {
+  if (!img || !rightSideCharacterSrc) return;
+
+  const nextSide = resolveCharacterSideFromBounds(bounds);
+  if (!force && nextSide === activeCharacterSide) return;
+
+  const nextSrc = nextSide === 'left-screen' ? LEFT_SIDE_CHARACTER_SRC : rightSideCharacterSrc;
+  const normalizedCurrent = img.currentSrc || img.src || '';
+  if (!force && normalizedCurrent === nextSrc) {
+    activeCharacterSide = nextSide;
+    return;
+  }
+
+  activeCharacterSide = nextSide;
+  const swapToken = ++pendingCharacterSwapToken;
+
+  preloadCharacterImage(nextSrc).finally(() => {
+    if (!img || swapToken !== pendingCharacterSwapToken) return;
+
+    img.classList.add('is-swapping');
+    window.requestAnimationFrame(() => {
+      if (!img || swapToken !== pendingCharacterSwapToken) return;
+      img.src = nextSrc;
+      img.classList.remove('is-swapping');
+    });
+  });
 }
 
 function positionBubble() {
@@ -1355,6 +1435,7 @@ function syncHostState(state = {}) {
   }
 
   syncAutoMessageControls();
+  updateCharacterImageForBounds(state.bounds);
 }
 
 toggleSettingsButton?.addEventListener('click', () => {
@@ -1587,6 +1668,10 @@ window.addEventListener('DOMContentLoaded', () => {
   persistAutoMessageSettings();
 
   if (img) {
+    rightSideCharacterSrc = (img.getAttribute('src') || img.src || '').trim();
+    preloadCharacterImage(rightSideCharacterSrc);
+    preloadCharacterImage(LEFT_SIDE_CHARACTER_SRC);
+
     if (img.complete) {
       requestFitDebounced();
       scheduleBubblePosition();
