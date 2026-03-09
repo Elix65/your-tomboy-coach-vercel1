@@ -21,6 +21,7 @@ const ACTIVE_VOICE_PLANS = ['voice_lite', 'voice_plus'];
 const OVERLAY_CODE_TTL_MS = 2 * 60 * 1000;
 const OVERLAY_ACCESS_TTL_SECONDS = 15 * 60;
 const OVERLAY_REFRESH_TTL_SECONDS = 30 * 24 * 60 * 60;
+const OVERLAY_NUDGE_INTERVAL_OPTIONS = [1, 2, 5, 10, 20];
 
 function normalizeMpErrorMessage(mpData) {
   return String(mpData?.message || mpData?.error || '').trim().toLowerCase();
@@ -2167,9 +2168,12 @@ async function overlayNudgeSettingsHandler(req, res) {
 }
 
 async function overlayNudgeHandler(req, res) {
+  let failedAt = 'overlayNudgeHandler:start';
   try {
+    failedAt = 'overlayNudgeHandler:validateMethod';
     if (req.method !== 'POST') return res.status(405).send('Method Not Allowed');
 
+    failedAt = 'overlayNudgeHandler:getSupabaseAdmin';
     const supabaseAdmin = getSupabaseAdmin();
     if (!supabaseAdmin) {
       return res.status(500).json({ error: 'Supabase env vars are missing (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY).' });
@@ -2177,6 +2181,7 @@ async function overlayNudgeHandler(req, res) {
 
     let auth;
     try {
+      failedAt = 'resolveOverlayOrSupabaseAuth';
       auth = await resolveOverlayOrSupabaseAuth(supabaseAdmin, req);
     } catch (authError) {
       return res.status(authError?.httpStatus || 401).json({ error: authError?.errorCode || 'invalid_token' });
@@ -2187,6 +2192,7 @@ async function overlayNudgeHandler(req, res) {
     const requestedInterval = Number(req.body?.interval_minutes);
     const intervalMinutes = OVERLAY_NUDGE_INTERVAL_OPTIONS.includes(requestedInterval) ? requestedInterval : 20;
 
+    failedAt = 'overlayNudgeSettings:read';
     const { data: settingsRow, error: settingsErr } = await supabaseAdmin
       .from('overlay_nudge_settings')
       .select('enabled,interval_minutes,last_sent_at,last_nudge_bucket,last_nudge_message')
@@ -2244,11 +2250,13 @@ async function overlayNudgeHandler(req, res) {
       day: calcularDia(global.yumikoSession.challengeStart)
     };
 
+    failedAt = 'buildYumikoConversationContext';
     const conversationContext = await buildYumikoConversationContext({ supabaseAdmin, userId, limit: 30 });
 
     console.info('[yumiko][auto-nudge] previous last_nudge_bucket=' + String(settingsRow?.last_nudge_bucket || ''));
     console.info('[yumiko][auto-nudge] previous last_nudge_message=' + String(settingsRow?.last_nudge_message || ''));
 
+    failedAt = 'generateAutoNudge';
     const message = await generateAutoNudge({
       apiKey: process.env.DEEPSEEK_KEY,
       context: conversationContext,
@@ -2259,6 +2267,7 @@ async function overlayNudgeHandler(req, res) {
 
     const bucket = conversationContext.activeTopic ? 'context-shared-topic' : 'context-generic';
 
+    failedAt = 'persistMessage';
     const insertedMessage = await persistMessage(supabaseAdmin, {
       userId,
       sender: 'yumiko',
@@ -2266,6 +2275,7 @@ async function overlayNudgeHandler(req, res) {
       messageType: 'text'
     });
 
+    failedAt = 'overlayNudgeSettings:upsert';
     const { error: upsertErr } = await supabaseAdmin
       .from('overlay_nudge_settings')
       .upsert({
@@ -2290,7 +2300,12 @@ async function overlayNudgeHandler(req, res) {
       created_at: insertedMessage?.created_at || null
     });
   } catch (error) {
-    console.error('overlay-nudge fatal:', error);
+    console.error('[yumiko][overlay-nudge] fatal', {
+      failedAt,
+      message: error?.message || String(error),
+      stack: error?.stack || null,
+      errorName: error?.name || null
+    });
     return res.status(500).json({ error: 'Internal error' });
   }
 }
