@@ -2,6 +2,8 @@ import supabaseClient from '/supabase.js';
 
 const statusEl = document.getElementById('overlay-status');
 const helpEl = document.getElementById('overlay-help');
+const downloadBtn = document.getElementById('btn-download-overlay');
+const githubBtn = document.getElementById('btn-view-github');
 const openBtn = document.getElementById('btn-open-deeplink');
 const retryBtn = document.getElementById('btn-retry');
 const loginBtn = document.getElementById('btn-login');
@@ -12,6 +14,8 @@ let currentDeepLink = null;
 let lastStartError = null;
 let fallbackTimer = null;
 const tutorialUrl = (window.__YUMIKO_OVERLAY_TUTORIAL_URL__ || '').trim();
+const DOWNLOAD_URL = 'https://github.com/Elix65/your-tomboy-coach-vercel1/releases/latest/download/Yumiko-Overlay-Setup.exe';
+const GITHUB_REPO_URL = 'https://github.com/Elix65/your-tomboy-coach-vercel1';
 
 function setupTutorialCard() {
   if (!tutorialEmbed || !tutorialPlaceholder || !tutorialUrl) {
@@ -47,7 +51,7 @@ function scheduleFallbackHelp() {
 
   fallbackTimer = window.setTimeout(() => {
     showHelp(true);
-    setStatus('No detectamos apertura automática. Probá el botón manual.');
+    setStatus('Si no se abrió Yumiko Overlay, probá nuevamente con el botón “Abrir Overlay”.');
   }, 1200);
 }
 
@@ -69,7 +73,6 @@ async function startPairing() {
       loginBtn.classList.remove('hidden');
       loginBtn.setAttribute('href', getLoginUrl());
     }
-    window.location.href = getLoginUrl();
     return;
   }
 
@@ -93,12 +96,20 @@ async function startPairing() {
 
   lastStartError = null;
   currentDeepLink = payload.deepLink;
-  setStatus('Intentando abrir Yumiko Overlay…');
-  openDeepLink();
-  scheduleFallbackHelp();
+  setStatus('Código listo. Cuando quieras, abrí Yumiko Overlay con el botón manual.');
 }
 
+downloadBtn?.setAttribute('href', DOWNLOAD_URL);
+githubBtn?.setAttribute('href', GITHUB_REPO_URL);
+
 openBtn?.addEventListener('click', () => {
+  if (!currentDeepLink) {
+    setStatus('Primero generá un código con el botón “Generar nuevo código”.');
+    showHelp(true);
+    return;
+  }
+
+  setStatus('Intentando abrir Yumiko Overlay…');
   openDeepLink();
   scheduleFallbackHelp();
 });
@@ -114,7 +125,7 @@ retryBtn?.addEventListener('click', async () => {
 
 startPairing().catch((error) => {
   showHelp(true);
-  setStatus(error?.message || 'No pudimos abrir el deep link automáticamente.');
+  setStatus(error?.message || 'No pudimos generar el código de conexión.');
 });
 
 setupTutorialCard();
