@@ -352,8 +352,21 @@
     .overlay-connect-actions {
       display: flex;
       flex-wrap: wrap;
+      align-items: center;
       gap: 10px;
       margin-top: 18px;
+      position: relative;
+      z-index: 2;
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .overlay-connect-actions #btn-download-overlay,
+    .overlay-connect-actions #btn-view-github,
+    .overlay-connect-actions #btn-open-deeplink {
+      display: inline-flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
     }
 
     .overlay-connect-status {
@@ -835,9 +848,31 @@
           <p class="overlay-connect-main">Descargá Yumiko Overlay para usar a Yumiko en pantalla mientras jugás, mirás videos o trabajás.</p>
           <p class="overlay-connect-helpcopy">Si ya la instalaste, podés abrirla manualmente con el botón de abajo.</p>
           <div class="overlay-connect-actions">
-            <a id="btn-download-overlay" class="top-btn top-btn-primary" href="https://github.com/Elix65/your-tomboy-coach-vercel1/releases/latest/download/Yumiko-Overlay-Setup.exe" target="_blank" rel="noopener noreferrer">Descargar Yumiko Overlay</a>
-            <a id="btn-view-github" class="top-btn" href="https://github.com/Elix65/your-tomboy-coach-vercel1" target="_blank" rel="noopener noreferrer">Ver GitHub</a>
-            <button id="btn-open-deeplink" class="top-btn" type="button">Abrir Overlay</button>
+            <a
+              id="btn-download-overlay"
+              class="top-btn top-btn-primary"
+              href="https://github.com/Elix65/your-tomboy-coach-vercel1/releases/latest/download/Yumiko-Overlay-Setup.exe"
+            >
+              Descargar Yumiko Overlay
+            </a>
+
+            <a
+              id="btn-view-github"
+              class="top-btn"
+              href="https://github.com/Elix65/your-tomboy-coach-vercel1"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Ver GitHub
+            </a>
+
+            <button
+              id="btn-open-deeplink"
+              class="top-btn"
+              type="button"
+            >
+              Abrir Overlay
+            </button>
             <button id="btn-retry" class="top-btn" type="button">Generar nuevo código</button>
             <a id="btn-login" class="top-btn hidden" href="/login.html?returnTo=%2Foverlay%2Fconnect">Iniciar sesión</a>
             <a class="top-btn" href="/index.html">Volver al Dojo</a>
