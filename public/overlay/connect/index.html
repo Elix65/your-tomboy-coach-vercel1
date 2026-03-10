@@ -391,6 +391,16 @@
       color: rgba(254, 224, 239, 0.96);
     }
 
+    .overlay-primary-actions {
+      display: grid;
+      gap: 10px;
+    }
+
+    .overlay-primary-actions .top-btn {
+      width: 100%;
+      justify-content: center;
+    }
+
     .hidden { display: none !important; }
 
     .overlay-aside {
@@ -848,31 +858,6 @@
           <p class="overlay-connect-main">Descargá Yumiko Overlay para usar a Yumiko en pantalla mientras jugás, mirás videos o trabajás.</p>
           <p class="overlay-connect-helpcopy">Si ya la instalaste, podés abrirla manualmente con el botón de abajo.</p>
           <div class="overlay-connect-actions">
-            <a
-              id="btn-download-overlay"
-              class="top-btn top-btn-primary"
-              href="https://github.com/Elix65/your-tomboy-coach-vercel1/releases/latest/download/Yumiko-Overlay-Setup.exe"
-            >
-              Descargar Yumiko Overlay
-            </a>
-
-            <a
-              id="btn-view-github"
-              class="top-btn"
-              href="https://github.com/Elix65/your-tomboy-coach-vercel1"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Ver GitHub
-            </a>
-
-            <button
-              id="btn-open-deeplink"
-              class="top-btn"
-              type="button"
-            >
-              Abrir Overlay
-            </button>
             <button id="btn-retry" class="top-btn" type="button">Generar nuevo código</button>
             <a id="btn-login" class="top-btn hidden" href="/login.html?returnTo=%2Foverlay%2Fconnect">Iniciar sesión</a>
             <a class="top-btn" href="/index.html">Volver al Dojo</a>
@@ -942,6 +927,32 @@
             <svg viewBox="0 0 24 24" fill="none"><path d="M12 4.4L13.5 10.5L19.6 12L13.5 13.5L12 19.6L10.5 13.5L4.4 12L10.5 10.5L12 4.4Z" fill="rgba(237,224,255,0.74)" /></svg>
           </span>
           <img src="/varios/yumiko/yumiko-face-full-face.png" alt="Ilustración de Yumiko lista para acompañarte en overlay">
+        </section>
+
+        <section class="overlay-card overlay-primary-actions" aria-label="Acciones principales de Yumiko Overlay">
+          <a
+            id="btn-download-overlay"
+            class="top-btn top-btn-primary"
+            href="https://github.com/Elix65/your-tomboy-coach-vercel1/releases/latest/download/Yumiko-Overlay-Setup.exe"
+          >
+            Descargar Yumiko Overlay
+          </a>
+          <a
+            id="btn-view-github"
+            class="top-btn"
+            href="https://github.com/Elix65/your-tomboy-coach-vercel1"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Ver GitHub
+          </a>
+          <button
+            id="btn-open-deeplink"
+            class="top-btn"
+            type="button"
+          >
+            Abrir Overlay
+          </button>
         </section>
 
         <p class="yumiko-bubble">
