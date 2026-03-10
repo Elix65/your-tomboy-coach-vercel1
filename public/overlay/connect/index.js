@@ -2,8 +2,6 @@ import supabaseClient from '/supabase.js';
 
 const statusEl = document.getElementById('overlay-status');
 const helpEl = document.getElementById('overlay-help');
-const downloadBtn = document.getElementById('btn-download-overlay');
-const githubBtn = document.getElementById('btn-view-github');
 const openBtn = document.getElementById('btn-open-deeplink');
 const retryBtn = document.getElementById('btn-retry');
 const loginBtn = document.getElementById('btn-login');
@@ -14,29 +12,6 @@ let currentDeepLink = null;
 let lastStartError = null;
 let fallbackTimer = null;
 const tutorialUrl = (window.__YUMIKO_OVERLAY_TUTORIAL_URL__ || '').trim();
-const DOWNLOAD_URL = 'https://github.com/Elix65/your-tomboy-coach-vercel1/releases/latest/download/Yumiko-Overlay-Setup.exe';
-const GITHUB_REPO_URL = 'https://github.com/Elix65/your-tomboy-coach-vercel1';
-
-function ensurePrimaryActionsVisible() {
-  if (downloadBtn) {
-    downloadBtn.setAttribute('href', DOWNLOAD_URL);
-    downloadBtn.setAttribute('target', '_blank');
-    downloadBtn.setAttribute('rel', 'noopener noreferrer');
-    downloadBtn.classList.remove('hidden');
-  }
-
-  if (githubBtn) {
-    githubBtn.setAttribute('href', GITHUB_REPO_URL);
-    githubBtn.setAttribute('target', '_blank');
-    githubBtn.setAttribute('rel', 'noopener noreferrer');
-    githubBtn.classList.remove('hidden');
-  }
-
-  if (openBtn) {
-    openBtn.classList.remove('hidden');
-  }
-}
-
 function setupTutorialCard() {
   if (!tutorialEmbed || !tutorialPlaceholder || !tutorialUrl) {
     return;
@@ -118,8 +93,6 @@ async function startPairing() {
   currentDeepLink = payload.deepLink;
   setStatus('Código listo. Cuando quieras, abrí Yumiko Overlay con el botón manual.');
 }
-
-ensurePrimaryActionsVisible();
 
 openBtn?.addEventListener('click', () => {
   if (!currentDeepLink) {
