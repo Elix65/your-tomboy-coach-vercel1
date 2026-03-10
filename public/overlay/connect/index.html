@@ -10,6 +10,21 @@
       color-scheme: dark;
     }
 
+    html,
+    body {
+      width: 100%;
+      max-width: 100%;
+      min-height: 100%;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       background:
@@ -19,14 +34,19 @@
         linear-gradient(140deg, #06060f 0%, #100a24 45%, #090d1f 100%);
       color: #f4efff;
       min-height: 100vh;
+      height: auto;
     }
 
     .overlay-page {
       position: relative;
+      width: 100%;
+      min-height: 100vh;
+      height: auto;
       max-width: 1200px;
       margin: 0 auto;
       padding: 40px 20px 56px;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: visible;
       isolation: isolate;
     }
 
@@ -101,6 +121,12 @@
       gap: 26px;
       grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr);
       align-items: start;
+    }
+
+    .overlay-layout > * {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
     }
 
     .overlay-card {
@@ -1025,6 +1051,11 @@
         padding: 26px 14px 42px;
       }
 
+      .overlay-layout {
+        gap: 18px;
+        grid-template-columns: minmax(0, 1fr);
+      }
+
       .overlay-benefits {
         grid-template-columns: 1fr;
       }
@@ -1036,6 +1067,29 @@
 
       .overlay-connect {
         padding: 18px;
+      }
+
+      .overlay-aside {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      .overlay-card,
+      .overlay-primary-actions,
+      .overlay-primary-actions .top-btn,
+      .premium-action-btn {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      .overlay-primary-actions {
+        padding-bottom: 4px;
+      }
+
+      .yumiko-figure {
+        padding: 6px;
       }
 
       .tutorial-head {
