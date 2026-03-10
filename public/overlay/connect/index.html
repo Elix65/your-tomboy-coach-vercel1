@@ -401,6 +401,217 @@
       justify-content: center;
     }
 
+    .premium-action-btn {
+      --btn-bg: linear-gradient(135deg, rgba(85, 57, 142, 0.92), rgba(39, 31, 82, 0.95));
+      --btn-border: rgba(201, 176, 255, 0.38);
+      --btn-glow: rgba(149, 125, 255, 0.4);
+      --btn-text: rgba(246, 239, 255, 0.98);
+      --btn-ripple: rgba(241, 227, 255, 0.5);
+      --btn-flash: rgba(255, 255, 255, 0.34);
+      position: relative;
+      overflow: hidden;
+      isolation: isolate;
+      border-radius: 18px;
+      border: 1px solid var(--btn-border);
+      color: var(--btn-text);
+      background: var(--btn-bg);
+      box-shadow: 0 8px 22px rgba(6, 5, 18, 0.42), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+      transition: transform 220ms ease, box-shadow 260ms ease, border-color 260ms ease, filter 220ms ease;
+    }
+
+    .premium-action-btn .btn-inner {
+      position: relative;
+      z-index: 3;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      gap: 8px;
+    }
+
+    .premium-action-btn .btn-label {
+      position: relative;
+      z-index: 4;
+      letter-spacing: 0.01em;
+    }
+
+    .premium-action-btn .btn-glow,
+    .premium-action-btn .btn-shine,
+    .premium-action-btn .btn-flash,
+    .premium-action-btn .btn-ripple,
+    .premium-action-btn .btn-edge {
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+    }
+
+    .premium-action-btn .btn-glow {
+      z-index: 0;
+      background: radial-gradient(90% 90% at 50% 100%, color-mix(in srgb, var(--btn-glow) 62%, transparent), transparent 72%);
+      opacity: 0.3;
+      transform: translateY(5px) scale(0.98);
+      transition: opacity 280ms ease, transform 280ms ease;
+    }
+
+    .premium-action-btn .btn-edge {
+      z-index: 1;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      mask: linear-gradient(to bottom, rgba(0, 0, 0, 0.92), rgba(0, 0, 0, 0.2));
+      opacity: 0.66;
+      transition: opacity 220ms ease;
+    }
+
+    .premium-action-btn .btn-shine {
+      z-index: 2;
+      background: linear-gradient(115deg, transparent 22%, rgba(255, 255, 255, 0.02) 40%, rgba(255, 255, 255, 0.32) 50%, rgba(255, 255, 255, 0.04) 61%, transparent 74%);
+      transform: translateX(-135%) skewX(-14deg);
+      opacity: 0;
+      transition: opacity 240ms ease;
+    }
+
+    .premium-action-btn .btn-ripple {
+      z-index: 2;
+      background: radial-gradient(circle at var(--ripple-x, 50%) var(--ripple-y, 50%), var(--btn-ripple), transparent 62%);
+      opacity: 0;
+      transform: scale(0.25);
+    }
+
+    .premium-action-btn .btn-flash {
+      z-index: 2;
+      background: radial-gradient(circle at 50% 50%, var(--btn-flash), transparent 54%);
+      opacity: 0;
+      transform: scale(0.3);
+    }
+
+    .premium-action-btn .btn-sparkles {
+      position: absolute;
+      inset: -6px;
+      width: calc(100% + 12px);
+      height: calc(100% + 12px);
+      z-index: 2;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 220ms ease;
+    }
+
+    .premium-action-btn .btn-sparkles path {
+      transform-origin: center;
+      opacity: 0;
+    }
+
+    .premium-action-btn::before {
+      content: "";
+      position: absolute;
+      inset: 1px;
+      border-radius: inherit;
+      z-index: 0;
+      background: linear-gradient(160deg, rgba(255, 255, 255, 0.13), transparent 34%, transparent 66%, rgba(161, 124, 248, 0.14));
+      pointer-events: none;
+    }
+
+    .premium-action-btn:hover,
+    .premium-action-btn:focus-visible {
+      transform: translateY(-2px);
+      border-color: color-mix(in srgb, var(--btn-border) 80%, rgba(255, 255, 255, 0.56));
+      box-shadow: 0 14px 30px rgba(8, 6, 22, 0.52), 0 0 0 1px rgba(255, 255, 255, 0.08) inset, 0 0 28px color-mix(in srgb, var(--btn-glow) 38%, transparent);
+    }
+
+    .premium-action-btn:hover .btn-glow,
+    .premium-action-btn:focus-visible .btn-glow {
+      opacity: 0.76;
+      transform: translateY(0) scale(1.03);
+    }
+
+    .premium-action-btn:hover .btn-shine,
+    .premium-action-btn:focus-visible .btn-shine {
+      opacity: 0.85;
+      animation: btnShineSweep 1300ms cubic-bezier(0.21, 0.71, 0.23, 0.99) both;
+    }
+
+    .premium-action-btn:hover .btn-sparkles,
+    .premium-action-btn:focus-visible .btn-sparkles {
+      opacity: 0.86;
+    }
+
+    .premium-action-btn:hover .btn-sparkles path,
+    .premium-action-btn:focus-visible .btn-sparkles path {
+      animation: sparkleFlicker 1.45s ease-in-out infinite;
+    }
+
+    .premium-action-btn:hover .btn-sparkles path:nth-child(2) { animation-delay: -0.55s; }
+    .premium-action-btn:hover .btn-sparkles path:nth-child(3) { animation-delay: -0.95s; }
+    .premium-action-btn:hover .btn-sparkles path:nth-child(4) { animation-delay: -0.35s; }
+
+    .premium-action-btn:focus-visible {
+      outline: 2px solid rgba(229, 210, 255, 0.95);
+      outline-offset: 2px;
+    }
+
+    .premium-action-btn.is-pressing {
+      transform: translateY(0) scale(0.982);
+      filter: saturate(1.05);
+    }
+
+    .premium-action-btn.is-burst .btn-flash {
+      animation: btnFlashBurst 480ms ease-out;
+    }
+
+    .premium-action-btn.is-burst .btn-ripple {
+      animation: btnRippleBurst 560ms cubic-bezier(0.12, 0.64, 0.2, 1);
+    }
+
+    .premium-action-btn .btn-particles {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .premium-action-btn .btn-particle {
+      position: absolute;
+      left: var(--x);
+      top: var(--y);
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.95), rgba(247, 220, 255, 0.5) 60%, transparent 75%);
+      transform: translate(-50%, -50%);
+      animation: btnParticleBurst 560ms ease-out forwards;
+    }
+
+    .premium-action-btn--primary {
+      --btn-bg: linear-gradient(136deg, rgba(255, 90, 176, 0.96), rgba(159, 95, 255, 0.95) 54%, rgba(73, 57, 169, 0.96));
+      --btn-border: rgba(255, 177, 222, 0.66);
+      --btn-glow: rgba(255, 112, 201, 0.62);
+      --btn-ripple: rgba(255, 233, 251, 0.62);
+      --btn-flash: rgba(255, 245, 255, 0.58);
+      box-shadow: 0 10px 30px rgba(31, 7, 40, 0.56), 0 0 0 1px rgba(255, 242, 251, 0.18) inset, 0 0 18px rgba(242, 90, 201, 0.38);
+    }
+
+    .premium-action-btn--primary .btn-shine {
+      animation: btnShimmer 4.6s linear infinite;
+      opacity: 0.5;
+    }
+
+    .premium-action-btn--primary:hover .btn-shine,
+    .premium-action-btn--primary:focus-visible .btn-shine {
+      animation-duration: 2.2s;
+      opacity: 0.92;
+    }
+
+    .premium-action-btn--secondary {
+      --btn-bg: linear-gradient(140deg, rgba(67, 48, 118, 0.9), rgba(41, 31, 84, 0.96));
+      --btn-border: rgba(172, 153, 255, 0.43);
+      --btn-glow: rgba(124, 139, 255, 0.36);
+    }
+
+    .premium-action-btn--deeplink {
+      --btn-bg: linear-gradient(140deg, rgba(82, 46, 145, 0.94), rgba(34, 39, 102, 0.96));
+      --btn-border: rgba(164, 182, 255, 0.45);
+      --btn-glow: rgba(102, 167, 255, 0.34);
+    }
+
     .hidden { display: none !important; }
 
     .overlay-aside {
@@ -722,6 +933,40 @@
       50% { opacity: 0.52; }
     }
 
+    @keyframes btnShimmer {
+      0% { transform: translateX(-140%) skewX(-14deg); }
+      55% { transform: translateX(-140%) skewX(-14deg); }
+      100% { transform: translateX(220%) skewX(-14deg); }
+    }
+
+    @keyframes btnShineSweep {
+      0% { transform: translateX(-140%) skewX(-14deg); }
+      100% { transform: translateX(220%) skewX(-14deg); }
+    }
+
+    @keyframes sparkleFlicker {
+      0%, 100% { opacity: 0.16; transform: scale(0.88); }
+      50% { opacity: 0.96; transform: scale(1.12); }
+    }
+
+    @keyframes btnFlashBurst {
+      0% { opacity: 0.88; transform: scale(0.35); }
+      100% { opacity: 0; transform: scale(2.2); }
+    }
+
+    @keyframes btnRippleBurst {
+      0% { opacity: 0.75; transform: scale(0.18); }
+      100% { opacity: 0; transform: scale(1.75); }
+    }
+
+    @keyframes btnParticleBurst {
+      0% { opacity: 0.85; transform: translate(-50%, -50%) scale(0.8); }
+      100% {
+        opacity: 0;
+        transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.15);
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
         animation-duration: 0.01ms !important;
@@ -732,6 +977,21 @@
       .shortcut-list li {
         opacity: 1;
         transform: none;
+      }
+
+      .premium-action-btn,
+      .premium-action-btn:hover,
+      .premium-action-btn:focus-visible,
+      .premium-action-btn.is-pressing {
+        transform: none;
+      }
+
+      .premium-action-btn .btn-sparkles,
+      .premium-action-btn .btn-particles,
+      .premium-action-btn .btn-shine,
+      .premium-action-btn .btn-ripple,
+      .premium-action-btn .btn-flash {
+        display: none;
       }
     }
 
@@ -932,26 +1192,58 @@
         <section class="overlay-card overlay-primary-actions" aria-label="Acciones principales de Yumiko Overlay">
           <a
             id="btn-download-overlay"
-            class="top-btn top-btn-primary"
+            class="top-btn top-btn-primary premium-action-btn premium-action-btn--primary"
             href="https://github.com/Elix65/your-tomboy-coach-vercel1/releases/latest/download/Yumiko-Overlay-Setup.exe"
           >
-            Descargar Yumiko Overlay
+            <span class="btn-glow" aria-hidden="true"></span>
+            <span class="btn-edge" aria-hidden="true"></span>
+            <span class="btn-shine" aria-hidden="true"></span>
+            <span class="btn-ripple" aria-hidden="true"></span>
+            <span class="btn-flash" aria-hidden="true"></span>
+            <svg class="btn-sparkles" viewBox="0 0 360 76" fill="none" aria-hidden="true">
+              <path d="M34 10L36 17L43 19L36 21L34 28L32 21L25 19L32 17L34 10Z" fill="rgba(255,235,251,0.95)" />
+              <path d="M304 12L305.5 17.5L311 19L305.5 20.5L304 26L302.5 20.5L297 19L302.5 17.5L304 12Z" fill="rgba(245,220,255,0.88)" />
+              <path d="M324 54L326 60L332 62L326 64L324 70L322 64L316 62L322 60L324 54Z" fill="rgba(220,229,255,0.84)" />
+              <path d="M52 50L53.2 54.8L58 56L53.2 57.2L52 62L50.8 57.2L46 56L50.8 54.8L52 50Z" fill="rgba(255,247,255,0.86)" />
+            </svg>
+            <span class="btn-particles" aria-hidden="true"></span>
+            <span class="btn-inner"><span class="btn-label">Descargar Yumiko Overlay</span></span>
           </a>
           <a
             id="btn-view-github"
-            class="top-btn"
+            class="top-btn premium-action-btn premium-action-btn--secondary"
             href="https://github.com/Elix65/your-tomboy-coach-vercel1"
             target="_blank"
             rel="noopener noreferrer"
           >
-            Ver GitHub
+            <span class="btn-glow" aria-hidden="true"></span>
+            <span class="btn-edge" aria-hidden="true"></span>
+            <span class="btn-shine" aria-hidden="true"></span>
+            <span class="btn-ripple" aria-hidden="true"></span>
+            <span class="btn-flash" aria-hidden="true"></span>
+            <svg class="btn-sparkles" viewBox="0 0 340 70" fill="none" aria-hidden="true">
+              <path d="M30 12L31.5 17L36.5 18.5L31.5 20L30 25L28.5 20L23.5 18.5L28.5 17L30 12Z" fill="rgba(235,224,255,0.86)" />
+              <path d="M300 45L301.5 50L306.5 51.5L301.5 53L300 58L298.5 53L293.5 51.5L298.5 50L300 45Z" fill="rgba(205,222,255,0.76)" />
+            </svg>
+            <span class="btn-particles" aria-hidden="true"></span>
+            <span class="btn-inner"><span class="btn-label">Ver GitHub</span></span>
           </a>
           <button
             id="btn-open-deeplink"
-            class="top-btn"
+            class="top-btn premium-action-btn premium-action-btn--deeplink"
             type="button"
           >
-            Abrir Overlay
+            <span class="btn-glow" aria-hidden="true"></span>
+            <span class="btn-edge" aria-hidden="true"></span>
+            <span class="btn-shine" aria-hidden="true"></span>
+            <span class="btn-ripple" aria-hidden="true"></span>
+            <span class="btn-flash" aria-hidden="true"></span>
+            <svg class="btn-sparkles" viewBox="0 0 340 70" fill="none" aria-hidden="true">
+              <path d="M35 14L36.2 18.8L41 20L36.2 21.2L35 26L33.8 21.2L29 20L33.8 18.8L35 14Z" fill="rgba(228,232,255,0.85)" />
+              <path d="M306 18L307.4 23.6L313 25L307.4 26.4L306 32L304.6 26.4L299 25L304.6 23.6L306 18Z" fill="rgba(219,228,255,0.82)" />
+            </svg>
+            <span class="btn-particles" aria-hidden="true"></span>
+            <span class="btn-inner"><span class="btn-label">Abrir Overlay</span></span>
           </button>
         </section>
 
