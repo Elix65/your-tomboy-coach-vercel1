@@ -763,57 +763,132 @@
 
     .yumiko-figure {
       position: relative;
-      padding: 10px;
+      padding: 18px 10px 14px;
       display: grid;
       place-items: center;
       overflow: hidden;
-      animation: yumikoFloat 7.8s ease-in-out infinite;
+      border-radius: 24px;
+      background: radial-gradient(circle at 50% 82%, rgba(117, 90, 222, 0.24), rgba(117, 90, 222, 0) 68%);
+      animation: yumikoFloat 8.6s ease-in-out infinite;
     }
 
     .yumiko-figure::before {
       content: "";
       position: absolute;
-      width: 82%;
-      height: 74%;
+      width: 84%;
+      height: 70%;
       border-radius: 999px;
-      background: radial-gradient(circle, rgba(176, 103, 255, 0.35), rgba(176, 103, 255, 0));
+      background: radial-gradient(circle, rgba(176, 103, 255, 0.3), rgba(176, 103, 255, 0));
       z-index: 0;
-      opacity: 0.46;
-      animation: haloBreath 9.4s ease-in-out infinite;
+      opacity: 0.54;
+      animation: haloBreath 10.5s ease-in-out infinite;
     }
 
-    .yumiko-figure img {
-      width: min(320px, 92%);
-      height: auto;
+    .yumiko-figure::after {
+      content: "";
+      position: absolute;
+      width: min(350px, 88%);
+      height: 62px;
+      bottom: 20px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(44, 27, 90, 0.72), rgba(44, 27, 90, 0));
+      z-index: 0;
+      pointer-events: none;
+      animation: baseGlow 9.6s ease-in-out infinite;
+    }
+
+    .yumiko-stage {
       position: relative;
+      width: min(360px, 100%);
+      aspect-ratio: 4 / 5;
+      display: grid;
+      place-items: center;
+      isolation: isolate;
       z-index: 1;
-      filter: drop-shadow(0 18px 36px rgba(0, 0, 0, 0.6));
+    }
+
+    .yumiko-image-wrap {
+      position: relative;
+      width: min(332px, 90%);
+      z-index: 3;
+      animation: yumikoFloat 8.6s ease-in-out infinite;
+      will-change: transform;
+    }
+
+    .yumiko-image-wrap img {
+      width: 100%;
+      height: auto;
+      display: block;
+      object-fit: contain;
+      filter: drop-shadow(0 18px 38px rgba(0, 0, 0, 0.62));
     }
 
     .yumiko-halo {
       position: absolute;
-      inset: auto;
-      width: 92%;
-      max-width: 300px;
+      inset: 5% auto auto;
+      width: 100%;
+      max-width: 338px;
       aspect-ratio: 1;
-      opacity: 0.26;
+      opacity: 0.42;
       pointer-events: none;
-      z-index: 0;
-      animation: haloBreath 10.8s ease-in-out infinite;
+      z-index: 1;
+      animation: haloBreath 11.5s ease-in-out infinite;
     }
 
     .yumiko-halo path,
     .yumiko-halo circle {
-      animation: glowDrift 10s ease-in-out infinite;
+      animation: glowDrift 11s ease-in-out infinite;
     }
+
+    .yumiko-ring {
+      position: absolute;
+      width: 92%;
+      max-width: 306px;
+      aspect-ratio: 1;
+      opacity: 0.34;
+      z-index: 1;
+      animation: slowSpin 38s linear infinite;
+      pointer-events: none;
+    }
+
+    .yumiko-stream {
+      position: absolute;
+      width: min(330px, 92%);
+      height: auto;
+      opacity: 0.48;
+      z-index: 2;
+      pointer-events: none;
+      animation: streamDrift 9.8s ease-in-out infinite;
+    }
+
+    .yumiko-stream--top { top: 16%; left: 2%; }
+    .yumiko-stream--bottom { bottom: 18%; right: 1%; animation-delay: -4.4s; }
+
+    .yumiko-orbit {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: radial-gradient(circle at 35% 30%, rgba(255, 255, 255, 0.95), rgba(221, 188, 255, 0.4) 62%, transparent 80%);
+      box-shadow: 0 0 16px rgba(197, 156, 255, 0.4);
+      opacity: 0.7;
+      z-index: 2;
+      animation: orbitFloat 12s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    .yumiko-orbit--a { top: 22%; left: 22%; }
+    .yumiko-orbit--b { top: 35%; right: 18%; animation-delay: -2.6s; }
+    .yumiko-orbit--c { bottom: 28%; left: 17%; animation-delay: -4.9s; }
+    .yumiko-orbit--d { bottom: 20%; right: 24%; animation-delay: -7.2s; }
 
     .yumiko-sparkle {
       position: absolute;
-      width: 18px;
-      height: 18px;
+      width: 16px;
+      height: 16px;
       pointer-events: none;
-      z-index: 1;
-      animation: sparklePulse 4.8s ease-in-out infinite;
+      z-index: 3;
+      animation: sparklePulse 5.4s ease-in-out infinite;
     }
 
     .yumiko-sparkle svg {
@@ -822,11 +897,12 @@
       display: block;
     }
 
-    .yumiko-sparkle--a { top: 18%; left: 16%; }
-    .yumiko-sparkle--b { top: 50%; right: 11%; animation-delay: -1.9s; }
-    .yumiko-sparkle--c { bottom: 13%; left: 22%; animation-delay: -2.6s; }
-    .yumiko-sparkle--d { bottom: 6%; right: 31%; animation-delay: -3.4s; }
-    .yumiko-sparkle--e { top: 72%; right: 7%; animation-delay: -4.2s; }
+    .yumiko-sparkle--a { top: 14%; left: 18%; }
+    .yumiko-sparkle--b { top: 47%; right: 9%; animation-delay: -1.9s; }
+    .yumiko-sparkle--c { bottom: 16%; left: 14%; animation-delay: -2.6s; }
+    .yumiko-sparkle--d { bottom: 8%; right: 28%; animation-delay: -3.4s; }
+    .yumiko-sparkle--e { top: 70%; right: 4%; animation-delay: -4.2s; }
+    .yumiko-sparkle--f { top: 27%; right: 24%; animation-delay: -5.1s; }
 
     .yumiko-bubble {
       position: relative;
@@ -955,6 +1031,21 @@
     @keyframes haloBreath {
       0%, 100% { transform: scale(0.98); opacity: 0.2; }
       50% { transform: scale(1.03); opacity: 0.34; }
+    }
+
+    @keyframes baseGlow {
+      0%, 100% { opacity: 0.38; transform: scaleX(0.95); }
+      50% { opacity: 0.62; transform: scaleX(1.03); }
+    }
+
+    @keyframes orbitFloat {
+      0%, 100% { transform: translateY(0) scale(0.9); opacity: 0.34; }
+      50% { transform: translateY(-9px) scale(1.06); opacity: 0.82; }
+    }
+
+    @keyframes streamDrift {
+      0%, 100% { transform: translateY(0) translateX(0); opacity: 0.25; }
+      50% { transform: translateY(-4px) translateX(4px); opacity: 0.6; }
     }
 
     @keyframes bubbleBorderFlow {
@@ -1089,7 +1180,11 @@
       }
 
       .yumiko-figure {
-        padding: 6px;
+        padding: 10px 4px 8px;
+      }
+
+      .yumiko-stage {
+        width: min(330px, 100%);
       }
 
       .tutorial-head {
@@ -1233,27 +1328,62 @@
         </section>
 
         <section class="yumiko-figure" aria-label="Yumiko">
-          <svg class="yumiko-halo" viewBox="0 0 300 300" fill="none" aria-hidden="true">
-            <circle cx="150" cy="150" r="102" stroke="rgba(190,150,255,0.42)" stroke-width="1.3" />
-            <circle cx="150" cy="150" r="122" stroke="rgba(132,168,255,0.35)" stroke-width="1" />
-            <path d="M44 172C59 102 130 58 202 74C247 84 281 112 291 160" stroke="rgba(224,205,255,0.42)" stroke-width="1.2" />
-          </svg>
-          <span class="yumiko-sparkle yumiko-sparkle--a" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M12 3L13.8 10.2L21 12L13.8 13.8L12 21L10.2 13.8L3 12L10.2 10.2L12 3Z" fill="rgba(241,226,255,0.88)" /></svg>
-          </span>
-          <span class="yumiko-sparkle yumiko-sparkle--b" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M12 4L14.2 9.8L20 12L14.2 14.2L12 20L9.8 14.2L4 12L9.8 9.8L12 4Z" fill="rgba(202,223,255,0.82)" /></svg>
-          </span>
-          <span class="yumiko-sparkle yumiko-sparkle--c" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M12 5L13.2 10.8L19 12L13.2 13.2L12 19L10.8 13.2L5 12L10.8 10.8L12 5Z" fill="rgba(238,214,255,0.75)" /></svg>
-          </span>
-          <span class="yumiko-sparkle yumiko-sparkle--d" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M12 2.8L14.2 9.8L21.2 12L14.2 14.2L12 21.2L9.8 14.2L2.8 12L9.8 9.8L12 2.8Z" fill="rgba(193,220,255,0.8)" /></svg>
-          </span>
-          <span class="yumiko-sparkle yumiko-sparkle--e" aria-hidden="true">
-            <svg viewBox="0 0 24 24" fill="none"><path d="M12 4.4L13.5 10.5L19.6 12L13.5 13.5L12 19.6L10.5 13.5L4.4 12L10.5 10.5L12 4.4Z" fill="rgba(237,224,255,0.74)" /></svg>
-          </span>
-          <img src="/varios/yumiko/yumiko-face-full-face.png" alt="Ilustración de Yumiko lista para acompañarte en overlay">
+          <div class="yumiko-stage">
+            <svg class="yumiko-halo" viewBox="0 0 320 320" fill="none" aria-hidden="true">
+              <circle cx="160" cy="160" r="116" stroke="rgba(193,151,255,0.46)" stroke-width="1.3" />
+              <circle cx="160" cy="160" r="138" stroke="rgba(136,177,255,0.33)" stroke-width="1" />
+              <path d="M54 188C72 108 145 64 222 82C266 93 301 126 309 168" stroke="rgba(228,213,255,0.4)" stroke-width="1.2" />
+            </svg>
+            <svg class="yumiko-ring" viewBox="0 0 320 320" fill="none" aria-hidden="true">
+              <circle cx="160" cy="160" r="124" stroke="rgba(208,174,255,0.35)" stroke-width="1" stroke-dasharray="8 12" />
+              <circle cx="160" cy="160" r="96" stroke="rgba(151,189,255,0.28)" stroke-width="1" stroke-dasharray="6 10" />
+            </svg>
+            <svg class="yumiko-stream yumiko-stream--top" viewBox="0 0 340 120" fill="none" aria-hidden="true">
+              <path d="M10 70C52 36 92 24 132 34C174 44 211 70 258 62C286 58 309 47 332 28" stroke="url(#yumiko-stream-a)" stroke-width="1.4" stroke-linecap="round"/>
+              <defs>
+                <linearGradient id="yumiko-stream-a" x1="10" y1="70" x2="332" y2="28" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#B8A9FF" stop-opacity="0" />
+                  <stop offset="0.46" stop-color="#E0B8FF" />
+                  <stop offset="1" stop-color="#9CC5FF" stop-opacity="0" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <svg class="yumiko-stream yumiko-stream--bottom" viewBox="0 0 340 120" fill="none" aria-hidden="true">
+              <path d="M12 88C58 102 108 98 152 78C196 58 242 36 288 45C306 49 319 56 330 66" stroke="url(#yumiko-stream-b)" stroke-width="1.2" stroke-linecap="round"/>
+              <defs>
+                <linearGradient id="yumiko-stream-b" x1="12" y1="88" x2="330" y2="66" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#9ABEFF" stop-opacity="0" />
+                  <stop offset="0.44" stop-color="#CBA9FF" stop-opacity="0.85" />
+                  <stop offset="1" stop-color="#E8C6FF" stop-opacity="0" />
+                </linearGradient>
+              </defs>
+            </svg>
+            <span class="yumiko-orbit yumiko-orbit--a" aria-hidden="true"></span>
+            <span class="yumiko-orbit yumiko-orbit--b" aria-hidden="true"></span>
+            <span class="yumiko-orbit yumiko-orbit--c" aria-hidden="true"></span>
+            <span class="yumiko-orbit yumiko-orbit--d" aria-hidden="true"></span>
+            <span class="yumiko-sparkle yumiko-sparkle--a" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 3L13.8 10.2L21 12L13.8 13.8L12 21L10.2 13.8L3 12L10.2 10.2L12 3Z" fill="rgba(241,226,255,0.88)" /></svg>
+            </span>
+            <span class="yumiko-sparkle yumiko-sparkle--b" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 4L14.2 9.8L20 12L14.2 14.2L12 20L9.8 14.2L4 12L9.8 9.8L12 4Z" fill="rgba(202,223,255,0.82)" /></svg>
+            </span>
+            <span class="yumiko-sparkle yumiko-sparkle--c" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 5L13.2 10.8L19 12L13.2 13.2L12 19L10.8 13.2L5 12L10.8 10.8L12 5Z" fill="rgba(238,214,255,0.75)" /></svg>
+            </span>
+            <span class="yumiko-sparkle yumiko-sparkle--d" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 2.8L14.2 9.8L21.2 12L14.2 14.2L12 21.2L9.8 14.2L2.8 12L9.8 9.8L12 2.8Z" fill="rgba(193,220,255,0.8)" /></svg>
+            </span>
+            <span class="yumiko-sparkle yumiko-sparkle--e" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 4.4L13.5 10.5L19.6 12L13.5 13.5L12 19.6L10.5 13.5L4.4 12L10.5 10.5L12 4.4Z" fill="rgba(237,224,255,0.74)" /></svg>
+            </span>
+            <span class="yumiko-sparkle yumiko-sparkle--f" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 3.4L13.4 9.9L19.8 12L13.4 14.1L12 20.6L10.6 14.1L4.2 12L10.6 9.9L12 3.4Z" fill="rgba(230,218,255,0.72)" /></svg>
+            </span>
+            <div class="yumiko-image-wrap">
+              <img src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png" alt="Yumiko lista para acompañarte en overlay">
+            </div>
+          </div>
         </section>
 
         <section class="overlay-card overlay-primary-actions" aria-label="Acciones principales de Yumiko Overlay">
