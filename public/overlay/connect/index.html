@@ -22,9 +22,78 @@
     }
 
     .overlay-page {
+      position: relative;
       max-width: 1200px;
       margin: 0 auto;
       padding: 40px 20px 56px;
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    .ambient-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .ambient-orb {
+      position: absolute;
+      border-radius: 999px;
+      opacity: 0.18;
+      will-change: transform, opacity;
+      animation: orbFloat 20s ease-in-out infinite alternate, orbBreath 9s ease-in-out infinite;
+    }
+
+    .ambient-orb--violet {
+      width: 320px;
+      height: 320px;
+      top: 7%;
+      left: -40px;
+      background: radial-gradient(circle, rgba(173, 110, 255, 0.48), transparent 70%);
+    }
+
+    .ambient-orb--blue {
+      width: 260px;
+      height: 260px;
+      right: 2%;
+      top: 22%;
+      background: radial-gradient(circle, rgba(94, 129, 255, 0.45), transparent 72%);
+      animation-delay: -5s;
+    }
+
+    .ambient-rings {
+      position: absolute;
+      right: 14%;
+      bottom: 12%;
+      width: 260px;
+      height: 260px;
+      opacity: 0.16;
+      transform-origin: center;
+      animation: orbFloat 24s ease-in-out infinite alternate-reverse;
+    }
+
+    .ambient-sparkles {
+      position: absolute;
+      inset: 0;
+      opacity: 0.42;
+    }
+
+    .ambient-sparkles circle {
+      animation: sparklePulse 6s ease-in-out infinite;
+    }
+
+    .ambient-sparkles circle:nth-child(2) {
+      animation-delay: -2.5s;
+    }
+
+    .ambient-sparkles circle:nth-child(3) {
+      animation-delay: -1.2s;
+    }
+
+    .overlay-layout {
+      position: relative;
+      z-index: 1;
     }
 
     .overlay-layout {
@@ -75,6 +144,7 @@
       border-radius: 16px;
       border: 1px solid rgba(212, 190, 255, 0.2);
       background: linear-gradient(165deg, rgba(74, 52, 124, 0.38), rgba(29, 21, 49, 0.52));
+      transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
     }
 
     .benefit-icon {
@@ -88,6 +158,26 @@
       color: #f3d9ff;
       font-size: 1rem;
       font-weight: 700;
+      will-change: transform, opacity;
+      animation: iconFloat 4.8s ease-in-out infinite;
+    }
+
+    .benefit-card:nth-child(2) .benefit-icon {
+      animation-delay: -1.6s;
+    }
+
+    .benefit-card:nth-child(3) .benefit-icon {
+      animation-delay: -3.1s;
+    }
+
+    .benefit-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(226, 203, 255, 0.44);
+      box-shadow: 0 12px 26px rgba(88, 62, 156, 0.28);
+    }
+
+    .benefit-card:hover .benefit-icon {
+      box-shadow: 0 0 18px rgba(174, 132, 255, 0.35);
     }
 
     .benefit-card h3 {
@@ -155,6 +245,19 @@
       box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
     }
 
+    .tutorial-media::after {
+      content: "";
+      position: absolute;
+      inset: -120% auto auto -30%;
+      width: 52%;
+      height: 280%;
+      background: linear-gradient(110deg, transparent 0%, rgba(255, 255, 255, 0.11) 45%, transparent 100%);
+      transform: translateX(-100%);
+      animation: shimmerSweep 8.5s ease-in-out infinite;
+      pointer-events: none;
+      mix-blend-mode: screen;
+    }
+
     .tutorial-placeholder {
       position: absolute;
       inset: 0;
@@ -166,7 +269,20 @@
       color: #f3ebff;
     }
 
+    .tutorial-placeholder-art {
+      position: absolute;
+      inset: 0;
+      opacity: 0.42;
+      pointer-events: none;
+    }
+
+    .tutorial-placeholder-art path,
+    .tutorial-placeholder-art circle {
+      animation: orbBreath 7.5s ease-in-out infinite;
+    }
+
     .play-badge {
+      position: relative;
       margin: 0 auto;
       width: 70px;
       height: 70px;
@@ -178,6 +294,16 @@
       box-shadow: 0 0 35px rgba(145, 106, 255, 0.32);
       font-size: 1.8rem;
       line-height: 1;
+      animation: playPulse 3.6s ease-in-out infinite;
+    }
+
+    .play-badge::before {
+      content: "";
+      position: absolute;
+      inset: -9px;
+      border-radius: 999px;
+      border: 1px solid rgba(203, 178, 255, 0.33);
+      animation: slowSpin 14s linear infinite;
     }
 
     .tutorial-status {
@@ -281,6 +407,31 @@
       font-size: 0.96rem;
     }
 
+    .shortcut-list li {
+      opacity: 0;
+      transform: translateY(10px);
+      animation: shortcutReveal 480ms ease forwards;
+    }
+
+    .shortcut-list li:nth-child(1) { animation-delay: 90ms; }
+    .shortcut-list li:nth-child(2) { animation-delay: 150ms; }
+    .shortcut-list li:nth-child(3) { animation-delay: 210ms; }
+    .shortcut-list li:nth-child(4) { animation-delay: 270ms; }
+
+    .shortcut-card {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .shortcut-card::after {
+      content: "";
+      position: absolute;
+      inset: auto 12px 10px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(183, 145, 255, 0.5), transparent);
+      opacity: 0.5;
+    }
+
     .shortcut-key {
       display: inline-flex;
       min-width: 38px;
@@ -295,6 +446,7 @@
       padding: 10px;
       display: grid;
       place-items: center;
+      overflow: hidden;
     }
 
     .yumiko-figure::before {
@@ -316,7 +468,34 @@
       filter: drop-shadow(0 18px 36px rgba(0, 0, 0, 0.6));
     }
 
+    .yumiko-halo {
+      position: absolute;
+      inset: auto;
+      width: 88%;
+      max-width: 300px;
+      aspect-ratio: 1;
+      opacity: 0.28;
+      pointer-events: none;
+      z-index: 0;
+      animation: slowSpin 24s linear infinite;
+    }
+
+    .yumiko-sparkle {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(233, 213, 255, 0.9), rgba(233, 213, 255, 0));
+      pointer-events: none;
+      z-index: 1;
+      animation: sparklePulse 4.8s ease-in-out infinite;
+    }
+
+    .yumiko-sparkle--a { top: 20%; left: 18%; }
+    .yumiko-sparkle--b { top: 56%; right: 15%; animation-delay: -1.9s; }
+
     .yumiko-bubble {
+      position: relative;
       margin-top: -10px;
       padding: 14px 18px;
       border-radius: 16px;
@@ -326,6 +505,95 @@
       font-weight: 600;
       text-align: center;
       box-shadow: 0 10px 28px rgba(8, 6, 18, 0.5);
+      animation: bubbleBreath 5s ease-in-out infinite;
+    }
+
+    .yumiko-bubble::before,
+    .yumiko-bubble::after {
+      content: "✦";
+      position: absolute;
+      color: rgba(237, 218, 255, 0.68);
+      font-size: 0.72rem;
+      animation: sparklePulse 4.5s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    .yumiko-bubble::before {
+      top: -9px;
+      left: 12px;
+    }
+
+    .yumiko-bubble::after {
+      bottom: -10px;
+      right: 16px;
+      animation-delay: -2s;
+    }
+
+    @keyframes orbFloat {
+      from { transform: translate3d(0, 0, 0); }
+      to { transform: translate3d(0, -14px, 0); }
+    }
+
+    @keyframes orbBreath {
+      0%, 100% { opacity: 0.12; }
+      50% { opacity: 0.24; }
+    }
+
+    @keyframes iconFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    @keyframes playPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.04); }
+    }
+
+    @keyframes slowSpin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes shimmerSweep {
+      0%, 14% { transform: translateX(-130%); }
+      44% { transform: translateX(260%); }
+      100% { transform: translateX(260%); }
+    }
+
+    @keyframes shortcutReveal {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes bubbleBreath {
+      0%, 100% {
+        border-color: rgba(226, 197, 255, 0.26);
+        box-shadow: 0 10px 28px rgba(8, 6, 18, 0.5);
+      }
+      50% {
+        border-color: rgba(229, 206, 255, 0.4);
+        box-shadow: 0 12px 31px rgba(16, 8, 34, 0.62);
+      }
+    }
+
+    @keyframes sparklePulse {
+      0%, 100% { opacity: 0.2; transform: scale(0.9); }
+      50% { opacity: 0.7; transform: scale(1.08); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+
+      .shortcut-list li {
+        opacity: 1;
+        transform: none;
+      }
     }
 
     @media (max-width: 1024px) {
@@ -367,6 +635,31 @@
 </head>
 <body>
   <main class="overlay-page">
+    <div class="ambient-layer" aria-hidden="true">
+      <span class="ambient-orb ambient-orb--violet"></span>
+      <span class="ambient-orb ambient-orb--blue"></span>
+      <svg class="ambient-rings" viewBox="0 0 320 320" fill="none">
+        <path d="M22 184C38 106 114 58 196 70C259 80 309 129 296 198" stroke="url(#ring-gradient)" stroke-width="1.6" />
+        <path d="M45 228C72 265 130 288 184 278C232 269 276 235 287 188" stroke="url(#ring-gradient-2)" stroke-width="1.4" />
+        <defs>
+          <linearGradient id="ring-gradient" x1="22" y1="184" x2="296" y2="198" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#A378FF" stop-opacity="0"/>
+            <stop offset="0.48" stop-color="#BE97FF"/>
+            <stop offset="1" stop-color="#A378FF" stop-opacity="0"/>
+          </linearGradient>
+          <linearGradient id="ring-gradient-2" x1="45" y1="228" x2="287" y2="188" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#8EC8FF" stop-opacity="0"/>
+            <stop offset="0.55" stop-color="#9AB8FF"/>
+            <stop offset="1" stop-color="#8EC8FF" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+      </svg>
+      <svg class="ambient-sparkles" viewBox="0 0 1200 820" fill="none">
+        <circle cx="205" cy="130" r="3" fill="#dcb8ff" />
+        <circle cx="1010" cy="180" r="2.4" fill="#a8c2ff" />
+        <circle cx="930" cy="620" r="2.8" fill="#e7cbff" />
+      </svg>
+    </div>
     <div class="overlay-layout">
       <section class="overlay-main" aria-labelledby="overlay-title">
         <header class="overlay-hero">
@@ -401,6 +694,11 @@
             </div>
           </div>
           <div class="tutorial-media">
+            <svg class="tutorial-placeholder-art" viewBox="0 0 640 360" fill="none" aria-hidden="true">
+              <path d="M74 274C154 184 278 125 404 145C468 154 523 183 566 220" stroke="rgba(201,174,255,0.5)" stroke-width="1.2" />
+              <path d="M124 82L182 114L178 179L122 204L70 170L77 112Z" stroke="rgba(169,198,255,0.48)" stroke-width="1.3" />
+              <circle cx="484" cy="98" r="5.2" fill="rgba(213,189,255,0.5)" />
+            </svg>
             <div id="tutorial-placeholder" class="tutorial-placeholder">
               <div class="play-badge" aria-hidden="true">▶</div>
               <strong>Video de configuración completo</strong>
@@ -444,6 +742,12 @@
         </section>
 
         <section class="yumiko-figure" aria-label="Yumiko">
+          <svg class="yumiko-halo" viewBox="0 0 300 300" fill="none" aria-hidden="true">
+            <circle cx="150" cy="150" r="102" stroke="rgba(190,150,255,0.42)" stroke-width="1.3" />
+            <circle cx="150" cy="150" r="122" stroke="rgba(132,168,255,0.35)" stroke-width="1" />
+          </svg>
+          <span class="yumiko-sparkle yumiko-sparkle--a" aria-hidden="true"></span>
+          <span class="yumiko-sparkle yumiko-sparkle--b" aria-hidden="true"></span>
           <img src="/varios/yumiko/yumiko-face-full-face.png" alt="Ilustración de Yumiko lista para acompañarte en overlay">
         </section>
 
