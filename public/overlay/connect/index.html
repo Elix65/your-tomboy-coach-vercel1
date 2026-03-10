@@ -385,10 +385,47 @@
       top: 20px;
       display: grid;
       gap: 16px;
+      isolation: isolate;
+    }
+
+    .overlay-aside-particles {
+      position: absolute;
+      inset: -16px -14px -8px;
+      width: calc(100% + 28px);
+      height: calc(100% + 24px);
+      z-index: -1;
+      pointer-events: none;
+      opacity: 0.4;
+    }
+
+    .overlay-aside-particles circle {
+      animation: particleBlink 10s ease-in-out infinite;
+      transform-origin: center;
+    }
+
+    .overlay-aside-particles circle:nth-child(2) { animation-delay: -3s; }
+    .overlay-aside-particles circle:nth-child(3) { animation-delay: -6s; }
+    .overlay-aside-particles circle:nth-child(4) { animation-delay: -1.5s; }
+    .overlay-aside-particles circle:nth-child(5) { animation-delay: -4.8s; }
+    .overlay-aside-particles circle:nth-child(6) { animation-delay: -7.1s; }
+
+    .shortcut-card-glow {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.6;
+    }
+
+    .shortcut-card-glow path,
+    .shortcut-card-glow circle {
+      animation: glowDrift 7.2s ease-in-out infinite;
     }
 
     .shortcut-card {
+      position: relative;
       padding: 18px;
+      overflow: hidden;
     }
 
     .shortcut-card h2 {
@@ -405,6 +442,8 @@
       gap: 8px;
       color: rgba(235, 224, 255, 0.95);
       font-size: 0.96rem;
+      position: relative;
+      z-index: 1;
     }
 
     .shortcut-list li {
@@ -418,11 +457,6 @@
     .shortcut-list li:nth-child(3) { animation-delay: 210ms; }
     .shortcut-list li:nth-child(4) { animation-delay: 270ms; }
 
-    .shortcut-card {
-      position: relative;
-      overflow: hidden;
-    }
-
     .shortcut-card::after {
       content: "";
       position: absolute;
@@ -430,6 +464,20 @@
       height: 1px;
       background: linear-gradient(90deg, transparent, rgba(183, 145, 255, 0.5), transparent);
       opacity: 0.5;
+    }
+
+    .shortcut-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -55%;
+      width: 40%;
+      height: 100%;
+      background: linear-gradient(102deg, transparent, rgba(210, 187, 255, 0.28), transparent);
+      transform: skewX(-18deg);
+      animation: cardEdgeSweep 8.8s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 1;
     }
 
     .shortcut-key {
@@ -447,17 +495,19 @@
       display: grid;
       place-items: center;
       overflow: hidden;
+      animation: yumikoFloat 7.8s ease-in-out infinite;
     }
 
     .yumiko-figure::before {
       content: "";
       position: absolute;
-      width: 76%;
-      height: 70%;
+      width: 82%;
+      height: 74%;
       border-radius: 999px;
       background: radial-gradient(circle, rgba(176, 103, 255, 0.35), rgba(176, 103, 255, 0));
-      filter: blur(12px);
       z-index: 0;
+      opacity: 0.46;
+      animation: haloBreath 9.4s ease-in-out infinite;
     }
 
     .yumiko-figure img {
@@ -471,28 +521,40 @@
     .yumiko-halo {
       position: absolute;
       inset: auto;
-      width: 88%;
+      width: 92%;
       max-width: 300px;
       aspect-ratio: 1;
-      opacity: 0.28;
+      opacity: 0.26;
       pointer-events: none;
       z-index: 0;
-      animation: slowSpin 24s linear infinite;
+      animation: haloBreath 10.8s ease-in-out infinite;
+    }
+
+    .yumiko-halo path,
+    .yumiko-halo circle {
+      animation: glowDrift 10s ease-in-out infinite;
     }
 
     .yumiko-sparkle {
       position: absolute;
-      width: 10px;
-      height: 10px;
-      border-radius: 999px;
-      background: radial-gradient(circle, rgba(233, 213, 255, 0.9), rgba(233, 213, 255, 0));
+      width: 18px;
+      height: 18px;
       pointer-events: none;
       z-index: 1;
       animation: sparklePulse 4.8s ease-in-out infinite;
     }
 
-    .yumiko-sparkle--a { top: 20%; left: 18%; }
-    .yumiko-sparkle--b { top: 56%; right: 15%; animation-delay: -1.9s; }
+    .yumiko-sparkle svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .yumiko-sparkle--a { top: 18%; left: 16%; }
+    .yumiko-sparkle--b { top: 50%; right: 11%; animation-delay: -1.9s; }
+    .yumiko-sparkle--c { bottom: 13%; left: 22%; animation-delay: -2.6s; }
+    .yumiko-sparkle--d { bottom: 6%; right: 31%; animation-delay: -3.4s; }
+    .yumiko-sparkle--e { top: 72%; right: 7%; animation-delay: -4.2s; }
 
     .yumiko-bubble {
       position: relative;
@@ -506,27 +568,50 @@
       text-align: center;
       box-shadow: 0 10px 28px rgba(8, 6, 18, 0.5);
       animation: bubbleBreath 5s ease-in-out infinite;
+      overflow: hidden;
     }
 
-    .yumiko-bubble::before,
     .yumiko-bubble::after {
-      content: "✦";
+      content: "";
       position: absolute;
-      color: rgba(237, 218, 255, 0.68);
-      font-size: 0.72rem;
-      animation: sparklePulse 4.5s ease-in-out infinite;
+      inset: 0;
+      border-radius: inherit;
+      padding: 1px;
+      background: linear-gradient(110deg, rgba(255, 255, 255, 0), rgba(241, 226, 255, 0.42), rgba(150, 193, 255, 0), rgba(255, 255, 255, 0));
+      background-size: 220% 220%;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      opacity: 0.62;
+      animation: bubbleBorderFlow 7s linear infinite;
       pointer-events: none;
     }
 
-    .yumiko-bubble::before {
-      top: -9px;
-      left: 12px;
+    .yumiko-bubble-sparkles {
+      position: absolute;
+      inset: -18px -12px -16px;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.75;
     }
 
-    .yumiko-bubble::after {
-      bottom: -10px;
-      right: 16px;
-      animation-delay: -2s;
+    .yumiko-bubble-sparkles path {
+      animation: sparklePulse 5.3s ease-in-out infinite;
+      transform-origin: center;
+    }
+
+    .yumiko-bubble-sparkles path:nth-child(2) {
+      animation-delay: -2.2s;
+    }
+
+    .yumiko-bubble::before {
+      content: "";
+      position: absolute;
+      inset: 1px;
+      border-radius: 14px;
+      border: 1px solid rgba(236, 222, 255, 0.11);
+      opacity: 0.9;
+      pointer-events: none;
     }
 
     @keyframes orbFloat {
@@ -581,6 +666,38 @@
     @keyframes sparklePulse {
       0%, 100% { opacity: 0.2; transform: scale(0.9); }
       50% { opacity: 0.7; transform: scale(1.08); }
+    }
+
+    @keyframes cardEdgeSweep {
+      0%, 28% { transform: translateX(-120%) skewX(-18deg); opacity: 0; }
+      36% { opacity: 0.58; }
+      56% { transform: translateX(360%) skewX(-18deg); opacity: 0; }
+      100% { transform: translateX(360%) skewX(-18deg); opacity: 0; }
+    }
+
+    @keyframes yumikoFloat {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+
+    @keyframes haloBreath {
+      0%, 100% { transform: scale(0.98); opacity: 0.2; }
+      50% { transform: scale(1.03); opacity: 0.34; }
+    }
+
+    @keyframes bubbleBorderFlow {
+      from { background-position: 0% 50%; }
+      to { background-position: 175% 50%; }
+    }
+
+    @keyframes particleBlink {
+      0%, 100% { opacity: 0.14; transform: scale(0.86); }
+      50% { opacity: 0.35; transform: scale(1.06); }
+    }
+
+    @keyframes glowDrift {
+      0%, 100% { opacity: 0.25; }
+      50% { opacity: 0.52; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -731,7 +848,33 @@
       </section>
 
       <aside class="overlay-aside" aria-label="Información de Yumiko Overlay">
+        <svg class="overlay-aside-particles" viewBox="0 0 360 520" fill="none" aria-hidden="true">
+          <circle cx="34" cy="72" r="2" fill="rgba(206,179,255,0.9)" />
+          <circle cx="308" cy="118" r="1.8" fill="rgba(167,199,255,0.88)" />
+          <circle cx="284" cy="402" r="1.9" fill="rgba(235,200,255,0.8)" />
+          <circle cx="62" cy="452" r="1.6" fill="rgba(180,203,255,0.8)" />
+          <circle cx="198" cy="34" r="1.5" fill="rgba(229,210,255,0.82)" />
+          <circle cx="170" cy="490" r="1.7" fill="rgba(204,224,255,0.78)" />
+        </svg>
+
         <section class="overlay-card shortcut-card">
+          <svg class="shortcut-card-glow" viewBox="0 0 320 160" fill="none" aria-hidden="true">
+            <path d="M18 30C52 14 96 12 134 28C171 44 201 57 246 58C273 58 292 50 310 36" stroke="url(#shortcut-flow)" stroke-width="1.4" />
+            <path d="M20 126C52 113 84 109 124 114C166 120 210 136 258 132C281 130 294 125 308 117" stroke="url(#shortcut-flow-soft)" stroke-width="1.1" />
+            <circle cx="278" cy="32" r="2.2" fill="rgba(220,197,255,0.74)" />
+            <defs>
+              <linearGradient id="shortcut-flow" x1="18" y1="30" x2="310" y2="36" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#9AA7FF" stop-opacity="0" />
+                <stop offset="0.52" stop-color="#D2B0FF" />
+                <stop offset="1" stop-color="#9AA7FF" stop-opacity="0" />
+              </linearGradient>
+              <linearGradient id="shortcut-flow-soft" x1="20" y1="126" x2="308" y2="117" gradientUnits="userSpaceOnUse">
+                <stop stop-color="#BEB1FF" stop-opacity="0" />
+                <stop offset="0.5" stop-color="#B9D0FF" stop-opacity="0.82" />
+                <stop offset="1" stop-color="#BEB1FF" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+          </svg>
           <h2>Atajos de Yumiko Overlay</h2>
           <ul class="shortcut-list">
             <li><span class="shortcut-key">F2</span>Hablar con Yumiko</li>
@@ -745,13 +888,33 @@
           <svg class="yumiko-halo" viewBox="0 0 300 300" fill="none" aria-hidden="true">
             <circle cx="150" cy="150" r="102" stroke="rgba(190,150,255,0.42)" stroke-width="1.3" />
             <circle cx="150" cy="150" r="122" stroke="rgba(132,168,255,0.35)" stroke-width="1" />
+            <path d="M44 172C59 102 130 58 202 74C247 84 281 112 291 160" stroke="rgba(224,205,255,0.42)" stroke-width="1.2" />
           </svg>
-          <span class="yumiko-sparkle yumiko-sparkle--a" aria-hidden="true"></span>
-          <span class="yumiko-sparkle yumiko-sparkle--b" aria-hidden="true"></span>
+          <span class="yumiko-sparkle yumiko-sparkle--a" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 3L13.8 10.2L21 12L13.8 13.8L12 21L10.2 13.8L3 12L10.2 10.2L12 3Z" fill="rgba(241,226,255,0.88)" /></svg>
+          </span>
+          <span class="yumiko-sparkle yumiko-sparkle--b" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 4L14.2 9.8L20 12L14.2 14.2L12 20L9.8 14.2L4 12L9.8 9.8L12 4Z" fill="rgba(202,223,255,0.82)" /></svg>
+          </span>
+          <span class="yumiko-sparkle yumiko-sparkle--c" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 5L13.2 10.8L19 12L13.2 13.2L12 19L10.8 13.2L5 12L10.8 10.8L12 5Z" fill="rgba(238,214,255,0.75)" /></svg>
+          </span>
+          <span class="yumiko-sparkle yumiko-sparkle--d" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 2.8L14.2 9.8L21.2 12L14.2 14.2L12 21.2L9.8 14.2L2.8 12L9.8 9.8L12 2.8Z" fill="rgba(193,220,255,0.8)" /></svg>
+          </span>
+          <span class="yumiko-sparkle yumiko-sparkle--e" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><path d="M12 4.4L13.5 10.5L19.6 12L13.5 13.5L12 19.6L10.5 13.5L4.4 12L10.5 10.5L12 4.4Z" fill="rgba(237,224,255,0.74)" /></svg>
+          </span>
           <img src="/varios/yumiko/yumiko-face-full-face.png" alt="Ilustración de Yumiko lista para acompañarte en overlay">
         </section>
 
-        <p class="yumiko-bubble">Cuando quieras, te acompaño en pantalla.</p>
+        <p class="yumiko-bubble">
+          <svg class="yumiko-bubble-sparkles" viewBox="0 0 320 96" fill="none" aria-hidden="true">
+            <path d="M36 22L37.2 26.8L42 28L37.2 29.2L36 34L34.8 29.2L30 28L34.8 26.8L36 22Z" fill="rgba(238,220,255,0.84)" />
+            <path d="M282 68L283.2 72.8L288 74L283.2 75.2L282 80L280.8 75.2L276 74L280.8 72.8L282 68Z" fill="rgba(191,221,255,0.86)" />
+          </svg>
+          Cuando quieras, te acompaño en pantalla.
+        </p>
       </aside>
     </div>
   </main>
