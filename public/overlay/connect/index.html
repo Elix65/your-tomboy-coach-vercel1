@@ -6,30 +6,451 @@
   <title>Conectar Overlay</title>
   <link rel="stylesheet" href="/style.v2.css">
   <style>
-    .overlay-connect-wrap { min-height: 100vh; display: grid; place-items: center; padding: 24px; }
-    .overlay-connect-card { width: min(560px, 100%); background: rgba(20,16,34,.94); border: 1px solid rgba(255,255,255,.16); border-radius: 16px; padding: 24px; color: #fff; }
-    .overlay-connect-card h1 { margin-top: 0; }
-    .overlay-connect-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
-    .overlay-connect-status { font-size: .95rem; opacity: .9; margin-top: 10px; }
-    .overlay-connect-help { margin-top: 8px; font-size: .9rem; opacity: .86; }
-    .hidden { display: none; }
+    :root {
+      color-scheme: dark;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 15% 18%, rgba(154, 85, 255, 0.25), transparent 40%),
+        radial-gradient(circle at 90% 20%, rgba(66, 94, 255, 0.22), transparent 36%),
+        radial-gradient(circle at 40% 80%, rgba(83, 9, 142, 0.18), transparent 44%),
+        linear-gradient(140deg, #06060f 0%, #100a24 45%, #090d1f 100%);
+      color: #f4efff;
+      min-height: 100vh;
+    }
+
+    .overlay-page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 20px 56px;
+    }
+
+    .overlay-layout {
+      display: grid;
+      gap: 26px;
+      grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr);
+      align-items: start;
+    }
+
+    .overlay-card {
+      background: linear-gradient(140deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 22px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 14px 48px rgba(5, 4, 12, 0.48);
+    }
+
+    .overlay-hero {
+      margin-bottom: 18px;
+    }
+
+    .overlay-title {
+      margin: 0;
+      font-size: clamp(1.9rem, 3.5vw, 2.8rem);
+      line-height: 1.14;
+      letter-spacing: 0.01em;
+      color: #ffffff;
+      text-wrap: balance;
+    }
+
+    .overlay-subtitle {
+      margin: 12px 0 0;
+      color: rgba(233, 225, 255, 0.92);
+      font-size: clamp(1rem, 1.8vw, 1.12rem);
+      line-height: 1.6;
+      max-width: 74ch;
+    }
+
+    .overlay-benefits {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    .benefit-card {
+      padding: 16px;
+      border-radius: 16px;
+      border: 1px solid rgba(212, 190, 255, 0.2);
+      background: linear-gradient(165deg, rgba(74, 52, 124, 0.38), rgba(29, 21, 49, 0.52));
+    }
+
+    .benefit-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 8px;
+      background: rgba(226, 197, 255, 0.15);
+      color: #f3d9ff;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .benefit-card h3 {
+      margin: 0;
+      font-size: 1.02rem;
+      color: #fff;
+    }
+
+    .benefit-card p {
+      margin: 7px 0 0;
+      font-size: 0.92rem;
+      line-height: 1.5;
+      color: rgba(228, 216, 255, 0.88);
+    }
+
+    .overlay-tutorial {
+      margin-bottom: 16px;
+      padding: 18px;
+    }
+
+    .tutorial-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .tutorial-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 11px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      background: rgba(255, 255, 255, 0.06);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+
+    .tutorial-head h2 {
+      margin: 0;
+      font-size: 1.25rem;
+      color: #fff;
+    }
+
+    .tutorial-head p {
+      margin: 6px 0 0;
+      color: rgba(236, 227, 255, 0.88);
+      font-size: 0.95rem;
+    }
+
+    .tutorial-media {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background:
+        radial-gradient(circle at 80% 10%, rgba(124, 88, 255, 0.3), transparent 38%),
+        radial-gradient(circle at 20% 90%, rgba(62, 84, 255, 0.25), transparent 44%),
+        linear-gradient(145deg, #121228, #1c1235 45%, #0f1630);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    }
+
+    .tutorial-placeholder {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-content: center;
+      text-align: center;
+      gap: 10px;
+      padding: 20px;
+      color: #f3ebff;
+    }
+
+    .play-badge {
+      margin: 0 auto;
+      width: 70px;
+      height: 70px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      background: rgba(17, 17, 30, 0.46);
+      display: grid;
+      place-items: center;
+      box-shadow: 0 0 35px rgba(145, 106, 255, 0.32);
+      font-size: 1.8rem;
+      line-height: 1;
+    }
+
+    .tutorial-status {
+      display: inline-block;
+      margin: 0 auto;
+      padding: 5px 11px;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: rgba(242, 233, 255, 0.95);
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .tutorial-embed {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: none;
+    }
+
+    .overlay-connect {
+      padding: 22px;
+    }
+
+    .overlay-connect h2 {
+      margin: 0;
+      font-size: 1.65rem;
+      color: #fff;
+    }
+
+    .overlay-connect-main {
+      margin-top: 10px;
+      font-size: 1rem;
+      line-height: 1.55;
+      color: rgba(235, 224, 255, 0.96);
+    }
+
+    .overlay-connect-helpcopy {
+      margin-top: 7px;
+      font-size: 0.95rem;
+      line-height: 1.55;
+      color: rgba(218, 201, 247, 0.92);
+    }
+
+    .overlay-connect-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .overlay-connect-status {
+      margin-top: 16px;
+      font-size: .95rem;
+      color: #e8ddff;
+    }
+
+    .overlay-connect-secondary {
+      margin-top: 8px;
+      font-size: .88rem;
+      color: rgba(212, 199, 240, 0.86);
+    }
+
+    .overlay-connect-help {
+      margin-top: 12px;
+      padding: 11px 12px;
+      border-radius: 12px;
+      font-size: .9rem;
+      border: 1px solid rgba(255, 170, 200, 0.26);
+      background: rgba(114, 26, 66, 0.2);
+      color: rgba(254, 224, 239, 0.96);
+    }
+
+    .hidden { display: none !important; }
+
+    .overlay-aside {
+      position: sticky;
+      top: 20px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .shortcut-card {
+      padding: 18px;
+    }
+
+    .shortcut-card h2 {
+      margin: 0;
+      font-size: 1.2rem;
+      color: #fff;
+    }
+
+    .shortcut-list {
+      margin: 11px 0 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+      color: rgba(235, 224, 255, 0.95);
+      font-size: 0.96rem;
+    }
+
+    .shortcut-key {
+      display: inline-flex;
+      min-width: 38px;
+      justify-content: center;
+      margin-right: 9px;
+      font-weight: 700;
+      color: #ffd8ff;
+    }
+
+    .yumiko-figure {
+      position: relative;
+      padding: 10px;
+      display: grid;
+      place-items: center;
+    }
+
+    .yumiko-figure::before {
+      content: "";
+      position: absolute;
+      width: 76%;
+      height: 70%;
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(176, 103, 255, 0.35), rgba(176, 103, 255, 0));
+      filter: blur(12px);
+      z-index: 0;
+    }
+
+    .yumiko-figure img {
+      width: min(320px, 92%);
+      height: auto;
+      position: relative;
+      z-index: 1;
+      filter: drop-shadow(0 18px 36px rgba(0, 0, 0, 0.6));
+    }
+
+    .yumiko-bubble {
+      margin-top: -10px;
+      padding: 14px 18px;
+      border-radius: 16px;
+      border: 1px solid rgba(226, 197, 255, 0.32);
+      background: rgba(28, 20, 50, 0.82);
+      color: #f3e9ff;
+      font-weight: 600;
+      text-align: center;
+      box-shadow: 0 10px 28px rgba(8, 6, 18, 0.5);
+    }
+
+    @media (max-width: 1024px) {
+      .overlay-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .overlay-aside {
+        position: static;
+        max-width: 560px;
+        margin: 0 auto;
+      }
+    }
+
+    @media (max-width: 760px) {
+      .overlay-page {
+        padding: 26px 14px 42px;
+      }
+
+      .overlay-benefits {
+        grid-template-columns: 1fr;
+      }
+
+      .overlay-connect-actions .top-btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .overlay-connect {
+        padding: 18px;
+      }
+
+      .tutorial-head {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="overlay-connect-wrap">
-    <section class="overlay-connect-card">
-      <h1>Conectar Overlay</h1>
-      <p>Estamos generando un código de emparejamiento para abrir Yumiko Overlay.</p>
-      <div class="overlay-connect-actions">
-        <button id="btn-open-deeplink" class="top-btn top-btn-primary" type="button">Abrir Yumiko Overlay</button>
-        <button id="btn-retry" class="top-btn" type="button">Generar nuevo código</button>
-        <a id="btn-login" class="top-btn hidden" href="/login.html?returnTo=%2Foverlay%2Fconnect">Iniciar sesión</a>
-        <a class="top-btn" href="/index.html">Volver al Dojo</a>
-      </div>
-      <p id="overlay-status" class="overlay-connect-status">Preparando…</p>
-      <p id="overlay-help" class="overlay-connect-help hidden">Si Yumiko Overlay no se abrió automáticamente, tocá el botón “Abrir Yumiko Overlay”.</p>
-    </section>
-  </div>
+  <main class="overlay-page">
+    <div class="overlay-layout">
+      <section class="overlay-main" aria-labelledby="overlay-title">
+        <header class="overlay-hero">
+          <h1 id="overlay-title" class="overlay-title">Conectar Yumiko Overlay</h1>
+          <p class="overlay-subtitle">Abrí Yumiko Overlay en tu PC y conectalo con tu cuenta para usar a Yumiko mientras jugás, mirás videos o trabajás.</p>
+        </header>
+
+        <section class="overlay-benefits" aria-label="Beneficios de Yumiko Overlay">
+          <article class="benefit-card">
+            <div class="benefit-icon" aria-hidden="true">💬</div>
+            <h3>Compañía en pantalla</h3>
+            <p>Yumiko te acompaña en tiempo real mientras seguís en tu juego o escritorio.</p>
+          </article>
+          <article class="benefit-card">
+            <div class="benefit-icon" aria-hidden="true">⌨️</div>
+            <h3>Acceso rápido y atajos</h3>
+            <p>Controlá el overlay en segundos con teclas directas y una experiencia ágil.</p>
+          </article>
+          <article class="benefit-card">
+            <div class="benefit-icon" aria-hidden="true">✨</div>
+            <h3>Experiencia inmersiva</h3>
+            <p>Una presencia visual integrada para que la interacción se sienta natural y fluida.</p>
+          </article>
+        </section>
+
+        <section class="overlay-card overlay-tutorial" aria-labelledby="tutorial-title">
+          <div class="tutorial-head">
+            <div>
+              <span class="tutorial-tag">Tutorial</span>
+              <h2 id="tutorial-title">Cómo instalar Yumiko Overlay</h2>
+              <p>Mirá este video para instalarlo y conectarlo paso a paso.</p>
+            </div>
+          </div>
+          <div class="tutorial-media">
+            <div id="tutorial-placeholder" class="tutorial-placeholder">
+              <div class="play-badge" aria-hidden="true">▶</div>
+              <strong>Video de configuración completo</strong>
+              <span class="tutorial-status">Próximamente</span>
+            </div>
+            <iframe
+              id="tutorial-embed"
+              class="tutorial-embed"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              allowfullscreen
+              title="Tutorial Yumiko Overlay"
+            ></iframe>
+          </div>
+        </section>
+
+        <section class="overlay-card overlay-connect" aria-labelledby="connect-title">
+          <h2 id="connect-title">Conectar Overlay</h2>
+          <p class="overlay-connect-main">Estamos generando un código de emparejamiento para abrir Yumiko Overlay.</p>
+          <p class="overlay-connect-helpcopy">Si Yumiko Overlay no se abrió automáticamente, podés abrirlo manualmente con el botón de abajo.</p>
+          <div class="overlay-connect-actions">
+            <button id="btn-open-deeplink" class="top-btn top-btn-primary" type="button">Abrir Yumiko Overlay</button>
+            <button id="btn-retry" class="top-btn" type="button">Generar nuevo código</button>
+            <a id="btn-login" class="top-btn hidden" href="/login.html?returnTo=%2Foverlay%2Fconnect">Iniciar sesión</a>
+            <a class="top-btn" href="/index.html">Volver al Dojo</a>
+          </div>
+          <p id="overlay-status" class="overlay-connect-status">Preparando…</p>
+          <p class="overlay-connect-secondary">Una vez abierto, la conexión continuará automáticamente.</p>
+          <p id="overlay-help" class="overlay-connect-help hidden">Si Yumiko Overlay no se abrió automáticamente, podés abrirlo manualmente con el botón “Abrir Yumiko Overlay”.</p>
+        </section>
+      </section>
+
+      <aside class="overlay-aside" aria-label="Información de Yumiko Overlay">
+        <section class="overlay-card shortcut-card">
+          <h2>Atajos de Yumiko Overlay</h2>
+          <ul class="shortcut-list">
+            <li><span class="shortcut-key">F2</span>Hablar con Yumiko</li>
+            <li><span class="shortcut-key">F3</span>Ocultar/Pausar overlay</li>
+            <li><span class="shortcut-key">F4</span>Seguir al mouse</li>
+            <li><span class="shortcut-key">F5</span>Cambiar tamaño</li>
+          </ul>
+        </section>
+
+        <section class="yumiko-figure" aria-label="Yumiko">
+          <img src="/varios/yumiko/yumiko-face-full-face.png" alt="Ilustración de Yumiko lista para acompañarte en overlay">
+        </section>
+
+        <p class="yumiko-bubble">Cuando quieras, te acompaño en pantalla.</p>
+      </aside>
+    </div>
+  </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script type="module" src="/overlay/connect/index.js"></script>
