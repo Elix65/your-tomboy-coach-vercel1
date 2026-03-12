@@ -2,6 +2,7 @@ import supabaseClient from './supabase.js';
 import { initializeInventoryPanel } from './inventory-panel.v2.js';
 import { initTopBarAndMobileMenu } from './ui.v2.js';
 import { initRewardsWidget, updateStreakOnMessageSend } from './rewardsWidget.js';
+import { appendToOverlayRoot, ensureOverlayRoot } from './overlayRoot.js';
 
 function goWithTransition(url) {
   if (typeof window.playPageTransitionAndGo === "function") {
@@ -122,7 +123,8 @@ function showYumikoDownloadModal(message) {
   modal.addEventListener("click", (event) => {
     if (event.target === modal) closeYumikoDownloadModal(modal);
   });
-  document.body.appendChild(modal);
+  appendToOverlayRoot(modal);
+  modal.style.pointerEvents = "auto";
 }
 
 function openYumikoDesktopFlow() {
@@ -240,7 +242,8 @@ function ensureMobileAudioOverlay() {
   overlay.style.zIndex = "99998";
 
   if (!overlay.parentElement) {
-    document.body.appendChild(overlay);
+    appendToOverlayRoot(overlay);
+    overlay.style.pointerEvents = "auto";
   }
 }
 
@@ -279,7 +282,8 @@ function openAudioPopover() {
     ensureMobileAudioOverlay();
     audioPopover.classList.add("audio-popover--mobile");
     if (audioPopover.parentElement !== document.body) {
-      document.body.appendChild(audioPopover);
+      appendToOverlayRoot(audioPopover);
+      audioPopover.style.pointerEvents = "auto";
     }
     applyMobileAudioInlineStyles();
   } else {
@@ -454,7 +458,6 @@ function closeMobileMenu() {
 }
 
 const REWARDS_OVERLAY_ID = "rewards-overlay";
-let rewardsMobileRestoreContext = null;
 
 function isMobileRewardsViewport() {
   return window.innerWidth <= 768 || window.matchMedia("(max-width: 768px)").matches;
@@ -484,22 +487,6 @@ function resetRewardsMobileStyles() {
   });
 }
 
-function restoreRewardsWidgetToOriginalParent() {
-  const widget = getRewardsWidget();
-  if (!widget || !rewardsMobileRestoreContext) return;
-
-  const { parent, nextSibling } = rewardsMobileRestoreContext;
-  if (parent && parent.isConnected) {
-    if (nextSibling && nextSibling.parentNode === parent) {
-      parent.insertBefore(widget, nextSibling);
-    } else {
-      parent.appendChild(widget);
-    }
-  }
-
-  rewardsMobileRestoreContext = null;
-}
-
 function closeRewardsPanel() {
   const widget = getRewardsWidget();
   const before = widget ? {
@@ -512,7 +499,6 @@ function closeRewardsPanel() {
 
   removeRewardsOverlay();
   resetRewardsMobileStyles();
-  restoreRewardsWidgetToOriginalParent();
 
   if (widget) {
     const afterStyle = window.getComputedStyle(widget);
@@ -541,7 +527,8 @@ function ensureRewardsOverlay() {
   overlay.style.zIndex = "99990";
 
   if (!overlay.parentElement) {
-    document.body.appendChild(overlay);
+    appendToOverlayRoot(overlay);
+    overlay.style.pointerEvents = "auto";
   }
 }
 
@@ -562,15 +549,9 @@ function openRewardsPanel() {
   if (isMobileRewardsViewport()) {
     closeMobileMenu();
 
-    if (widget.parentElement !== document.body) {
-      rewardsMobileRestoreContext = {
-        parent: widget.parentElement,
-        nextSibling: widget.nextSibling
-      };
-      document.body.appendChild(widget);
-    }
-
     ensureRewardsOverlay();
+    appendToOverlayRoot(widget);
+    widget.style.pointerEvents = "auto";
     widget.classList.add("in-mobile-panel");
     widget.style.position = "fixed";
     widget.style.left = "12px";
@@ -849,6 +830,64 @@ function installAsyncLayoutOperationDiagnostics() {
   };
 
   runtimeDiagLog("async_layout_operation_watch_installed");
+}
+
+function isProtectedLayoutNode(node) {
+  if (!(node instanceof Element)) return false;
+  if (node.id === "yumikoSide" || node.id === "dojo-ui" || node.id === "top-bar") return true;
+  if (node.classList.contains("desktop-shell") || node.classList.contains("top-bar")) return true;
+  return false;
+}
+
+function hasProtectedLayoutDescendant(node) {
+  if (!(node instanceof Element)) return false;
+  return Boolean(node.querySelector?.("#yumikoSide, #dojo-ui, #top-bar, .desktop-shell, .top-bar"));
+}
+
+function installProtectedLayoutReparentGuard() {
+  if (window.__PROTECTED_LAYOUT_REPARENT_GUARD__) return;
+  window.__PROTECTED_LAYOUT_REPARENT_GUARD__ = true;
+
+  const methods = [
+    [Node.prototype, "appendChild"],
+    [Node.prototype, "insertBefore"],
+    [Node.prototype, "replaceChild"],
+    [Element.prototype, "append"],
+    [Element.prototype, "prepend"],
+    [Node.prototype, "removeChild"]
+  ];
+
+  methods.forEach(([proto, methodName]) => {
+    const original = proto[methodName];
+    if (typeof original !== "function") return;
+
+    proto[methodName] = function guardedLayoutMutation(...args) {
+      const isRemoval = methodName === "removeChild";
+      const candidates = isRemoval ? [args[0]] : args;
+      const blockedNode = candidates.find((node) => isProtectedLayoutNode(node) || hasProtectedLayoutDescendant(node));
+
+      if (!blockedNode) {
+        return original.apply(this, args);
+      }
+
+      const parentBefore = blockedNode?.parentElement || null;
+      const targetParent = this instanceof Element ? this : this?.parentElement || null;
+      const shouldBlock = !isRemoval && parentBefore && targetParent && parentBefore !== targetParent;
+
+      if (!shouldBlock) {
+        return original.apply(this, args);
+      }
+
+      console.warn("[LAYOUT_GUARD] Prevented protected node reparent", {
+        methodName,
+        node: runtimeDiagNodeLabel(blockedNode),
+        from: runtimeDiagNodeLabel(parentBefore),
+        to: runtimeDiagNodeLabel(targetParent)
+      });
+
+      return blockedNode;
+    };
+  });
 }
 
 // 1) Función para guardar mensajes en Supabase
@@ -2868,6 +2907,7 @@ function makeRewardsWidgetCollapsible() {
 window.addEventListener("DOMContentLoaded", async () => {
   startRuntimeLayoutMutationDiagnostics();
   installAsyncLayoutOperationDiagnostics();
+  ensureOverlayRoot();
   runtimeDiagLog("dom_content_loaded_handler_enter");
   initAudioControls();
   cacheChatDomElements();
@@ -2879,6 +2919,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   initRewardsWidget();
   runtimeDiagLog("rewards_widget_init_exit");
   makeRewardsWidgetCollapsible();
+  installProtectedLayoutReparentGuard();
   await initializeUI();
   await initializeChatSession();
   runtimeDiagLog("dom_content_loaded_handler_post_chat_init");

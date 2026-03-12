@@ -1676,3 +1676,14 @@ img.avatar-small {
 @media (prefers-reduced-motion: reduce){
   .page-transition.is-active .runner{ animation: none; opacity: 1; }
 }
+
+#overlay-root {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 99980;
+}
+
+#overlay-root > * {
+  pointer-events: auto;
+}
