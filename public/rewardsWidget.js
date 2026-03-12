@@ -107,7 +107,6 @@ function openRewardWhatsAppCTA() {
 }
 
 function ensureRewardsWidgetShell() {
-  console.info(`[RUNTIME_DIAG +${Math.round(performance.now())}ms] rewards_shell_ensure_enter`);
   if (document.getElementById("daily-chat-rewards-widget")) {
     return;
   }
@@ -134,7 +133,6 @@ function ensureRewardsWidgetShell() {
   `;
 
   appendToOverlayRoot(widget);
-  console.info(`[RUNTIME_DIAG +${Math.round(performance.now())}ms] rewards_shell_appended_overlay_root`, { parent: "#overlay-root", id: widget.id });
 }
 
 export function renderRewardsWidget(streakCount = 0) {
@@ -213,10 +211,7 @@ export function updateStreakOnMessageSend(messageText) {
 }
 
 export function initRewardsWidget() {
-  console.info(`[RUNTIME_DIAG +${Math.round(performance.now())}ms] rewards_init_enter`);
   ensureRewardsWidgetShell();
   const { streakCount } = getStoredRewardsState();
   renderRewardsWidget(streakCount);
-
-  console.info(`[RUNTIME_DIAG +${Math.round(performance.now())}ms] rewards_init_exit`);
 }

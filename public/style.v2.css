@@ -14,7 +14,8 @@ html,
 body {
   height: 100%;
   margin: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 body {
@@ -447,25 +448,42 @@ body.inventory-open .inventory-dropdown {
 }
 
 @media (max-width: 1023px) {
-  .yumiko-side {
-    display: none;
-  }
-
   .desktop-shell {
     width: 100%;
   }
 
   .chat-stage {
-    display: block;
-    padding: 94px 12px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    height: auto;
+    min-height: 0;
+    padding: 78px 12px 18px;
   }
 
   .desktop-main-column {
-    display: block;
+    display: flex;
   }
 
   #dojo-ui {
     width: 100%;
+  }
+
+  .yumiko-side {
+    display: flex;
+    width: 100%;
+    max-width: 460px;
+    margin: 0 auto;
+    min-height: clamp(220px, 40vh, 360px);
+    height: clamp(220px, 40vh, 360px);
+    padding: 16px 14px 0;
+  }
+
+  .yumiko-img {
+    left: 10px;
+    right: 10px;
+    width: calc(100% - 20px);
+    height: calc(100% - 14px);
   }
 }
 
@@ -1403,6 +1421,35 @@ img.avatar-small {
 ================================ */
 
 @media (max-width: 768px) {
+  #appLayout,
+  #chatContainer,
+  main,
+  .container,
+  .desktop-shell,
+  .desktop-main-column,
+  #dojo-ui,
+  .chat-frame-wrap {
+    height: auto;
+    min-height: 0;
+  }
+
+  .container,
+  .desktop-shell,
+  .chat-stage,
+  .desktop-main-column,
+  #dojo-ui,
+  .chat-frame-wrap,
+  .chat-messages-area,
+  .chat-composer-area {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .chat-box {
+    min-height: 46vh;
+  }
+
   .composer-row {
     grid-template-columns: 1fr;
   }

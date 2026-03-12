@@ -5,37 +5,8 @@ import { initRewardsWidget, updateStreakOnMessageSend } from './rewardsWidget.js
 import { appendToOverlayRoot, ensureOverlayRoot } from './overlayRoot.js';
 
 
-const INIT_DEBUG_FLAG_KEYS = [
-  "DISABLE_AUTH_REHYDRATION",
-  "DISABLE_HISTORY_RENDER",
-  "DISABLE_REWARDS_BOOT",
-  "DISABLE_RESPONSIVE_SYNC",
-  "DISABLE_YUMIKO_STATE_TRANSITIONS",
-  "DISABLE_TIME_PERSONALIZATION",
-  "DISABLE_OVERLAY_BOOT"
-];
-
-function readInitDebugFlags() {
-  const params = new URLSearchParams(window.location.search);
-  const fromQuery = String(params.get("debug_init_flags") || "")
-    .split(",")
-    .map((entry) => entry.trim().toUpperCase())
-    .filter(Boolean);
-
-  return new Set(INIT_DEBUG_FLAG_KEYS.filter((flag) => {
-    if (params.get(flag) === "1") return true;
-    if (fromQuery.includes(flag)) return true;
-    if (window.localStorage.getItem(flag) === "1") return true;
-    if (window.sessionStorage.getItem(flag) === "1") return true;
-    return false;
-  }));
-}
-
-const initDebugFlags = readInitDebugFlags();
-window.__INIT_DEBUG_FLAGS__ = Object.fromEntries(INIT_DEBUG_FLAG_KEYS.map((flag) => [flag, initDebugFlags.has(flag)]));
-
-function isInitSubsystemDisabled(flag) {
-  return initDebugFlags.has(flag);
+function isInitSubsystemDisabled() {
+  return false;
 }
 
 function goWithTransition(url) {
@@ -336,7 +307,6 @@ function openAudioPopover() {
     console.log("Audio panel rect", audioPopover.getBoundingClientRect());
     console.log("Audio panel computed zIndex", getComputedStyle(audioPopover).zIndex);
   }
-  console.log("Audio panel opened");
 }
 
 function toggleAudioPanel() {
@@ -356,7 +326,6 @@ function handleAudioButtonClick(event, { fromMobile = false } = {}) {
   event?.stopPropagation?.();
 
   if (fromMobile) {
-    console.log("Audio button clicked (mobile)");
     closeMobileMenu();
     requestAnimationFrame(() => {
       toggleAudioPanel();
@@ -611,7 +580,6 @@ function openRewardsPanel() {
     zIndex: computed.zIndex,
     inNormalFlow: !["fixed", "absolute"].includes(computed.position)
   });
-  console.log("Rewards panel opened");
 }
 
 window.openRewardsPanel = openRewardsPanel;
@@ -661,7 +629,6 @@ document.addEventListener("click", (event) => {
   const rewardsBtn = event.target.closest('[data-action="rewards"]');
   if (!rewardsBtn) return;
 
-  console.log("Rewards clicked");
   openRewardsPanel();
 });
 
@@ -693,238 +660,15 @@ const IS_DEV = ["localhost", "127.0.0.1"].includes(window.location.hostname);
 const DEVICE_LABEL = `${navigator.platform || "unknown"}::${navigator.userAgent || "unknown"}`;
 
 function telemetryLog(eventName, payload = {}) {
+  if (!IS_DEV) return;
   console.log(`[telemetry/chat] ${eventName}`, {
     device: DEVICE_LABEL,
     ...payload
   });
 }
 
-const runtimeLayoutDiag = {
-  domReadyMs: 0,
-  active: false,
-  observer: null,
-  stopTimer: null,
-  maxWindowMs: 5000
-};
+function runtimeDiagLog() {}
 
-function runtimeDiagLog(eventName, payload = {}) {
-  if (!runtimeLayoutDiag.domReadyMs) return;
-  const relMs = Math.round(performance.now() - runtimeLayoutDiag.domReadyMs);
-  console.info(`[RUNTIME_DIAG +${relMs}ms] ${eventName}`, payload);
-}
-
-function runtimeDiagNodeLabel(node) {
-  if (!(node instanceof Element)) return String(node?.nodeName || "unknown");
-  const id = node.id ? `#${node.id}` : "";
-  const cls = typeof node.className === "string"
-    ? `.${node.className.trim().replace(/\s+/g, ".")}`
-    : "";
-  return `${node.tagName.toLowerCase()}${id}${cls}`;
-}
-
-function startRuntimeLayoutMutationDiagnostics() {
-  if (runtimeLayoutDiag.active) return;
-
-  runtimeLayoutDiag.active = true;
-  runtimeLayoutDiag.domReadyMs = performance.now();
-
-  const observedTargets = [
-    { label: "body", node: document.body },
-    { label: ".desktop-shell", node: document.querySelector(".desktop-shell") },
-    { label: ".desktop-main-column", node: document.querySelector(".desktop-main-column") },
-    { label: ".yumiko-side", node: document.querySelector(".yumiko-side") },
-    { label: "#yumikoSide", node: document.getElementById("yumikoSide") },
-    { label: "#dojo-ui", node: document.getElementById("dojo-ui") },
-    { label: "chat-container", node: document.getElementById("chatContainer") || document.querySelector(".chat-container") },
-    { label: "desktop-topbar", node: document.getElementById("top-bar") || document.querySelector(".top-bar") }
-  ];
-
-  runtimeDiagLog("mutation_watch_start", {
-    maxWindowMs: runtimeLayoutDiag.maxWindowMs,
-    targets: observedTargets.map(({ label, node }) => ({ label, found: Boolean(node), node: node ? runtimeDiagNodeLabel(node) : null }))
-  });
-
-  const observer = new MutationObserver((records) => {
-    records.forEach((record) => {
-      const watched = observedTargets.find((item) => item.node === record.target);
-      const targetLabel = watched?.label || runtimeDiagNodeLabel(record.target);
-
-      if (record.type === "attributes") {
-        const element = /** @type {Element} */ (record.target);
-        const attr = record.attributeName || "";
-        const previous = record.oldValue || "";
-        const next = attr === "class"
-          ? element.className
-          : (element.getAttribute("style") || "");
-
-        runtimeDiagLog("mutation", {
-          type: "attributes",
-          target: targetLabel,
-          element: runtimeDiagNodeLabel(element),
-          attribute: attr,
-          previous,
-          next,
-          classNameOld: attr === "class" ? previous : undefined,
-          classNameNew: attr === "class" ? element.className : undefined,
-          styleOld: attr === "style" ? previous : undefined,
-          styleNew: attr === "style" ? (element.getAttribute("style") || "") : undefined
-        });
-        return;
-      }
-
-      if (record.type === "childList") {
-        runtimeDiagLog("mutation", {
-          type: "childList",
-          target: targetLabel,
-          element: runtimeDiagNodeLabel(record.target),
-          addedCount: record.addedNodes.length,
-          removedCount: record.removedNodes.length,
-          added: Array.from(record.addedNodes).map(runtimeDiagNodeLabel),
-          removed: Array.from(record.removedNodes).map(runtimeDiagNodeLabel)
-        });
-      }
-    });
-  });
-
-  observedTargets.forEach(({ node }) => {
-    if (!node) return;
-    observer.observe(node, {
-      attributes: true,
-      attributeFilter: ["class", "style"],
-      attributeOldValue: true,
-      childList: true
-    });
-  });
-
-  runtimeLayoutDiag.observer = observer;
-  runtimeLayoutDiag.stopTimer = window.setTimeout(() => {
-    observer.disconnect();
-    runtimeLayoutDiag.active = false;
-    runtimeDiagLog("mutation_watch_stop", { reason: "timeout_5s" });
-  }, runtimeLayoutDiag.maxWindowMs);
-}
-
-
-
-function installAsyncLayoutOperationDiagnostics() {
-  if (window.__RUNTIME_LAYOUT_ASYNC_DIAG_INSTALLED__) return;
-  window.__RUNTIME_LAYOUT_ASYNC_DIAG_INSTALLED__ = true;
-
-  const originalSetTimeout = window.setTimeout.bind(window);
-  window.setTimeout = (callback, delay, ...args) => {
-    const callbackName = callback?.name || "anonymous";
-    const scheduledAt = performance.now();
-    runtimeDiagLog("schedule_setTimeout", {
-      delay: Number(delay) || 0,
-      callbackName
-    });
-
-    return originalSetTimeout(function runtimeDiagTimeoutWrapper(...innerArgs) {
-      runtimeDiagLog("run_setTimeout", {
-        delay: Number(delay) || 0,
-        callbackName,
-        elapsedMs: Math.round(performance.now() - scheduledAt)
-      });
-      if (typeof callback === "function") return callback(...innerArgs);
-      return callback;
-    }, delay, ...args);
-  };
-
-  const originalRequestAnimationFrame = window.requestAnimationFrame.bind(window);
-  window.requestAnimationFrame = (callback) => {
-    const callbackName = callback?.name || "anonymous";
-    const scheduledAt = performance.now();
-    runtimeDiagLog("schedule_requestAnimationFrame", { callbackName });
-    return originalRequestAnimationFrame((ts) => {
-      runtimeDiagLog("run_requestAnimationFrame", {
-        callbackName,
-        elapsedMs: Math.round(performance.now() - scheduledAt)
-      });
-      return callback(ts);
-    });
-  };
-
-  const originalThen = Promise.prototype.then;
-  Promise.prototype.then = function patchedRuntimeDiagThen(onFulfilled, onRejected) {
-    const wrappedFulfilled = typeof onFulfilled === "function"
-      ? function runtimeDiagOnFulfilled(value) {
-        runtimeDiagLog("run_promise_then_fulfilled", { callbackName: onFulfilled.name || "anonymous" });
-        return onFulfilled(value);
-      }
-      : onFulfilled;
-
-    const wrappedRejected = typeof onRejected === "function"
-      ? function runtimeDiagOnRejected(error) {
-        runtimeDiagLog("run_promise_then_rejected", { callbackName: onRejected.name || "anonymous" });
-        return onRejected(error);
-      }
-      : onRejected;
-
-    return originalThen.call(this, wrappedFulfilled, wrappedRejected);
-  };
-
-  runtimeDiagLog("async_layout_operation_watch_installed");
-}
-
-function isProtectedLayoutNode(node) {
-  if (!(node instanceof Element)) return false;
-  if (node.id === "yumikoSide" || node.id === "dojo-ui" || node.id === "top-bar") return true;
-  if (node.classList.contains("desktop-shell") || node.classList.contains("top-bar")) return true;
-  return false;
-}
-
-function hasProtectedLayoutDescendant(node) {
-  if (!(node instanceof Element)) return false;
-  return Boolean(node.querySelector?.("#yumikoSide, #dojo-ui, #top-bar, .desktop-shell, .top-bar"));
-}
-
-function installProtectedLayoutReparentGuard() {
-  if (window.__PROTECTED_LAYOUT_REPARENT_GUARD__) return;
-  window.__PROTECTED_LAYOUT_REPARENT_GUARD__ = true;
-
-  const methods = [
-    [Node.prototype, "appendChild"],
-    [Node.prototype, "insertBefore"],
-    [Node.prototype, "replaceChild"],
-    [Element.prototype, "append"],
-    [Element.prototype, "prepend"],
-    [Node.prototype, "removeChild"]
-  ];
-
-  methods.forEach(([proto, methodName]) => {
-    const original = proto[methodName];
-    if (typeof original !== "function") return;
-
-    proto[methodName] = function guardedLayoutMutation(...args) {
-      const isRemoval = methodName === "removeChild";
-      const candidates = isRemoval ? [args[0]] : args;
-      const blockedNode = candidates.find((node) => isProtectedLayoutNode(node) || hasProtectedLayoutDescendant(node));
-
-      if (!blockedNode) {
-        return original.apply(this, args);
-      }
-
-      const parentBefore = blockedNode?.parentElement || null;
-      const targetParent = this instanceof Element ? this : this?.parentElement || null;
-      const shouldBlock = !isRemoval && parentBefore && targetParent && parentBefore !== targetParent;
-
-      if (!shouldBlock) {
-        return original.apply(this, args);
-      }
-
-      console.warn("[LAYOUT_GUARD] Prevented protected node reparent", {
-        methodName,
-        node: runtimeDiagNodeLabel(blockedNode),
-        from: runtimeDiagNodeLabel(parentBefore),
-        to: runtimeDiagNodeLabel(targetParent)
-      });
-
-      return blockedNode;
-    };
-  });
-}
-
-// 1) Función para guardar mensajes en Supabase
 function showChatFeedback(message) {
   addMessage(message, "bot", { skipAnimation: true });
 }
@@ -968,8 +712,7 @@ async function refreshAudioEntitlement({ withReturnPolling = false } = {}) {
   const attemptRead = async () => {
     try {
       const subscription = await fetchSubscriptionStatus();
-      console.log("subscription-status response", subscription);
-      const active = Boolean(subscription?.active);
+          const active = Boolean(subscription?.active);
       setAudioModeVisibilityState({ active, checking: false });
       return active;
     } catch (error) {
@@ -997,7 +740,6 @@ async function refreshAudioEntitlement({ withReturnPolling = false } = {}) {
 }
 
 async function saveMessageToSupabase({ userId, sender, content }) {
-  console.log("Intentando guardar mensaje:", { userId, sender, content });
 
   if (!userId) {
     console.error("❌ ERROR: userId vacío. No se puede guardar.");
@@ -1017,7 +759,6 @@ async function saveMessageToSupabase({ userId, sender, content }) {
     console.error("❌ Supabase rechazó el insert:", error.message);
     showChatFeedback("No pude guardar este mensaje. Revisá tu conexión e intentá de nuevo.");
   } else {
-    console.log("✅ Mensaje guardado correctamente:", data);
   }
 }
 
@@ -1618,7 +1359,6 @@ function renderChatMessagesFromState() {
 
 async function loadChatFromSupabase({ userId }) {
   runtimeDiagLog("chat_init_load_messages_enter", { userId });
-  console.log("Cargando historial:", { userId });
 
   const {
     data: { session }
@@ -1805,17 +1545,7 @@ function readYumikoContainerDiagnostics(container) {
   };
 }
 
-function logYumikoDiagnostics(reason) {
-  const idle = document.getElementById("yumikoIdle");
-  const thinking = document.getElementById("yumikoThinking");
-  const parent = idle?.parentElement || thinking?.parentElement || null;
-  console.info("[YUMIKO_DIAG]", reason, {
-    health: { ...yumikoImageHealth },
-    parent: readYumikoContainerDiagnostics(parent),
-    idle: readYumikoImageDiagnostics(idle),
-    thinking: readYumikoImageDiagnostics(thinking)
-  });
-}
+function logYumikoDiagnostics() {}
 
 function isElementVisiblyRendered(el) {
   if (!el) return false;
@@ -1825,87 +1555,9 @@ function isElementVisiblyRendered(el) {
   return Number.isFinite(opacity) ? opacity > 0.01 : true;
 }
 
-function recoverUnexpectedYumikoHiddenState(reason) {
-  const idle = document.getElementById("yumikoIdle");
-  const thinking = document.getElementById("yumikoThinking");
-  const parent = idle?.parentElement || thinking?.parentElement || null;
-  if (!idle || !thinking || !parent) return;
+function recoverUnexpectedYumikoHiddenState() {}
 
-  const idleActive = idle.classList.contains("is-active");
-  const thinkingActive = thinking.classList.contains("is-active");
-  const parentVisible = isElementVisiblyRendered(parent);
-  const idleVisible = isElementVisiblyRendered(idle);
-  const thinkingVisible = isElementVisiblyRendered(thinking);
-
-  if (idleActive && parentVisible && idleVisible) return;
-  if (thinkingActive && parentVisible && thinkingVisible) return;
-
-  console.warn("[YUMIKO_DIAG] recovering hidden state", {
-    reason,
-    idleActive,
-    thinkingActive,
-    parentVisible,
-    idleVisible,
-    thinkingVisible
-  });
-
-  // Limpieza mínima de estilos inline inesperados y restauración del fallback seguro.
-  parent.style.removeProperty("display");
-  parent.style.removeProperty("visibility");
-  parent.style.removeProperty("opacity");
-  idle.style.removeProperty("display");
-  idle.style.removeProperty("visibility");
-  idle.style.removeProperty("opacity");
-  thinking.style.removeProperty("display");
-  thinking.style.removeProperty("visibility");
-  thinking.style.removeProperty("opacity");
-
-  forceYumikoIdleVisible(`unexpected_hidden_recovered:${reason}`);
-}
-
-function installYumikoVisibilityDebugWatchers() {
-  const idle = document.getElementById("yumikoIdle");
-  const thinking = document.getElementById("yumikoThinking");
-  const parent = idle?.parentElement || thinking?.parentElement || null;
-  if (!idle || !thinking || !parent) return;
-
-  const observed = [
-    { el: parent, label: "parent" },
-    { el: idle, label: "idle" },
-    { el: thinking, label: "thinking" }
-  ];
-
-  const observer = new MutationObserver((records) => {
-    records.forEach((record) => {
-      if (record.type !== "attributes") return;
-      const target = record.target;
-      const label = observed.find((item) => item.el === target)?.label || "unknown";
-      const attr = record.attributeName || "";
-      console.info("[YUMIKO_DIAG] mutation", {
-        label,
-        attribute: attr,
-        className: target.className,
-        style: target.getAttribute("style") || ""
-      });
-      logYumikoDiagnostics(`mutation:${label}:${attr}`);
-      recoverUnexpectedYumikoHiddenState(`mutation:${label}:${attr}`);
-    });
-  });
-
-  observed.forEach(({ el }) => {
-    observer.observe(el, {
-      attributes: true,
-      attributeFilter: ["class", "style"]
-    });
-  });
-
-  window.addEventListener("resize", () => {
-    logYumikoDiagnostics("window_resize");
-    recoverUnexpectedYumikoHiddenState("window_resize");
-  });
-
-  logYumikoDiagnostics("visibility_watchers_installed");
-}
+function installYumikoVisibilityDebugWatchers() {}
 
 function forceYumikoIdleVisible(reason) {
   const idle = document.getElementById("yumikoIdle");
@@ -2964,8 +2616,6 @@ function makeRewardsWidgetCollapsible() {
 // AUDIO + PARALLAX + INICIALIZACIÓN
 // ===============================
 window.addEventListener("DOMContentLoaded", async () => {
-  startRuntimeLayoutMutationDiagnostics();
-  installAsyncLayoutOperationDiagnostics();
   if (!isInitSubsystemDisabled("DISABLE_OVERLAY_BOOT")) {
     ensureOverlayRoot();
   } else {
@@ -2986,7 +2636,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   } else {
     runtimeDiagLog("rewards_widget_init_skip", { reason: "DISABLE_REWARDS_BOOT" });
   }
-  installProtectedLayoutReparentGuard();
   await initializeUI();
   await initializeChatSession();
   runtimeDiagLog("dom_content_loaded_handler_post_chat_init");
