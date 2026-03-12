@@ -1477,20 +1477,122 @@ function scheduleCooldownRefresh(cooldownMs) {
   window.setTimeout(updateActionButtonsState, cooldownMs + 40);
 }
 
+const yumikoImageHealth = {
+  idleReady: false,
+  idleError: false,
+  thinkingReady: false,
+  thinkingError: false,
+  thinkingBlocked: false
+};
+
+function isYumikoImageReady(img) {
+  return Boolean(img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
+}
+
+function readYumikoImageDiagnostics(img) {
+  if (!img) return null;
+  const style = window.getComputedStyle(img);
+  return {
+    id: img.id,
+    currentSrc: img.currentSrc || img.src || "",
+    complete: img.complete,
+    naturalWidth: img.naturalWidth,
+    naturalHeight: img.naturalHeight,
+    opacity: style.opacity,
+    visibility: style.visibility,
+    display: style.display,
+    isActive: img.classList.contains("is-active")
+  };
+}
+
+function logYumikoDiagnostics(reason) {
+  const idle = document.getElementById("yumikoIdle");
+  const thinking = document.getElementById("yumikoThinking");
+  console.info("[YUMIKO_DIAG]", reason, {
+    health: { ...yumikoImageHealth },
+    idle: readYumikoImageDiagnostics(idle),
+    thinking: readYumikoImageDiagnostics(thinking)
+  });
+}
+
+function forceYumikoIdleVisible(reason) {
+  const idle = document.getElementById("yumikoIdle");
+  const thinking = document.getElementById("yumikoThinking");
+  if (!idle || !thinking) return;
+  thinking.classList.remove("is-active");
+  idle.classList.add("is-active");
+  if (reason) logYumikoDiagnostics(reason);
+}
+
+function initializeYumikoImageState() {
+  const idle = document.getElementById("yumikoIdle");
+  const thinking = document.getElementById("yumikoThinking");
+  if (!idle || !thinking) return;
+
+  yumikoImageHealth.idleReady = isYumikoImageReady(idle);
+  yumikoImageHealth.idleError = false;
+  yumikoImageHealth.thinkingReady = isYumikoImageReady(thinking);
+  yumikoImageHealth.thinkingError = false;
+  yumikoImageHealth.thinkingBlocked = false;
+
+  idle.addEventListener("load", () => {
+    yumikoImageHealth.idleReady = isYumikoImageReady(idle);
+    yumikoImageHealth.idleError = false;
+    logYumikoDiagnostics("idle_load");
+  });
+
+  idle.addEventListener("error", () => {
+    yumikoImageHealth.idleReady = false;
+    yumikoImageHealth.idleError = true;
+    console.error("[YUMIKO_ERROR] idle_failed", idle.currentSrc || idle.src || "");
+    logYumikoDiagnostics("idle_error");
+  });
+
+  thinking.addEventListener("load", () => {
+    yumikoImageHealth.thinkingReady = isYumikoImageReady(thinking);
+    yumikoImageHealth.thinkingError = false;
+    if (yumikoImageHealth.thinkingBlocked) {
+      // Si ya se marcó como bloqueada por error previo, mantenemos fallback seguro.
+      forceYumikoIdleVisible("thinking_loaded_but_blocked");
+      return;
+    }
+    logYumikoDiagnostics("thinking_load");
+  });
+
+  thinking.addEventListener("error", () => {
+    yumikoImageHealth.thinkingReady = false;
+    yumikoImageHealth.thinkingError = true;
+    yumikoImageHealth.thinkingBlocked = true;
+    console.error("[YUMIKO_ERROR] thinking_failed", thinking.currentSrc || thinking.src || "");
+    forceYumikoIdleVisible("thinking_error_force_idle");
+  });
+
+  logYumikoDiagnostics("yumiko_state_initialized");
+}
+
 function setYumikoState(state) {
   const idle = document.getElementById("yumikoIdle");
   const thinking = document.getElementById("yumikoThinking");
 
   if (!idle || !thinking) return;
 
+  yumikoImageHealth.idleReady = isYumikoImageReady(idle);
+  yumikoImageHealth.thinkingReady = isYumikoImageReady(thinking);
+
   if (state === "thinking") {
+    if (yumikoImageHealth.thinkingBlocked || yumikoImageHealth.thinkingError || !yumikoImageHealth.thinkingReady) {
+      forceYumikoIdleVisible("thinking_not_ready_fallback_idle");
+      return;
+    }
     idle.classList.remove("is-active");
     thinking.classList.add("is-active");
+    logYumikoDiagnostics("state_thinking_applied");
     return;
   }
 
   thinking.classList.remove("is-active");
   idle.classList.add("is-active");
+  logYumikoDiagnostics("state_idle_applied");
 }
 
 function formatTime(seconds) {
@@ -2432,6 +2534,7 @@ function makeRewardsWidgetCollapsible() {
 window.addEventListener("DOMContentLoaded", async () => {
   initAudioControls();
   cacheChatDomElements();
+  initializeYumikoImageState();
   registerInputListeners();
   updateActionButtonsState();
 
