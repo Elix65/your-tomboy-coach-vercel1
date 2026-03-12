@@ -371,6 +371,7 @@ body.inventory-open .inventory-dropdown {
   width: 100%;
   min-width: 0;
   max-width: 420px;
+  min-height: min(78vh, 780px);
   height: auto;
   position: relative;
   pointer-events: none;
@@ -379,6 +380,7 @@ body.inventory-open .inventory-dropdown {
   justify-content: center;
   border-radius: 28px;
   padding: 24px 18px 0;
+  overflow: hidden;
   background: linear-gradient(150deg, rgba(255, 255, 255, 0.08), rgba(146, 102, 255, 0.05) 48%, rgba(15, 10, 30, 0.35));
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: 0 26px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 154, 190, 0.12) inset;
@@ -415,10 +417,15 @@ body.inventory-open .inventory-dropdown {
 }
 
 .yumiko-img {
-  position: relative;
-  width: 100%;
-  height: min(78vh, 780px);
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 0;
+  width: calc(100% - 36px);
+  height: calc(100% - 24px);
+  display: block;
   object-fit: contain;
+  object-position: center bottom;
   opacity: 0;
   transform: translateY(6px);
   transition: opacity 220ms ease, transform 280ms ease;
