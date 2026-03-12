@@ -1,3 +1,5 @@
+import { appendToOverlayRoot } from "./overlayRoot.js";
+
 const REWARDS_STORAGE_KEYS = {
   streakCount: "yumiko_streak_count",
   lastChatDate: "yumiko_last_chat_date",
@@ -20,13 +22,6 @@ const COUNT_ATTEMPT_COOLDOWN_MS = 10_000; // Cambiar este valor para ajustar rat
 const REWARD_CTA_DAY_THRESHOLD = 5;
 const REWARD_WHATSAPP_NUMBER = "541144103647"; // <-- Cambiar número de WhatsApp.
 const REWARD_WHATSAPP_MESSAGE = "Hola! Llegué al día 5 con Yumiko 😳 Quiero reclamar mi reward."; // <-- Cambiar texto del mensaje.
-const MOBILE_REWARDS_BREAKPOINT_QUERY = "(max-width: 768px)";
-
-let originalWidgetParent = null;
-let originalWidgetNextSibling = null;
-let mobileRewardsToggleBtn = null;
-let mobileRewardsCollapsible = null;
-let mobileMenuClassObserver = null;
 
 export function getTodayLocalYYYYMMDD() {
   const now = new Date();
@@ -138,119 +133,8 @@ function ensureRewardsWidgetShell() {
     </div>
   `;
 
-  document.body.appendChild(widget);
-  console.info(`[RUNTIME_DIAG +${Math.round(performance.now())}ms] rewards_shell_appended_body`, { parent: "body", id: widget.id });
-}
-
-function collapseMobileRewardsPanel() {
-  if (!mobileRewardsToggleBtn || !mobileRewardsCollapsible) {
-    return;
-  }
-
-  mobileRewardsToggleBtn.setAttribute("aria-expanded", "false");
-  mobileRewardsCollapsible.classList.remove("is-open");
-}
-
-function ensureMobileRewardsSlot() {
-  const mobileMenuDrawer = document.querySelector("#mobile-menu-overlay .mobile-menu-drawer");
-  if (!mobileMenuDrawer) {
-    return null;
-  }
-
-  const existingRewardsBtn = mobileMenuDrawer.querySelector('[data-action="rewards"]');
-  if (existingRewardsBtn instanceof HTMLButtonElement) {
-    mobileRewardsToggleBtn = existingRewardsBtn;
-  }
-
-  if (!mobileRewardsToggleBtn) {
-    mobileRewardsToggleBtn = document.createElement("button");
-    mobileRewardsToggleBtn.type = "button";
-    mobileRewardsToggleBtn.className = "mobile-menu-btn rewards-toggle";
-    mobileRewardsToggleBtn.textContent = "Recompensas😲💖";
-    mobileRewardsToggleBtn.setAttribute("aria-expanded", "false");
-    mobileRewardsToggleBtn.setAttribute("data-action", "rewards");
-  }
-
-  if (!mobileRewardsCollapsible) {
-    mobileRewardsCollapsible = document.createElement("div");
-    mobileRewardsCollapsible.className = "rewards-collapsible";
-  }
-
-  mobileRewardsToggleBtn.onclick = () => {
-    const isOpen = mobileRewardsCollapsible.classList.toggle("is-open");
-    mobileRewardsToggleBtn.setAttribute("aria-expanded", String(isOpen));
-  };
-
-  mobileMenuDrawer.appendChild(mobileRewardsToggleBtn);
-  mobileMenuDrawer.appendChild(mobileRewardsCollapsible);
-
-  return {
-    mobileMenuDrawer,
-    mobileRewardsCollapsible
-  };
-}
-
-function setupMobileMenuCollapseObserver() {
-  if (mobileMenuClassObserver) {
-    return;
-  }
-
-  const mobileMenuOverlay = document.getElementById("mobile-menu-overlay");
-  if (!mobileMenuOverlay) {
-    return;
-  }
-
-  mobileMenuClassObserver = new MutationObserver(() => {
-    const isMenuOpen = mobileMenuOverlay.classList.contains("active") && !mobileMenuOverlay.classList.contains("hidden");
-    if (!isMenuOpen) {
-      collapseMobileRewardsPanel();
-    }
-  });
-
-  mobileMenuClassObserver.observe(mobileMenuOverlay, {
-    attributes: true,
-    attributeFilter: ["class"]
-  });
-}
-
-function setupMobileRewardsInHamburger() {
-  console.info(`[RUNTIME_DIAG +${Math.round(performance.now())}ms] rewards_mobile_layout_sync_enter`);
-  const widget = document.getElementById("daily-chat-rewards-widget");
-  if (!widget) {
-    return;
-  }
-
-  if (!originalWidgetParent) {
-    originalWidgetParent = widget.parentNode;
-    originalWidgetNextSibling = widget.nextSibling;
-  }
-
-  const isMobile = window.matchMedia(MOBILE_REWARDS_BREAKPOINT_QUERY).matches;
-
-  if (isMobile) {
-    const mobileSlots = ensureMobileRewardsSlot();
-    if (!mobileSlots) {
-      return;
-    }
-
-    widget.classList.add("in-mobile-menu");
-    console.info(`[RUNTIME_DIAG +${Math.round(performance.now())}ms] rewards_widget_move_mobile_menu`, { parentClass: mobileSlots.mobileRewardsCollapsible.className });
-    mobileSlots.mobileRewardsCollapsible.appendChild(widget);
-    setupMobileMenuCollapseObserver();
-    return;
-  }
-
-  collapseMobileRewardsPanel();
-  widget.classList.remove("in-mobile-menu");
-  console.info(`[RUNTIME_DIAG +${Math.round(performance.now())}ms] rewards_widget_restore_desktop`);
-
-  if (originalWidgetParent) {
-    if (originalWidgetNextSibling && originalWidgetNextSibling.parentNode === originalWidgetParent) {
-      originalWidgetParent.insertBefore(widget, originalWidgetNextSibling);
-    } else {
-      originalWidgetParent.appendChild(widget);
-    }
-  }
+  appendToOverlayRoot(widget);
+  console.info(`[RUNTIME_DIAG +${Math.round(performance.now())}ms] rewards_shell_appended_overlay_root`, { parent: "#overlay-root", id: widget.id });
 }
 
 export function renderRewardsWidget(streakCount = 0) {
@@ -334,11 +218,5 @@ export function initRewardsWidget() {
   const { streakCount } = getStoredRewardsState();
   renderRewardsWidget(streakCount);
 
-  if (!window.__mobileRewardsInHamburgerInitDone) {
-    window.addEventListener("resize", setupMobileRewardsInHamburger);
-    window.__mobileRewardsInHamburgerInitDone = true;
-  }
-
-  setupMobileRewardsInHamburger();
   console.info(`[RUNTIME_DIAG +${Math.round(performance.now())}ms] rewards_init_exit`);
 }
