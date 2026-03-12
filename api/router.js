@@ -1099,13 +1099,25 @@ async function yumikoHandler(req, res) {
 
     console.info('[yumiko][save-path][backend] persisting user message', {
       userId,
-      sender: 'user'
+      sender: 'user',
+      payload: {
+        user_id: userId,
+        sender: 'user',
+        content: message,
+        message_type: 'text'
+      }
     });
-    await persistMessage(supabaseAdmin, {
+    const userInserted = await persistMessage(supabaseAdmin, {
       userId,
       sender: 'user',
       content: message,
       messageType: 'text'
+    });
+    console.info('[yumiko][save-path][backend] user message persisted', {
+      userId,
+      sender: 'user',
+      insertedMessageId: userInserted?.id || null,
+      insertedAt: userInserted?.created_at || null
     });
 
     const conversationContext = await buildYumikoConversationContext({ supabaseAdmin, userId, limit: 30 });
@@ -1177,6 +1189,12 @@ async function yumikoHandler(req, res) {
         content: reply,
         messageType: 'text'
       });
+      console.info('[yumiko][save-path][backend] assistant message persisted', {
+        userId,
+        sender: 'yumiko',
+        insertedMessageId: yumikoInserted?.id || null,
+        insertedAt: yumikoInserted?.created_at || null
+      });
 
       console.info('[yumiko][auth]', {
         ...auth.tokenDebug,
@@ -1187,6 +1205,7 @@ async function yumikoHandler(req, res) {
 
       return res.status(200).json({
         reply,
+        user_message_id: userInserted?.id || null,
         yumiko_message_id: yumikoInserted?.id || null,
         audio_allowed: audioAllowed,
         token_type: auth.tokenType
@@ -1203,6 +1222,12 @@ async function yumikoHandler(req, res) {
       sender: 'yumiko',
       content: reply,
       messageType: 'text'
+    });
+    console.info('[yumiko][save-path][backend] assistant message persisted', {
+      userId,
+      sender: 'yumiko',
+      insertedMessageId: insertedMsg?.id || null,
+      insertedAt: insertedMsg?.created_at || null
     });
 
     const yumikoMessageId = insertedMsg.id;
@@ -1246,6 +1271,7 @@ async function yumikoHandler(req, res) {
 
     return res.status(200).json({
       reply,
+      user_message_id: userInserted?.id || null,
       yumiko_message_id: yumikoMessageId,
       audio_out_signed_url: signedData?.signedUrl,
       audio_out_key: audioOutKey,
@@ -1354,17 +1380,41 @@ async function getMessagesHandler(req, res) {
     }
 
     const userId = auth.userId;
+    console.info('[yumiko][read-path][backend] reading public.messages', {
+      userId,
+      limit: 100,
+      orderBy: 'created_at desc (then reversed in-memory)'
+    });
+
     const { data: rows, error: messagesErr } = await supabaseAdmin
       .from('messages')
       .select('id,sender,content,created_at,message_type,audio_out_path,tts_seconds')
       .eq('user_id', userId)
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .limit(100);
 
-    if (messagesErr) return res.status(500).json({ error: messagesErr.message || 'Error reading messages.' });
+    if (messagesErr) {
+      console.error('[yumiko][read-path][backend] read failed', {
+        userId,
+        error: messagesErr.message || String(messagesErr),
+        code: messagesErr.code || null,
+        details: messagesErr.details || null,
+        hint: messagesErr.hint || null
+      });
+      return res.status(500).json({ error: messagesErr.message || 'Error reading messages.' });
+    }
+
+    const orderedRows = Array.isArray(rows) ? [...rows].reverse() : [];
+    console.info('[yumiko][read-path][backend] read success', {
+      userId,
+      fetchedRows: Array.isArray(rows) ? rows.length : 0,
+      returnedRows: orderedRows.length,
+      newestCreatedAt: rows?.[0]?.created_at || null,
+      oldestCreatedAt: rows?.[rows.length - 1]?.created_at || null
+    });
 
     const messages = [];
-    for (const row of rows || []) {
+    for (const row of orderedRows) {
       const message = { ...row };
       if (row.audio_out_path) {
         const { data: signedData, error: signedErr } = await supabaseAdmin.storage

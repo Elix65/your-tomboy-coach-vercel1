@@ -1518,6 +1518,13 @@ async function loadChatFromSupabase({ userId }) {
   }
 
   const data = payload?.messages || [];
+  console.info("[yumiko][read-path][frontend] /api/get-messages result", {
+    userId,
+    status: response.status,
+    loadedCount: Array.isArray(data) ? data.length : 0,
+    firstMessageId: data?.[0]?.id || null,
+    lastMessageId: data?.[data.length - 1]?.id || null
+  });
 
   if (!data.length) {
     const welcome = await buildWelcomeMessage(userId);
@@ -2218,7 +2225,17 @@ async function sendMessage(user) {
     }
 
     const data = await awaitWithSendTrace("api_yumiko_json", res.json());
-    trace("api_yumiko_reply_received", { hasReply: Boolean(data?.reply), yumikoMessageId: data?.yumiko_message_id || null });
+    trace("api_yumiko_reply_received", {
+      hasReply: Boolean(data?.reply),
+      userMessageId: data?.user_message_id || null,
+      yumikoMessageId: data?.yumiko_message_id || null
+    });
+    console.info("[yumiko][save-path][frontend] /api/yumiko persistence ids", {
+      userId: user.id,
+      userMessageId: data?.user_message_id || null,
+      yumikoMessageId: data?.yumiko_message_id || null,
+      hasBackendPersistenceIds: Boolean(data?.user_message_id || data?.yumiko_message_id)
+    });
     addAndPersistMessage({ role: "assistant", content: data.reply, render: false });
     addMessage(data.reply, "bot", {
       audioUrl: data.audio_out_signed_url || ""
@@ -2226,12 +2243,21 @@ async function sendMessage(user) {
     updateStreakOnMessageSend(text);
 
     if (!data?.yumiko_message_id) {
+      console.warn("[yumiko][save-path][frontend] backend did not return yumiko_message_id, using frontend fallback insert", {
+        userId: user.id,
+        sender: "yumiko"
+      });
       await saveMessageToSupabase({
         userId: user.id,
         sender: "yumiko",
         content: data.reply
       });
       telemetryLog("message_saved", { userId: user.id, role: "assistant" });
+    } else {
+      console.info("[yumiko][save-path][frontend] assistant message already persisted by backend", {
+        userId: user.id,
+        yumikoMessageId: data.yumiko_message_id
+      });
     }
 
     Promise.resolve()
