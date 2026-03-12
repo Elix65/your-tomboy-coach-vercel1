@@ -501,9 +501,28 @@ function restoreRewardsWidgetToOriginalParent() {
 }
 
 function closeRewardsPanel() {
+  const widget = getRewardsWidget();
+  const before = widget ? {
+    position: window.getComputedStyle(widget).position,
+    parent: runtimeDiagNodeLabel(widget.parentElement),
+    className: widget.className,
+    inlineStyle: widget.getAttribute("style") || ""
+  } : null;
+  runtimeDiagLog("rewards_popup_close_enter", { before });
+
   removeRewardsOverlay();
   resetRewardsMobileStyles();
   restoreRewardsWidgetToOriginalParent();
+
+  if (widget) {
+    const afterStyle = window.getComputedStyle(widget);
+    runtimeDiagLog("rewards_popup_close_exit", {
+      position: afterStyle.position,
+      parent: runtimeDiagNodeLabel(widget.parentElement),
+      className: widget.className,
+      inlineStyle: widget.getAttribute("style") || ""
+    });
+  }
 }
 
 function ensureRewardsOverlay() {
@@ -529,6 +548,12 @@ function ensureRewardsOverlay() {
 function openRewardsPanel() {
   const widget = getRewardsWidget();
   if (!widget) return;
+  runtimeDiagLog("rewards_popup_open_enter", {
+    isMobileViewport: isMobileRewardsViewport(),
+    parent: runtimeDiagNodeLabel(widget.parentElement),
+    className: widget.className,
+    inlineStyle: widget.getAttribute("style") || ""
+  });
 
   const wrapper = getRewardsWrapper();
   wrapper?.classList.remove("is-collapsed");
@@ -562,6 +587,15 @@ function openRewardsPanel() {
     wrapper?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  const computed = window.getComputedStyle(widget);
+  runtimeDiagLog("rewards_popup_open_exit", {
+    isMobileViewport: isMobileRewardsViewport(),
+    parent: runtimeDiagNodeLabel(widget.parentElement),
+    position: computed.position,
+    display: computed.display,
+    zIndex: computed.zIndex,
+    inNormalFlow: !["fixed", "absolute"].includes(computed.position)
+  });
   console.log("Rewards panel opened");
 }
 
@@ -648,6 +682,173 @@ function telemetryLog(eventName, payload = {}) {
     device: DEVICE_LABEL,
     ...payload
   });
+}
+
+const runtimeLayoutDiag = {
+  domReadyMs: 0,
+  active: false,
+  observer: null,
+  stopTimer: null,
+  maxWindowMs: 5000
+};
+
+function runtimeDiagLog(eventName, payload = {}) {
+  if (!runtimeLayoutDiag.domReadyMs) return;
+  const relMs = Math.round(performance.now() - runtimeLayoutDiag.domReadyMs);
+  console.info(`[RUNTIME_DIAG +${relMs}ms] ${eventName}`, payload);
+}
+
+function runtimeDiagNodeLabel(node) {
+  if (!(node instanceof Element)) return String(node?.nodeName || "unknown");
+  const id = node.id ? `#${node.id}` : "";
+  const cls = typeof node.className === "string"
+    ? `.${node.className.trim().replace(/\s+/g, ".")}`
+    : "";
+  return `${node.tagName.toLowerCase()}${id}${cls}`;
+}
+
+function startRuntimeLayoutMutationDiagnostics() {
+  if (runtimeLayoutDiag.active) return;
+
+  runtimeLayoutDiag.active = true;
+  runtimeLayoutDiag.domReadyMs = performance.now();
+
+  const observedTargets = [
+    { label: "body", node: document.body },
+    { label: ".desktop-shell", node: document.querySelector(".desktop-shell") },
+    { label: ".desktop-main-column", node: document.querySelector(".desktop-main-column") },
+    { label: ".yumiko-side", node: document.querySelector(".yumiko-side") },
+    { label: "#yumikoSide", node: document.getElementById("yumikoSide") },
+    { label: "#dojo-ui", node: document.getElementById("dojo-ui") },
+    { label: "chat-container", node: document.getElementById("chatContainer") || document.querySelector(".chat-container") },
+    { label: "desktop-topbar", node: document.getElementById("top-bar") || document.querySelector(".top-bar") }
+  ];
+
+  runtimeDiagLog("mutation_watch_start", {
+    maxWindowMs: runtimeLayoutDiag.maxWindowMs,
+    targets: observedTargets.map(({ label, node }) => ({ label, found: Boolean(node), node: node ? runtimeDiagNodeLabel(node) : null }))
+  });
+
+  const observer = new MutationObserver((records) => {
+    records.forEach((record) => {
+      const watched = observedTargets.find((item) => item.node === record.target);
+      const targetLabel = watched?.label || runtimeDiagNodeLabel(record.target);
+
+      if (record.type === "attributes") {
+        const element = /** @type {Element} */ (record.target);
+        const attr = record.attributeName || "";
+        const previous = record.oldValue || "";
+        const next = attr === "class"
+          ? element.className
+          : (element.getAttribute("style") || "");
+
+        runtimeDiagLog("mutation", {
+          type: "attributes",
+          target: targetLabel,
+          element: runtimeDiagNodeLabel(element),
+          attribute: attr,
+          previous,
+          next,
+          classNameOld: attr === "class" ? previous : undefined,
+          classNameNew: attr === "class" ? element.className : undefined,
+          styleOld: attr === "style" ? previous : undefined,
+          styleNew: attr === "style" ? (element.getAttribute("style") || "") : undefined
+        });
+        return;
+      }
+
+      if (record.type === "childList") {
+        runtimeDiagLog("mutation", {
+          type: "childList",
+          target: targetLabel,
+          element: runtimeDiagNodeLabel(record.target),
+          addedCount: record.addedNodes.length,
+          removedCount: record.removedNodes.length,
+          added: Array.from(record.addedNodes).map(runtimeDiagNodeLabel),
+          removed: Array.from(record.removedNodes).map(runtimeDiagNodeLabel)
+        });
+      }
+    });
+  });
+
+  observedTargets.forEach(({ node }) => {
+    if (!node) return;
+    observer.observe(node, {
+      attributes: true,
+      attributeFilter: ["class", "style"],
+      attributeOldValue: true,
+      childList: true
+    });
+  });
+
+  runtimeLayoutDiag.observer = observer;
+  runtimeLayoutDiag.stopTimer = window.setTimeout(() => {
+    observer.disconnect();
+    runtimeLayoutDiag.active = false;
+    runtimeDiagLog("mutation_watch_stop", { reason: "timeout_5s" });
+  }, runtimeLayoutDiag.maxWindowMs);
+}
+
+
+
+function installAsyncLayoutOperationDiagnostics() {
+  if (window.__RUNTIME_LAYOUT_ASYNC_DIAG_INSTALLED__) return;
+  window.__RUNTIME_LAYOUT_ASYNC_DIAG_INSTALLED__ = true;
+
+  const originalSetTimeout = window.setTimeout.bind(window);
+  window.setTimeout = (callback, delay, ...args) => {
+    const callbackName = callback?.name || "anonymous";
+    const scheduledAt = performance.now();
+    runtimeDiagLog("schedule_setTimeout", {
+      delay: Number(delay) || 0,
+      callbackName
+    });
+
+    return originalSetTimeout(function runtimeDiagTimeoutWrapper(...innerArgs) {
+      runtimeDiagLog("run_setTimeout", {
+        delay: Number(delay) || 0,
+        callbackName,
+        elapsedMs: Math.round(performance.now() - scheduledAt)
+      });
+      if (typeof callback === "function") return callback(...innerArgs);
+      return callback;
+    }, delay, ...args);
+  };
+
+  const originalRequestAnimationFrame = window.requestAnimationFrame.bind(window);
+  window.requestAnimationFrame = (callback) => {
+    const callbackName = callback?.name || "anonymous";
+    const scheduledAt = performance.now();
+    runtimeDiagLog("schedule_requestAnimationFrame", { callbackName });
+    return originalRequestAnimationFrame((ts) => {
+      runtimeDiagLog("run_requestAnimationFrame", {
+        callbackName,
+        elapsedMs: Math.round(performance.now() - scheduledAt)
+      });
+      return callback(ts);
+    });
+  };
+
+  const originalThen = Promise.prototype.then;
+  Promise.prototype.then = function patchedRuntimeDiagThen(onFulfilled, onRejected) {
+    const wrappedFulfilled = typeof onFulfilled === "function"
+      ? function runtimeDiagOnFulfilled(value) {
+        runtimeDiagLog("run_promise_then_fulfilled", { callbackName: onFulfilled.name || "anonymous" });
+        return onFulfilled(value);
+      }
+      : onFulfilled;
+
+    const wrappedRejected = typeof onRejected === "function"
+      ? function runtimeDiagOnRejected(error) {
+        runtimeDiagLog("run_promise_then_rejected", { callbackName: onRejected.name || "anonymous" });
+        return onRejected(error);
+      }
+      : onRejected;
+
+    return originalThen.call(this, wrappedFulfilled, wrappedRejected);
+  };
+
+  runtimeDiagLog("async_layout_operation_watch_installed");
 }
 
 // 1) Función para guardar mensajes en Supabase
@@ -1131,6 +1332,7 @@ function buildSummaryWithTimeContext() {
 }
 
 async function refreshTimePersonalizationState(userId) {
+  runtimeDiagLog("refresh_time_personalization_enter", { userId });
   const forcedHour = Number.parseInt(window.localStorage.getItem("yumiko_force_local_hour") || "", 10);
   const localTimeData = buildLocalTimeContext(Number.isInteger(forcedHour) ? forcedHour : null);
 
@@ -1190,6 +1392,12 @@ async function refreshTimePersonalizationState(userId) {
     };
     userSettingsCache = loadGlobalNudgeState();
   }
+
+  runtimeDiagLog("refresh_time_personalization_exit", {
+    personalizeByTime: Boolean(timePersonalizationState?.personalizeByTime),
+    shouldCommentTime: Boolean(timePersonalizationState?.shouldCommentTime),
+    bucket: timePersonalizationState?.bucket || null
+  });
 
   return timePersonalizationState;
 }
@@ -1322,6 +1530,7 @@ function addAndPersistMessage({ role, content, render = true, skipAnimation = fa
 
 // 2) Función para cargar historial desde Supabase
 function renderChatMessagesFromState() {
+  runtimeDiagLog("render_history_enter", { messageCount: chatMessages.length });
   if (!chatBox) return;
   chatBox.innerHTML = "";
   chatMessages.forEach((msg) => addMessage(msg.content, senderFromRole(msg.role), {
@@ -1331,9 +1540,11 @@ function renderChatMessagesFromState() {
   initWAAudioPlayers(chatBox);
   const lastUserLocal = [...chatMessages].reverse().find((m) => m.role === "user");
   lastUserText = lastUserLocal?.content ?? null;
+  runtimeDiagLog("render_history_exit", { renderedCount: chatMessages.length });
 }
 
 async function loadChatFromSupabase({ userId }) {
+  runtimeDiagLog("chat_init_load_messages_enter", { userId });
   console.log("Cargando historial:", { userId });
 
   const {
@@ -1359,6 +1570,7 @@ async function loadChatFromSupabase({ userId }) {
     const errorMessage = payload?.error || `HTTP ${response.status}`;
     console.error("❌ Error cargando historial:", errorMessage);
     telemetryLog("load_messages_error", { userId, error: errorMessage });
+    runtimeDiagLog("chat_init_load_messages_error", { userId, error: errorMessage });
     showChatFeedback("No pude sincronizar tus mensajes desde Supabase. Probá refrescar la página.");
     return;
   }
@@ -1374,6 +1586,7 @@ async function loadChatFromSupabase({ userId }) {
       content: welcome
     });
     telemetryLog("load_messages_empty_seeded", { userId, loadedCount: 1 });
+    runtimeDiagLog("chat_init_load_messages_seeded", { userId, loadedCount: 1 });
     return;
   }
 
@@ -1390,6 +1603,7 @@ async function loadChatFromSupabase({ userId }) {
     userId,
     loadedCount: chatMessages.length
   });
+  runtimeDiagLog("chat_init_load_messages_success", { userId, loadedCount: chatMessages.length });
 }
 
 // ===============================
@@ -1678,6 +1892,7 @@ function initializeYumikoImageState() {
 }
 
 function setYumikoState(state) {
+  runtimeDiagLog("set_yumiko_state_enter", { state });
   const idle = document.getElementById("yumikoIdle");
   const thinking = document.getElementById("yumikoThinking");
 
@@ -1688,18 +1903,25 @@ function setYumikoState(state) {
 
   if (state === "thinking") {
     if (yumikoImageHealth.thinkingBlocked || yumikoImageHealth.thinkingError || !yumikoImageHealth.thinkingReady) {
+      runtimeDiagLog("set_yumiko_state_thinking_fallback", {
+        thinkingBlocked: yumikoImageHealth.thinkingBlocked,
+        thinkingError: yumikoImageHealth.thinkingError,
+        thinkingReady: yumikoImageHealth.thinkingReady
+      });
       forceYumikoIdleVisible("thinking_not_ready_fallback_idle");
       return;
     }
     idle.classList.remove("is-active");
     thinking.classList.add("is-active");
     logYumikoDiagnostics("state_thinking_applied");
+    runtimeDiagLog("set_yumiko_state_exit", { state: "thinking", applied: true });
     return;
   }
 
   thinking.classList.remove("is-active");
   idle.classList.add("is-active");
   logYumikoDiagnostics("state_idle_applied");
+  runtimeDiagLog("set_yumiko_state_exit", { state: "idle", applied: true });
 }
 
 function formatTime(seconds) {
@@ -2382,6 +2604,7 @@ function bindChatEventListeners(user) {
 }
 
 async function initializeChatSession() {
+  runtimeDiagLog("chat_session_init_enter");
   const { data: { session } } = await supabaseClient.auth.getSession();
   const user = session?.user;
   if (!user) {
@@ -2406,6 +2629,7 @@ async function initializeChatSession() {
   markLastActivity();
   await loadActiveSkinBackground(user);
   bindChatEventListeners(user);
+  runtimeDiagLog("chat_session_init_exit", { userId: user.id, localMessages: chatMessages.length });
 }
 
 // ===============================
@@ -2561,6 +2785,7 @@ async function initializeUI() {
 }
 
 function makeRewardsWidgetCollapsible() {
+  runtimeDiagLog("rewards_collapsible_init_enter");
   const widget = document.getElementById("daily-chat-rewards-widget");
   if (!widget) return;
 
@@ -2633,22 +2858,30 @@ function makeRewardsWidgetCollapsible() {
       closeRewardsPanel();
     }
   });
+
+  runtimeDiagLog("rewards_collapsible_init_exit");
 }
 
 // ===============================
 // AUDIO + PARALLAX + INICIALIZACIÓN
 // ===============================
 window.addEventListener("DOMContentLoaded", async () => {
+  startRuntimeLayoutMutationDiagnostics();
+  installAsyncLayoutOperationDiagnostics();
+  runtimeDiagLog("dom_content_loaded_handler_enter");
   initAudioControls();
   cacheChatDomElements();
   initializeYumikoImageState();
   registerInputListeners();
   updateActionButtonsState();
 
+  runtimeDiagLog("rewards_widget_init_enter");
   initRewardsWidget();
+  runtimeDiagLog("rewards_widget_init_exit");
   makeRewardsWidgetCollapsible();
   await initializeUI();
   await initializeChatSession();
+  runtimeDiagLog("dom_content_loaded_handler_post_chat_init");
 
   const ambienceIntro = document.getElementById("ambience-intro");
   const ambienceLoop = document.getElementById("ambience-loop");
@@ -2682,6 +2915,8 @@ window.addEventListener("DOMContentLoaded", async () => {
       if (v >= target) clearInterval(interval);
     }, 80);
   }
+
+  runtimeDiagLog("dom_content_loaded_handler_exit");
 
   if (window.innerWidth > 768) {
     document.addEventListener("mousemove", (e) => {

@@ -112,6 +112,7 @@ function openRewardWhatsAppCTA() {
 }
 
 function ensureRewardsWidgetShell() {
+  console.info(`[RUNTIME_DIAG +${Math.round(performance.now())}ms] rewards_shell_ensure_enter`);
   if (document.getElementById("daily-chat-rewards-widget")) {
     return;
   }
@@ -138,6 +139,7 @@ function ensureRewardsWidgetShell() {
   `;
 
   document.body.appendChild(widget);
+  console.info(`[RUNTIME_DIAG +${Math.round(performance.now())}ms] rewards_shell_appended_body`, { parent: "body", id: widget.id });
 }
 
 function collapseMobileRewardsPanel() {
@@ -212,6 +214,7 @@ function setupMobileMenuCollapseObserver() {
 }
 
 function setupMobileRewardsInHamburger() {
+  console.info(`[RUNTIME_DIAG +${Math.round(performance.now())}ms] rewards_mobile_layout_sync_enter`);
   const widget = document.getElementById("daily-chat-rewards-widget");
   if (!widget) {
     return;
@@ -231,6 +234,7 @@ function setupMobileRewardsInHamburger() {
     }
 
     widget.classList.add("in-mobile-menu");
+    console.info(`[RUNTIME_DIAG +${Math.round(performance.now())}ms] rewards_widget_move_mobile_menu`, { parentClass: mobileSlots.mobileRewardsCollapsible.className });
     mobileSlots.mobileRewardsCollapsible.appendChild(widget);
     setupMobileMenuCollapseObserver();
     return;
@@ -238,6 +242,7 @@ function setupMobileRewardsInHamburger() {
 
   collapseMobileRewardsPanel();
   widget.classList.remove("in-mobile-menu");
+  console.info(`[RUNTIME_DIAG +${Math.round(performance.now())}ms] rewards_widget_restore_desktop`);
 
   if (originalWidgetParent) {
     if (originalWidgetNextSibling && originalWidgetNextSibling.parentNode === originalWidgetParent) {
@@ -324,6 +329,7 @@ export function updateStreakOnMessageSend(messageText) {
 }
 
 export function initRewardsWidget() {
+  console.info(`[RUNTIME_DIAG +${Math.round(performance.now())}ms] rewards_init_enter`);
   ensureRewardsWidgetShell();
   const { streakCount } = getStoredRewardsState();
   renderRewardsWidget(streakCount);
@@ -334,4 +340,5 @@ export function initRewardsWidget() {
   }
 
   setupMobileRewardsInHamburger();
+  console.info(`[RUNTIME_DIAG +${Math.round(performance.now())}ms] rewards_init_exit`);
 }
