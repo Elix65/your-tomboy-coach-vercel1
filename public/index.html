@@ -47,39 +47,44 @@
   <!-- TOP BAR (DESKTOP) -->
   <div class="top-bar hidden" id="top-bar">
     <div class="nav-actions">
-      <div class="nav-inventory">
-        <button id="btn-inventario" class="top-btn">Inventario</button>
-        <div id="inventoryDropdown" class="inventory-dropdown" aria-hidden="true">
-          <aside id="inventoryPanel" class="inventory-panel" aria-hidden="true">
-            <button id="inventory-close-btn" class="inventory-close-btn" type="button">Cerrar</button>
-            <div id="inventory-content" class="inventory-content">
-              <p style="color:#ccc">Cargando...</p>
-            </div>
-          </aside>
+      <div class="topbar-section topbar-nav">
+        <div class="nav-inventory">
+          <button id="btn-inventario" class="top-btn">Inventario</button>
+          <div id="inventoryDropdown" class="inventory-dropdown" aria-hidden="true">
+            <aside id="inventoryPanel" class="inventory-panel" aria-hidden="true">
+              <button id="inventory-close-btn" class="inventory-close-btn" type="button">Cerrar</button>
+              <div id="inventory-content" class="inventory-content">
+                <p style="color:#ccc">Cargando...</p>
+              </div>
+            </aside>
+          </div>
         </div>
+        <button id="btn-gacha" class="top-btn">Gacha</button>
+        <button id="btn-rewards" class="top-btn" data-action="rewards">Recompensas</button>
       </div>
-      <div class="nav-audio">
-        <button id="btn-audio" class="top-btn" type="button" aria-expanded="false" aria-controls="audioPopover">🎚️ Audio</button>
-        <div id="audioPopover" class="audio-popover hidden" aria-hidden="true">
-          <label class="audio-control" for="music-volume-slider">
-            <span>Música</span>
-            <input id="music-volume-slider" type="range" min="0" max="100" value="30" step="1">
-          </label>
-          <label class="audio-control" for="voice-volume-slider">
-            <span>Voz Yumiko</span>
-            <input id="voice-volume-slider" type="range" min="0" max="100" value="100" step="1">
-          </label>
+
+      <div class="topbar-section topbar-actions">
+        <div class="nav-audio">
+          <button id="btn-audio" class="top-btn" type="button" aria-expanded="false" aria-controls="audioPopover">🎚️ Audio</button>
+          <div id="audioPopover" class="audio-popover hidden" aria-hidden="true">
+            <label class="audio-control" for="music-volume-slider">
+              <span>Música</span>
+              <input id="music-volume-slider" type="range" min="0" max="100" value="30" step="1">
+            </label>
+            <label class="audio-control" for="voice-volume-slider">
+              <span>Voz Yumiko</span>
+              <input id="voice-volume-slider" type="range" min="0" max="100" value="100" step="1">
+            </label>
+          </div>
         </div>
+        <button id="btn-audios" class="top-btn top-btn-primary">
+          <span class="audios-label--desktop">🎧 Audios tsundere</span>
+          <span class="audios-label--mobile">🎧 Audios tsundere 😳</span>
+        </button>
+        <button id="btn-yumiko-100" class="top-btn yumiko-100-btn hidden" type="button">Yumiko 100%</button>
+        <button id="btn-overlay-connect" class="top-btn" type="button">Conectar Overlay</button>
+        <button id="btn-logout" class="top-btn">Cerrar sesión</button>
       </div>
-      <button id="btn-gacha" class="top-btn">Gacha</button>
-      <button id="btn-rewards" class="top-btn" data-action="rewards">Recompensas</button>
-      <button id="btn-audios" class="top-btn top-btn-primary">
-        <span class="audios-label--desktop">N-no es que me importes… pero vení, b-baka 😳</span>
-        <span class="audios-label--mobile">🎧 Audios tsundere 😳</span>
-      </button>
-      <button id="btn-yumiko-100" class="top-btn yumiko-100-btn hidden" type="button">Yumiko 100%</button>
-      <button id="btn-overlay-connect" class="top-btn" type="button">Conectar Overlay</button>
-      <button id="btn-logout" class="top-btn">Cerrar sesión</button>
     </div>
   </div>
 
@@ -120,6 +125,7 @@
       </div>
 
       <p class="subtitle">El Dojo Despierta Contigo</p>
+      <p class="subtitle-badge">N-no es que me importes… pero vení, b-baka 😳</p>
 
       <div class="chat-frame-wrap">
         <div class="chat-messages-area">

@@ -3,10 +3,10 @@
 ================================ */
 
 :root {
-  --bg0: #0f1013;
-  --bg1: #15161c;
-  --accentR: rgba(255, 90, 110, 0.1);
-  --accentB: rgba(120, 160, 255, 0.08);
+  --bg0: #090b14;
+  --bg1: #121427;
+  --accentR: rgba(255, 128, 149, 0.16);
+  --accentB: rgba(132, 104, 255, 0.14);
   --chat-shift: 220px;
 }
 
@@ -337,6 +337,7 @@ body.inventory-open .inventory-dropdown {
 
 #dojo-ui {
   height: 100%;
+  width: min(60vw, 900px);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -345,37 +346,82 @@ body.inventory-open .inventory-dropdown {
 
 .chat-stage {
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   justify-content: center;
-  gap: 28px;
+  gap: clamp(24px, 2.8vw, 48px);
   height: 100%;
+  padding: 120px clamp(28px, 3vw, 56px) 32px;
+  box-sizing: border-box;
 }
 
 .yumiko-side {
-  width: 320px;
+  width: min(31vw, 430px);
   min-width: 280px;
-  max-width: 360px;
-  height: 760px;
+  max-width: 440px;
+  height: auto;
   position: relative;
   pointer-events: none;
-  filter: drop-shadow(0 18px 40px rgba(0, 0, 0, 0.45));
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  border-radius: 28px;
+  padding: 26px 18px 0;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.08), rgba(146, 102, 255, 0.05) 48%, rgba(15, 10, 30, 0.35));
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 26px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 154, 190, 0.12) inset;
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  isolation: isolate;
+}
+
+.yumiko-side::before,
+.yumiko-side::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.yumiko-side::before {
+  inset: 10% 8% 22%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 126, 166, 0.34), rgba(163, 114, 255, 0.14) 45%, transparent 75%);
+  filter: blur(22px);
+  z-index: 0;
+}
+
+.yumiko-side::after {
+  left: 14%;
+  right: 14%;
+  bottom: 18px;
+  height: 36px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(255, 124, 167, 0.38), rgba(102, 80, 215, 0.18) 56%, transparent 78%);
+  filter: blur(14px);
+  opacity: 0.95;
+  z-index: 0;
 }
 
 .yumiko-img {
-  position: absolute;
-  inset: 0;
+  position: relative;
   width: 100%;
-  height: 100%;
+  height: min(78vh, 780px);
   object-fit: contain;
   opacity: 0;
   transform: translateY(6px);
   transition: opacity 220ms ease, transform 280ms ease;
   will-change: opacity, transform;
+  z-index: 1;
 }
 
 .yumiko-img.is-active {
   opacity: 1;
   transform: translateY(0);
+  animation: yumikoFloat 5.8s ease-in-out infinite;
+}
+
+@keyframes yumikoFloat {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -7px, 0); }
 }
 
 @media (max-width: 1023px) {
@@ -385,12 +431,21 @@ body.inventory-open .inventory-dropdown {
 
   .chat-stage {
     display: block;
+    padding: 94px 12px 18px;
+  }
+
+  #dojo-ui {
+    width: 100%;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .yumiko-img {
     transition: none;
+  }
+
+  .yumiko-img.is-active {
+    animation: none;
   }
 }
 
@@ -468,8 +523,8 @@ img.avatar-header {
 .header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-bottom: 10px;
+  justify-content: flex-start;
+  margin-bottom: 6px;
 }
 
 .avatar-header {
@@ -481,10 +536,11 @@ img.avatar-header {
 }
 
 .title {
-  font-size: 34px;
+  font-size: clamp(32px, 2.6vw, 44px);
   font-weight: bold;
-  color: #f7f3e9;
-  text-shadow: 0 0 6px rgba(255, 240, 220, 0.25);
+  color: #f8f4ff;
+  letter-spacing: 0.01em;
+  text-shadow: 0 10px 28px rgba(140, 106, 255, 0.28);
 }
 
 .title-cinematic {
@@ -495,11 +551,26 @@ img.avatar-header {
 }
 
 .subtitle {
-  text-align: center;
-  margin-bottom: 20px;
+  text-align: left;
+  margin: 0 0 14px;
+  color: rgba(228, 219, 255, 0.82);
   opacity: 0;
   animation: subtitleZen 2.4s ease forwards;
   animation-delay: 2s;
+}
+
+.subtitle-badge {
+  display: inline-flex;
+  align-self: flex-start;
+  margin: 0 0 18px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 170, 210, 0.35);
+  background: rgba(20, 15, 34, 0.6);
+  color: rgba(255, 223, 236, 0.95);
+  font-size: 13px;
+  letter-spacing: 0.01em;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
 }
 
 /* ================================
@@ -507,13 +578,19 @@ img.avatar-header {
 ================================ */
 
 .chat-frame-wrap {
-  width: min(680px, 92vw);
-  margin: 0 auto 14px;
+  width: 100%;
+  margin: 0;
   display: flex;
   flex-direction: column;
   flex: 1 1 auto;
   height: 100%;
   min-height: 0;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: linear-gradient(158deg, rgba(19, 18, 37, 0.84), rgba(13, 11, 23, 0.78));
+  padding: 18px;
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.46);
+  backdrop-filter: blur(10px);
 }
 
 .chat-messages-area {
@@ -535,16 +612,16 @@ img.avatar-header {
 
 .chat-box {
   position: relative;
-  background: rgba(10, 8, 12, 0.86);
+  background: linear-gradient(180deg, rgba(11, 11, 22, 0.88), rgba(10, 9, 18, 0.8));
   flex: 1 1 auto;
   min-height: 0;
-  padding: 15px;
+  padding: 18px;
   padding-right: 21px;
-  border-radius: 12px;
+  border-radius: 18px;
   overflow-y: auto;
   backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 105, 180, 0.25);
-  box-shadow: 0 0 28px rgba(255, 0, 0, 0.28);
+  border: 1px solid rgba(255, 155, 196, 0.21);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 22px 40px rgba(3, 2, 10, 0.5);
   scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 90, 130, 0.75) rgba(0, 0, 0, 0.25);
@@ -684,8 +761,8 @@ img.avatar-header {
   z-index: 2;
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 16px;
   animation: fadeIn 0.3s ease;
 }
 
@@ -695,21 +772,23 @@ img.avatar-small {
 }
 
 .bubble {
-  padding: 12px 16px;
-  border-radius: 12px;
+  padding: 12px 15px;
+  border-radius: 14px;
   max-width: 70%;
   line-height: 1.4;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
 }
 
 .user .bubble {
-  background: #ff4d4d;
+  background: linear-gradient(145deg, rgba(255, 128, 160, 0.96), rgba(255, 99, 130, 0.9));
   margin-left: auto;
   border-bottom-right-radius: 4px;
 }
 
 .bot .bubble {
-  background: rgba(255, 255, 255, 0.14);
-  border-left: 3px solid #ff4d4d;
+  background: rgba(255, 255, 255, 0.07);
+  border-left: 2px solid rgba(183, 141, 255, 0.82);
   border-bottom-left-radius: 4px;
 }
 
@@ -739,7 +818,7 @@ img.avatar-small {
   height: 32px;
   border: none;
   border-radius: 999px;
-  background: #ff4d4d;
+  background: linear-gradient(145deg, rgba(255, 128, 160, 0.96), rgba(255, 99, 130, 0.9));
   color: #fff;
   font-size: 14px;
   line-height: 1;
@@ -798,7 +877,7 @@ img.avatar-small {
   width: 10px;
   height: 10px;
   border-radius: 999px;
-  background: #ff4d4d;
+  background: linear-gradient(145deg, rgba(255, 128, 160, 0.96), rgba(255, 99, 130, 0.9));
   transform: translate(-50%, -50%);
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.3);
   pointer-events: none;
@@ -853,34 +932,54 @@ img.avatar-small {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 8px;
+  margin-top: 10px;
 }
 
 #user-input {
   width: 100%;
-  padding: 12px;
-  border-radius: 8px;
-  border: none;
-  background: rgba(255,255,255,0.08);
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255,255,255,0.06);
   color: white;
   font-size: 16px;
   box-sizing: border-box;
+  transition: border-color 180ms ease, box-shadow 180ms ease, background 180ms ease;
+}
+
+#user-input:hover {
+  background: rgba(255, 255, 255, 0.09);
+}
+
+#user-input:focus {
+  outline: none;
+  border-color: rgba(255, 152, 186, 0.6);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(255, 119, 170, 0.15);
 }
 
 
 #send-btn {
-  padding: 12px 20px;
-  background: #ff4d4d;
-  border: none;
-  border-radius: 8px;
+  align-self: flex-end;
+  padding: 12px 22px;
+  background: linear-gradient(160deg, #ff7d9d, #ff5f8a 55%, #a86bff);
+  border: 1px solid rgba(255, 210, 226, 0.4);
+  border-radius: 12px;
   color: white;
   cursor: pointer;
   font-weight: bold;
-  transition: 0.2s;
+  transition: transform 180ms ease, filter 180ms ease, box-shadow 180ms ease;
+  box-shadow: 0 12px 24px rgba(255, 96, 144, 0.28);
 }
 
 #send-btn:hover {
-  background: #ff1a1a;
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+  box-shadow: 0 15px 28px rgba(255, 96, 144, 0.36);
+}
+
+#send-btn:active {
+  transform: translateY(0);
 }
 
 /* ================================
@@ -893,8 +992,13 @@ img.avatar-small {
   justify-content: flex-end;
 }
 
+.input-area label {
+  color: rgba(223, 216, 247, 0.86) !important;
+  font-size: 12px;
+}
+
 .extra-buttons button {
-  padding: 10px 16px;
+  padding: 10px 15px;
   background: rgba(0, 0, 0, 0.75);
   color: #f7f3e9;
   border: 1px solid rgba(255, 255, 255, 0.3);
@@ -902,14 +1006,15 @@ img.avatar-small {
   font-size: 14px;
   font-weight: bold;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: transform 0.24s ease, border-color 0.24s ease, background 0.24s ease;
   backdrop-filter: blur(6px);
 }
 
 .extra-buttons button:hover {
-  background: rgba(255, 77, 77, 0.85);
+  transform: translateY(-1px);
+  background: rgba(156, 109, 255, 0.32);
   color: white;
-  border-color: white;
+  border-color: rgba(255, 255, 255, 0.48);
 }
 
 /* ================================
@@ -951,15 +1056,15 @@ img.avatar-small {
 
 .top-bar {
   position: fixed;
-  top: 20px;
-  right: 20px;
+  top: 18px;
+  right: 24px;
   display: flex;
   z-index: 20000;
-  padding: 4px;
-  border-radius: 20px;
-  background: rgba(10, 6, 12, 0.35);
+  padding: 6px;
+  border-radius: 22px;
+  background: rgba(10, 8, 20, 0.32);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(10px);
 }
 
@@ -967,12 +1072,25 @@ img.avatar-small {
   position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 10px;
-  max-width: min(92vw, 860px);
-  padding: 8px;
+  gap: 12px;
+  max-width: min(92vw, 980px);
+  padding: 9px;
   border-radius: 18px;
+}
+
+.topbar-section {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar-nav {
+  padding-right: 12px;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .nav-actions::before {
@@ -991,7 +1109,7 @@ img.avatar-small {
 .top-btn {
   position: relative;
   z-index: 1;
-  padding: 10px 16px;
+  padding: 10px 15px;
   background: rgba(255, 255, 255, 0.06);
   color: rgba(255, 255, 255, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1002,7 +1120,7 @@ img.avatar-small {
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   box-shadow: 0 10px 20px rgba(0, 0, 0, 0.25);
-  transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
 
 .top-btn-primary {
@@ -1020,6 +1138,7 @@ img.avatar-small {
 .top-btn:hover {
   transform: translateY(-1px);
   filter: brightness(1.08);
+  border-color: rgba(255, 196, 222, 0.35);
 }
 
 .top-btn:active {
@@ -1115,7 +1234,7 @@ img.avatar-small {
 }
 .inventory-close-btn,
 .inventory-close {
-  padding: 10px 16px;
+  padding: 10px 15px;
   background: rgba(255, 105, 180, 0.14);
   border: 1px solid rgba(255, 105, 180, 0.25);
   color: rgba(255, 255, 255, 0.9);
@@ -1170,6 +1289,11 @@ img.avatar-small {
     gap: 8px;
     padding: 7px;
     max-width: 100%;
+  }
+
+  .topbar-nav {
+    border-right: 0;
+    padding-right: 0;
   }
 
   /* Mostrar botón hamburguesa en mobile */
