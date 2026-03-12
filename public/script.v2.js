@@ -945,6 +945,7 @@ let timePersonalizationState = null;
 let currentUserId = null;
 let actionUser = null;
 let userSettingsCache = null;
+let userSettingsSchemaKnownMissing = false;
 let sessionNudgeState = {
   session_started_at: Date.now(),
   messages_in_session: 0,
