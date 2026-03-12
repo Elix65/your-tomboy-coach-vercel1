@@ -42,6 +42,18 @@ function getPostLoginRedirectPath() {
 
 const postLoginRedirectPath = getPostLoginRedirectPath();
 
+function isInitDebugFlagEnabled(flag) {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get(flag) === "1") return true;
+  const list = String(params.get("debug_init_flags") || "")
+    .split(",")
+    .map((entry) => entry.trim().toUpperCase())
+    .filter(Boolean);
+  if (list.includes(flag)) return true;
+  return window.localStorage.getItem(flag) === "1" || window.sessionStorage.getItem(flag) === "1";
+}
+
+
 function goWithTransition(url) {
   if (typeof window.playPageTransitionAndGo === "function") {
     window.playPageTransitionAndGo(url);
@@ -68,12 +80,16 @@ if (currentPage.includes("login")) {
 // INDEX.HTML / GACHA.HTML → si NO hay sesión, redirigir al login
 // ===============================
 if (currentPage.includes("index") || currentPage.includes("gacha")) {
-  supabaseClient.auth.getUser().then((res) => {
-    const user = res?.data?.user;
-    if (!user) {
-      window.location.href = "login.html";
-    }
-  });
+  if (isInitDebugFlagEnabled("DISABLE_AUTH_REHYDRATION")) {
+    console.info("[DEBUG_INIT] auth rehydration disabled by flag");
+  } else {
+    supabaseClient.auth.getUser().then((res) => {
+      const user = res?.data?.user;
+      if (!user) {
+        window.location.href = "login.html";
+      }
+    });
+  }
 }
 
 // ===============================
