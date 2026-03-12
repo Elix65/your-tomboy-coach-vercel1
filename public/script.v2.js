@@ -1505,14 +1505,119 @@ function readYumikoImageDiagnostics(img) {
   };
 }
 
+function readYumikoContainerDiagnostics(container) {
+  if (!container) return null;
+  const style = window.getComputedStyle(container);
+  return {
+    id: container.id || "",
+    className: container.className,
+    inlineStyle: container.getAttribute("style") || "",
+    opacity: style.opacity,
+    visibility: style.visibility,
+    display: style.display
+  };
+}
+
 function logYumikoDiagnostics(reason) {
   const idle = document.getElementById("yumikoIdle");
   const thinking = document.getElementById("yumikoThinking");
+  const parent = idle?.parentElement || thinking?.parentElement || null;
   console.info("[YUMIKO_DIAG]", reason, {
     health: { ...yumikoImageHealth },
+    parent: readYumikoContainerDiagnostics(parent),
     idle: readYumikoImageDiagnostics(idle),
     thinking: readYumikoImageDiagnostics(thinking)
   });
+}
+
+function isElementVisiblyRendered(el) {
+  if (!el) return false;
+  const style = window.getComputedStyle(el);
+  if (style.display === "none" || style.visibility === "hidden") return false;
+  const opacity = Number.parseFloat(style.opacity || "1");
+  return Number.isFinite(opacity) ? opacity > 0.01 : true;
+}
+
+function recoverUnexpectedYumikoHiddenState(reason) {
+  const idle = document.getElementById("yumikoIdle");
+  const thinking = document.getElementById("yumikoThinking");
+  const parent = idle?.parentElement || thinking?.parentElement || null;
+  if (!idle || !thinking || !parent) return;
+
+  const idleActive = idle.classList.contains("is-active");
+  const thinkingActive = thinking.classList.contains("is-active");
+  const parentVisible = isElementVisiblyRendered(parent);
+  const idleVisible = isElementVisiblyRendered(idle);
+  const thinkingVisible = isElementVisiblyRendered(thinking);
+
+  if (idleActive && parentVisible && idleVisible) return;
+  if (thinkingActive && parentVisible && thinkingVisible) return;
+
+  console.warn("[YUMIKO_DIAG] recovering hidden state", {
+    reason,
+    idleActive,
+    thinkingActive,
+    parentVisible,
+    idleVisible,
+    thinkingVisible
+  });
+
+  // Limpieza mínima de estilos inline inesperados y restauración del fallback seguro.
+  parent.style.removeProperty("display");
+  parent.style.removeProperty("visibility");
+  parent.style.removeProperty("opacity");
+  idle.style.removeProperty("display");
+  idle.style.removeProperty("visibility");
+  idle.style.removeProperty("opacity");
+  thinking.style.removeProperty("display");
+  thinking.style.removeProperty("visibility");
+  thinking.style.removeProperty("opacity");
+
+  forceYumikoIdleVisible(`unexpected_hidden_recovered:${reason}`);
+}
+
+function installYumikoVisibilityDebugWatchers() {
+  const idle = document.getElementById("yumikoIdle");
+  const thinking = document.getElementById("yumikoThinking");
+  const parent = idle?.parentElement || thinking?.parentElement || null;
+  if (!idle || !thinking || !parent) return;
+
+  const observed = [
+    { el: parent, label: "parent" },
+    { el: idle, label: "idle" },
+    { el: thinking, label: "thinking" }
+  ];
+
+  const observer = new MutationObserver((records) => {
+    records.forEach((record) => {
+      if (record.type !== "attributes") return;
+      const target = record.target;
+      const label = observed.find((item) => item.el === target)?.label || "unknown";
+      const attr = record.attributeName || "";
+      console.info("[YUMIKO_DIAG] mutation", {
+        label,
+        attribute: attr,
+        className: target.className,
+        style: target.getAttribute("style") || ""
+      });
+      logYumikoDiagnostics(`mutation:${label}:${attr}`);
+      recoverUnexpectedYumikoHiddenState(`mutation:${label}:${attr}`);
+    });
+  });
+
+  observed.forEach(({ el }) => {
+    observer.observe(el, {
+      attributes: true,
+      attributeFilter: ["class", "style"]
+    });
+  });
+
+  window.addEventListener("resize", () => {
+    logYumikoDiagnostics("window_resize");
+    recoverUnexpectedYumikoHiddenState("window_resize");
+  });
+
+  logYumikoDiagnostics("visibility_watchers_installed");
 }
 
 function forceYumikoIdleVisible(reason) {
@@ -1568,6 +1673,8 @@ function initializeYumikoImageState() {
   });
 
   logYumikoDiagnostics("yumiko_state_initialized");
+  installYumikoVisibilityDebugWatchers();
+  recoverUnexpectedYumikoHiddenState("after_init");
 }
 
 function setYumikoState(state) {
