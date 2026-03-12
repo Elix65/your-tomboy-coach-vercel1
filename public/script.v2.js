@@ -1113,9 +1113,21 @@ async function updateUserSettingsNudgeTimestamps(updates = {}) {
   if (userSettingsSchemaKnownMissing) return;
 
   try {
-    await supabaseClient
+    const { error } = await supabaseClient
       .from("user_settings")
       .upsert({ user_id: currentUserId, ...updates }, { onConflict: "user_id" });
+
+    if (error) {
+      devNudgeLog("user_settings_nudges_upsert_failed", {
+        error: error?.message || error,
+        code: error?.code || null,
+        details: error?.details || null,
+        hint: error?.hint || null,
+        updates
+      });
+      return;
+    }
+
     userSettingsCache = {
       ...(userSettingsCache || {}),
       ...updates
@@ -2067,17 +2079,30 @@ function registerInputListeners() {
 // OBTENER USER Y CARGAR HISTORIAL
 // ===============================
 async function sendMessage(user) {
+  const sendTraceId = `send-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const trace = (stage, extra = {}) => {
+    console.info(`[yumiko][send-path][${sendTraceId}] ${stage}`, extra);
+  };
+
   if (!userInput) {
     console.warn("sendMessage: user-input no existe en el DOM.");
+    trace("early_return_no_user_input");
     return;
   }
 
   const text = userInput.value.trim();
-  if (!text) return;
+  if (!text) {
+    trace("early_return_empty_text");
+    return;
+  }
 
-  if (isSending) return;
+  if (isSending) {
+    trace("early_return_already_sending");
+    return;
+  }
   if (!canRun(lastSendAt, SEND_COOLDOWN_MS)) {
     console.log("[chat] envío bloqueado por cooldown");
+    trace("early_return_send_cooldown", { lastSendAt, cooldownMs: SEND_COOLDOWN_MS });
     updateActionButtonsState();
     return;
   }
@@ -2091,14 +2116,17 @@ async function sendMessage(user) {
   persistSessionNudgeState();
 
   addAndPersistMessage({ role: "user", content: text, render: true });
+  trace("local_message_saved", { textLength: text.length });
   lastUserText = text;
   markLastActivity();
 
+  trace("save_supabase_user_message_start");
   await saveMessageToSupabase({
     userId: user.id,
     sender: "user",
     content: text
   });
+  trace("save_supabase_user_message_end");
   telemetryLog("message_saved", { userId: user.id, role: "user" });
 
   if ((sessionNudgeState.hello_nudge_pending_response || sessionNudgeState.rest_nudge_pending_response) && isDeclineMessage(text)) {
@@ -2117,6 +2145,7 @@ async function sendMessage(user) {
 
   const helloNudgeSent = await maybeSendHelloNudge({ text, userId: user.id });
   if (helloNudgeSent) {
+    trace("early_return_hello_nudge_sent_before_backend");
     markLastActivity();
     userInput.value = "";
     setYumikoState("idle");
@@ -2130,10 +2159,28 @@ async function sendMessage(user) {
 
   const typing = document.getElementById("typing");
   typing?.classList.remove("hidden");
+  trace("typing_on");
+
+  const awaitWithSendTrace = async (label, promise, { warnAfterMs = 10000 } = {}) => {
+    trace(`${label}_start`);
+    const warnTimer = setTimeout(() => {
+      trace(`${label}_pending`, { pendingMs: warnAfterMs });
+    }, warnAfterMs);
+    try {
+      const result = await promise;
+      trace(`${label}_resolved`);
+      return result;
+    } catch (error) {
+      trace(`${label}_rejected`, { error: error?.message || String(error) });
+      throw error;
+    } finally {
+      clearTimeout(warnTimer);
+    }
+  };
 
   try {
     refreshRuntimeTimeContext();
-    const { data: { session } } = await supabaseClient.auth.getSession();
+    const { data: { session } } = await awaitWithSendTrace("auth_get_session", supabaseClient.auth.getSession());
     const token = session?.access_token;
     const audioMode = Boolean(audioModeToggle?.checked);
 
@@ -2151,14 +2198,16 @@ async function sendMessage(user) {
       });
     }
 
-    const res = await fetch("/api/yumiko", {
+    trace("api_yumiko_called", { hasToken: Boolean(token), audioMode, contextCount: payload.messages.length });
+    const res = await awaitWithSendTrace("api_yumiko_fetch", fetch("/api/yumiko", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       },
       body: JSON.stringify(payload)
-    });
+    }));
+    trace("api_yumiko_response", { ok: res.ok, status: res.status });
 
     if (!res.ok) {
       if (res.status === 402) {
@@ -2168,7 +2217,8 @@ async function sendMessage(user) {
       throw new Error(`yumiko request failed with status ${res.status}`);
     }
 
-    const data = await res.json();
+    const data = await awaitWithSendTrace("api_yumiko_json", res.json());
+    trace("api_yumiko_reply_received", { hasReply: Boolean(data?.reply), yumikoMessageId: data?.yumiko_message_id || null });
     addAndPersistMessage({ role: "assistant", content: data.reply, render: false });
     addMessage(data.reply, "bot", {
       audioUrl: data.audio_out_signed_url || ""
@@ -2184,22 +2234,35 @@ async function sendMessage(user) {
       telemetryLog("message_saved", { userId: user.id, role: "assistant" });
     }
 
-    await maybeSendRestNudge({ userId: user.id });
+    Promise.resolve()
+      .then(() => maybeSendRestNudge({ userId: user.id }))
+      .then(() => trace("post_send_rest_nudge_finished"))
+      .catch((error) => {
+        trace("post_send_rest_nudge_failed_non_blocking", { error: error?.message || String(error) });
+      });
 
     const yumikoSound = document.getElementById("yumiko-sound");
     if (yumikoSound) {
       yumikoSound.currentTime = 0;
-      yumikoSound.play();
+      const maybePlayPromise = yumikoSound.play();
+      if (maybePlayPromise?.catch) {
+        maybePlayPromise.catch((error) => {
+          trace("yumiko_sound_play_blocked", { error: error?.message || String(error) });
+        });
+      }
     }
   } catch (e) {
     console.error("Error al conectar con Yumiko:", e?.message || e);
+    trace("send_failed", { error: e?.message || String(e) });
     addAndPersistMessage({ role: "assistant", content: "Hubo un error al conectar con Yumiko.", render: true });
   } finally {
     typing?.classList.add("hidden");
+    trace("typing_off_finally");
     setYumikoState("idle");
     markLastActivity();
     isSending = false;
     updateActionButtonsState();
+    trace("send_finished");
   }
 }
 
