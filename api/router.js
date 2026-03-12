@@ -1055,6 +1055,13 @@ async function yumikoHandler(req, res) {
 
     const userId = auth.userId;
 
+    console.info('[yumiko][save-path][backend] yumikoHandler auth resolved', {
+      userId,
+      tokenType: auth.tokenType,
+      deviceId: auth.deviceId || null,
+      messageLength: String(message || '').length
+    });
+
     if (profile?.name) global.yumikoSession.name = profile.name;
     if (profile?.goal) global.yumikoSession.meta = profile.goal;
     if (profile?.challengeStart) global.yumikoSession.challengeStart = profile.challengeStart;
@@ -1090,6 +1097,10 @@ async function yumikoHandler(req, res) {
       }
     }
 
+    console.info('[yumiko][save-path][backend] persisting user message', {
+      userId,
+      sender: 'user'
+    });
     await persistMessage(supabaseAdmin, {
       userId,
       sender: 'user',
@@ -1155,6 +1166,11 @@ async function yumikoHandler(req, res) {
     });
 
     if (!audioMode) {
+      console.info('[yumiko][save-path][backend] persisting assistant message', {
+        userId,
+        sender: 'yumiko',
+        audioMode
+      });
       const yumikoInserted = await persistMessage(supabaseAdmin, {
         userId,
         sender: 'yumiko',
