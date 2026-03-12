@@ -669,6 +669,18 @@ function telemetryLog(eventName, payload = {}) {
 
 function runtimeDiagLog() {}
 
+function runtimeDiagNodeLabel(node) {
+  if (!node) return "null";
+  if (node === document.body) return "body";
+  if (node === document.documentElement) return "html";
+  const id = node.id ? `#${node.id}` : "";
+  const className = typeof node.className === "string"
+    ? node.className.trim().split(/\s+/).filter(Boolean).slice(0, 3).join(".")
+    : "";
+  const classSuffix = className ? `.${className}` : "";
+  return `${String(node.tagName || "node").toLowerCase()}${id}${classSuffix}`;
+}
+
 function showChatFeedback(message) {
   addMessage(message, "bot", { skipAnimation: true });
 }
@@ -757,6 +769,8 @@ async function saveMessageToSupabase({ userId, sender, content }) {
     return;
   }
 
+  let useLegacyInsert = false;
+
   if (!activeDefaultConversationId) {
     try {
       const { data: existingConversation, error: existingConversationError } = await supabaseClient
@@ -794,26 +808,42 @@ async function saveMessageToSupabase({ userId, sender, content }) {
         activeDefaultConversationId
       });
     } catch (conversationError) {
-      console.error("[yumiko][save-path][local] failed resolving default conversation", {
-        userId,
-        sender,
-        error: conversationError?.message || String(conversationError)
-      });
-      throw conversationError;
+      if (isMissingConversationsTableError(conversationError)) {
+        useLegacyInsert = true;
+        console.warn("[yumiko][save-path][local] conversations table unavailable, using legacy messages-only save path", {
+          userId,
+          sender,
+          error: conversationError?.message || String(conversationError)
+        });
+      } else {
+        console.error("[yumiko][save-path][local] failed resolving default conversation", {
+          userId,
+          sender,
+          error: conversationError?.message || String(conversationError)
+        });
+        throw conversationError;
+      }
     }
   }
 
-  const insertPayload = {
-    user_id: userId,
-    conversation_id: activeDefaultConversationId,
-    sender,
-    content
-  };
+  const insertPayload = useLegacyInsert
+    ? {
+        user_id: userId,
+        sender,
+        content
+      }
+    : {
+        user_id: userId,
+        conversation_id: activeDefaultConversationId,
+        sender,
+        content
+      };
 
   console.info("[yumiko][save-path][local] inserting message", {
     userId,
     conversationId: activeDefaultConversationId,
-    payload: insertPayload
+    payload: insertPayload,
+    useLegacyInsert
   });
 
   const { data, error } = await supabaseClient
@@ -837,10 +867,12 @@ async function saveMessageToSupabase({ userId, sender, content }) {
     console.info("[yumiko][save-path][local] supabase insert success", {
       userId,
       conversationId: activeDefaultConversationId,
-      insertedRows: Array.isArray(data) ? data.length : 0
+      insertedRows: Array.isArray(data) ? data.length : 0,
+      useLegacyInsert
     });
   }
 }
+
 
 
 const WELCOME_MESSAGES = [
@@ -1089,6 +1121,8 @@ async function updateUserSettingsNudgeTimestamps(updates = {}) {
   };
   persistGlobalNudgeState(globalState);
 
+  if (userSettingsSchemaKnownMissing) return;
+
   try {
     await supabaseClient
       .from("user_settings")
@@ -1230,6 +1264,17 @@ async function refreshTimePersonalizationState(userId) {
   const forcedHour = Number.parseInt(window.localStorage.getItem("yumiko_force_local_hour") || "", 10);
   const localTimeData = buildLocalTimeContext(Number.isInteger(forcedHour) ? forcedHour : null);
 
+  if (userSettingsSchemaKnownMissing) {
+    timePersonalizationState = {
+      ...localTimeData,
+      personalizeByTime: false,
+      shouldCommentTime: false,
+      bucketChanged: false
+    };
+    userSettingsCache = loadGlobalNudgeState();
+    return timePersonalizationState;
+  }
+
   try {
     const { data: settingsRow, error } = await supabaseClient
       .from("user_settings")
@@ -1277,6 +1322,9 @@ async function refreshTimePersonalizationState(userId) {
         personalize_by_time: personalizeByTime
       }, { onConflict: "user_id" });
   } catch (error) {
+    if (isMissingSchemaFieldError(error, "personalize_by_time")) {
+      userSettingsSchemaKnownMissing = true;
+    }
     console.warn("No se pudo aplicar personalización por hora. Continúo sin romper chat.", error?.message || error);
     timePersonalizationState = {
       ...localTimeData,
@@ -2397,11 +2445,16 @@ function bindChatEventListeners(user) {
         timePersonalizationState.shouldCommentTime = false;
       }
 
+      if (userSettingsSchemaKnownMissing) return;
+
       try {
         await supabaseClient
           .from("user_settings")
           .upsert({ user_id: user.id, personalize_by_time: enabled }, { onConflict: "user_id" });
       } catch (error) {
+        if (isMissingSchemaFieldError(error, "personalize_by_time")) {
+          userSettingsSchemaKnownMissing = true;
+        }
         console.warn("No se pudo guardar el toggle de hora local.", error?.message || error);
       }
     });
