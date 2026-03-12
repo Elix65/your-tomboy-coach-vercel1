@@ -44,49 +44,6 @@
     </div>
   </div>
 
-  <!-- TOP BAR (DESKTOP) -->
-  <div class="top-bar hidden" id="top-bar">
-    <div class="nav-actions">
-      <div class="topbar-section topbar-nav">
-        <div class="nav-inventory">
-          <button id="btn-inventario" class="top-btn">Inventario</button>
-          <div id="inventoryDropdown" class="inventory-dropdown" aria-hidden="true">
-            <aside id="inventoryPanel" class="inventory-panel" aria-hidden="true">
-              <button id="inventory-close-btn" class="inventory-close-btn" type="button">Cerrar</button>
-              <div id="inventory-content" class="inventory-content">
-                <p style="color:#ccc">Cargando...</p>
-              </div>
-            </aside>
-          </div>
-        </div>
-        <button id="btn-gacha" class="top-btn">Gacha</button>
-        <button id="btn-rewards" class="top-btn" data-action="rewards">Recompensas</button>
-      </div>
-
-      <div class="topbar-section topbar-actions">
-        <div class="nav-audio">
-          <button id="btn-audio" class="top-btn" type="button" aria-expanded="false" aria-controls="audioPopover">🎚️ Audio</button>
-          <div id="audioPopover" class="audio-popover hidden" aria-hidden="true">
-            <label class="audio-control" for="music-volume-slider">
-              <span>Música</span>
-              <input id="music-volume-slider" type="range" min="0" max="100" value="30" step="1">
-            </label>
-            <label class="audio-control" for="voice-volume-slider">
-              <span>Voz Yumiko</span>
-              <input id="voice-volume-slider" type="range" min="0" max="100" value="100" step="1">
-            </label>
-          </div>
-        </div>
-        <button id="btn-audios" class="top-btn top-btn-primary">
-          <span class="audios-label--desktop">🎧 Audios tsundere</span>
-          <span class="audios-label--mobile">🎧 Audios tsundere 😳</span>
-        </button>
-        <button id="btn-yumiko-100" class="top-btn yumiko-100-btn hidden" type="button">Yumiko 100%</button>
-        <button id="btn-overlay-connect" class="top-btn" type="button">Conectar Overlay</button>
-        <button id="btn-logout" class="top-btn">Cerrar sesión</button>
-      </div>
-    </div>
-  </div>
 
   <!-- entrada cinematica -->
   <div class="cinematic-overlay"></div>
@@ -107,18 +64,63 @@
     <main id="chatContainer" class="chat-container">
       <div class="container">
 
-      <div id="chatStage" class="chat-stage">
-      <div id="yumikoSide" class="yumiko-side" aria-hidden="true">
-        <img id="yumikoIdle" class="yumiko-img is-active"
-             src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png"
-             alt="">
-        <img id="yumikoThinking" class="yumiko-img"
-             src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-2.png"
-             alt="">
-      </div>
+      <div id="chatStage" class="chat-stage desktop-shell">
+        <div id="yumikoSide" class="yumiko-side" aria-hidden="true">
+          <img id="yumikoIdle" class="yumiko-img is-active"
+               src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png"
+               alt="">
+          <img id="yumikoThinking" class="yumiko-img"
+               src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-2.png"
+               alt="">
+        </div>
 
-      <!-- DOJO UI (ya no hay login aquí) -->
-      <div id="dojo-ui">
+        <div class="desktop-main-column">
+          <!-- TOP BAR (DESKTOP) -->
+          <div class="top-bar hidden" id="top-bar">
+            <div class="nav-actions">
+              <div class="topbar-section topbar-nav">
+                <div class="nav-inventory">
+                  <button id="btn-inventario" class="top-btn">Inventario</button>
+                  <div id="inventoryDropdown" class="inventory-dropdown" aria-hidden="true">
+                    <aside id="inventoryPanel" class="inventory-panel" aria-hidden="true">
+                      <button id="inventory-close-btn" class="inventory-close-btn" type="button">Cerrar</button>
+                      <div id="inventory-content" class="inventory-content">
+                        <p style="color:#ccc">Cargando...</p>
+                      </div>
+                    </aside>
+                  </div>
+                </div>
+                <button id="btn-gacha" class="top-btn">Gacha</button>
+                <button id="btn-rewards" class="top-btn" data-action="rewards">Recompensas</button>
+              </div>
+
+              <div class="topbar-section topbar-actions">
+                <div class="nav-audio">
+                  <button id="btn-audio" class="top-btn" type="button" aria-expanded="false" aria-controls="audioPopover">🎚️ Audio</button>
+                  <div id="audioPopover" class="audio-popover hidden" aria-hidden="true">
+                    <label class="audio-control" for="music-volume-slider">
+                      <span>Música</span>
+                      <input id="music-volume-slider" type="range" min="0" max="100" value="30" step="1">
+                    </label>
+                    <label class="audio-control" for="voice-volume-slider">
+                      <span>Voz Yumiko</span>
+                      <input id="voice-volume-slider" type="range" min="0" max="100" value="100" step="1">
+                    </label>
+                  </div>
+                </div>
+                <button id="btn-audios" class="top-btn top-btn-primary">
+                  <span class="audios-label--desktop">🎧 Audios tsundere</span>
+                  <span class="audios-label--mobile">🎧 Audios tsundere 😳</span>
+                </button>
+                <button id="btn-yumiko-100" class="top-btn yumiko-100-btn hidden" type="button">Yumiko 100%</button>
+                <button id="btn-overlay-connect" class="top-btn" type="button">Conectar Overlay</button>
+                <button id="btn-logout" class="top-btn">Cerrar sesión</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- DOJO UI (ya no hay login aquí) -->
+          <div id="dojo-ui">
 
       <div class="header">
         <h1 class="title title-cinematic">Your coach Yumiko</h1>
@@ -142,8 +144,10 @@
 
           <!-- INPUT + BOTONES -->
           <div class="input-area">
-            <input id="user-input" type="text" name="chat-message" placeholder="Escribe aquí..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-            <button id="send-btn">Enviar</button>
+            <div class="composer-row">
+              <input id="user-input" type="text" name="chat-message" placeholder="Escribe aquí..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+              <button id="send-btn">Enviar</button>
+            </div>
 
             <div class="extra-buttons">
               <button id="regenerate-btn" class="dojo-btn">Regenerar</button>
@@ -165,7 +169,8 @@
         </div>
       </div>
 
-      </div> <!-- cierre dojo-ui -->
+          </div> <!-- cierre dojo-ui -->
+        </div> <!-- cierre desktop-main-column -->
       </div> <!-- cierre chat-stage -->
 
       </div> <!-- cierre container -->

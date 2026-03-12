@@ -335,29 +335,42 @@ body.inventory-open .inventory-dropdown {
   z-index: 10;
 }
 
-#dojo-ui {
-  height: 100%;
-  width: min(60vw, 900px);
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  position: relative;
+.desktop-shell {
+  width: min(1280px, 100% - 56px);
+  margin: 0 auto;
 }
 
 .chat-stage {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(290px, 0.9fr) minmax(680px, 1.35fr);
   align-items: stretch;
   justify-content: center;
-  gap: clamp(24px, 2.8vw, 48px);
+  column-gap: clamp(22px, 2.4vw, 38px);
   height: 100%;
-  padding: 120px clamp(28px, 3vw, 56px) 32px;
+  padding: 28px 0 30px;
   box-sizing: border-box;
 }
 
+.desktop-main-column {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+#dojo-ui {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
 .yumiko-side {
-  width: min(31vw, 430px);
-  min-width: 280px;
-  max-width: 440px;
+  width: 100%;
+  min-width: 0;
+  max-width: 420px;
   height: auto;
   position: relative;
   pointer-events: none;
@@ -365,7 +378,7 @@ body.inventory-open .inventory-dropdown {
   align-items: flex-end;
   justify-content: center;
   border-radius: 28px;
-  padding: 26px 18px 0;
+  padding: 24px 18px 0;
   background: linear-gradient(150deg, rgba(255, 255, 255, 0.08), rgba(146, 102, 255, 0.05) 48%, rgba(15, 10, 30, 0.35));
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: 0 26px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 154, 190, 0.12) inset;
@@ -429,9 +442,17 @@ body.inventory-open .inventory-dropdown {
     display: none;
   }
 
+  .desktop-shell {
+    width: 100%;
+  }
+
   .chat-stage {
     display: block;
     padding: 94px 12px 18px;
+  }
+
+  .desktop-main-column {
+    display: block;
   }
 
   #dojo-ui {
@@ -562,7 +583,8 @@ img.avatar-header {
 .subtitle-badge {
   display: inline-flex;
   align-self: flex-start;
-  margin: 0 0 18px;
+  width: fit-content;
+  margin: 0 0 16px;
   padding: 7px 12px;
   border-radius: 999px;
   border: 1px solid rgba(255, 170, 210, 0.35);
@@ -932,7 +954,14 @@ img.avatar-small {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 10px;
+  margin-top: 12px;
+}
+
+.composer-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: stretch;
 }
 
 #user-input {
@@ -960,8 +989,8 @@ img.avatar-small {
 
 
 #send-btn {
-  align-self: flex-end;
-  padding: 12px 22px;
+  align-self: auto;
+  padding: 12px 24px;
   background: linear-gradient(160deg, #ff7d9d, #ff5f8a 55%, #a86bff);
   border: 1px solid rgba(255, 210, 226, 0.4);
   border-radius: 12px;
@@ -1055,10 +1084,12 @@ img.avatar-small {
 ================================ */
 
 .top-bar {
-  position: fixed;
-  top: 18px;
-  right: 24px;
+  position: relative;
+  top: auto;
+  right: auto;
+  left: auto;
   display: flex;
+  width: 100%;
   z-index: 20000;
   padding: 6px;
   border-radius: 22px;
@@ -1070,12 +1101,13 @@ img.avatar-small {
 
 .nav-actions {
   position: relative;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
-  max-width: min(92vw, 980px);
+  width: 100%;
+  max-width: none;
   padding: 9px;
   border-radius: 18px;
 }
@@ -1362,6 +1394,14 @@ img.avatar-small {
 ================================ */
 
 @media (max-width: 768px) {
+  .composer-row {
+    grid-template-columns: 1fr;
+  }
+
+  #send-btn {
+    width: 100%;
+  }
+
   .container {
     width: 100%;
     padding-top: 0;
