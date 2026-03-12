@@ -4,6 +4,40 @@ import { initTopBarAndMobileMenu } from './ui.v2.js';
 import { initRewardsWidget, updateStreakOnMessageSend } from './rewardsWidget.js';
 import { appendToOverlayRoot, ensureOverlayRoot } from './overlayRoot.js';
 
+
+const INIT_DEBUG_FLAG_KEYS = [
+  "DISABLE_AUTH_REHYDRATION",
+  "DISABLE_HISTORY_RENDER",
+  "DISABLE_REWARDS_BOOT",
+  "DISABLE_RESPONSIVE_SYNC",
+  "DISABLE_YUMIKO_STATE_TRANSITIONS",
+  "DISABLE_TIME_PERSONALIZATION",
+  "DISABLE_OVERLAY_BOOT"
+];
+
+function readInitDebugFlags() {
+  const params = new URLSearchParams(window.location.search);
+  const fromQuery = String(params.get("debug_init_flags") || "")
+    .split(",")
+    .map((entry) => entry.trim().toUpperCase())
+    .filter(Boolean);
+
+  return new Set(INIT_DEBUG_FLAG_KEYS.filter((flag) => {
+    if (params.get(flag) === "1") return true;
+    if (fromQuery.includes(flag)) return true;
+    if (window.localStorage.getItem(flag) === "1") return true;
+    if (window.sessionStorage.getItem(flag) === "1") return true;
+    return false;
+  }));
+}
+
+const initDebugFlags = readInitDebugFlags();
+window.__INIT_DEBUG_FLAGS__ = Object.fromEntries(INIT_DEBUG_FLAG_KEYS.map((flag) => [flag, initDebugFlags.has(flag)]));
+
+function isInitSubsystemDisabled(flag) {
+  return initDebugFlags.has(flag);
+}
+
 function goWithTransition(url) {
   if (typeof window.playPageTransitionAndGo === "function") {
     window.playPageTransitionAndGo(url);
@@ -1883,6 +1917,10 @@ function forceYumikoIdleVisible(reason) {
 }
 
 function initializeYumikoImageState() {
+  if (isInitSubsystemDisabled("DISABLE_YUMIKO_STATE_TRANSITIONS")) {
+    runtimeDiagLog("yumiko_state_init_skip", { reason: "DISABLE_YUMIKO_STATE_TRANSITIONS" });
+    return;
+  }
   const idle = document.getElementById("yumikoIdle");
   const thinking = document.getElementById("yumikoThinking");
   if (!idle || !thinking) return;
@@ -1932,6 +1970,10 @@ function initializeYumikoImageState() {
 
 function setYumikoState(state) {
   runtimeDiagLog("set_yumiko_state_enter", { state });
+  if (isInitSubsystemDisabled("DISABLE_YUMIKO_STATE_TRANSITIONS")) {
+    runtimeDiagLog("set_yumiko_state_skip", { state, reason: "DISABLE_YUMIKO_STATE_TRANSITIONS" });
+    return;
+  }
   const idle = document.getElementById("yumikoIdle");
   const thinking = document.getElementById("yumikoThinking");
 
@@ -2644,6 +2686,11 @@ function bindChatEventListeners(user) {
 
 async function initializeChatSession() {
   runtimeDiagLog("chat_session_init_enter");
+  if (isInitSubsystemDisabled("DISABLE_AUTH_REHYDRATION")) {
+    runtimeDiagLog("chat_session_init_skip", { reason: "DISABLE_AUTH_REHYDRATION" });
+    return;
+  }
+
   const { data: { session } } = await supabaseClient.auth.getSession();
   const user = session?.user;
   if (!user) {
@@ -2655,16 +2702,24 @@ async function initializeChatSession() {
   await refreshAudioEntitlement({ withReturnPolling: shouldPollActivation });
   enforceAudioModeAccess();
   currentUserId = user.id;
-  await refreshTimePersonalizationState(user.id);
+  if (!isInitSubsystemDisabled("DISABLE_TIME_PERSONALIZATION")) {
+    await refreshTimePersonalizationState(user.id);
+  } else {
+    runtimeDiagLog("refresh_time_personalization_skip", { reason: "DISABLE_TIME_PERSONALIZATION" });
+  }
 
   loadLocalChatSnapshot();
   initializeSessionNudgeState();
-  if (chatMessages.length > 0) {
+  if (!isInitSubsystemDisabled("DISABLE_HISTORY_RENDER") && chatMessages.length > 0) {
     renderChatMessagesFromState();
     telemetryLog("render_snapshot", { userId: user.id, loadedCount: chatMessages.length });
   }
 
-  await loadChatFromSupabase({ userId: user.id });
+  if (!isInitSubsystemDisabled("DISABLE_HISTORY_RENDER")) {
+    await loadChatFromSupabase({ userId: user.id });
+  } else {
+    runtimeDiagLog("chat_init_load_messages_skip", { reason: "DISABLE_HISTORY_RENDER" });
+  }
   markLastActivity();
   await loadActiveSkinBackground(user);
   bindChatEventListeners(user);
@@ -2824,6 +2879,10 @@ async function initializeUI() {
 }
 
 function makeRewardsWidgetCollapsible() {
+  if (isInitSubsystemDisabled("DISABLE_RESPONSIVE_SYNC")) {
+    runtimeDiagLog("rewards_collapsible_init_skip", { reason: "DISABLE_RESPONSIVE_SYNC" });
+    return;
+  }
   runtimeDiagLog("rewards_collapsible_init_enter");
   const widget = document.getElementById("daily-chat-rewards-widget");
   if (!widget) return;
@@ -2907,7 +2966,11 @@ function makeRewardsWidgetCollapsible() {
 window.addEventListener("DOMContentLoaded", async () => {
   startRuntimeLayoutMutationDiagnostics();
   installAsyncLayoutOperationDiagnostics();
-  ensureOverlayRoot();
+  if (!isInitSubsystemDisabled("DISABLE_OVERLAY_BOOT")) {
+    ensureOverlayRoot();
+  } else {
+    runtimeDiagLog("overlay_boot_skip", { reason: "DISABLE_OVERLAY_BOOT" });
+  }
   runtimeDiagLog("dom_content_loaded_handler_enter");
   initAudioControls();
   cacheChatDomElements();
@@ -2915,10 +2978,14 @@ window.addEventListener("DOMContentLoaded", async () => {
   registerInputListeners();
   updateActionButtonsState();
 
-  runtimeDiagLog("rewards_widget_init_enter");
-  initRewardsWidget();
-  runtimeDiagLog("rewards_widget_init_exit");
-  makeRewardsWidgetCollapsible();
+  if (!isInitSubsystemDisabled("DISABLE_REWARDS_BOOT")) {
+    runtimeDiagLog("rewards_widget_init_enter");
+    initRewardsWidget();
+    runtimeDiagLog("rewards_widget_init_exit");
+    makeRewardsWidgetCollapsible();
+  } else {
+    runtimeDiagLog("rewards_widget_init_skip", { reason: "DISABLE_REWARDS_BOOT" });
+  }
   installProtectedLayoutReparentGuard();
   await initializeUI();
   await initializeChatSession();

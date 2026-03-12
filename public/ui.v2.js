@@ -1,3 +1,15 @@
+
+function isInitDebugFlagEnabled(flag) {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get(flag) === "1") return true;
+  const list = String(params.get("debug_init_flags") || "")
+    .split(",")
+    .map((entry) => entry.trim().toUpperCase())
+    .filter(Boolean);
+  if (list.includes(flag)) return true;
+  return window.localStorage.getItem(flag) === "1" || window.sessionStorage.getItem(flag) === "1";
+}
+
 const DESKTOP_BREAKPOINT = 768;
 
 function setVisibility(element, shouldShow) {
@@ -6,6 +18,7 @@ function setVisibility(element, shouldShow) {
 }
 
 function syncTopBarAndMenuState() {
+  if (isInitDebugFlagEnabled("DISABLE_RESPONSIVE_SYNC")) return;
   const ts = Math.round(performance.now());
   const topBar = document.getElementById("top-bar");
   const hamburgerBtn = document.getElementById("hamburger-btn");
