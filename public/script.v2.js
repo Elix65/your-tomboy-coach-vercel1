@@ -494,7 +494,7 @@ function closeRewardsPanel() {
   const widget = getRewardsWidget();
   const before = widget ? {
     position: window.getComputedStyle(widget).position,
-    parent: runtimeDiagNodeLabel(widget.parentElement),
+    parent: widget.parentElement,
     className: widget.className,
     inlineStyle: widget.getAttribute("style") || ""
   } : null;
@@ -507,7 +507,7 @@ function closeRewardsPanel() {
     const afterStyle = window.getComputedStyle(widget);
     runtimeDiagLog("rewards_popup_close_exit", {
       position: afterStyle.position,
-      parent: runtimeDiagNodeLabel(widget.parentElement),
+      parent: widget.parentElement,
       className: widget.className,
       inlineStyle: widget.getAttribute("style") || ""
     });
@@ -540,7 +540,7 @@ function openRewardsPanel() {
   if (!widget) return;
   runtimeDiagLog("rewards_popup_open_enter", {
     isMobileViewport: isMobileRewardsViewport(),
-    parent: runtimeDiagNodeLabel(widget.parentElement),
+    parent: widget.parentElement,
     className: widget.className,
     inlineStyle: widget.getAttribute("style") || ""
   });
@@ -574,7 +574,7 @@ function openRewardsPanel() {
   const computed = window.getComputedStyle(widget);
   runtimeDiagLog("rewards_popup_open_exit", {
     isMobileViewport: isMobileRewardsViewport(),
-    parent: runtimeDiagNodeLabel(widget.parentElement),
+    parent: widget.parentElement,
     position: computed.position,
     display: computed.display,
     zIndex: computed.zIndex,
@@ -668,18 +668,6 @@ function telemetryLog(eventName, payload = {}) {
 }
 
 function runtimeDiagLog() {}
-
-function runtimeDiagNodeLabel(node) {
-  if (!node) return "null";
-  if (node === document.body) return "body";
-  if (node === document.documentElement) return "html";
-  const id = node.id ? `#${node.id}` : "";
-  const className = typeof node.className === "string"
-    ? node.className.trim().split(/\s+/).filter(Boolean).slice(0, 3).join(".")
-    : "";
-  const classSuffix = className ? `.${className}` : "";
-  return `${String(node.tagName || "node").toLowerCase()}${id}${classSuffix}`;
-}
 
 function showChatFeedback(message) {
   addMessage(message, "bot", { skipAnimation: true });
