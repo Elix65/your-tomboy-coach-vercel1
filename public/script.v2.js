@@ -740,25 +740,105 @@ async function refreshAudioEntitlement({ withReturnPolling = false } = {}) {
 }
 
 async function saveMessageToSupabase({ userId, sender, content }) {
+  console.info("[yumiko][save-path][local] saveMessageToSupabase enter", {
+    userId,
+    sender,
+    content,
+    contentLength: String(content || "").length,
+    activeDefaultConversationId
+  });
 
   if (!userId) {
     console.error("❌ ERROR: userId vacío. No se puede guardar.");
+    console.warn("[yumiko][save-path][local] early return on saveMessageToSupabase because userId is empty", {
+      userId,
+      sender
+    });
     return;
   }
 
+  if (!activeDefaultConversationId) {
+    try {
+      const { data: existingConversation, error: existingConversationError } = await supabaseClient
+        .from("conversations")
+        .select("id,user_id,is_default")
+        .eq("user_id", userId)
+        .eq("is_default", true)
+        .maybeSingle();
+
+      if (existingConversationError) {
+        throw existingConversationError;
+      }
+
+      if (existingConversation?.id) {
+        activeDefaultConversationId = String(existingConversation.id);
+      } else {
+        const { data: createdConversation, error: createdConversationError } = await supabaseClient
+          .from("conversations")
+          .insert({
+            user_id: userId,
+            is_default: true
+          })
+          .select("id,user_id,is_default")
+          .single();
+
+        if (createdConversationError) {
+          throw createdConversationError;
+        }
+
+        activeDefaultConversationId = String(createdConversation?.id || "");
+      }
+
+      console.info("[yumiko][save-path][local] resolved default conversation", {
+        userId,
+        activeDefaultConversationId
+      });
+    } catch (conversationError) {
+      console.error("[yumiko][save-path][local] failed resolving default conversation", {
+        userId,
+        sender,
+        error: conversationError?.message || String(conversationError)
+      });
+      throw conversationError;
+    }
+  }
+
+  const insertPayload = {
+    user_id: userId,
+    conversation_id: activeDefaultConversationId,
+    sender,
+    content
+  };
+
+  console.info("[yumiko][save-path][local] inserting message", {
+    userId,
+    conversationId: activeDefaultConversationId,
+    payload: insertPayload
+  });
+
   const { data, error } = await supabaseClient
     .from("messages")
-    .insert({
-      user_id: userId,
-      sender,
-      content
-    })
+    .insert(insertPayload)
     .select();
 
   if (error) {
     console.error("❌ Supabase rechazó el insert:", error.message);
+    console.error("[yumiko][save-path][local] supabase insert error detail", {
+      userId,
+      conversationId: activeDefaultConversationId,
+      payload: insertPayload,
+      error: error.message || String(error),
+      code: error.code || null,
+      details: error.details || null,
+      hint: error.hint || null
+    });
     showChatFeedback("No pude guardar este mensaje. Revisá tu conexión e intentá de nuevo.");
   } else {
+    console.info("[yumiko][save-path][local] supabase insert success", {
+      userId,
+      conversationId: activeDefaultConversationId,
+      insertedRows: Array.isArray(data) ? data.length : 0
+    });
   }
 }
 
@@ -1448,6 +1528,7 @@ let hasUserMessagedThisSession = false;
 let isSending = false;
 let isRegenerating = false;
 let isResetting = false;
+let activeDefaultConversationId = null;
 
 const SEND_COOLDOWN_MS = 1200;
 const RESET_COOLDOWN_MS = 2000;
@@ -2354,6 +2435,7 @@ async function initializeChatSession() {
   await refreshAudioEntitlement({ withReturnPolling: shouldPollActivation });
   enforceAudioModeAccess();
   currentUserId = user.id;
+  activeDefaultConversationId = null;
   if (!isInitSubsystemDisabled("DISABLE_TIME_PERSONALIZATION")) {
     await refreshTimePersonalizationState(user.id);
   } else {
