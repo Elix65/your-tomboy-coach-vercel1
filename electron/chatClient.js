@@ -131,7 +131,6 @@ async function sendMessage({ baseUrl, overlayAccessToken, message, contextMessag
   const reply = typeof data?.reply === 'string' ? data.reply.trim() : '';
 
   return {
-    conversationId: data?.conversation_id || null,
     reply,
     yumikoMessageId: data?.yumiko_message_id || null,
     audioOutSignedUrl: data?.audio_out_signed_url || null

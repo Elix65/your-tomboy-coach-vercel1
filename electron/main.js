@@ -47,8 +47,7 @@ const defaultSettings = {
   deviceId: '',
   deviceName: '',
   overlayAccessToken: '',
-  overlayAccountEmail: '',
-  conversationId: ''
+  overlayAccountEmail: ''
 };
 
 function normalizeOrigin(value) {
@@ -242,6 +241,11 @@ function readSettings() {
       overlayBounds: migratedOverlayBounds,
       chatBounds: parsed.chatBounds || null
     };
+
+    // Legacy cleanup: chat runtime no longer uses conversation IDs.
+    if (Object.prototype.hasOwnProperty.call(mergedSettings, 'conversationId')) {
+      delete mergedSettings.conversationId;
+    }
 
     if (!mergedSettings.hasCompletedFirstRun) {
       mergedSettings.overlayEnabled = true;
