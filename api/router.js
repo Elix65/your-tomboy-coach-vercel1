@@ -1024,7 +1024,7 @@ async function yumikoHandler(req, res) {
   }
 
   try {
-    const { message, profile, messages: incomingMessages, summary, audio_mode: audioModeRaw } = req.body || {};
+    const { message, profile, messages: incomingMessages, summary, audio_mode: audioModeRaw, client_trace_id: clientTraceId } = req.body || {};
 
     if (!message) {
       return res.status(400).json({ error: "Falta el campo 'message' en el cuerpo." });
@@ -1059,7 +1059,8 @@ async function yumikoHandler(req, res) {
       userId,
       tokenType: auth.tokenType,
       deviceId: auth.deviceId || null,
-      messageLength: String(message || '').length
+      messageLength: String(message || '').length,
+      clientTraceId: clientTraceId || null
     });
 
     if (profile?.name) global.yumikoSession.name = profile.name;
@@ -1105,7 +1106,8 @@ async function yumikoHandler(req, res) {
         sender: 'user',
         content: message,
         message_type: 'text'
-      }
+      },
+      clientTraceId: clientTraceId || null
     });
     const userInserted = await persistMessage(supabaseAdmin, {
       userId,
@@ -1117,7 +1119,8 @@ async function yumikoHandler(req, res) {
       userId,
       sender: 'user',
       insertedMessageId: userInserted?.id || null,
-      insertedAt: userInserted?.created_at || null
+      insertedAt: userInserted?.created_at || null,
+      clientTraceId: clientTraceId || null
     });
 
     const conversationContext = await buildYumikoConversationContext({ supabaseAdmin, userId, limit: 30 });
@@ -1193,7 +1196,8 @@ async function yumikoHandler(req, res) {
         userId,
         sender: 'yumiko',
         insertedMessageId: yumikoInserted?.id || null,
-        insertedAt: yumikoInserted?.created_at || null
+        insertedAt: yumikoInserted?.created_at || null,
+        clientTraceId: clientTraceId || null
       });
 
       console.info('[yumiko][auth]', {
@@ -1227,7 +1231,8 @@ async function yumikoHandler(req, res) {
       userId,
       sender: 'yumiko',
       insertedMessageId: insertedMsg?.id || null,
-      insertedAt: insertedMsg?.created_at || null
+      insertedAt: insertedMsg?.created_at || null,
+      clientTraceId: clientTraceId || null
     });
 
     const yumikoMessageId = insertedMsg.id;
