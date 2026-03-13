@@ -242,11 +242,6 @@ function readSettings() {
       chatBounds: parsed.chatBounds || null
     };
 
-    // Legacy cleanup: chat runtime no longer uses conversation IDs.
-    if (Object.prototype.hasOwnProperty.call(mergedSettings, 'conversationId')) {
-      delete mergedSettings.conversationId;
-    }
-
     if (!mergedSettings.hasCompletedFirstRun) {
       mergedSettings.overlayEnabled = true;
     }
