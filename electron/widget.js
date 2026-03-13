@@ -1,8 +1,3 @@
-console.log('SOURCE_WIDGET_JS_RUNNING', {
-  href: window.location.href,
-  isPackagedLikely: window.location.href.includes('app.asar')
-});
-
 const STORAGE_KEY = 'yumiko-widget-settings-v1';
 const MINI_SCALE_KEY = 'yumiko_mini_scale_v1';
 const DEFAULT_SETTINGS = {
@@ -25,7 +20,7 @@ const MINI_MIN_SIZE_RETRY_LIMIT = 5;
 const DEV_FIT_LOG = window.location.search.includes('dev=1') || localStorage.getItem('yumiko_debug_fit') === '1';
 const AUTO_MESSAGE_MIN_TICK_MS = 5 * 1000;
 const AUTO_MESSAGE_MAX_TICK_MS = 10 * 1000;
-const DEV_AUTO_MESSAGE_LOG = true;
+const DEV_AUTO_MESSAGE_LOG = false;
 const AUTO_ACTIVITY_MODE_KEY = 'yumiko_auto_message_recent_activity_mode';
 const AUTO_ACTIVITY_WEAK_WINDOW_KEY = 'yumiko_auto_message_weak_activity_ms';
 const DEFAULT_CHAT_HOTKEY = 'Control+Shift+J';
@@ -401,30 +396,12 @@ async function runAutoMessageSchedulerTick() {
   autoMessageScheduler = null;
   const skipReason = getAutoMessageSkipReason();
 
-  console.info('[yumiko][auto-nudge] tick', {
-    now: new Date().toISOString(),
-    mode: settings.mode,
-    autoMessageEnabled: settings.autoMessageEnabled,
-    intervalMinutes: settings.autoMessageIntervalMinutes,
-    isNudgeInFlight
-  });
-
   if (skipReason) {
-    console.info('[yumiko][auto-nudge] skipped reason=' + skipReason, {
-      mode: settings.mode,
-      autoMessageEnabled: settings.autoMessageEnabled,
-      isNudgeInFlight
-    });
     scheduleNextAutoMessageTick({ reason: `skip:${skipReason}` });
     return;
   }
 
   const nudgeResult = await requestAutoNudge();
-  console.info('[yumiko][auto-nudge] result', {
-    sent: Boolean(nudgeResult?.sent),
-    reason: nudgeResult?.reason || null,
-    messageSource: nudgeResult?.messageSource || null
-  });
   scheduleNextAutoMessageTick({ reason: 'post-request' });
 }
 
@@ -660,22 +637,8 @@ function hideBubble(reason = 'unspecified') {
   window.clearTimeout(bubbleHideTimer);
   bubbleHideTimer = null;
   if (!bubble) return;
-  console.info(`[yumiko][bubble] hide reason=${reason}`, {
-    mode: settings.mode
-  });
-  console.info('[yumiko][bubble] hide', {
-    reason,
-    mode: settings.mode,
-    className: bubble.className,
-    computedStyle: getBubbleComputedStyleSnapshot()
-  });
   bubble.classList.remove('visible');
   bubble.classList.add('hidden');
-  console.info('[yumiko][bubble] show:classes', {
-    phase: 'hide',
-    className: bubble.className,
-    computedStyle: getBubbleComputedStyleSnapshot()
-  });
 }
 
 function showBubble(text, duration = 8000) {
@@ -685,13 +648,6 @@ function showBubble(text, duration = 8000) {
     hideBubble('empty-text');
     return;
   }
-
-  console.info('[yumiko][bubble] show:start', {
-    text: safeText,
-    duration,
-    className: bubble.className,
-    mode: settings.mode
-  });
 
   window.clearTimeout(bubbleHideTimer);
   bubbleText.textContent = safeText;

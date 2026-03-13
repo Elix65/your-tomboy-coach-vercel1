@@ -1,20 +1,27 @@
 # HANDOFF
 
 
+## Update: cleanup final (modelo legacy restaurado)
+- El chat opera con modelo legacy y una única fuente de verdad: `public.messages`.
+- Se eliminó dependencia de `conversation_id`, `public.conversations` y lógica de conversación default.
+- Endpoints vigentes en cliente Electron:
+  - `GET /api/get-messages`
+  - `POST /api/yumiko`
+
+
 ## Update: Real chat mode (Yumiko Overlay + 21-moon backend)
 
 ### Configuración nueva (`settings.json` en `userData`)
 Se agregaron estos campos persistidos:
 - `chatBaseUrl` (default: `https://21-moon.com`)
 - `authToken` (string, por ahora en settings para dev)
-- `conversationId` (string opcional, se autoguarda al hablar)
 
 > Override por entorno: `YUMIKO_CHAT_URL` pisa `chatBaseUrl` al resolver llamadas de chat.
 
 ### Endpoints placeholder implementados
-- `GET  ${baseUrl}/api/yumiko/history?conversationId=...&limit=...`
-- `POST ${baseUrl}/api/yumiko/send` body `{ conversationId, message }`
-- Respuesta esperada: `{ conversationId, messages?: [], reply?: { role, content } }`
+- `GET  ${baseUrl}/api/get-messages`
+- `POST ${baseUrl}/api/yumiko` body `{ message, audio_mode, summary, messages[] }`
+- Fuente de verdad de historial: `public.messages` (sin `conversation_id`, sin `public.conversations`).
 
 Archivo principal del cliente de API: `electron/chatClient.js`.
 
@@ -179,7 +186,7 @@ Si falla la capa puente/IPC o envío:
 - IPC de chat del overlay:
   - `yumiko:chat-history` -> `GET /api/get-messages`
   - `yumiko:chat-send` -> `POST /api/yumiko`
-- Persistencia Supabase REST integrada para mensajes/conversación default.
+- Persistencia Supabase REST integrada exclusivamente sobre `public.messages`.
 - Variables opcionales:
   - `YUMIKO_CHAT_URL` (default `https://21-moon.com`)
   - `SUPABASE_URL`, `SUPABASE_ANON_KEY` (fallback al `public/supabase.js` del sitio)
@@ -191,4 +198,4 @@ Si falla la capa puente/IPC o envío:
    - `[yumiko][auth] token updated from deeplink`
    - `[yumiko][chatClient] GET history .../api/get-messages`
    - `[yumiko][chatClient] POST send .../api/yumiko`
-4. Confirmar filas nuevas en `messages` (sender `user`/`yumiko`) dentro de conversación `is_default=true`.
+4. Confirmar filas nuevas en `messages` (sender `user`/`yumiko`) para el `user_id` autenticado.
