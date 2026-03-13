@@ -740,21 +740,9 @@ async function refreshAudioEntitlement({ withReturnPolling = false } = {}) {
 }
 
 async function saveMessageToSupabase({ userId, sender, content }) {
-  console.info("[yumiko][save-path][local] saveMessageToSupabase enter", {
-    userId,
-    sender,
-    content,
-    contentLength: String(content || "").length,
-    activeDefaultConversationId
-  });
-
   if (!userId) {
     console.error("❌ ERROR: userId vacío. No se puede guardar.");
-    console.warn("[yumiko][save-path][local] early return on saveMessageToSupabase because userId is empty", {
-      userId,
-      sender
-    });
-    return;
+    return null;
   }
 
   let useLegacyInsert = false;
@@ -791,10 +779,6 @@ async function saveMessageToSupabase({ userId, sender, content }) {
         activeDefaultConversationId = String(createdConversation?.id || "");
       }
 
-      console.info("[yumiko][save-path][local] resolved default conversation", {
-        userId,
-        activeDefaultConversationId
-      });
     } catch (conversationError) {
       if (isMissingConversationsTableError(conversationError)) {
         useLegacyInsert = true;
@@ -827,17 +811,11 @@ async function saveMessageToSupabase({ userId, sender, content }) {
         content
       };
 
-  console.info("[yumiko][save-path][local] inserting message", {
-    userId,
-    conversationId: activeDefaultConversationId,
-    payload: insertPayload,
-    useLegacyInsert
-  });
-
   const { data, error } = await supabaseClient
     .from("messages")
     .insert(insertPayload)
-    .select();
+    .select("id,created_at,sender,content")
+    .single();
 
   if (error) {
     console.error("❌ Supabase rechazó el insert:", error.message);
@@ -852,13 +830,10 @@ async function saveMessageToSupabase({ userId, sender, content }) {
     });
     showChatFeedback("No pude guardar este mensaje. Revisá tu conexión e intentá de nuevo.");
   } else {
-    console.info("[yumiko][save-path][local] supabase insert success", {
-      userId,
-      conversationId: activeDefaultConversationId,
-      insertedRows: Array.isArray(data) ? data.length : 0,
-      useLegacyInsert
-    });
+    return data || null;
   }
+
+  return null;
 }
 
 
@@ -1380,6 +1355,60 @@ function senderFromRole(role) {
   return role === "user" ? "user" : "bot";
 }
 
+function createClientMessageId() {
+  return `local-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+}
+
+function normalizeChatMessage(raw = {}) {
+  return {
+    id: raw.id ? String(raw.id) : null,
+    clientId: raw.clientId ? String(raw.clientId) : null,
+    role: raw.role === "user" ? "user" : "assistant",
+    content: String(raw.content || ""),
+    audioUrl: raw.audioUrl || "",
+    createdAt: raw.createdAt || null
+  };
+}
+
+function findMessageIndexForMerge(candidate) {
+  if (!candidate) return -1;
+
+  if (candidate.id) {
+    const byId = chatMessages.findIndex((msg) => msg?.id && msg.id === candidate.id);
+    if (byId >= 0) return byId;
+  }
+
+  if (candidate.clientId) {
+    const byClientId = chatMessages.findIndex((msg) => msg?.clientId && msg.clientId === candidate.clientId);
+    if (byClientId >= 0) return byClientId;
+  }
+
+  return chatMessages.findIndex((msg) => (
+    msg
+    && !msg.id
+    && msg.role === candidate.role
+    && msg.content === candidate.content
+  ));
+}
+
+function mergeMessageIntoState(rawMessage) {
+  const incoming = normalizeChatMessage(rawMessage);
+  const existingIndex = findMessageIndexForMerge(incoming);
+
+  if (existingIndex >= 0) {
+    chatMessages[existingIndex] = {
+      ...chatMessages[existingIndex],
+      ...incoming,
+      id: incoming.id || chatMessages[existingIndex].id || null,
+      clientId: incoming.clientId || chatMessages[existingIndex].clientId || null
+    };
+    return { message: chatMessages[existingIndex], inserted: false };
+  }
+
+  chatMessages.push(incoming);
+  return { message: incoming, inserted: true };
+}
+
 function persistLocalChatSnapshot() {
   try {
     localStorage.setItem(STORAGE_KEYS.messagesSnapshot, JSON.stringify(chatMessages));
@@ -1394,7 +1423,11 @@ function loadLocalChatSnapshot() {
     const storedMessages = localStorage.getItem(STORAGE_KEYS.messagesSnapshot);
     const storedSummary = localStorage.getItem(STORAGE_KEYS.summarySnapshot);
 
-    chatMessages = storedMessages ? JSON.parse(storedMessages) : [];
+    const parsedMessages = storedMessages ? JSON.parse(storedMessages) : [];
+    chatMessages = [];
+    (Array.isArray(parsedMessages) ? parsedMessages : []).forEach((msg) => {
+      mergeMessageIntoState(msg);
+    });
     memorySummary = storedSummary || "";
   } catch (error) {
     chatMessages = [];
@@ -1456,19 +1489,23 @@ function getRecentContextMessages() {
   }));
 }
 
-function addAndPersistMessage({ role, content, render = true, skipAnimation = false }) {
-  chatMessages.push({ role, content });
+function addAndPersistMessage({ role, content, render = true, skipAnimation = false, id = null, clientId = null, audioUrl = "", createdAt = null }) {
+  const { message, inserted } = mergeMessageIntoState({ role, content, id, clientId, audioUrl, createdAt });
   if (role === "user") {
     hasUserMessagedThisSession = true;
   }
   trimChatContextIfNeeded();
   persistLocalChatSnapshot();
 
-  if (render) {
-    addMessage(content, senderFromRole(role), { skipAnimation });
+  if (render && inserted) {
+    addMessage(message.content, senderFromRole(message.role), {
+      skipAnimation,
+      audioUrl: message.audioUrl || ""
+    });
   }
 
   updateActionButtonsState();
+  return message;
 }
 
 // 2) Función para cargar historial desde Supabase
@@ -1539,11 +1576,15 @@ async function loadChatFromSupabase({ userId }) {
     return;
   }
 
-  chatMessages = data.map((msg) => ({
+  const mergedMessages = data.map((msg) => ({
+    id: msg.id ? String(msg.id) : null,
     role: roleFromSender(msg.sender),
     content: msg.content,
-    audioUrl: msg.audio_url || ""
+    audioUrl: msg.audio_url || "",
+    createdAt: msg.created_at || null
   }));
+  chatMessages = [];
+  mergedMessages.forEach((msg) => mergeMessageIntoState(msg));
   trimChatContextIfNeeded();
   persistLocalChatSnapshot();
   renderChatMessagesFromState();
@@ -2088,6 +2129,7 @@ function registerInputListeners() {
 async function sendMessage(user) {
   const sendTraceId = `send-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
   const trace = (stage, extra = {}) => {
+    if (!IS_DEV) return;
     console.info(`[yumiko][send-path][${sendTraceId}] ${stage}`, extra);
   };
 
@@ -2122,19 +2164,39 @@ async function sendMessage(user) {
   sessionNudgeState.messages_in_session += 1;
   persistSessionNudgeState();
 
-  addAndPersistMessage({ role: "user", content: text, render: true });
+  const localUserMessage = addAndPersistMessage({
+    role: "user",
+    content: text,
+    render: true,
+    clientId: createClientMessageId()
+  });
   trace("local_message_saved", { textLength: text.length });
   lastUserText = text;
   markLastActivity();
 
-  trace("save_supabase_user_message_start");
-  await saveMessageToSupabase({
+  const userPersistPromise = saveMessageToSupabase({
     userId: user.id,
     sender: "user",
     content: text
-  });
-  trace("save_supabase_user_message_end");
-  telemetryLog("message_saved", { userId: user.id, role: "user" });
+  })
+    .then((persistedRow) => {
+      if (persistedRow?.id) {
+        addAndPersistMessage({
+          role: "user",
+          content: text,
+          render: false,
+          clientId: localUserMessage?.clientId || null,
+          id: persistedRow.id,
+          createdAt: persistedRow.created_at || null
+        });
+      }
+      telemetryLog("message_saved", { userId: user.id, role: "user" });
+      return persistedRow;
+    })
+    .catch((error) => {
+      trace("save_supabase_user_message_failed_non_blocking", { error: error?.message || String(error) });
+      return null;
+    });
 
   if ((sessionNudgeState.hello_nudge_pending_response || sessionNudgeState.rest_nudge_pending_response) && isDeclineMessage(text)) {
     sessionNudgeState.suppress_rest_nudges_for_session = true;
@@ -2153,6 +2215,7 @@ async function sendMessage(user) {
   const helloNudgeSent = await maybeSendHelloNudge({ text, userId: user.id });
   if (helloNudgeSent) {
     trace("early_return_hello_nudge_sent_before_backend");
+    await userPersistPromise;
     markLastActivity();
     userInput.value = "";
     setYumikoState("idle");
@@ -2230,14 +2293,22 @@ async function sendMessage(user) {
       userMessageId: data?.user_message_id || null,
       yumikoMessageId: data?.yumiko_message_id || null
     });
-    console.info("[yumiko][save-path][frontend] /api/yumiko persistence ids", {
-      userId: user.id,
-      userMessageId: data?.user_message_id || null,
-      yumikoMessageId: data?.yumiko_message_id || null,
-      hasBackendPersistenceIds: Boolean(data?.user_message_id || data?.yumiko_message_id)
-    });
-    addAndPersistMessage({ role: "assistant", content: data.reply, render: false });
-    addMessage(data.reply, "bot", {
+
+    if (data?.user_message_id) {
+      addAndPersistMessage({
+        role: "user",
+        content: text,
+        render: false,
+        clientId: localUserMessage?.clientId || null,
+        id: data.user_message_id
+      });
+    }
+
+    addAndPersistMessage({
+      role: "assistant",
+      content: data.reply,
+      render: true,
+      id: data?.yumiko_message_id || null,
       audioUrl: data.audio_out_signed_url || ""
     });
     updateStreakOnMessageSend(text);
@@ -2247,18 +2318,27 @@ async function sendMessage(user) {
         userId: user.id,
         sender: "yumiko"
       });
-      await saveMessageToSupabase({
+      const persistedAssistant = await saveMessageToSupabase({
         userId: user.id,
         sender: "yumiko",
         content: data.reply
       });
+      addAndPersistMessage({
+        role: "assistant",
+        content: data.reply,
+        render: false,
+        id: persistedAssistant?.id || null,
+        createdAt: persistedAssistant?.created_at || null
+      });
       telemetryLog("message_saved", { userId: user.id, role: "assistant" });
-    } else {
+    } else if (IS_DEV) {
       console.info("[yumiko][save-path][frontend] assistant message already persisted by backend", {
         userId: user.id,
         yumikoMessageId: data.yumiko_message_id
       });
     }
+
+    await userPersistPromise;
 
     Promise.resolve()
       .then(() => maybeSendRestNudge({ userId: user.id }))
