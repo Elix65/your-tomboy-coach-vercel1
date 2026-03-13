@@ -1626,10 +1626,17 @@ let isSending = false;
 let isRegenerating = false;
 let isResetting = false;
 let activeDefaultConversationId = null;
+let inputListenersRegistered = false;
+let chatEventListenersBound = false;
+let chatSessionInitPromise = null;
+let sendActionSequence = 0;
+
+const recentSendActions = new Map();
 
 const SEND_COOLDOWN_MS = 1200;
 const RESET_COOLDOWN_MS = 2000;
 const REGEN_COOLDOWN_MS = 2000;
+const SEND_ACTION_DEDUP_WINDOW_MS = 1800;
 
 const BUTTON_LABELS = {
   send: "Enviar",
@@ -1680,6 +1687,33 @@ function updateActionButtonsState() {
 
 function scheduleCooldownRefresh(cooldownMs) {
   window.setTimeout(updateActionButtonsState, cooldownMs + 40);
+}
+
+function createSendTraceId() {
+  sendActionSequence += 1;
+  return `send-${Date.now()}-${sendActionSequence}-${Math.random().toString(16).slice(2, 8)}`;
+}
+
+function registerRecentSendAction({ actionKey, sendTraceId }) {
+  const now = Date.now();
+  for (const [key, ts] of recentSendActions.entries()) {
+    if (now - ts > SEND_ACTION_DEDUP_WINDOW_MS) {
+      recentSendActions.delete(key);
+    }
+  }
+
+  if (recentSendActions.has(actionKey)) {
+    if (IS_DEV) {
+      console.info(`[yumiko][send-path][${sendTraceId}] action_dedup_skipped`, {
+        actionKey,
+        dedupeWindowMs: SEND_ACTION_DEDUP_WINDOW_MS
+      });
+    }
+    return false;
+  }
+
+  recentSendActions.set(actionKey, now);
+  return true;
 }
 
 const yumikoImageHealth = {
@@ -2091,10 +2125,17 @@ function cacheChatDomElements() {
 }
 
 function registerInputListeners() {
+  if (inputListenersRegistered) {
+    if (IS_DEV) console.info("[yumiko][send-path] registerInputListeners skipped (already registered)");
+    return;
+  }
+
   if (!userInput) {
     console.warn("No se encontró #user-input. El envío por Enter no estará disponible.");
     return;
   }
+
+  inputListenersRegistered = true;
 
   setYumikoState("idle");
 
@@ -2114,7 +2155,7 @@ function registerInputListeners() {
     if (e.key === "Enter") {
       e.preventDefault();
       try {
-        await handleSendAction();
+        await handleSendAction({ source: "keydown_enter" });
       } catch (error) {
         console.error("Error manejando Enter en envío:", error?.message || error);
       }
@@ -2126,12 +2167,16 @@ function registerInputListeners() {
 // ===============================
 // OBTENER USER Y CARGAR HISTORIAL
 // ===============================
-async function sendMessage(user) {
-  const sendTraceId = `send-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+async function sendMessage(user, sendActionMeta = {}) {
+  const sendTraceId = sendActionMeta.sendTraceId || createSendTraceId();
   const trace = (stage, extra = {}) => {
     if (!IS_DEV) return;
     console.info(`[yumiko][send-path][${sendTraceId}] ${stage}`, extra);
   };
+  trace("sendMessage_enter", {
+    source: sendActionMeta.source || "unknown",
+    actionKey: sendActionMeta.actionKey || null
+  });
 
   if (!userInput) {
     console.warn("sendMessage: user-input no existe en el DOM.");
@@ -2174,30 +2219,6 @@ async function sendMessage(user) {
   lastUserText = text;
   markLastActivity();
 
-  const userPersistPromise = saveMessageToSupabase({
-    userId: user.id,
-    sender: "user",
-    content: text
-  })
-    .then((persistedRow) => {
-      if (persistedRow?.id) {
-        addAndPersistMessage({
-          role: "user",
-          content: text,
-          render: false,
-          clientId: localUserMessage?.clientId || null,
-          id: persistedRow.id,
-          createdAt: persistedRow.created_at || null
-        });
-      }
-      telemetryLog("message_saved", { userId: user.id, role: "user" });
-      return persistedRow;
-    })
-    .catch((error) => {
-      trace("save_supabase_user_message_failed_non_blocking", { error: error?.message || String(error) });
-      return null;
-    });
-
   if ((sessionNudgeState.hello_nudge_pending_response || sessionNudgeState.rest_nudge_pending_response) && isDeclineMessage(text)) {
     sessionNudgeState.suppress_rest_nudges_for_session = true;
     sessionNudgeState.hello_nudge_pending_response = false;
@@ -2215,7 +2236,25 @@ async function sendMessage(user) {
   const helloNudgeSent = await maybeSendHelloNudge({ text, userId: user.id });
   if (helloNudgeSent) {
     trace("early_return_hello_nudge_sent_before_backend");
-    await userPersistPromise;
+    const persistedUser = await saveMessageToSupabase({
+      userId: user.id,
+      sender: "user",
+      content: text
+    }).catch((error) => {
+      trace("save_supabase_user_message_failed_non_blocking", { error: error?.message || String(error) });
+      return null;
+    });
+
+    addAndPersistMessage({
+      role: "user",
+      content: text,
+      render: false,
+      clientId: localUserMessage?.clientId || null,
+      id: persistedUser?.id || null,
+      createdAt: persistedUser?.created_at || null
+    });
+    telemetryLog("message_saved", { userId: user.id, role: "user" });
+
     markLastActivity();
     userInput.value = "";
     setYumikoState("idle");
@@ -2258,7 +2297,8 @@ async function sendMessage(user) {
       message: text,
       audio_mode: audioMode,
       summary: buildSummaryWithTimeContext(),
-      messages: getRecentContextMessages()
+      messages: getRecentContextMessages(),
+      client_trace_id: sendTraceId
     };
 
     if (IS_DEV) {
@@ -2302,6 +2342,23 @@ async function sendMessage(user) {
         clientId: localUserMessage?.clientId || null,
         id: data.user_message_id
       });
+      telemetryLog("message_saved", { userId: user.id, role: "user" });
+    } else {
+      trace("missing_user_message_id_backend_fallback_insert");
+      const persistedUser = await saveMessageToSupabase({
+        userId: user.id,
+        sender: "user",
+        content: text
+      });
+      addAndPersistMessage({
+        role: "user",
+        content: text,
+        render: false,
+        clientId: localUserMessage?.clientId || null,
+        id: persistedUser?.id || null,
+        createdAt: persistedUser?.created_at || null
+      });
+      telemetryLog("message_saved", { userId: user.id, role: "user" });
     }
 
     addAndPersistMessage({
@@ -2337,8 +2394,6 @@ async function sendMessage(user) {
         yumikoMessageId: data.yumiko_message_id
       });
     }
-
-    await userPersistPromise;
 
     Promise.resolve()
       .then(() => maybeSendRestNudge({ userId: user.id }))
@@ -2473,10 +2528,18 @@ async function regenerateResponse(user) {
   }
 }
 
-async function handleSendAction() {
+async function handleSendAction({ source = "unknown" } = {}) {
   if (!actionUser) return;
+
+  const text = String(userInput?.value || "").trim();
+  const sendTraceId = createSendTraceId();
+  const actionKey = `${source}::${text}`;
+  if (!registerRecentSendAction({ actionKey, sendTraceId })) {
+    return;
+  }
+
   try {
-    await sendMessage(actionUser);
+    await sendMessage(actionUser, { source, sendTraceId, actionKey });
   } catch (error) {
     console.error("Error ejecutando envío:", error?.message || error);
   }
@@ -2568,11 +2631,18 @@ function enforceAudioModeAccess() {
 }
 
 function bindChatEventListeners(user) {
+  if (chatEventListenersBound) {
+    if (IS_DEV) console.info("[yumiko][send-path] bindChatEventListeners skipped (already bound)");
+    actionUser = user;
+    return;
+  }
+
   actionUser = user;
+  chatEventListenersBound = true;
 
   if (sendBtn) {
     sendBtn.addEventListener("click", async () => {
-      await handleSendAction();
+      await handleSendAction({ source: "button_click" });
     });
   } else {
     console.warn("No se encontró #send-btn. El envío por botón no estará disponible.");
@@ -2629,46 +2699,60 @@ function bindChatEventListeners(user) {
 }
 
 async function initializeChatSession() {
-  runtimeDiagLog("chat_session_init_enter");
-  if (isInitSubsystemDisabled("DISABLE_AUTH_REHYDRATION")) {
-    runtimeDiagLog("chat_session_init_skip", { reason: "DISABLE_AUTH_REHYDRATION" });
-    return;
+  if (chatSessionInitPromise) {
+    runtimeDiagLog("chat_session_init_reuse_existing_promise");
+    return chatSessionInitPromise;
   }
 
-  const { data: { session } } = await supabaseClient.auth.getSession();
-  const user = session?.user;
-  if (!user) {
-    window.location.href = "/login.html";
-    return;
-  }
+  chatSessionInitPromise = (async () => {
+    runtimeDiagLog("chat_session_init_enter");
+    if (isInitSubsystemDisabled("DISABLE_AUTH_REHYDRATION")) {
+      runtimeDiagLog("chat_session_init_skip", { reason: "DISABLE_AUTH_REHYDRATION" });
+      return;
+    }
 
-  const shouldPollActivation = new URLSearchParams(window.location.search).get("mp_return") === "1";
-  await refreshAudioEntitlement({ withReturnPolling: shouldPollActivation });
-  enforceAudioModeAccess();
-  currentUserId = user.id;
-  activeDefaultConversationId = null;
-  if (!isInitSubsystemDisabled("DISABLE_TIME_PERSONALIZATION")) {
-    await refreshTimePersonalizationState(user.id);
-  } else {
-    runtimeDiagLog("refresh_time_personalization_skip", { reason: "DISABLE_TIME_PERSONALIZATION" });
-  }
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    const user = session?.user;
+    if (!user) {
+      window.location.href = "/login.html";
+      return;
+    }
 
-  loadLocalChatSnapshot();
-  initializeSessionNudgeState();
-  if (!isInitSubsystemDisabled("DISABLE_HISTORY_RENDER") && chatMessages.length > 0) {
-    renderChatMessagesFromState();
-    telemetryLog("render_snapshot", { userId: user.id, loadedCount: chatMessages.length });
-  }
+    const shouldPollActivation = new URLSearchParams(window.location.search).get("mp_return") === "1";
+    await refreshAudioEntitlement({ withReturnPolling: shouldPollActivation });
+    enforceAudioModeAccess();
+    currentUserId = user.id;
+    activeDefaultConversationId = null;
+    if (!isInitSubsystemDisabled("DISABLE_TIME_PERSONALIZATION")) {
+      await refreshTimePersonalizationState(user.id);
+    } else {
+      runtimeDiagLog("refresh_time_personalization_skip", { reason: "DISABLE_TIME_PERSONALIZATION" });
+    }
 
-  if (!isInitSubsystemDisabled("DISABLE_HISTORY_RENDER")) {
-    await loadChatFromSupabase({ userId: user.id });
-  } else {
-    runtimeDiagLog("chat_init_load_messages_skip", { reason: "DISABLE_HISTORY_RENDER" });
+    loadLocalChatSnapshot();
+    initializeSessionNudgeState();
+    if (!isInitSubsystemDisabled("DISABLE_HISTORY_RENDER") && chatMessages.length > 0) {
+      renderChatMessagesFromState();
+      telemetryLog("render_snapshot", { userId: user.id, loadedCount: chatMessages.length });
+    }
+
+    if (!isInitSubsystemDisabled("DISABLE_HISTORY_RENDER")) {
+      await loadChatFromSupabase({ userId: user.id });
+    } else {
+      runtimeDiagLog("chat_init_load_messages_skip", { reason: "DISABLE_HISTORY_RENDER" });
+    }
+    markLastActivity();
+    await loadActiveSkinBackground(user);
+    bindChatEventListeners(user);
+    runtimeDiagLog("chat_session_init_exit", { userId: user.id, localMessages: chatMessages.length });
+  })();
+
+  try {
+    return await chatSessionInitPromise;
+  } catch (error) {
+    chatSessionInitPromise = null;
+    throw error;
   }
-  markLastActivity();
-  await loadActiveSkinBackground(user);
-  bindChatEventListeners(user);
-  runtimeDiagLog("chat_session_init_exit", { userId: user.id, localMessages: chatMessages.length });
 }
 
 // ===============================
