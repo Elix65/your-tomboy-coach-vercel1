@@ -745,71 +745,11 @@ async function saveMessageToSupabase({ userId, sender, content }) {
     return null;
   }
 
-  let useLegacyInsert = false;
-
-  if (!activeDefaultConversationId) {
-    try {
-      const { data: existingConversation, error: existingConversationError } = await supabaseClient
-        .from("conversations")
-        .select("id,user_id,is_default")
-        .eq("user_id", userId)
-        .eq("is_default", true)
-        .maybeSingle();
-
-      if (existingConversationError) {
-        throw existingConversationError;
-      }
-
-      if (existingConversation?.id) {
-        activeDefaultConversationId = String(existingConversation.id);
-      } else {
-        const { data: createdConversation, error: createdConversationError } = await supabaseClient
-          .from("conversations")
-          .insert({
-            user_id: userId,
-            is_default: true
-          })
-          .select("id,user_id,is_default")
-          .single();
-
-        if (createdConversationError) {
-          throw createdConversationError;
-        }
-
-        activeDefaultConversationId = String(createdConversation?.id || "");
-      }
-
-    } catch (conversationError) {
-      if (isMissingConversationsTableError(conversationError)) {
-        useLegacyInsert = true;
-        console.warn("[yumiko][save-path][local] conversations table unavailable, using legacy messages-only save path", {
-          userId,
-          sender,
-          error: conversationError?.message || String(conversationError)
-        });
-      } else {
-        console.error("[yumiko][save-path][local] failed resolving default conversation", {
-          userId,
-          sender,
-          error: conversationError?.message || String(conversationError)
-        });
-        throw conversationError;
-      }
-    }
-  }
-
-  const insertPayload = useLegacyInsert
-    ? {
-        user_id: userId,
-        sender,
-        content
-      }
-    : {
-        user_id: userId,
-        conversation_id: activeDefaultConversationId,
-        sender,
-        content
-      };
+  const insertPayload = {
+    user_id: userId,
+    sender,
+    content
+  };
 
   const { data, error } = await supabaseClient
     .from("messages")
@@ -821,7 +761,6 @@ async function saveMessageToSupabase({ userId, sender, content }) {
     console.error("❌ Supabase rechazó el insert:", error.message);
     console.error("[yumiko][save-path][local] supabase insert error detail", {
       userId,
-      conversationId: activeDefaultConversationId,
       payload: insertPayload,
       error: error.message || String(error),
       code: error.code || null,
@@ -1625,7 +1564,6 @@ let hasUserMessagedThisSession = false;
 let isSending = false;
 let isRegenerating = false;
 let isResetting = false;
-let activeDefaultConversationId = null;
 let inputListenersRegistered = false;
 let chatEventListenersBound = false;
 let chatSessionInitPromise = null;
@@ -2722,7 +2660,6 @@ async function initializeChatSession() {
     await refreshAudioEntitlement({ withReturnPolling: shouldPollActivation });
     enforceAudioModeAccess();
     currentUserId = user.id;
-    activeDefaultConversationId = null;
     if (!isInitSubsystemDisabled("DISABLE_TIME_PERSONALIZATION")) {
       await refreshTimePersonalizationState(user.id);
     } else {
