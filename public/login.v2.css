@@ -309,28 +309,40 @@ body {
 
 
 .arrival-step-2 {
-  gap: 22px;
-  padding-top: 10px;
+  gap: 18px;
+  padding-top: 8px;
 }
 
 .arrival-step-2 .login-eyebrow {
-  margin-bottom: 2px;
+  margin-bottom: 1px;
+  color: rgba(223, 196, 167, 0.84);
 }
 
 .arrival-step-2 .login-title {
   margin: 0;
+  font-size: clamp(33px, 5vw, 47px);
+  line-height: 1.14;
+  font-weight: 740;
+  letter-spacing: 0.3px;
+  color: #f1e4d2;
+  text-shadow: 0 8px 26px rgba(9, 4, 12, 0.4);
 }
 
 .arrival-step-2 .login-subtitle {
   margin: 0;
-  color: rgba(255, 243, 234, 0.9);
+  color: rgba(226, 210, 193, 0.78);
+  font-size: clamp(16px, 1.8vw, 19px);
+  line-height: 1.34;
 }
 
 #btn-arrival-continue {
-  margin-top: 8px;
-  color: #fdf9ff;
-  background: linear-gradient(93deg, #5f6af1 0%, #8b5de6 52%, #9f66df 100%);
-  box-shadow: 0 10px 22px rgba(58, 49, 148, 0.45);
+  margin-top: 10px;
+  color: #f2e3ce;
+  background: linear-gradient(180deg, rgba(58, 34, 49, 0.96), rgba(37, 24, 35, 0.98));
+  border: 1px solid rgba(187, 144, 111, 0.5);
+  box-shadow:
+    0 14px 22px rgba(13, 8, 15, 0.5),
+    inset 0 1px 0 rgba(255, 229, 196, 0.12);
 }
 
 #btn-arrival-continue::before {
@@ -342,8 +354,11 @@ body {
 }
 
 #btn-arrival-continue:hover {
-  filter: brightness(1.08);
+  filter: brightness(1.04);
   transform: translateY(-1px);
+  box-shadow:
+    0 16px 24px rgba(13, 8, 15, 0.58),
+    inset 0 1px 0 rgba(255, 229, 196, 0.16);
 }
 
 #btn-arrival-continue:active {
@@ -351,8 +366,25 @@ body {
 }
 
 .arrival-step-2-copy {
-  margin-top: 6px;
-  color: rgba(255, 227, 216, 0.82);
+  margin-top: 4px;
+  color: rgba(213, 188, 166, 0.62);
+  letter-spacing: 0.01em;
+}
+
+#login-container[data-step="2"] {
+  background:
+    linear-gradient(162deg, rgba(37, 22, 33, 0.88) 0%, rgba(27, 18, 28, 0.85) 52%, rgba(20, 15, 21, 0.9) 100%),
+    rgba(20, 14, 21, 0.82);
+  border: 1px solid rgba(187, 145, 122, 0.32);
+  box-shadow:
+    0 26px 46px rgba(9, 6, 12, 0.6),
+    inset 0 1px 0 rgba(255, 226, 196, 0.08);
+  backdrop-filter: blur(16px) saturate(105%);
+}
+
+#login-container[data-step="2"]::before,
+#login-container[data-step="2"]::after {
+  opacity: 0.15;
 }
 
 
