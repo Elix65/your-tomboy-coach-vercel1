@@ -253,6 +253,54 @@ body {
   color: rgba(255, 227, 216, 0.88);
 }
 
+
+.arrival-step-2 {
+  gap: 22px;
+  padding-top: 10px;
+}
+
+.arrival-step-2 .login-eyebrow {
+  margin-bottom: 2px;
+}
+
+.arrival-step-2 .login-title {
+  margin: 0;
+}
+
+.arrival-step-2 .login-subtitle {
+  margin: 0;
+  color: rgba(255, 243, 234, 0.9);
+}
+
+#btn-arrival-continue {
+  margin-top: 8px;
+  color: #fdf9ff;
+  background: linear-gradient(93deg, #5f6af1 0%, #8b5de6 52%, #9f66df 100%);
+  box-shadow: 0 10px 22px rgba(58, 49, 148, 0.45);
+}
+
+#btn-arrival-continue::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  background: currentColor;
+  mask: center / contain no-repeat url('/svg/arrow-right.svg');
+}
+
+#btn-arrival-continue:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+#btn-arrival-continue:active {
+  transform: translateY(0);
+}
+
+.arrival-step-2-copy {
+  margin-top: 6px;
+  color: rgba(255, 227, 216, 0.82);
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

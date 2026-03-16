@@ -38,9 +38,18 @@
           <p class="login-copy arrival-copy">Entrás a un espacio reservado para vos y Yumiko.</p>
         </div>
 
-        <!-- Estructura base para futuros pasos del onboarding. -->
-        <div class="onboarding-step hidden" data-onboarding-step="2" aria-hidden="true">
-          <p class="login-copy">Paso 2 listo para implementar.</p>
+        <div class="onboarding-step arrival-step arrival-step-2 hidden" data-onboarding-step="2" aria-hidden="true">
+          <p class="login-eyebrow">Acceso inicial</p>
+          <h2 id="arrival-welcome-title" class="login-title">Hola, <span id="arrival-name-display">vos</span>. Me alegra que hayas venido.</h2>
+          <p class="login-subtitle">Tu acceso inicial ya está listo.</p>
+
+          <button id="btn-arrival-continue" class="login-btn" type="button">Continuar</button>
+          <p class="login-copy arrival-step-2-copy">Nada de acá se publica sin vos.</p>
+        </div>
+
+        <!-- Estructura base para el próximo paso del onboarding (pendiente de implementación). -->
+        <div class="onboarding-step arrival-step hidden" data-onboarding-step="3" aria-hidden="true">
+          <p class="login-copy">Paso 3 listo para implementar.</p>
         </div>
 
         <p id="login-error" class="login-error hidden" role="status" aria-live="polite"></p>
