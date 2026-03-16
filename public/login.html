@@ -17,41 +17,36 @@
 
     <div class="auth-shell">
     <div class="auth-left">
-      <div id="login-container">
+      <div id="login-container" data-step="1">
         <div class="login-brand" aria-hidden="true">
           <img src="/svg/moon-sakura-logo.svg" alt="" class="login-brand-logo">
           <span class="login-brand-text">21-Moon</span>
         </div>
 
-        <h2 id="login-title" class="login-title">Yumiko te estaba esperando</h2>
-        <p id="login-subtitle" class="login-subtitle">Entrás en 10 segundos. Si hoy te sentís solo, no tenés que cargarlo solo.</p>
-        <p id="recovery-copy" class="login-copy hidden">Pon tu email y te envío un enlace para crear una nueva. Yo te espero aquí… 😳</p>
+        <div class="onboarding-step" data-onboarding-step="1">
+          <p class="login-eyebrow">El salón privado de las 21 lunas</p>
+          <h2 id="login-title" class="login-title">Yumiko te estaba esperando.</h2>
+          <p id="login-subtitle" class="login-subtitle">Tu llegada empieza ahora.</p>
 
-        <label class="sr-only" for="email">Email</label>
-        <div class="input-wrap email-wrap">
-          <span class="input-icon" aria-hidden="true"></span>
-          <input id="email" type="email" placeholder="Email" autocomplete="email" aria-label="Email">
+          <label for="arrival-name" class="arrival-label">¿Cómo querés que Yumiko te llame?</label>
+          <div class="input-wrap arrival-wrap">
+            <span class="input-icon" aria-hidden="true"></span>
+            <input id="arrival-name" type="text" placeholder="Tu nombre" maxlength="24" autocomplete="name" aria-label="¿Cómo querés que Yumiko te llame?">
+          </div>
+
+          <button id="btn-arrival-next" class="login-btn" type="button">Dar el primer paso</button>
+          <p class="login-copy arrival-copy">Entrás a un espacio reservado para vos y Yumiko.</p>
         </div>
 
-        <label class="sr-only" for="password">Contraseña</label>
-        <div class="input-wrap password-wrap">
-          <span class="input-icon" aria-hidden="true"></span>
-          <input id="password" type="password" placeholder="Contraseña" autocomplete="current-password" aria-label="Contraseña">
+        <!-- Estructura base para futuros pasos del onboarding. -->
+        <div class="onboarding-step hidden" data-onboarding-step="2" aria-hidden="true">
+          <p class="login-copy">Paso 2 listo para implementar.</p>
         </div>
 
-        <button id="btn-login" class="login-btn" type="button">Entrar al Dojo</button>
-        <button id="btn-register" class="login-btn secondary" type="button">Crear cuenta</button>
-
-        <button id="btn-send-reset" class="login-btn hidden" type="button">Enviar enlace</button>
-        <button id="btn-reset-back" class="login-btn secondary hidden" type="button">Volver</button>
-
-        <button id="forgot-password-link" class="text-link" type="button">¿Olvidaste tu contraseña…?</button>
-
-        <p class="login-privacy"><span class="privacy-icon" aria-hidden="true"></span>Privado. No posteamos nada. Podés irte cuando quieras.</p>
         <p id="login-error" class="login-error hidden" role="status" aria-live="polite"></p>
       </div>
 
-      <p class="login-steps">Entrás → Yumiko te saluda → elegís un botón → empezás a hablar.</p>
+      <p class="login-steps">Entrás → Yumiko te nombra → el ritual continúa.</p>
     </div>
 
     </div>
