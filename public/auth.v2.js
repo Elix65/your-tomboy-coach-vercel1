@@ -110,6 +110,57 @@ const loginContainer = document.getElementById("login-container");
 let isRecoveryMode = false;
 let isRegisterMode = false;
 
+const arrivalNameInput = document.getElementById("arrival-name");
+const arrivalNextBtn = document.getElementById("btn-arrival-next");
+
+function setOnboardingStep(step) {
+  if (!loginContainer) {
+    return;
+  }
+
+  loginContainer.dataset.step = String(step);
+  const onboardingSteps = loginContainer.querySelectorAll("[data-onboarding-step]");
+  onboardingSteps.forEach((stepNode) => {
+    const isActive = stepNode.dataset.onboardingStep === String(step);
+    stepNode.classList.toggle("hidden", !isActive);
+    stepNode.setAttribute("aria-hidden", String(!isActive));
+  });
+}
+
+function validateArrivalName(rawName) {
+  const name = rawName.trim();
+
+  if (!name) {
+    return "Decime tu nombre para que Yumiko pueda recibirte.";
+  }
+
+  if (name.length < 2) {
+    return "Usá al menos 2 caracteres para tu nombre.";
+  }
+
+  if (name.length > 24) {
+    return "Tu nombre puede tener hasta 24 caracteres.";
+  }
+
+  return null;
+}
+
+function submitArrivalStep() {
+  const rawName = arrivalNameInput?.value || "";
+  const validationError = validateArrivalName(rawName);
+
+  if (validationError) {
+    showAuthMessage(validationError);
+    arrivalNameInput?.focus();
+    return;
+  }
+
+  clearAuthMessage();
+  const normalizedName = rawName.trim();
+  window.sessionStorage.setItem("yumiko_arrival_name", normalizedName);
+  setOnboardingStep(2);
+}
+
 function showAuthMessage(message, type = "error") {
   if (!errorBox) {
     return;
@@ -181,6 +232,20 @@ function setRegisterMode(enabled) {
 }
 
 setRegisterMode(false);
+
+// Pantalla 1 del onboarding premium: captura nombre y avanza de step sin autenticar.
+if (arrivalNameInput && arrivalNextBtn) {
+  setOnboardingStep(1);
+
+  arrivalNextBtn.onclick = submitArrivalStep;
+  arrivalNameInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") {
+      return;
+    }
+    event.preventDefault();
+    submitArrivalStep();
+  });
+}
 
 if (loginBtn) {
   loginBtn.onclick = async () => {

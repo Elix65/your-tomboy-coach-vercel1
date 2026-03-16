@@ -88,8 +88,8 @@ body {
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding: clamp(16px, 4vw, 28px);
+  gap: 16px;
+  padding: clamp(24px, 5vw, 36px);
   border-radius: 24px;
   background: var(--panel-bg);
   border: 1px solid var(--panel-border);
@@ -163,6 +163,66 @@ body {
   font-size: 14px;
   line-height: 1.45;
   color: #ffd9d9;
+}
+
+
+.login-eyebrow {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 219, 190, 0.94);
+}
+
+.onboarding-step {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.arrival-label {
+  margin-top: 8px;
+  font-size: 15px;
+  line-height: 1.35;
+  color: rgba(255, 237, 226, 0.96);
+}
+
+.arrival-wrap .input-icon {
+  background: currentColor;
+  mask: center / contain no-repeat url('/svg/plus.svg');
+}
+
+#arrival-name {
+  padding-left: 46px;
+}
+
+#btn-arrival-next {
+  margin-top: 10px;
+  color: #fdf9ff;
+  background: linear-gradient(93deg, #6f55f6 0%, #a45bdd 55%, #ce6eb8 100%);
+  box-shadow: 0 12px 24px rgba(72, 44, 153, 0.45);
+}
+
+#btn-arrival-next::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  background: currentColor;
+  mask: center / contain no-repeat url('/svg/arrow-right.svg');
+}
+
+#btn-arrival-next:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+#btn-arrival-next:active {
+  transform: translateY(0);
+}
+
+.arrival-copy {
+  margin-top: 2px;
+  color: rgba(255, 227, 216, 0.88);
 }
 
 .sr-only {
