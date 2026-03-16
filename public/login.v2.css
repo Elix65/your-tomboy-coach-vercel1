@@ -1,6 +1,6 @@
 :root {
-  --bg-mobile: url("https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/login-fondo-mobile.png");
-  --bg-desktop: url("https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/login-fondo-desktop.png");
+  --bg-mobile: url("https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fondo-premium.png");
+  --bg-desktop: url("https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fondo-premium.png");
   --panel-bg: rgba(25, 18, 42, 0.54);
   --panel-border: rgba(255, 230, 241, 0.3);
   --panel-shadow: 0 24px 46px rgba(11, 6, 22, 0.52);
@@ -39,8 +39,40 @@ body {
   z-index: 0;
   background-image: var(--bg-desktop);
   background-size: cover;
-  background-position: right center;
+  background-position: center center;
   background-repeat: no-repeat;
+}
+
+.bg-scene::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 22% 34%, rgba(15, 8, 11, 0.14), transparent 42%),
+    linear-gradient(102deg, rgba(12, 8, 12, 0.7) 16%, rgba(15, 9, 14, 0.4) 44%, rgba(18, 10, 15, 0.22) 68%, rgba(13, 8, 12, 0.52) 100%);
+  pointer-events: none;
+}
+
+.yumiko-layer {
+  position: absolute;
+  z-index: 1;
+  right: clamp(18px, 4.2vw, 72px);
+  bottom: 0;
+  width: min(42vw, 700px);
+  height: min(94vh, 960px);
+  pointer-events: none;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-end;
+}
+
+.yumiko-figure {
+  width: auto;
+  height: 100%;
+  max-width: 100%;
+  object-fit: contain;
+  object-position: bottom right;
+  filter: drop-shadow(0 18px 38px rgba(8, 4, 10, 0.52));
 }
 
 .login-page::before {
@@ -48,11 +80,7 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background:
-    radial-gradient(circle at 12% 17%, rgba(255, 158, 128, 0.18), transparent 38%),
-    radial-gradient(circle at 93% 12%, rgba(141, 114, 242, 0.2), transparent 35%),
-    linear-gradient(140deg, rgba(8, 7, 18, 0.58) 2%, rgba(17, 11, 31, 0.28) 54%, rgba(19, 11, 26, 0.5) 100%);
-  backdrop-filter: blur(1.3px);
+  background: linear-gradient(180deg, rgba(6, 4, 8, 0.18), rgba(6, 4, 8, 0.38));
   z-index: 0;
 }
 
@@ -857,7 +885,11 @@ body {
 @media (max-width: 640px) {
   .bg-scene {
     background-image: var(--bg-mobile);
-    background-position: 55% 26%;
+    background-position: 62% 30%;
+  }
+
+  .yumiko-layer {
+    display: none;
   }
 
   .auth-shell {
@@ -888,7 +920,14 @@ body {
 @media (min-width: 641px) and (max-width: 1024px) {
   .bg-scene {
     background-image: var(--bg-mobile);
-    background-position: 58% 28%;
+    background-position: 60% 30%;
+  }
+
+  .yumiko-layer {
+    right: clamp(-120px, -8vw, -40px);
+    width: min(58vw, 540px);
+    height: min(78vh, 760px);
+    opacity: 0.82;
   }
 
   .auth-shell {
@@ -907,20 +946,27 @@ body {
 @media (min-width: 1025px) {
   .bg-scene {
     background-image: var(--bg-desktop);
-    background-position: 68% 38%;
+    background-position: center center;
+  }
+
+  .yumiko-layer {
+    right: clamp(18px, 4.2vw, 72px);
+    width: min(42vw, 720px);
+    height: min(94vh, 980px);
   }
 }
 
 @media (min-width: 1400px) {
-  .bg-scene {
-    background-position: 75% 40%;
+  .yumiko-layer {
+    right: clamp(28px, 5vw, 110px);
+    width: min(45vw, 840px);
   }
 }
 
 @media (min-width: 1025px) {
   .auth-shell {
     min-height: 100dvh;
-    width: min(1200px, 100%);
+    width: min(1320px, 100%);
     display: grid;
     align-items: center;
     justify-items: start;
@@ -930,15 +976,16 @@ body {
 
   .auth-left {
     align-items: flex-start;
-    padding-left: clamp(12px, 3.2vw, 48px);
+    padding-left: clamp(24px, 4.8vw, 92px);
   }
 
   #login-container {
-    width: min(560px, 92vw);
+    width: min(600px, 46vw);
   }
 
   .login-steps {
     text-align: left;
+    max-width: min(560px, 44vw);
   }
 }
 
