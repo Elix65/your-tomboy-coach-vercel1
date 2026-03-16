@@ -301,6 +301,62 @@ body {
   color: rgba(255, 227, 216, 0.82);
 }
 
+
+.arrival-step-3 {
+  gap: 16px;
+  padding-top: 8px;
+}
+
+.arrival-auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.arrival-step-3 .arrival-label {
+  margin-top: 2px;
+  font-size: 14px;
+  color: rgba(255, 237, 226, 0.9);
+}
+
+.arrival-step-3 .email-wrap,
+.arrival-step-3 .password-wrap {
+  margin-top: -4px;
+}
+
+#btn-arrival-save {
+  margin-top: 8px;
+  color: #fefcff;
+  background: linear-gradient(96deg, #4c4f7d 0%, #5b4f87 48%, #735390 100%);
+  box-shadow: 0 10px 20px rgba(29, 26, 59, 0.45);
+}
+
+#btn-arrival-save::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  background: currentColor;
+  mask: center / contain no-repeat url('/svg/lock.svg');
+}
+
+#btn-arrival-save:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+#btn-arrival-save:active {
+  transform: translateY(0);
+}
+
+.arrival-step-3-copy {
+  color: rgba(255, 227, 216, 0.8);
+}
+
+.arrival-step-4 {
+  gap: 14px;
+  padding-top: 8px;
+}
+
 .sr-only {
   position: absolute;
   width: 1px;
