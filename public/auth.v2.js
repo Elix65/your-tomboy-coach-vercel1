@@ -112,6 +112,8 @@ let isRegisterMode = false;
 
 const arrivalNameInput = document.getElementById("arrival-name");
 const arrivalNextBtn = document.getElementById("btn-arrival-next");
+const arrivalContinueBtn = document.getElementById("btn-arrival-continue");
+const arrivalNameDisplay = document.getElementById("arrival-name-display");
 
 function setOnboardingStep(step) {
   if (!loginContainer) {
@@ -159,6 +161,33 @@ function submitArrivalStep() {
   const normalizedName = rawName.trim();
   window.sessionStorage.setItem("yumiko_arrival_name", normalizedName);
   setOnboardingStep(2);
+}
+
+
+function getStoredArrivalName() {
+  return (window.sessionStorage.getItem("yumiko_arrival_name") || "").trim();
+}
+
+function updateArrivalWelcomeName() {
+  const storedName = getStoredArrivalName();
+
+  if (!storedName) {
+    // Si no hay nombre, no dejamos al usuario en step 2.
+    setOnboardingStep(1);
+    arrivalNameInput?.focus();
+    return false;
+  }
+
+  if (arrivalNameDisplay) {
+    arrivalNameDisplay.textContent = storedName;
+  }
+
+  return true;
+}
+
+function submitArrivalStepTwo() {
+  clearAuthMessage();
+  setOnboardingStep(3);
 }
 
 function showAuthMessage(message, type = "error") {
@@ -244,6 +273,43 @@ if (arrivalNameInput && arrivalNextBtn) {
     }
     event.preventDefault();
     submitArrivalStep();
+  });
+}
+
+if (arrivalContinueBtn) {
+  arrivalContinueBtn.onclick = submitArrivalStepTwo;
+
+  // Enter también avanza cuando el foco está dentro del step 2.
+  const onboardingStepTwo = loginContainer?.querySelector('[data-onboarding-step="2"]');
+  onboardingStepTwo?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.defaultPrevented) {
+      return;
+    }
+
+    const activeElement = document.activeElement;
+    if (activeElement && !onboardingStepTwo.contains(activeElement)) {
+      return;
+    }
+
+    event.preventDefault();
+    submitArrivalStepTwo();
+  });
+}
+
+if (loginContainer) {
+  const observer = new MutationObserver(() => {
+    if (loginContainer.dataset.step !== "2") {
+      return;
+    }
+
+    if (updateArrivalWelcomeName()) {
+      arrivalContinueBtn?.focus();
+    }
+  });
+
+  observer.observe(loginContainer, {
+    attributes: true,
+    attributeFilter: ["data-step"]
   });
 }
 
