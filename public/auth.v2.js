@@ -114,6 +114,10 @@ const arrivalNameInput = document.getElementById("arrival-name");
 const arrivalNextBtn = document.getElementById("btn-arrival-next");
 const arrivalContinueBtn = document.getElementById("btn-arrival-continue");
 const arrivalNameDisplay = document.getElementById("arrival-name-display");
+const arrivalAuthForm = document.getElementById("arrival-auth-form");
+const arrivalEmailInput = document.getElementById("arrival-email");
+const arrivalPasswordInput = document.getElementById("arrival-password");
+const arrivalSaveBtn = document.getElementById("btn-arrival-save");
 
 function setOnboardingStep(step) {
   if (!loginContainer) {
@@ -188,6 +192,59 @@ function updateArrivalWelcomeName() {
 function submitArrivalStepTwo() {
   clearAuthMessage();
   setOnboardingStep(3);
+}
+
+async function runPasswordAuth({ email, password, registerMode = false }) {
+  const authResponse = registerMode
+    ? await supabaseClient.auth.signUp({ email, password })
+    : await supabaseClient.auth.signInWithPassword({ email, password });
+
+  if (authResponse.error) {
+    return { error: authResponse.error };
+  }
+
+  return { error: null };
+}
+
+async function submitArrivalStepThree() {
+  const email = arrivalEmailInput?.value.trim() || "";
+  const password = arrivalPasswordInput?.value || "";
+
+  if (!email || !password) {
+    showAuthMessage("Completá email y contraseña para guardar tu llegada.");
+    if (!email) {
+      arrivalEmailInput?.focus();
+      return;
+    }
+    arrivalPasswordInput?.focus();
+    return;
+  }
+
+  clearAuthMessage();
+
+  if (arrivalSaveBtn) {
+    arrivalSaveBtn.disabled = true;
+  }
+
+  try {
+    const { error } = await runPasswordAuth({ email, password });
+
+    if (error) {
+      console.error("Arrival auth error:", error.message);
+      showAuthMessage(error.message);
+      return;
+    }
+
+    // Dejamos listo el siguiente paso del onboarding premium.
+    setOnboardingStep(4);
+  } catch (error) {
+    console.error("Arrival auth error:", error?.message || error);
+    showAuthMessage(error?.message || "Uhm… algo falló. ¿Revisamos e intentamos de nuevo? 🥺");
+  } finally {
+    if (arrivalSaveBtn) {
+      arrivalSaveBtn.disabled = false;
+    }
+  }
 }
 
 function showAuthMessage(message, type = "error") {
@@ -298,12 +355,22 @@ if (arrivalContinueBtn) {
 
 if (loginContainer) {
   const observer = new MutationObserver(() => {
-    if (loginContainer.dataset.step !== "2") {
+    const currentStep = loginContainer.dataset.step;
+
+    if (currentStep === "2") {
+      if (updateArrivalWelcomeName()) {
+        arrivalContinueBtn?.focus();
+      }
       return;
     }
 
-    if (updateArrivalWelcomeName()) {
-      arrivalContinueBtn?.focus();
+    if (currentStep === "3") {
+      if (!getStoredArrivalName()) {
+        setOnboardingStep(1);
+        arrivalNameInput?.focus();
+        return;
+      }
+      arrivalEmailInput?.focus();
     }
   });
 
@@ -313,21 +380,24 @@ if (loginContainer) {
   });
 }
 
+if (arrivalAuthForm) {
+  arrivalAuthForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await submitArrivalStepThree();
+  });
+}
+
 if (loginBtn) {
   loginBtn.onclick = async () => {
     const email = emailInput?.value.trim() || "";
     const password = passwordInput?.value.trim() || "";
 
     try {
-      const { error } = isRegisterMode
-        ? await supabaseClient.auth.signUp({
-          email,
-          password
-        })
-        : await supabaseClient.auth.signInWithPassword({
-          email,
-          password
-        });
+      const { error } = await runPasswordAuth({
+        email,
+        password,
+        registerMode: isRegisterMode
+      });
 
       if (error) {
         console.error(isRegisterMode ? "Register error:" : "Login error:", error.message);

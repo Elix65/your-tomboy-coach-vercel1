@@ -47,9 +47,34 @@
           <p class="login-copy arrival-step-2-copy">Nada de acá se publica sin vos.</p>
         </div>
 
-        <!-- Estructura base para el próximo paso del onboarding (pendiente de implementación). -->
-        <div class="onboarding-step arrival-step hidden" data-onboarding-step="3" aria-hidden="true">
-          <p class="login-copy">Paso 3 listo para implementar.</p>
+        <div class="onboarding-step arrival-step arrival-step-3 hidden" data-onboarding-step="3" aria-hidden="true">
+          <p class="login-eyebrow">Guardar tu llegada</p>
+          <h2 class="login-title">Volvé cuando quieras.</h2>
+          <p class="login-subtitle">Guardá tu acceso para volver al salón privado de las 21 lunas.</p>
+
+          <form id="arrival-auth-form" class="arrival-auth-form" novalidate>
+            <label for="arrival-email" class="arrival-label">Email</label>
+            <div class="input-wrap email-wrap">
+              <span class="input-icon" aria-hidden="true"></span>
+              <input id="arrival-email" type="email" placeholder="tu@email.com" autocomplete="email" aria-label="Email">
+            </div>
+
+            <label for="arrival-password" class="arrival-label">Contraseña</label>
+            <div class="input-wrap password-wrap">
+              <span class="input-icon" aria-hidden="true"></span>
+              <input id="arrival-password" type="password" placeholder="••••••••" autocomplete="current-password" aria-label="Contraseña">
+            </div>
+
+            <button id="btn-arrival-save" class="login-btn" type="submit">Guardar mi llegada</button>
+          </form>
+
+          <p class="login-copy arrival-step-3-copy">Nada de acá se publica sin vos.</p>
+        </div>
+
+        <div class="onboarding-step arrival-step arrival-step-4 hidden" data-onboarding-step="4" aria-hidden="true">
+          <p class="login-eyebrow">Llegada guardada</p>
+          <h2 class="login-title">Listo. Tu acceso quedó protegido.</h2>
+          <p class="login-subtitle">En el próximo paso activamos el ritual final.</p>
         </div>
 
         <p id="login-error" class="login-error hidden" role="status" aria-live="polite"></p>
