@@ -303,29 +303,37 @@ body {
 
 
 .arrival-step-3 {
-  gap: 16px;
-  padding-top: 8px;
+  gap: 22px;
+  padding-top: 10px;
+}
+
+.arrival-step-3 .login-title {
+  font-size: clamp(30px, 4.8vw, 44px);
+}
+
+.arrival-step-3 .login-subtitle {
+  color: rgba(255, 243, 234, 0.9);
 }
 
 .arrival-auth-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .arrival-step-3 .arrival-label {
-  margin-top: 2px;
+  margin-top: 8px;
   font-size: 14px;
   color: rgba(255, 237, 226, 0.9);
 }
 
 .arrival-step-3 .email-wrap,
 .arrival-step-3 .password-wrap {
-  margin-top: -4px;
+  margin-top: 0;
 }
 
 #btn-arrival-save {
-  margin-top: 8px;
+  margin-top: 12px;
   color: #fefcff;
   background: linear-gradient(96deg, #4c4f7d 0%, #5b4f87 48%, #735390 100%);
   box-shadow: 0 10px 20px rgba(29, 26, 59, 0.45);
@@ -349,12 +357,50 @@ body {
 }
 
 .arrival-step-3-copy {
+  margin-top: 10px;
   color: rgba(255, 227, 216, 0.8);
 }
 
 .arrival-step-4 {
-  gap: 14px;
-  padding-top: 8px;
+  gap: 18px;
+  padding-top: 14px;
+}
+
+.arrival-step-4 .login-title {
+  font-size: clamp(30px, 4.6vw, 42px);
+}
+
+.arrival-step-4 .login-subtitle {
+  color: rgba(255, 243, 234, 0.92);
+}
+
+#btn-arrival-enter {
+  margin-top: 8px;
+  color: #fdf9ff;
+  background: linear-gradient(93deg, #5f6af1 0%, #8b5de6 52%, #9f66df 100%);
+  box-shadow: 0 10px 22px rgba(58, 49, 148, 0.45);
+}
+
+#btn-arrival-enter::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  background: currentColor;
+  mask: center / contain no-repeat url('/svg/arrow-right.svg');
+}
+
+#btn-arrival-enter:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+#btn-arrival-enter:active {
+  transform: translateY(0);
+}
+
+.arrival-step-4-copy {
+  margin-top: 4px;
+  color: rgba(255, 227, 216, 0.82);
 }
 
 .sr-only {
