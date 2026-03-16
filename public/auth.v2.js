@@ -118,6 +118,7 @@ const arrivalAuthForm = document.getElementById("arrival-auth-form");
 const arrivalEmailInput = document.getElementById("arrival-email");
 const arrivalPasswordInput = document.getElementById("arrival-password");
 const arrivalSaveBtn = document.getElementById("btn-arrival-save");
+const arrivalEnterBtn = document.getElementById("btn-arrival-enter");
 
 function setOnboardingStep(step) {
   if (!loginContainer) {
@@ -247,6 +248,15 @@ async function submitArrivalStepThree() {
   }
 }
 
+
+function submitArrivalStepFour() {
+  clearAuthMessage();
+  sessionStorage.setItem("show_entry_choice", "1");
+  const safeReturnTo = getSafeReturnTo();
+  goWithTransition(safeReturnTo || "index.html");
+  goWithTransition(postLoginRedirectPath);
+}
+
 function showAuthMessage(message, type = "error") {
   if (!errorBox) {
     return;
@@ -371,6 +381,11 @@ if (loginContainer) {
         return;
       }
       arrivalEmailInput?.focus();
+      return;
+    }
+
+    if (currentStep === "4") {
+      arrivalEnterBtn?.focus();
     }
   });
 
@@ -384,6 +399,25 @@ if (arrivalAuthForm) {
   arrivalAuthForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     await submitArrivalStepThree();
+  });
+}
+
+if (arrivalEnterBtn) {
+  arrivalEnterBtn.onclick = submitArrivalStepFour;
+
+  const onboardingStepFour = loginContainer?.querySelector('[data-onboarding-step="4"]');
+  onboardingStepFour?.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.defaultPrevented) {
+      return;
+    }
+
+    const activeElement = document.activeElement;
+    if (activeElement && !onboardingStepFour.contains(activeElement)) {
+      return;
+    }
+
+    event.preventDefault();
+    submitArrivalStepFour();
   });
 }
 
