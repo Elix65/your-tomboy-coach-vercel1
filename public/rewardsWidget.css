@@ -1,3 +1,19 @@
+/* 21-Moon · Rewards tokens (inherits global tokens when present) */
+:root {
+  --moon-color-surface-deep: rgba(19, 13, 19, 0.88);
+  --moon-color-text-primary: #f3eadf;
+  --moon-color-text-secondary: rgba(230, 216, 203, 0.76);
+  --moon-color-border-subtle: rgba(222, 192, 168, 0.16);
+  --moon-radius-md: 16px;
+  --moon-radius-sm: 12px;
+  --moon-blur-md: 10px;
+  --moon-space-2: 8px;
+  --moon-space-3: 12px;
+  --moon-glow-accent: 0 0 18px rgba(177, 132, 95, 0.28);
+  --moon-timing-base: 260ms;
+  --moon-ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 /* Ajuste de posición principal del widget (desktop): modifica top/left según necesidad. */
 .daily-chat-rewards-widget {
   position: fixed;
@@ -12,16 +28,16 @@
   width: clamp(280px, 25vw, 320px);
   max-width: 320px;
   min-height: 230px;
-  padding: 12px 12px 10px;
-  border-radius: 16px;
-  border: 1px solid rgba(222, 192, 168, 0.16);
+  padding: var(--moon-space-3) var(--moon-space-3) 10px;
+  border-radius: var(--moon-radius-md);
+  border: 1px solid var(--moon-color-border-subtle);
   background: linear-gradient(176deg, rgba(24, 16, 24, 0.9) 0%, rgba(13, 10, 17, 0.92) 100%);
   box-shadow:
     0 10px 26px rgba(0, 0, 0, 0.4),
     inset 0 0 0 1px rgba(248, 227, 210, 0.04);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  color: #f2e8de;
+  backdrop-filter: blur(var(--moon-blur-md));
+  -webkit-backdrop-filter: blur(var(--moon-blur-md));
+  color: var(--moon-color-text-primary);
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -57,7 +73,7 @@
   flex-direction: column;
   gap: 6px;
   border: 1px solid rgba(231, 201, 177, 0.12);
-  border-radius: 12px;
+  border-radius: var(--moon-radius-sm);
   overflow: visible;
   background: rgba(14, 10, 18, 0.44);
 }
@@ -68,7 +84,7 @@
   justify-content: space-between;
   gap: 8px;
   min-height: 28px;
-  padding: 6px 8px;
+  padding: 6px var(--moon-space-2);
   border-bottom: 0;
   font-size: 14px;
   line-height: 1.2;
@@ -118,7 +134,7 @@
   width: 100%;
   min-width: 120px;
   max-width: 160px;
-  border-radius: 12px;
+  border-radius: var(--moon-radius-sm);
   border: 1px solid rgba(228, 197, 173, 0.13);
   background: rgba(24, 15, 22, 0.72);
   display: flex;
@@ -161,7 +177,7 @@
   box-shadow:
     0 0 18px rgba(177, 132, 95, 0.28),
     inset 0 0 12px rgba(199, 157, 120, 0.2);
-  animation: rewardGiftPulse 2.8s ease-in-out infinite;
+  animation: rewardGiftPulse 2.8s var(--moon-ease-premium) infinite;
 }
 
 @keyframes rewardGiftPulse {
@@ -188,7 +204,7 @@
   max-height: 0;
   opacity: 0;
   overflow: hidden;
-  transition: max-height 200ms ease, opacity 200ms ease;
+  transition: max-height var(--moon-timing-base) ease, opacity var(--moon-timing-base) ease;
 }
 
 #mobile-menu-overlay .rewards-collapsible.is-open {
