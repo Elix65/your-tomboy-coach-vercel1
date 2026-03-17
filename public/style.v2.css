@@ -28,11 +28,26 @@ body {
   font-family: 'Segoe UI', sans-serif;
   color: white;
   background:
-    radial-gradient(1280px 760px at 68% 18%, var(--accentR), transparent 62%),
-    radial-gradient(980px 760px at 16% 82%, var(--accentB), transparent 58%),
-    radial-gradient(1400px 900px at 50% 40%, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.52) 72%, rgba(0, 0, 0, 0.78) 100%),
+    linear-gradient(102deg, rgba(7, 5, 8, 0.66) 44%, rgba(7, 5, 8, 0.84) 74%, rgba(6, 5, 7, 0.92) 100%),
+    radial-gradient(1000px 700px at 13% 24%, rgba(179, 121, 116, 0.15), transparent 62%),
+    radial-gradient(860px 620px at 18% 82%, rgba(98, 70, 102, 0.2), transparent 68%),
+    url('https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fondo-premium.png'),
     linear-gradient(180deg, var(--bg1), var(--bg0));
+  background-size: auto, auto, auto, cover, cover;
+  background-position: center, 13% 24%, 20% 80%, 16% center, center;
+  background-repeat: no-repeat;
   background-attachment: fixed;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(1300px 780px at 22% 45%, rgba(0, 0, 0, 0) 48%, rgba(0, 0, 0, 0.42) 100%),
+    linear-gradient(100deg, rgba(0, 0, 0, 0) 30%, rgba(8, 6, 10, 0.3) 58%, rgba(8, 6, 10, 0.44) 100%);
 }
 
 body::before {
