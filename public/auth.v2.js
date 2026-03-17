@@ -189,7 +189,11 @@ async function setOnboardingStep(step) {
   try {
     if (nextStepNode) {
       nextStepNode.classList.remove("step-exit");
-      nextStepNode.classList.add("step-enter");
+      if (!prefersReducedMotion) {
+        nextStepNode.classList.add("step-enter");
+      } else {
+        nextStepNode.classList.remove("step-enter");
+      }
       nextStepNode.classList.remove("hidden");
       nextStepNode.setAttribute("aria-hidden", "true");
       nextStepNode.dataset.active = "false";
@@ -210,6 +214,8 @@ async function setOnboardingStep(step) {
       void nextStepNode.offsetWidth;
       nextStepNode.classList.remove("step-enter");
       await sleep(STEP_TRANSITION_MS);
+    } else if (nextStepNode) {
+      nextStepNode.classList.remove("step-enter");
     }
   } finally {
     if (onboardingStage) {
