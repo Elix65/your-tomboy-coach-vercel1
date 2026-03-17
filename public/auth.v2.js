@@ -180,6 +180,7 @@ async function setOnboardingStep(step) {
 
   if (onboardingStage && currentStepNode && nextStepNode) {
     const stageHeight = Math.max(currentStepNode.offsetHeight, nextStepNode.offsetHeight);
+    onboardingStage.style.height = `${stageHeight}px`;
     onboardingStage.style.minHeight = `${stageHeight}px`;
   }
 
@@ -194,7 +195,6 @@ async function setOnboardingStep(step) {
       } else {
         nextStepNode.classList.remove("step-enter");
       }
-      nextStepNode.classList.remove("hidden");
       nextStepNode.setAttribute("aria-hidden", "true");
       nextStepNode.dataset.active = "false";
     }
@@ -219,6 +219,7 @@ async function setOnboardingStep(step) {
     }
   } finally {
     if (onboardingStage) {
+      onboardingStage.style.height = "";
       onboardingStage.style.minHeight = "";
     }
 
