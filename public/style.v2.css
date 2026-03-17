@@ -31,7 +31,7 @@ body {
     linear-gradient(102deg, rgba(7, 5, 8, 0.66) 44%, rgba(7, 5, 8, 0.84) 74%, rgba(6, 5, 7, 0.92) 100%),
     radial-gradient(1000px 700px at 13% 24%, rgba(179, 121, 116, 0.15), transparent 62%),
     radial-gradient(860px 620px at 18% 82%, rgba(98, 70, 102, 0.2), transparent 68%),
-    url('https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fondo-premium.png'),
+    url('https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fondo-index.png'),
     linear-gradient(180deg, var(--bg1), var(--bg0));
   background-size: auto, auto, auto, cover, cover;
   background-position: center, 13% 24%, 20% 80%, 16% center, center;
