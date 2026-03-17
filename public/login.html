@@ -30,61 +30,63 @@
           <span class="login-brand-text">21-Moon</span>
         </div>
 
-        <div class="onboarding-step" data-onboarding-step="1">
-          <p class="login-eyebrow">El salón privado de las 21 lunas</p>
-          <h2 id="login-title" class="login-title">Yumiko te estaba esperando.</h2>
-          <p id="login-subtitle" class="login-subtitle">Tu llegada empieza ahora.</p>
+        <div class="onboarding-stage" id="onboarding-stage">
+          <div class="onboarding-step" data-onboarding-step="1">
+            <p class="login-eyebrow">El salón privado de las 21 lunas</p>
+            <h2 id="login-title" class="login-title">Yumiko te estaba esperando.</h2>
+            <p id="login-subtitle" class="login-subtitle">Tu llegada empieza ahora.</p>
 
-          <label for="arrival-name" class="arrival-label">¿Cómo querés que Yumiko te llame?</label>
-          <div class="input-wrap arrival-wrap">
-            <span class="input-icon" aria-hidden="true"></span>
-            <input id="arrival-name" type="text" placeholder="Tu nombre" maxlength="24" autocomplete="name" aria-label="¿Cómo querés que Yumiko te llame?">
+            <label for="arrival-name" class="arrival-label">¿Cómo querés que Yumiko te llame?</label>
+            <div class="input-wrap arrival-wrap">
+              <span class="input-icon" aria-hidden="true"></span>
+              <input id="arrival-name" type="text" placeholder="Tu nombre" maxlength="24" autocomplete="name" aria-label="¿Cómo querés que Yumiko te llame?">
+            </div>
+
+            <button id="btn-arrival-next" class="login-btn" type="button">Dar el primer paso</button>
+            <p class="login-copy arrival-copy">Entrás a un espacio reservado para vos y Yumiko.</p>
           </div>
 
-          <button id="btn-arrival-next" class="login-btn" type="button">Dar el primer paso</button>
-          <p class="login-copy arrival-copy">Entrás a un espacio reservado para vos y Yumiko.</p>
-        </div>
+          <div class="onboarding-step arrival-step arrival-step-2 hidden" data-onboarding-step="2" aria-hidden="true">
+            <p class="login-eyebrow">Acceso inicial</p>
+            <h2 id="arrival-welcome-title" class="login-title">Hola, <span id="arrival-name-display">vos</span>. Me alegra que hayas venido.</h2>
+            <p class="login-subtitle">Tu acceso inicial ya está listo.</p>
 
-        <div class="onboarding-step arrival-step arrival-step-2 hidden" data-onboarding-step="2" aria-hidden="true">
-          <p class="login-eyebrow">Acceso inicial</p>
-          <h2 id="arrival-welcome-title" class="login-title">Hola, <span id="arrival-name-display">vos</span>. Me alegra que hayas venido.</h2>
-          <p class="login-subtitle">Tu acceso inicial ya está listo.</p>
+            <button id="btn-arrival-continue" class="login-btn" type="button">Continuar</button>
+            <p class="login-copy arrival-step-2-copy">Nada de acá se publica sin vos.</p>
+          </div>
 
-          <button id="btn-arrival-continue" class="login-btn" type="button">Continuar</button>
-          <p class="login-copy arrival-step-2-copy">Nada de acá se publica sin vos.</p>
-        </div>
+          <div class="onboarding-step arrival-step arrival-step-3 hidden" data-onboarding-step="3" aria-hidden="true">
+            <p class="login-eyebrow">Guardar tu llegada</p>
+            <h2 class="login-title">Volvé cuando quieras.</h2>
+            <p class="login-subtitle">Guardá tu acceso para volver al salón privado de las 21 lunas.</p>
 
-        <div class="onboarding-step arrival-step arrival-step-3 hidden" data-onboarding-step="3" aria-hidden="true">
-          <p class="login-eyebrow">Guardar tu llegada</p>
-          <h2 class="login-title">Volvé cuando quieras.</h2>
-          <p class="login-subtitle">Guardá tu acceso para volver al salón privado de las 21 lunas.</p>
+            <form id="arrival-auth-form" class="arrival-auth-form" novalidate>
+              <label for="arrival-email" class="arrival-label">Email</label>
+              <div class="input-wrap email-wrap">
+                <span class="input-icon" aria-hidden="true"></span>
+                <input id="arrival-email" type="email" placeholder="tu@email.com" autocomplete="email" aria-label="Email">
+              </div>
 
-          <form id="arrival-auth-form" class="arrival-auth-form" novalidate>
-            <label for="arrival-email" class="arrival-label">Email</label>
-            <div class="input-wrap email-wrap">
-              <span class="input-icon" aria-hidden="true"></span>
-              <input id="arrival-email" type="email" placeholder="tu@email.com" autocomplete="email" aria-label="Email">
-            </div>
+              <label for="arrival-password" class="arrival-label">Contraseña</label>
+              <div class="input-wrap password-wrap">
+                <span class="input-icon" aria-hidden="true"></span>
+                <input id="arrival-password" type="password" placeholder="••••••••" autocomplete="current-password" aria-label="Contraseña">
+              </div>
 
-            <label for="arrival-password" class="arrival-label">Contraseña</label>
-            <div class="input-wrap password-wrap">
-              <span class="input-icon" aria-hidden="true"></span>
-              <input id="arrival-password" type="password" placeholder="••••••••" autocomplete="current-password" aria-label="Contraseña">
-            </div>
+              <button id="btn-arrival-save" class="login-btn" type="submit">Guardar mi llegada</button>
+            </form>
 
-            <button id="btn-arrival-save" class="login-btn" type="submit">Guardar mi llegada</button>
-          </form>
+            <p class="login-copy arrival-step-3-copy">Nada de acá se publica sin vos.</p>
+          </div>
 
-          <p class="login-copy arrival-step-3-copy">Nada de acá se publica sin vos.</p>
-        </div>
+          <div class="onboarding-step arrival-step arrival-step-4 hidden" data-onboarding-step="4" aria-hidden="true">
+            <p class="login-eyebrow">Umbral</p>
+            <h2 class="login-title">Ya estás acá.</h2>
+            <p class="login-subtitle">Podemos empezar.</p>
 
-        <div class="onboarding-step arrival-step arrival-step-4 hidden" data-onboarding-step="4" aria-hidden="true">
-          <p class="login-eyebrow">Umbral</p>
-          <h2 class="login-title">Ya estás acá.</h2>
-          <p class="login-subtitle">Podemos empezar.</p>
-
-          <button id="btn-arrival-enter" class="login-btn" type="button">Entrar al salón</button>
-          <p class="login-copy arrival-step-4-copy">Nada de acá se publica sin vos.</p>
+            <button id="btn-arrival-enter" class="login-btn" type="button">Entrar al salón</button>
+            <p class="login-copy arrival-step-4-copy">Nada de acá se publica sin vos.</p>
+          </div>
         </div>
 
         <p id="login-error" class="login-error hidden" role="status" aria-live="polite"></p>
