@@ -120,6 +120,18 @@ const arrivalPasswordInput = document.getElementById("arrival-password");
 const arrivalSaveBtn = document.getElementById("btn-arrival-save");
 const arrivalEnterBtn = document.getElementById("btn-arrival-enter");
 
+const loginSteps = document.getElementById("login-steps");
+const loginStepsText = document.getElementById("login-steps-text");
+
+const RITUAL_LINES_BY_STEP = {
+  "1": "Tu llegada empieza ahora.",
+  "2": "Yumiko ya sabe cómo llamarte.",
+  "3": "Tu regreso quedará guardado.",
+  "4": "El salón ya está listo para vos."
+};
+
+const RITUAL_TEXT_TRANSITION_MS = 200;
+
 const STEP_TRANSITION_MS = 260;
 let isStepTransitioning = false;
 
@@ -162,6 +174,8 @@ async function setOnboardingStep(step) {
     }
 
     loginContainer.dataset.step = targetStep;
+    await syncRitualLine(targetStep);
+
     const onboardingSteps = loginContainer.querySelectorAll("[data-onboarding-step]");
     onboardingSteps.forEach((stepNode) => {
       const isActive = stepNode.dataset.onboardingStep === targetStep;
@@ -181,6 +195,33 @@ async function setOnboardingStep(step) {
     loginContainer.classList.remove("is-transitioning");
     isStepTransitioning = false;
   }
+}
+
+async function syncRitualLine(step) {
+  if (!loginSteps || !loginStepsText) {
+    return;
+  }
+
+  const targetStep = String(step);
+  const nextLine = RITUAL_LINES_BY_STEP[targetStep];
+
+  if (!nextLine) {
+    return;
+  }
+
+  const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+  if (prefersReducedMotion) {
+    loginStepsText.textContent = nextLine;
+    loginSteps.dataset.step = targetStep;
+    return;
+  }
+
+  loginStepsText.classList.add("is-changing");
+  await sleep(RITUAL_TEXT_TRANSITION_MS);
+  loginStepsText.textContent = nextLine;
+  loginSteps.dataset.step = targetStep;
+  loginStepsText.classList.remove("is-changing");
 }
 
 function validateArrivalName(rawName) {
@@ -377,6 +418,7 @@ function setRegisterMode(enabled) {
 }
 
 setRegisterMode(false);
+void syncRitualLine(loginContainer?.dataset.step || "1");
 
 // Pantalla 1 del onboarding premium: captura nombre y avanza de step sin autenticar.
 if (arrivalNameInput && arrivalNextBtn) {
