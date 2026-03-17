@@ -120,18 +120,67 @@ const arrivalPasswordInput = document.getElementById("arrival-password");
 const arrivalSaveBtn = document.getElementById("btn-arrival-save");
 const arrivalEnterBtn = document.getElementById("btn-arrival-enter");
 
-function setOnboardingStep(step) {
+const STEP_TRANSITION_MS = 260;
+let isStepTransitioning = false;
+
+function sleep(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+async function setOnboardingStep(step) {
   if (!loginContainer) {
     return;
   }
 
-  loginContainer.dataset.step = String(step);
-  const onboardingSteps = loginContainer.querySelectorAll("[data-onboarding-step]");
-  onboardingSteps.forEach((stepNode) => {
-    const isActive = stepNode.dataset.onboardingStep === String(step);
-    stepNode.classList.toggle("hidden", !isActive);
-    stepNode.setAttribute("aria-hidden", String(!isActive));
-  });
+  if (isStepTransitioning) {
+    return;
+  }
+
+  const targetStep = String(step);
+  const currentStep = loginContainer.dataset.step || "1";
+
+  if (currentStep === targetStep) {
+    return;
+  }
+
+  const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const currentStepNode = loginContainer.querySelector(`[data-onboarding-step="${currentStep}"]`);
+
+  isStepTransitioning = true;
+  loginContainer.classList.add("is-transitioning");
+
+  try {
+    if (!prefersReducedMotion && currentStepNode) {
+      currentStepNode.classList.add("step-exit");
+      await sleep(STEP_TRANSITION_MS);
+    }
+
+    if (currentStepNode) {
+      currentStepNode.classList.remove("step-exit");
+    }
+
+    loginContainer.dataset.step = targetStep;
+    const onboardingSteps = loginContainer.querySelectorAll("[data-onboarding-step]");
+    onboardingSteps.forEach((stepNode) => {
+      const isActive = stepNode.dataset.onboardingStep === targetStep;
+      stepNode.classList.toggle("hidden", !isActive);
+      stepNode.setAttribute("aria-hidden", String(!isActive));
+    });
+
+    const nextStepNode = loginContainer.querySelector(`[data-onboarding-step="${targetStep}"]`);
+
+    if (!prefersReducedMotion && nextStepNode) {
+      nextStepNode.classList.add("step-enter");
+      void nextStepNode.offsetWidth;
+      nextStepNode.classList.remove("step-enter");
+      await sleep(STEP_TRANSITION_MS);
+    }
+  } finally {
+    loginContainer.classList.remove("is-transitioning");
+    isStepTransitioning = false;
+  }
 }
 
 function validateArrivalName(rawName) {
@@ -165,7 +214,7 @@ function submitArrivalStep() {
   clearAuthMessage();
   const normalizedName = rawName.trim();
   window.sessionStorage.setItem("yumiko_arrival_name", normalizedName);
-  setOnboardingStep(2);
+  void setOnboardingStep(2);
 }
 
 
@@ -178,7 +227,7 @@ function updateArrivalWelcomeName() {
 
   if (!storedName) {
     // Si no hay nombre, no dejamos al usuario en step 2.
-    setOnboardingStep(1);
+    void setOnboardingStep(1);
     arrivalNameInput?.focus();
     return false;
   }
@@ -192,7 +241,7 @@ function updateArrivalWelcomeName() {
 
 function submitArrivalStepTwo() {
   clearAuthMessage();
-  setOnboardingStep(3);
+  void setOnboardingStep(3);
 }
 
 async function runPasswordAuth({ email, password, registerMode = false }) {
@@ -237,7 +286,7 @@ async function submitArrivalStepThree() {
     }
 
     // Dejamos listo el siguiente paso del onboarding premium.
-    setOnboardingStep(4);
+    await setOnboardingStep(4);
   } catch (error) {
     console.error("Arrival auth error:", error?.message || error);
     showAuthMessage(error?.message || "Uhm… algo falló. ¿Revisamos e intentamos de nuevo? 🥺");
@@ -331,7 +380,7 @@ setRegisterMode(false);
 
 // Pantalla 1 del onboarding premium: captura nombre y avanza de step sin autenticar.
 if (arrivalNameInput && arrivalNextBtn) {
-  setOnboardingStep(1);
+  loginContainer.dataset.step = "1";
 
   arrivalNextBtn.onclick = submitArrivalStep;
   arrivalNameInput.addEventListener("keydown", (event) => {
@@ -376,7 +425,7 @@ if (loginContainer) {
 
     if (currentStep === "3") {
       if (!getStoredArrivalName()) {
-        setOnboardingStep(1);
+        void setOnboardingStep(1);
         arrivalNameInput?.focus();
         return;
       }
