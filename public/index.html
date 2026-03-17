@@ -23,10 +23,8 @@
   <div id="mobile-menu-overlay" class="mobile-menu-overlay hidden">
     <div class="mobile-menu-drawer">
       <button id="m-inventario" class="mobile-menu-btn">Inventario</button>
-      <button id="m-gacha" class="mobile-menu-btn">Gacha</button>
       <button id="m-rewards" class="mobile-menu-btn" data-action="rewards">Recompensas</button>
       <button id="m-audio" class="mobile-menu-btn">🎚️ Audio</button>
-      <button id="m-audios" class="mobile-menu-btn">🎧 Audios tsundere 😳</button>
       <button id="m-overlay-connect" class="mobile-menu-btn">Conectar Overlay</button>
       <button id="m-logout" class="mobile-menu-btn logout">Cerrar sesión</button>
     </div>
@@ -39,7 +37,6 @@
       <p class="choice-subtitle">Elegí tu camino con Yumiko ✨</p>
       <div class="choice-actions">
         <button id="choice-chat" class="choice-btn choice-btn-primary">💬 Chatear con Yumiko</button>
-        <button id="choice-audios" class="choice-btn choice-btn-secondary">🎧 Audios (mañana, tarde y noche)</button>
       </div>
     </div>
   </div>
@@ -91,7 +88,6 @@
                   </div>
                 </div>
                 <div class="quiet-actions" aria-label="Acciones secundarias">
-                  <button id="btn-gacha" class="top-btn top-btn-quiet">Gacha</button>
                   <button id="btn-rewards" class="top-btn top-btn-quiet" data-action="rewards">Recompensas</button>
                 </div>
               </div>
@@ -110,10 +106,6 @@
                     </label>
                   </div>
                 </div>
-                <button id="btn-audios" class="top-btn top-btn-primary">
-                  <span class="audios-label--desktop">🎧 Audios tsundere</span>
-                  <span class="audios-label--mobile">🎧 Audios tsundere 😳</span>
-                </button>
                 <details class="topbar-more">
                   <summary class="top-btn top-btn-quiet" aria-label="Más acciones">Más</summary>
                   <div class="topbar-more-menu">
@@ -203,7 +195,6 @@
     const choiceModal = document.getElementById("entry-choice-modal");
     const choiceClose = document.getElementById("choice-close");
     const choiceChat = document.getElementById("choice-chat");
-    const choiceAudios = document.getElementById("choice-audios");
 
     if (!choiceModal) {
       return;
@@ -252,9 +243,6 @@
     choiceClose?.addEventListener("click", closeChoiceModal);
     choiceChat?.addEventListener("click", closeChoiceModal);
 
-    choiceAudios?.addEventListener("click", () => {
-      window.location.href = "/pacto-lunar-voz-triunfante.html";
-    });
 
     choiceModal.addEventListener("click", (event) => {
       if (event.target === choiceModal) {
