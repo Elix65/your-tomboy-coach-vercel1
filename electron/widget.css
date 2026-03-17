@@ -101,6 +101,7 @@ body {
   height: 100%;
   position: relative;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .yumiko-widget[data-mode="focus"] {
@@ -294,6 +295,7 @@ body {
     var(--moon-shadow-elevated),
     0 0 0 1px rgba(255, 247, 236, 0.03) inset,
     var(--moon-glow-accent);
+  overflow: hidden;
   opacity: 0;
   transform: translateY(10px) scale(0.99);
   pointer-events: none;
@@ -346,7 +348,7 @@ body {
 
 .panel {
   position: absolute;
-  top: 42px;
+  top: 44px;
   right: 14px;
   z-index: 24;
   width: min(290px, calc(100% - 28px));
@@ -358,19 +360,11 @@ body {
   gap: 9px;
   max-height: 228px;
   overflow: auto;
-  background: linear-gradient(170deg, rgba(28, 19, 27, 0.94), rgba(16, 12, 18, 0.96));
+  background:
+    radial-gradient(130% 100% at 12% 4%, rgba(184, 136, 111, 0.11), rgba(184, 136, 111, 0) 56%),
+    linear-gradient(170deg, rgba(28, 19, 27, 0.94), rgba(16, 12, 18, 0.96));
   backdrop-filter: blur(var(--moon-blur-lg));
   box-shadow: var(--moon-shadow-soft);
-}
-
-#settings-panel {
-  position: absolute;
-  top: 44px;
-  right: 14px;
-  width: 290px;
-  max-height: 228px;
-  overflow: auto;
-  background: rgba(16, 12, 18, 0.94);
 }
 
 .toggle-row,
@@ -420,7 +414,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding-right: 4px;
+  padding: 8px 4px 8px 2px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(11, 8, 12, 0.22), rgba(11, 8, 12, 0));
 }
 
 .chat-log::-webkit-scrollbar { width: 8px; }
