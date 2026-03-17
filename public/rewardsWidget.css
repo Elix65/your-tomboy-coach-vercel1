@@ -14,24 +14,24 @@
   min-height: 230px;
   padding: 12px 12px 10px;
   border-radius: 16px;
-  border: 1px solid rgba(255, 119, 155, 0.28);
-  background: linear-gradient(180deg, rgba(19, 14, 30, 0.86) 0%, rgba(9, 9, 18, 0.88) 100%);
+  border: 1px solid rgba(222, 192, 168, 0.16);
+  background: linear-gradient(176deg, rgba(24, 16, 24, 0.9) 0%, rgba(13, 10, 17, 0.92) 100%);
   box-shadow:
-    0 8px 30px rgba(0, 0, 0, 0.42),
-    0 0 24px rgba(255, 107, 159, 0.12),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+    0 10px 26px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px rgba(248, 227, 210, 0.04);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  color: #f6eff8;
+  color: #f2e8de;
   box-sizing: border-box;
   overflow: hidden;
 }
 
 .daily-chat-rewards-title {
   margin: 0 0 8px;
-  font-size: 1.3rem;
+  font-size: 1.12rem;
   line-height: 1.1;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.4px;
+  color: rgba(241, 227, 215, 0.96);
 }
 
 .daily-chat-rewards-content {
@@ -56,10 +56,10 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(231, 201, 177, 0.12);
   border-radius: 12px;
   overflow: visible;
-  background: rgba(4, 7, 18, 0.35);
+  background: rgba(14, 10, 18, 0.44);
 }
 
 .daily-chat-rewards-item {
@@ -92,11 +92,11 @@
   height: 16px;
   display: block;
   object-fit: contain;
-  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.16));
+  filter: drop-shadow(0 0 4px rgba(255, 240, 224, 0.14));
 }
 
 .daily-chat-rewards-day {
-  color: rgba(240, 244, 255, 0.93);
+  color: rgba(237, 220, 204, 0.92);
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -110,8 +110,8 @@
 }
 
 .daily-chat-rewards-status.is-completed {
-  color: #71f59d;
-  text-shadow: 0 0 12px rgba(113, 245, 157, 0.45);
+  color: #98d9ae;
+  text-shadow: 0 0 8px rgba(124, 188, 149, 0.28);
 }
 
 .daily-chat-reward-gift {
@@ -119,15 +119,15 @@
   min-width: 120px;
   max-width: 160px;
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  background: rgba(20, 12, 24, 0.7);
+  border: 1px solid rgba(228, 197, 173, 0.13);
+  background: rgba(24, 15, 22, 0.72);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   align-self: stretch;
   gap: 2px;
-  box-shadow: inset 0 0 14px rgba(255, 118, 163, 0.08);
+  box-shadow: inset 0 0 10px rgba(189, 145, 125, 0.08);
   overflow: hidden;
 }
 
@@ -136,33 +136,32 @@
   height: auto;
   max-width: 90px;
   object-fit: contain;
-  filter: drop-shadow(0 0 8px rgba(255, 95, 152, 0.35));
+  filter: drop-shadow(0 0 6px rgba(191, 142, 119, 0.26));
 }
 
 .daily-chat-reward-gift-text {
   font-weight: 700;
-  color: rgba(249, 238, 255, 0.96);
+  color: rgba(242, 225, 210, 0.92);
 }
 
 .daily-chat-reward-gift.is-unlocked {
-  border-color: rgba(121, 245, 170, 0.9);
+  border-color: rgba(143, 195, 160, 0.64);
   box-shadow:
-    0 0 20px rgba(121, 245, 170, 0.32),
-    inset 0 0 14px rgba(121, 245, 170, 0.28);
+    0 0 14px rgba(109, 161, 131, 0.24),
+    inset 0 0 10px rgba(127, 182, 150, 0.2);
 }
 
 .daily-chat-reward-gift.is-unlocked .daily-chat-reward-gift-text {
-  color: #8dffb7;
+  color: #c9f1d7;
 }
 
 
 .daily-chat-reward-gift.reward-cta-active {
-  border-color: rgba(255, 199, 86, 0.95);
+  border-color: rgba(208, 165, 118, 0.86);
   box-shadow:
-    0 0 24px rgba(255, 199, 86, 0.35),
-    0 0 38px rgba(255, 124, 210, 0.22),
-    inset 0 0 16px rgba(255, 199, 86, 0.22);
-  animation: rewardGiftPulse 2.2s ease-in-out infinite;
+    0 0 18px rgba(177, 132, 95, 0.28),
+    inset 0 0 12px rgba(199, 157, 120, 0.2);
+  animation: rewardGiftPulse 2.8s ease-in-out infinite;
 }
 
 @keyframes rewardGiftPulse {
@@ -180,9 +179,9 @@
 
 .daily-chat-rewards-helper {
   margin: 8px 2px 0;
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   line-height: 1.2;
-  color: rgba(236, 198, 212, 0.86);
+  color: rgba(223, 198, 180, 0.78);
 }
 
 #mobile-menu-overlay .rewards-collapsible {
@@ -227,9 +226,9 @@
 .rewards-collapse-btn,
 .rewards-handle-btn {
   position: absolute;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: rgba(17, 15, 25, 0.92);
-  color: #fff;
+  border: 1px solid rgba(230, 198, 171, 0.2);
+  background: rgba(19, 14, 22, 0.92);
+  color: rgba(245, 230, 217, 0.92);
   cursor: pointer;
   transition: opacity 160ms ease, transform 160ms ease;
 }
@@ -247,10 +246,10 @@
 .rewards-handle-btn {
   left: 0;
   top: 8px;
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: 0 12px 12px 0;
-  font-size: 20px;
+  font-size: 18px;
   opacity: 0;
   pointer-events: none;
 }
