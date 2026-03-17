@@ -3,15 +3,62 @@
 ================================ */
 
 :root {
-  --bg0: #120c12;
-  --bg1: #1b1118;
-  --accentR: rgba(183, 128, 121, 0.16);
-  --accentB: rgba(95, 70, 98, 0.14);
-  --text-soft: #f3eadf;
-  --text-muted: rgba(230, 216, 203, 0.76);
-  --surface-1: rgba(19, 13, 19, 0.88);
-  --surface-2: rgba(29, 19, 28, 0.74);
-  --accent-copper: rgba(189, 138, 113, 0.68);
+  /* 21-Moon · Design Tokens v1 (global base) */
+  --moon-color-base-obsidian-plum: #120c12;
+  --moon-color-base-night-plum: #1b1118;
+  --moon-color-surface-deep: rgba(19, 13, 19, 0.88);
+  --moon-color-surface-lifted: rgba(29, 19, 28, 0.74);
+  --moon-color-accent-copper-veil: rgba(189, 138, 113, 0.68);
+  --moon-color-accent-rose-mist: rgba(183, 128, 121, 0.16);
+  --moon-color-accent-plum-mist: rgba(95, 70, 98, 0.14);
+
+  --moon-color-text-primary: #f3eadf;
+  --moon-color-text-secondary: rgba(230, 216, 203, 0.76);
+  --moon-color-text-meta: rgba(230, 216, 203, 0.58);
+
+  --moon-radius-sm: 12px;
+  --moon-radius-md: 16px;
+  --moon-radius-lg: 22px;
+  --moon-radius-xl: 28px;
+  --moon-radius-pill: 999px;
+
+  --moon-border-width-thin: 1px;
+  --moon-border-subtle: rgba(248, 228, 206, 0.08);
+  --moon-border-accent: rgba(197, 136, 107, 0.34);
+
+  --moon-shadow-elevated: 0 34px 78px rgba(6, 2, 9, 0.72);
+  --moon-shadow-soft: 0 18px 44px rgba(133, 61, 103, 0.26);
+  --moon-glow-accent: 0 0 18px rgba(177, 132, 95, 0.28);
+
+  --moon-blur-sm: 6px;
+  --moon-blur-md: 10px;
+  --moon-blur-lg: 16px;
+
+  --moon-space-1: 4px;
+  --moon-space-2: 8px;
+  --moon-space-3: 12px;
+  --moon-space-4: 16px;
+  --moon-space-5: 20px;
+  --moon-space-6: 24px;
+  --moon-space-8: 32px;
+
+  --moon-timing-fast: 160ms;
+  --moon-timing-base: 260ms;
+  --moon-timing-slow: 420ms;
+  --moon-timing-panel: 720ms;
+  --moon-ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
+  --moon-ease-panel: cubic-bezier(0.2, 0.9, 0.2, 1);
+
+  /* Backward-compatible aliases (no UI break) */
+  --bg0: var(--moon-color-base-obsidian-plum);
+  --bg1: var(--moon-color-base-night-plum);
+  --accentR: var(--moon-color-accent-rose-mist);
+  --accentB: var(--moon-color-accent-plum-mist);
+  --text-soft: var(--moon-color-text-primary);
+  --text-muted: var(--moon-color-text-secondary);
+  --surface-1: var(--moon-color-surface-deep);
+  --surface-2: var(--moon-color-surface-lifted);
+  --accent-copper: var(--moon-color-accent-copper-veil);
   --chat-shift: 220px;
 }
 
@@ -87,7 +134,7 @@ main {
 }
 
 #chatContainer {
-  transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform var(--moon-timing-slow) var(--moon-ease-premium);
   will-change: transform;
 }
 
@@ -97,12 +144,12 @@ body.inventory-open #chatContainer {
 
 body.inventory-open #dojo-ui {
   transform: translateX(calc(-1 * var(--chat-shift)));
-  transition: transform 420ms cubic-bezier(0.2, 0.9, 0.2, 1);
+  transition: transform var(--moon-timing-slow) var(--moon-ease-panel);
   will-change: transform;
 }
 
 body.inventory-closing #dojo-ui {
-  transition: transform 720ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform var(--moon-timing-panel) var(--moon-ease-premium);
 }
 
 body:not(.inventory-open) #dojo-ui {
@@ -126,13 +173,13 @@ body:not(.inventory-open) #dojo-ui {
   top: calc(100% + 10px);
   left: 0;
   width: min(260px, 72vw);
-  padding: 12px;
-  border-radius: 14px;
+  padding: var(--moon-space-3);
+  border-radius: calc(var(--moon-radius-sm) + 2px);
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(16, 10, 20, 0.82);
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(var(--moon-blur-md));
+  -webkit-backdrop-filter: blur(var(--moon-blur-md));
 }
 
 .audio-control {
@@ -163,7 +210,7 @@ body:not(.inventory-open) #dojo-ui {
   max-width: 520px;
   margin: 0 auto;
   z-index: 9999;
-  border-radius: 16px;
+  border-radius: var(--moon-radius-md);
   background: rgba(16, 10, 20, 0.94);
 }
 
@@ -188,17 +235,17 @@ body:not(.inventory-open) #dojo-ui {
     radial-gradient(circle at 12% 6%, rgba(210, 148, 118, 0.18), transparent 46%),
     radial-gradient(circle at 86% 94%, rgba(119, 53, 92, 0.3), transparent 54%),
     linear-gradient(162deg, rgba(31, 17, 29, 0.95) 0%, rgba(14, 10, 17, 0.96) 52%, rgba(17, 11, 19, 0.95) 100%);
-  border: 1px solid rgba(197, 136, 107, 0.34);
-  border-radius: 22px;
+  border: var(--moon-border-width-thin) solid var(--moon-border-accent);
+  border-radius: var(--moon-radius-lg);
   box-shadow:
-    0 34px 78px rgba(6, 2, 9, 0.72),
+    var(--moon-shadow-elevated),
     0 0 0 1px rgba(248, 228, 206, 0.08) inset,
-    0 18px 44px rgba(133, 61, 103, 0.26);
+    var(--moon-shadow-soft);
 
-  backdrop-filter: blur(6px) saturate(112%);
-  -webkit-backdrop-filter: blur(6px) saturate(112%);
+  backdrop-filter: blur(var(--moon-blur-sm)) saturate(112%);
+  -webkit-backdrop-filter: blur(var(--moon-blur-sm)) saturate(112%);
 
-  padding: 12px;
+  padding: var(--moon-space-3);
 
   overflow: hidden;
   max-height: 0;
@@ -218,7 +265,7 @@ body:not(.inventory-open) #dojo-ui {
   padding: 10px;
   background: linear-gradient(180deg, rgba(255, 246, 234, 0.03), rgba(255, 246, 234, 0));
   border: 1px solid rgba(248, 228, 206, 0.08);
-  border-radius: 16px;
+  border-radius: var(--moon-radius-md);
   box-shadow: 0 0 0 1px rgba(70, 26, 51, 0.3) inset;
   display: flex;
   flex-direction: column;
@@ -730,7 +777,7 @@ img.avatar-header {
   background: linear-gradient(158deg, rgba(24, 16, 23, 0.92), rgba(17, 12, 19, 0.9));
   padding: 16px 16px 14px;
   box-shadow: 0 24px 52px rgba(0, 0, 0, 0.48);
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(var(--moon-blur-md));
 }
 
 .chat-messages-area {
@@ -761,7 +808,7 @@ img.avatar-header {
   padding-right: 20px;
   border-radius: 18px;
   overflow-y: auto;
-  backdrop-filter: blur(10px);
+  backdrop-filter: blur(var(--moon-blur-md));
   border: 1px solid rgba(222, 188, 164, 0.14);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 14px 28px rgba(2, 1, 6, 0.4);
   scroll-behavior: smooth;
@@ -841,7 +888,7 @@ img.avatar-header {
   color: #f7f3e9;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-  border-radius: 16px;
+  border-radius: var(--moon-radius-md);
   padding: 14px 46px 14px 18px;
   max-width: min(560px, calc(100vw - 32px));
   font-size: 0.95rem;
@@ -915,7 +962,7 @@ img.avatar-small {
 
 .bubble {
   padding: 13px 16px;
-  border-radius: 16px;
+  border-radius: var(--moon-radius-md);
   max-width: 74%;
   line-height: 1.55;
   letter-spacing: 0.004em;
@@ -1079,8 +1126,8 @@ img.avatar-small {
   flex-direction: column;
   gap: 12px;
   margin-top: 10px;
-  padding: 12px;
-  border-radius: 14px;
+  padding: var(--moon-space-3);
+  border-radius: calc(var(--moon-radius-sm) + 2px);
   background: rgba(18, 12, 18, 0.58);
   border: 1px solid rgba(221, 187, 160, 0.12);
 }
@@ -1231,7 +1278,7 @@ img.avatar-small {
   background: rgba(15, 10, 15, 0.44);
   border: 1px solid rgba(227, 199, 174, 0.09);
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(var(--moon-blur-md));
 }
 
 .nav-actions {
@@ -1291,7 +1338,7 @@ img.avatar-small {
   flex-direction: column;
   gap: 6px;
   padding: 8px;
-  border-radius: 14px;
+  border-radius: calc(var(--moon-radius-sm) + 2px);
   border: 1px solid rgba(220, 187, 160, 0.16);
   background: linear-gradient(170deg, rgba(25, 15, 22, 0.96), rgba(16, 11, 17, 0.98));
   box-shadow: 0 20px 34px rgba(0, 0, 0, 0.46), inset 0 0 0 1px rgba(245, 228, 212, 0.04);
@@ -1508,7 +1555,7 @@ img.avatar-small {
   }
 
   .inventory-panel {
-    border-radius: 16px;
+    border-radius: var(--moon-radius-md);
     z-index: 10005;
   }
 
@@ -1549,8 +1596,8 @@ img.avatar-small {
   display: flex;
   align-items: center;
   gap: 13px;
-  padding: 12px;
-  border-radius: 14px;
+  padding: var(--moon-space-3);
+  border-radius: calc(var(--moon-radius-sm) + 2px);
   background:
     linear-gradient(145deg, rgba(249, 230, 209, 0.05), rgba(132, 60, 94, 0.07)),
     rgba(30, 16, 29, 0.8);
@@ -1787,7 +1834,7 @@ img.avatar-small {
 .choice-card {
   width: min(520px, 100%);
   position: relative;
-  border-radius: 22px;
+  border-radius: var(--moon-radius-lg);
   padding: 28px 24px 24px;
   background: linear-gradient(145deg, rgba(28, 16, 32, 0.95), rgba(43, 18, 20, 0.9));
   border: 1px solid rgba(255, 255, 255, 0.2);
