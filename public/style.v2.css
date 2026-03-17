@@ -1191,11 +1191,8 @@ img.avatar-small {
   padding-right: 8px;
 }
 
-
-.quiet-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.topbar-nav--premium {
+  gap: 0;
 }
 
 .top-btn-quiet {
