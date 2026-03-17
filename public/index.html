@@ -30,18 +30,6 @@
     </div>
   </div>
 
-  <div id="entry-choice-modal" class="choice-overlay hidden" aria-hidden="true" inert>
-    <div class="choice-card" role="dialog" aria-modal="true" aria-labelledby="choice-title">
-      <button id="choice-close" class="choice-close" aria-label="Cerrar">×</button>
-      <h2 id="choice-title" class="choice-title">¿Qué querés hoy?</h2>
-      <p class="choice-subtitle">Elegí tu camino con Yumiko ✨</p>
-      <div class="choice-actions">
-        <button id="choice-chat" class="choice-btn choice-btn-primary">💬 Chatear con Yumiko</button>
-      </div>
-    </div>
-  </div>
-
-
   <!-- entrada cinematica -->
   <div class="cinematic-overlay"></div>
 
@@ -195,68 +183,6 @@
 <script type="module" src="/auth.v2.js"></script>
 <script type="module" src="/script.v2.js"></script>
 <script src="/yumiko-return-nudges.js"></script>
-<script>
-  document.addEventListener("DOMContentLoaded", () => {
-    const choiceModal = document.getElementById("entry-choice-modal");
-    const choiceClose = document.getElementById("choice-close");
-    const choiceChat = document.getElementById("choice-chat");
-
-    if (!choiceModal) {
-      return;
-    }
-
-    const focusSafeTarget = () => {
-      const safeTarget = document.getElementById("user-input") || document.body;
-
-      if (safeTarget === document.body) {
-        document.body.setAttribute("tabindex", "-1");
-      }
-
-      safeTarget.focus({ preventScroll: true });
-    };
-
-    const openChoiceModal = () => {
-      choiceModal.classList.remove("hidden");
-      choiceModal.inert = false;
-      choiceModal.setAttribute("aria-hidden", "false");
-      choiceChat?.focus({ preventScroll: true });
-    };
-
-    const closeChoiceModal = () => {
-      const activeElement = document.activeElement;
-
-      if (activeElement && typeof activeElement.blur === "function") {
-        activeElement.blur();
-      }
-
-      choiceModal.classList.add("hidden");
-      choiceModal.inert = true;
-
-      focusSafeTarget();
-      choiceModal.setAttribute("aria-hidden", "true");
-    };
-
-    if (sessionStorage.getItem("show_entry_choice") === "1") {
-      sessionStorage.removeItem("show_entry_choice");
-      openChoiceModal();
-    } else {
-      choiceModal.classList.add("hidden");
-      choiceModal.inert = true;
-      choiceModal.setAttribute("aria-hidden", "true");
-    }
-
-    choiceClose?.addEventListener("click", closeChoiceModal);
-    choiceChat?.addEventListener("click", closeChoiceModal);
-
-
-    choiceModal.addEventListener("click", (event) => {
-      if (event.target === choiceModal) {
-        closeChoiceModal();
-      }
-    });
-  });
-</script>
-
   <div id="pageTransition" class="page-transition" aria-hidden="true">
     <div class="page-transition-bg"></div>
     <img id="runner" class="runner"
