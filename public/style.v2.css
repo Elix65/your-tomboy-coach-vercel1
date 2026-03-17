@@ -363,7 +363,7 @@ body.inventory-open .inventory-dropdown {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 12px;
 }
 
 #dojo-ui {
@@ -373,6 +373,7 @@ body.inventory-open .inventory-dropdown {
   display: flex;
   flex-direction: column;
   position: relative;
+  padding-top: 2px;
 }
 
 .yumiko-side {
@@ -616,16 +617,16 @@ img.avatar-header {
   display: inline-flex;
   align-self: flex-start;
   width: fit-content;
-  margin: 2px 0 18px;
-  padding: 8px 14px;
+  margin: 0 0 14px;
+  padding: 7px 12px;
   border-radius: 999px;
-  border: 1px solid rgba(221, 190, 164, 0.28);
-  background: rgba(29, 19, 27, 0.72);
-  color: rgba(236, 216, 199, 0.9);
-  font-size: 12px;
+  border: 1px solid rgba(221, 190, 164, 0.2);
+  background: rgba(26, 17, 24, 0.74);
+  color: rgba(230, 211, 194, 0.84);
+  font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.22);
 }
 
 /* ================================
@@ -641,10 +642,10 @@ img.avatar-header {
   height: 100%;
   min-height: 0;
   border-radius: 28px;
-  border: 1px solid rgba(228, 202, 180, 0.14);
-  background: linear-gradient(160deg, var(--surface-1), var(--surface-2));
-  padding: 22px;
-  box-shadow: 0 26px 56px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(228, 202, 180, 0.15);
+  background: linear-gradient(158deg, rgba(24, 16, 23, 0.92), rgba(17, 12, 19, 0.9));
+  padding: 16px 16px 14px;
+  box-shadow: 0 24px 52px rgba(0, 0, 0, 0.48);
   backdrop-filter: blur(10px);
 }
 
@@ -656,6 +657,7 @@ img.avatar-header {
   overflow: hidden;
   padding: 0;
   box-sizing: border-box;
+  margin-bottom: 10px;
 }
 
 .chat-composer-area {
@@ -663,20 +665,21 @@ img.avatar-header {
   position: relative;
   z-index: 5;
   padding: 0;
+  border-top: 1px solid rgba(224, 196, 174, 0.12);
 }
 
 .chat-box {
   position: relative;
-  background: linear-gradient(180deg, rgba(18, 13, 18, 0.92), rgba(14, 10, 16, 0.86));
+  background: linear-gradient(180deg, rgba(20, 13, 19, 0.9), rgba(14, 10, 16, 0.86));
   flex: 1 1 auto;
   min-height: 0;
-  padding: 22px;
-  padding-right: 22px;
-  border-radius: 20px;
+  padding: 20px;
+  padding-right: 20px;
+  border-radius: 18px;
   overflow-y: auto;
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(222, 188, 164, 0.16);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 16px 36px rgba(2, 1, 6, 0.45);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(222, 188, 164, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 14px 28px rgba(2, 1, 6, 0.4);
   scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: rgba(185, 135, 112, 0.72) rgba(0, 0, 0, 0.24);
@@ -991,11 +994,11 @@ img.avatar-small {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 16px;
-  padding: 14px;
-  border-radius: 16px;
-  background: rgba(20, 14, 20, 0.7);
-  border: 1px solid rgba(221, 187, 160, 0.14);
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(18, 12, 18, 0.58);
+  border: 1px solid rgba(221, 187, 160, 0.12);
 }
 
 .composer-row {
@@ -1075,12 +1078,12 @@ img.avatar-small {
 }
 
 .extra-buttons button {
-  padding: 9px 13px;
-  background: rgba(32, 23, 30, 0.78);
-  color: rgba(241, 229, 218, 0.86);
-  border: 1px solid rgba(226, 192, 167, 0.18);
+  padding: 8px 12px;
+  background: rgba(28, 21, 27, 0.62);
+  color: rgba(232, 220, 208, 0.72);
+  border: 1px solid rgba(226, 192, 167, 0.12);
   border-radius: 10px;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
@@ -1089,9 +1092,9 @@ img.avatar-small {
 
 .extra-buttons button:hover {
   transform: translateY(-1px);
-  background: rgba(56, 38, 47, 0.85);
-  color: #f7e8dc;
-  border-color: rgba(226, 192, 167, 0.32);
+  background: rgba(42, 31, 39, 0.75);
+  color: rgba(247, 232, 220, 0.9);
+  border-color: rgba(226, 192, 167, 0.22);
 }
 
 /* ================================
@@ -1139,11 +1142,11 @@ img.avatar-small {
   display: flex;
   width: 100%;
   z-index: 20000;
-  padding: 4px;
-  border-radius: 20px;
-  background: rgba(16, 10, 16, 0.56);
-  border: 1px solid rgba(227, 199, 174, 0.12);
-  backdrop-filter: blur(14px);
+  padding: 2px;
+  border-radius: 18px;
+  background: rgba(15, 10, 15, 0.44);
+  border: 1px solid rgba(227, 199, 174, 0.09);
+  backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(10px);
 }
 
@@ -1153,11 +1156,11 @@ img.avatar-small {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   max-width: none;
-  padding: 8px;
-  border-radius: 16px;
+  padding: 7px;
+  border-radius: 15px;
 }
 
 .topbar-section {
@@ -1165,25 +1168,25 @@ img.avatar-small {
   z-index: 1;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .topbar-nav {
   padding-right: 12px;
-  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border-right: 1px solid rgba(240, 221, 201, 0.12);
 }
 
 
 .quiet-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .top-btn-quiet {
-  background: rgba(245, 234, 224, 0.03);
-  color: rgba(230, 212, 197, 0.82);
-  border-color: rgba(230, 198, 171, 0.1);
+  background: rgba(245, 234, 224, 0.02);
+  color: rgba(230, 212, 197, 0.76);
+  border-color: rgba(230, 198, 171, 0.08);
 }
 
 .topbar-more {
@@ -1201,20 +1204,39 @@ img.avatar-small {
 .topbar-more-menu {
   position: absolute;
   right: 0;
-  top: calc(100% + 10px);
-  min-width: 196px;
+  top: calc(100% + 8px);
+  min-width: 202px;
   display: none;
   flex-direction: column;
-  gap: 8px;
-  padding: 10px;
-  border-radius: 12px;
-  border: 1px solid rgba(226, 192, 167, 0.16);
-  background: rgba(18, 12, 18, 0.96);
-  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.44);
+  gap: 6px;
+  padding: 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(220, 187, 160, 0.16);
+  background: linear-gradient(170deg, rgba(25, 15, 22, 0.96), rgba(16, 11, 17, 0.98));
+  box-shadow: 0 20px 34px rgba(0, 0, 0, 0.46), inset 0 0 0 1px rgba(245, 228, 212, 0.04);
 }
 
 .topbar-more[open] .topbar-more-menu {
   display: flex;
+}
+
+
+.topbar-more-menu .top-btn {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
+  box-shadow: none;
+  background: rgba(245, 234, 224, 0.02);
+}
+
+.topbar-more-menu .top-btn + .top-btn {
+  margin-top: 2px;
+}
+
+.topbar-more-menu .top-btn#btn-logout {
+  margin-top: 4px;
+  border-top: 1px solid rgba(220, 187, 160, 0.12);
+  border-radius: 10px;
 }
 
 .nav-actions::before {
@@ -1222,9 +1244,9 @@ img.avatar-small {
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: rgba(20, 10, 20, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+  background: linear-gradient(168deg, rgba(22, 13, 20, 0.62), rgba(13, 9, 14, 0.56));
+  border: 1px solid rgba(244, 225, 208, 0.06);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   z-index: 0;
@@ -1233,25 +1255,25 @@ img.avatar-small {
 .top-btn {
   position: relative;
   z-index: 1;
-  padding: 9px 13px;
-  background: rgba(245, 234, 224, 0.05);
-  color: rgba(245, 231, 220, 0.9);
-  border: 1px solid rgba(230, 198, 171, 0.12);
-  border-radius: 12px;
+  padding: 8px 12px;
+  background: rgba(245, 234, 224, 0.03);
+  color: rgba(245, 231, 220, 0.84);
+  border: 1px solid rgba(230, 198, 171, 0.09);
+  border-radius: 11px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.24);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
   transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
 
 .top-btn-primary {
-  background: linear-gradient(160deg, rgba(188, 138, 111, 0.92), rgba(151, 105, 91, 0.9));
+  background: linear-gradient(160deg, rgba(172, 124, 103, 0.84), rgba(129, 91, 80, 0.82));
   color: #fff2e8;
-  border: 1px solid rgba(236, 210, 191, 0.22);
-  box-shadow: 0 8px 18px rgba(112, 74, 62, 0.28);
+  border: 1px solid rgba(236, 210, 191, 0.18);
+  box-shadow: 0 7px 14px rgba(92, 62, 52, 0.24);
 }
 
 .yumiko-100-btn {
@@ -1261,8 +1283,8 @@ img.avatar-small {
 
 .top-btn:hover {
   transform: translateY(-1px);
-  filter: brightness(1.08);
-  border-color: rgba(222, 188, 162, 0.28);
+  filter: brightness(1.04);
+  border-color: rgba(222, 188, 162, 0.2);
 }
 
 .top-btn:active {
@@ -1278,8 +1300,8 @@ img.avatar-small {
 
 .top-btn.active,
 .mobile-menu-btn.active {
-  background: rgba(167, 116, 95, 0.86);
-  box-shadow: 0 0 0 1px rgba(228, 200, 178, 0.28), 0 10px 24px rgba(117, 77, 63, 0.24);
+  background: rgba(140, 99, 84, 0.78);
+  box-shadow: 0 0 0 1px rgba(228, 200, 178, 0.2), 0 8px 18px rgba(95, 63, 53, 0.22);
 }
 
 /* ================================
