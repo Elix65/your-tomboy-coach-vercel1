@@ -927,15 +927,69 @@ body {
 }
 
 .login-steps {
+  --steps-glow: rgba(255, 204, 169, 0.12);
   margin-top: 12px;
-  font-size: 14px;
-  max-width: 470px;
-  text-shadow: 0 2px 16px rgba(16, 8, 24, 0.45);
-  background: rgba(29, 16, 37, 0.45);
-  border: 1px solid rgba(255, 218, 229, 0.24);
+  width: min(470px, 92vw);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  color: rgba(240, 221, 207, 0.88);
+  text-shadow: 0 2px 12px rgba(15, 8, 22, 0.38);
+  background: linear-gradient(160deg, rgba(27, 16, 35, 0.48), rgba(22, 13, 29, 0.42));
+  border: 1px solid rgba(240, 201, 180, 0.2);
   border-radius: 999px;
-  padding: 10px 16px;
-  backdrop-filter: blur(3px);
+  padding: 9px 15px;
+  backdrop-filter: blur(4px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 226, 209, 0.08),
+    0 0 28px var(--steps-glow);
+  transition: border-color 280ms ease, box-shadow 320ms ease, background 280ms ease;
+}
+
+.login-steps-text {
+  position: relative;
+  min-height: 1.45em;
+  font-weight: 500;
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 240ms ease, transform 240ms ease;
+}
+
+.login-steps-text.is-changing {
+  opacity: 0;
+  transform: translateY(4px);
+}
+
+.login-steps-phases {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 2px;
+}
+
+.login-steps-phase {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(250, 221, 193, 0.3);
+  box-shadow: inset 0 0 0 1px rgba(255, 223, 194, 0.26);
+  opacity: 0.56;
+  transition: transform 260ms ease, opacity 260ms ease, background-color 260ms ease, box-shadow 260ms ease;
+}
+
+.login-steps[data-step="1"] .login-steps-phase:nth-child(1),
+.login-steps[data-step="2"] .login-steps-phase:nth-child(2),
+.login-steps[data-step="3"] .login-steps-phase:nth-child(3),
+.login-steps[data-step="4"] .login-steps-phase:nth-child(4) {
+  opacity: 0.95;
+  background: rgba(255, 228, 198, 0.88);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 241, 225, 0.54),
+    0 0 10px rgba(255, 209, 170, 0.28);
+  transform: scale(1.12);
 }
 
 .login-error {
@@ -1014,8 +1068,15 @@ body {
   }
 
   .login-steps {
-    border-radius: 20px;
+    width: min(460px, 92vw);
+    border-radius: 18px;
     margin-top: 10px;
+    padding: 9px 13px;
+    gap: 8px;
+  }
+
+  .login-steps-phases {
+    gap: 5px;
   }
 
   #login-container::before,
@@ -1118,8 +1179,9 @@ body {
   }
 
   .login-steps {
+    justify-content: flex-start;
     text-align: left;
-    max-width: min(560px, 44vw);
+    width: min(540px, 44vw);
   }
 }
 
@@ -1302,7 +1364,10 @@ body {
     opacity: 0.14;
   }
 
-  .onboarding-step {
+  .onboarding-step,
+  .login-steps,
+  .login-steps-text,
+  .login-steps-phase {
     transition: none;
     will-change: auto;
   }
