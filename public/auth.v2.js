@@ -106,6 +106,7 @@ const resetBackBtn = document.getElementById("btn-reset-back");
 const loginTitle = document.getElementById("login-title");
 const recoveryCopy = document.getElementById("recovery-copy");
 const loginContainer = document.getElementById("login-container");
+const onboardingStage = document.getElementById("onboarding-stage");
 
 let isRecoveryMode = false;
 let isRegisterMode = false;
@@ -141,6 +142,22 @@ function sleep(ms) {
   });
 }
 
+function syncOnboardingStepVisibility(activeStep) {
+  if (!loginContainer) {
+    return;
+  }
+
+  const targetStep = String(activeStep);
+  const onboardingSteps = loginContainer.querySelectorAll("[data-onboarding-step]");
+
+  onboardingSteps.forEach((stepNode) => {
+    const isActive = stepNode.dataset.onboardingStep === targetStep;
+    stepNode.classList.toggle("hidden", !isActive);
+    stepNode.setAttribute("aria-hidden", String(!isActive));
+    stepNode.dataset.active = isActive ? "true" : "false";
+  });
+}
+
 async function setOnboardingStep(step) {
   if (!loginContainer) {
     return;
@@ -159,39 +176,46 @@ async function setOnboardingStep(step) {
 
   const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
   const currentStepNode = loginContainer.querySelector(`[data-onboarding-step="${currentStep}"]`);
+  const nextStepNode = loginContainer.querySelector(`[data-onboarding-step="${targetStep}"]`);
+
+  if (onboardingStage && currentStepNode && nextStepNode) {
+    const stageHeight = Math.max(currentStepNode.offsetHeight, nextStepNode.offsetHeight);
+    onboardingStage.style.minHeight = `${stageHeight}px`;
+  }
 
   isStepTransitioning = true;
   loginContainer.classList.add("is-transitioning");
 
   try {
+    if (nextStepNode) {
+      nextStepNode.classList.remove("step-exit");
+      nextStepNode.classList.add("step-enter");
+      nextStepNode.classList.remove("hidden");
+      nextStepNode.setAttribute("aria-hidden", "true");
+      nextStepNode.dataset.active = "false";
+    }
+
     if (!prefersReducedMotion && currentStepNode) {
       currentStepNode.classList.add("step-exit");
       await sleep(STEP_TRANSITION_MS);
-    }
-
-    if (currentStepNode) {
       currentStepNode.classList.remove("step-exit");
     }
 
     loginContainer.dataset.step = targetStep;
     await syncRitualLine(targetStep);
 
-    const onboardingSteps = loginContainer.querySelectorAll("[data-onboarding-step]");
-    onboardingSteps.forEach((stepNode) => {
-      const isActive = stepNode.dataset.onboardingStep === targetStep;
-      stepNode.classList.toggle("hidden", !isActive);
-      stepNode.setAttribute("aria-hidden", String(!isActive));
-    });
-
-    const nextStepNode = loginContainer.querySelector(`[data-onboarding-step="${targetStep}"]`);
+    syncOnboardingStepVisibility(targetStep);
 
     if (!prefersReducedMotion && nextStepNode) {
-      nextStepNode.classList.add("step-enter");
       void nextStepNode.offsetWidth;
       nextStepNode.classList.remove("step-enter");
       await sleep(STEP_TRANSITION_MS);
     }
   } finally {
+    if (onboardingStage) {
+      onboardingStage.style.minHeight = "";
+    }
+
     loginContainer.classList.remove("is-transitioning");
     isStepTransitioning = false;
   }
@@ -418,6 +442,7 @@ function setRegisterMode(enabled) {
 }
 
 setRegisterMode(false);
+syncOnboardingStepVisibility(loginContainer?.dataset.step || "1");
 void syncRitualLine(loginContainer?.dataset.step || "1");
 
 // Pantalla 1 del onboarding premium: captura nombre y avanza de step sin autenticar.

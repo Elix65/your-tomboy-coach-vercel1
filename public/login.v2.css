@@ -118,6 +118,21 @@ body {
 
 .hidden { display: none !important; }
 
+.onboarding-stage .onboarding-step.hidden {
+  display: flex !important;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  position: absolute;
+  inset: 0;
+}
+
+.onboarding-stage .onboarding-step[data-active="true"] {
+  position: relative;
+  visibility: visible;
+  pointer-events: auto;
+}
+
 .auth-shell {
   position: relative;
   z-index: 2;
@@ -153,7 +168,6 @@ body {
   background: linear-gradient(168deg, rgba(34, 23, 36, 0.6), rgba(22, 15, 29, 0.56));
   border: 1px solid rgba(255, 229, 236, 0.24);
   backdrop-filter: blur(15px) saturate(112%);
-  transition: box-shadow 280ms cubic-bezier(0.25, 0.46, 0.45, 0.94), border-color 280ms cubic-bezier(0.25, 0.46, 0.45, 0.94), background 280ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
   box-shadow:
     0 24px 46px rgba(10, 6, 17, 0.47),
     inset 0 1px 0 rgba(255, 224, 201, 0.05);
@@ -283,30 +297,31 @@ body {
   color: rgba(255, 219, 190, 0.94);
 }
 
+.onboarding-stage {
+  position: relative;
+  min-height: 0;
+}
+
 .onboarding-step {
   display: flex;
   flex-direction: column;
   gap: 18px;
   opacity: 1;
   transform: translateY(0);
-  filter: blur(0);
   transition:
     opacity 260ms cubic-bezier(0.22, 0.61, 0.36, 1),
-    transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1),
-    filter 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
-  will-change: opacity, transform, filter;
+    transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  will-change: opacity, transform;
 }
 
 .onboarding-step.step-exit {
   opacity: 0;
   transform: translateY(-8px);
-  filter: blur(1.5px);
 }
 
 .onboarding-step.step-enter {
   opacity: 0;
   transform: translateY(8px);
-  filter: blur(2px);
 }
 
 .onboarding-step[data-onboarding-step="1"] .login-eyebrow {
