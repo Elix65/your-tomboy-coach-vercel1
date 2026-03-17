@@ -346,6 +346,7 @@ body {
 .onboarding-stage {
   position: relative;
   min-height: 0;
+  width: 100%;
 }
 
 .onboarding-step {
@@ -368,6 +369,10 @@ body {
 .onboarding-step.step-enter {
   opacity: 0;
   transform: translateY(8px);
+}
+
+#login-container.is-transitioning .onboarding-step[data-active="true"] {
+  pointer-events: none;
 }
 
 .onboarding-step[data-onboarding-step="1"] .login-eyebrow {
@@ -1013,6 +1018,8 @@ body {
 .login-steps-text {
   position: relative;
   min-height: 1.45em;
+  display: inline-flex;
+  align-items: center;
   font-weight: 500;
   opacity: 1;
   transform: translateY(0);
@@ -1134,6 +1141,7 @@ body {
     margin-top: 10px;
     padding: 9px 13px;
     gap: 8px;
+    flex-wrap: wrap;
   }
 
   .login-steps-phases {
