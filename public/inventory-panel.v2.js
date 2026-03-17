@@ -47,13 +47,13 @@ export function initializeInventoryPanel({
   async function loadInventory() {
     if (!inventoryContent) return;
 
-    inventoryContent.innerHTML = `<p style="color:#ccc">Cargando...</p>`;
+    inventoryContent.innerHTML = `<p class="inventory-state inventory-state--loading">Abriendo sala privada...</p>`;
 
     try {
       const { data: { user } } = await supabaseClient.auth.getUser();
       const userId = user?.id;
       if (!userId) {
-        inventoryContent.innerHTML = `<p style="color:#f88">No se pudo obtener tu sesión.</p>`;
+        inventoryContent.innerHTML = `<p class="inventory-state inventory-state--error">No se pudo obtener tu sesión.</p>`;
         return;
       }
 
@@ -62,7 +62,7 @@ export function initializeInventoryPanel({
       const items = data.inventario || [];
 
       if (!items.length) {
-        inventoryContent.innerHTML = `<p style="color:#ccc">No tenés skins todavía.</p>`;
+        inventoryContent.innerHTML = `<p class="inventory-state inventory-state--empty">Aún no hay piezas en tu colección.</p>`;
         return;
       }
 
@@ -84,7 +84,7 @@ export function initializeInventoryPanel({
 
               ${isChatPage ? `
                 <button class="inv-use-btn" data-skin-id="${i.skin_id}">
-                  Usar como fondo
+                  Aplicar a mi sala
                 </button>
               ` : ``}
             </div>
@@ -102,7 +102,7 @@ export function initializeInventoryPanel({
       }
     } catch (error) {
       console.error(error);
-      inventoryContent.innerHTML = `<p style="color:#f88">No se pudo cargar el inventario.</p>`;
+      inventoryContent.innerHTML = `<p class="inventory-state inventory-state--error">No se pudo cargar el inventario.</p>`;
     } finally {
       requestAnimationFrame(() => setLoadingUI(false));
     }
