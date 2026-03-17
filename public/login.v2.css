@@ -8,6 +8,9 @@
   --logo-sakura: #F7B7C9;
   --logo-sakura-center: #FFD6A5;
   --logo-sparkle: rgba(255, 255, 255, .75);
+  --panel-breathe-copper: rgba(170, 111, 80, 0.18);
+  --panel-breathe-gold: rgba(220, 177, 116, 0.12);
+  --panel-breathe-plum: rgba(92, 59, 84, 0.14);
 }
 
 html,
@@ -100,6 +103,8 @@ body {
   object-fit: contain;
   object-position: bottom right;
   filter: drop-shadow(0 24px 42px rgba(8, 4, 10, 0.42));
+  animation: yumiko-presence 13s ease-in-out infinite;
+  transform-origin: 52% 88%;
 }
 
 .login-page::before {
@@ -168,6 +173,7 @@ body {
   opacity: 0.2;
   pointer-events: none;
   z-index: -1;
+  animation: panel-halo-breathe 11s ease-in-out infinite;
 }
 
 #login-container::before {
@@ -179,6 +185,48 @@ body {
   bottom: -18px;
   right: -10px;
   transform: rotate(178deg);
+  animation-delay: -5.5s;
+}
+
+#login-container > * {
+  position: relative;
+  z-index: 2;
+}
+
+.panel-ornament {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.panel-ornament::before,
+.panel-ornament::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+}
+
+.panel-ornament::before {
+  inset: -34% -68%;
+  background:
+    linear-gradient(118deg, rgba(255, 227, 189, 0) 26%, rgba(255, 227, 189, 0.085) 47%, rgba(255, 227, 189, 0.06) 51%, rgba(255, 227, 189, 0) 72%);
+  transform: translate3d(-2%, 0, 0) rotate(2.6deg);
+  mix-blend-mode: screen;
+  opacity: 0.32;
+  animation: panel-editorial-shimmer 17s cubic-bezier(0.42, 0, 0.38, 1) infinite;
+}
+
+.panel-ornament::after {
+  width: clamp(188px, 24vw, 320px);
+  height: clamp(188px, 24vw, 320px);
+  top: -72px;
+  right: -54px;
+  background: center / contain no-repeat url("data:image/svg+xml,%3Csvg width='232' height='232' viewBox='0 0 232 232' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cg opacity='0.58'%3E%3Cpath d='M202 90.8C183.3 64.9 150.7 48 116 48C82 48 50.1 64.2 31.3 89.1' stroke='%23e3c7a7' stroke-opacity='0.23' stroke-width='0.95' stroke-linecap='round'/%3E%3Cpath d='M210.8 116C187.5 115.1 164 122.9 146.2 137.4C128.4 151.9 118 172 116.4 193.2' stroke='%23c79673' stroke-opacity='0.18' stroke-width='0.85' stroke-linecap='round'/%3E%3Cpath d='M33.8 142.9C52.9 156.7 77.2 164.5 102.1 163.8C127 163.1 150.7 153.8 168.9 137.8' stroke='%23f1d8be' stroke-opacity='0.2' stroke-width='0.75' stroke-linecap='round'/%3E%3Ccircle cx='116' cy='116' r='2.1' fill='%23f0d7b7' fill-opacity='0.22'/%3E%3C/g%3E%3C/svg%3E");
+  opacity: 0.24;
+  filter: blur(0.4px);
 }
 
 .login-brand {
@@ -969,6 +1017,21 @@ body {
     border-radius: 20px;
     margin-top: 10px;
   }
+
+  #login-container::before,
+  #login-container::after {
+    animation-duration: 16s;
+    opacity: 0.1;
+  }
+
+  .panel-ornament::before {
+    opacity: 0.2;
+    animation-duration: 20s;
+  }
+
+  .panel-ornament::after {
+    opacity: 0.14;
+  }
 }
 
 @media (min-width: 641px) and (max-width: 1024px) {
@@ -1167,6 +1230,55 @@ body {
   }
 }
 
+
+@keyframes panel-halo-breathe {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 1px rgba(210, 169, 130, 0.12),
+      0 18px 44px rgba(16, 10, 23, 0.28),
+      0 0 84px var(--panel-breathe-plum),
+      0 0 120px var(--panel-breathe-copper);
+    opacity: 0.16;
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px rgba(221, 182, 136, 0.14),
+      0 22px 52px rgba(18, 11, 25, 0.34),
+      0 0 98px rgba(104, 66, 95, 0.18),
+      0 0 138px var(--panel-breathe-gold);
+    opacity: 0.24;
+  }
+}
+
+@keyframes panel-editorial-shimmer {
+  0%,
+  100% {
+    transform: translate3d(-2%, 0, 0) rotate(2.6deg);
+    opacity: 0.2;
+  }
+  45% {
+    transform: translate3d(1%, -0.6%, 0) rotate(2.2deg);
+    opacity: 0.3;
+  }
+  55% {
+    transform: translate3d(2.8%, -1%, 0) rotate(2.1deg);
+    opacity: 0.34;
+  }
+}
+
+@keyframes yumiko-presence {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: drop-shadow(0 24px 42px rgba(8, 4, 10, 0.42));
+  }
+  50% {
+    transform: translate3d(0, -5px, 0) scale(1.002);
+    filter: drop-shadow(0 26px 46px rgba(9, 5, 11, 0.46));
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -1178,8 +1290,16 @@ body {
   }
 
   .auth-shell::before,
-  .auth-shell::after {
-    animation: none;
+  .auth-shell::after,
+  .yumiko-figure,
+  #login-container::before,
+  #login-container::after,
+  .panel-ornament::before {
+    animation: none !important;
+  }
+
+  .panel-ornament::before {
+    opacity: 0.14;
   }
 
   .onboarding-step {
