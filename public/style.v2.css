@@ -195,8 +195,8 @@ body:not(.inventory-open) #dojo-ui {
     0 0 0 1px rgba(248, 228, 206, 0.08) inset,
     0 18px 44px rgba(133, 61, 103, 0.26);
 
-  backdrop-filter: blur(16px) saturate(118%);
-  -webkit-backdrop-filter: blur(16px) saturate(118%);
+  backdrop-filter: blur(6px) saturate(112%);
+  -webkit-backdrop-filter: blur(6px) saturate(112%);
 
   padding: 12px;
 
@@ -325,10 +325,8 @@ body.inventory-open::after {
   pointer-events: none;
   z-index: 14990;
   background:
-    radial-gradient(circle at 74% 28%, rgba(138, 64, 109, 0.22), transparent 48%),
-    linear-gradient(180deg, rgba(5, 3, 8, 0.08) 0%, rgba(5, 3, 8, 0.45) 100%);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+    radial-gradient(circle at 74% 28%, rgba(138, 64, 109, 0.14), transparent 52%),
+    linear-gradient(180deg, rgba(8, 5, 10, 0.04) 0%, rgba(8, 5, 10, 0.18) 100%);
 }
 .inventory-content::-webkit-scrollbar {
   width: 10px;
