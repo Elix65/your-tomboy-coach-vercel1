@@ -75,7 +75,7 @@
           <!-- TOP BAR (DESKTOP) -->
           <div class="top-bar hidden" id="top-bar">
             <div class="nav-actions">
-              <div class="topbar-section topbar-nav">
+              <div class="topbar-section topbar-nav topbar-nav--premium">
                 <div class="nav-inventory">
                   <button id="btn-inventario" class="top-btn">Inventario</button>
                   <div id="inventoryDropdown" class="inventory-dropdown" aria-hidden="true">
@@ -87,9 +87,7 @@
                     </aside>
                   </div>
                 </div>
-                <div class="quiet-actions" aria-label="Acciones secundarias">
-                  <button id="btn-rewards" class="top-btn top-btn-quiet" data-action="rewards">Recompensas</button>
-                </div>
+                <button id="btn-rewards" class="top-btn top-btn-quiet hidden" data-action="rewards" aria-hidden="true" tabindex="-1">Recompensas</button>
               </div>
 
               <div class="topbar-section topbar-actions">
