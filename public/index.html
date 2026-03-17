@@ -90,8 +90,10 @@
                     </aside>
                   </div>
                 </div>
-                <button id="btn-gacha" class="top-btn">Gacha</button>
-                <button id="btn-rewards" class="top-btn" data-action="rewards">Recompensas</button>
+                <div class="quiet-actions" aria-label="Acciones secundarias">
+                  <button id="btn-gacha" class="top-btn top-btn-quiet">Gacha</button>
+                  <button id="btn-rewards" class="top-btn top-btn-quiet" data-action="rewards">Recompensas</button>
+                </div>
               </div>
 
               <div class="topbar-section topbar-actions">
@@ -112,9 +114,14 @@
                   <span class="audios-label--desktop">🎧 Audios tsundere</span>
                   <span class="audios-label--mobile">🎧 Audios tsundere 😳</span>
                 </button>
-                <button id="btn-yumiko-100" class="top-btn yumiko-100-btn hidden" type="button">Yumiko 100%</button>
-                <button id="btn-overlay-connect" class="top-btn" type="button">Conectar Overlay</button>
-                <button id="btn-logout" class="top-btn">Cerrar sesión</button>
+                <details class="topbar-more">
+                  <summary class="top-btn top-btn-quiet" aria-label="Más acciones">Más</summary>
+                  <div class="topbar-more-menu">
+                    <button id="btn-yumiko-100" class="top-btn yumiko-100-btn hidden" type="button">Yumiko 100%</button>
+                    <button id="btn-overlay-connect" class="top-btn top-btn-quiet" type="button">Conectar Overlay</button>
+                    <button id="btn-logout" class="top-btn top-btn-quiet">Cerrar sesión</button>
+                  </div>
+                </details>
               </div>
             </div>
           </div>
@@ -127,7 +134,7 @@
       </div>
 
       <p class="subtitle">El Dojo Despierta Contigo</p>
-      <p class="subtitle-badge">N-no es que me importes… pero vení, b-baka 😳</p>
+      <p class="subtitle-badge">Presencia reservada · conversación al centro</p>
 
       <div class="chat-frame-wrap">
         <div class="chat-messages-area">
@@ -154,12 +161,12 @@
               <button id="reset-chat" class="dojo-btn">Reiniciar Chat</button>
             </div>
 
-            <label style="display:block;margin-top:8px;font-size:12px;color:#cfcfcf;">
+            <label class="composer-toggle">
               <input id="personalize-time-toggle" type="checkbox" checked>
               Adaptar saludo por hora local
             </label>
             <div id="audio-mode-row" style="display:none;">
-              <label style="display:block;margin-top:8px;font-size:12px;color:#cfcfcf;">
+              <label class="composer-toggle">
                 <input id="audio-mode-toggle" type="checkbox">
                 🎧 Responder con audio
               </label>
