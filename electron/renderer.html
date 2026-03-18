@@ -32,53 +32,104 @@
       <button id="toggle-settings" class="panel-settings-btn" type="button" aria-label="Abrir ajustes">⚙️</button>
 
       <div id="settings-panel" class="panel" hidden>
-        <div class="toggle-row">
-          <label for="overlay-enabled">Modo Overlay (Siempre arriba)</label>
-          <input id="overlay-enabled" type="checkbox" />
-        </div>
-        <div class="toggle-row">
-          <label for="click-through-enabled">Interacción de fondo (dejar pasar clicks)</label>
-          <input id="click-through-enabled" type="checkbox" />
-        </div>
-        <div class="toggle-row">
-          <label for="shortcuts-enabled">Atajos globales</label>
-          <input id="shortcuts-enabled" type="checkbox" />
+        <div class="panel-header">
+          <span class="panel-eyebrow">Salón privado</span>
+          <div>
+            <h2 class="panel-title">Ajustes de Yumiko</h2>
+            <p class="panel-subtitle">Refiná presencia, lectura y discreción sin salir del overlay.</p>
+          </div>
         </div>
 
-        <div class="toggle-row">
-          <label for="chat-hotkey">Atajo para abrir chat</label>
-          <input id="chat-hotkey" type="text" placeholder="Control+Shift+J" />
+        <div class="settings-group" aria-label="Comportamiento del overlay">
+          <div class="settings-group-header">
+            <span class="settings-kicker">Presencia</span>
+            <h3>Comportamiento del overlay</h3>
+          </div>
+          <div class="toggle-row">
+            <label for="overlay-enabled">
+              <span class="setting-label">Modo Overlay</span>
+              <span class="setting-note">Siempre arriba, con presencia suave y estable.</span>
+            </label>
+            <input id="overlay-enabled" type="checkbox" />
+          </div>
+          <div class="toggle-row">
+            <label for="click-through-enabled">
+              <span class="setting-label">Interacción de fondo</span>
+              <span class="setting-note">Deja pasar clicks sin romper la escena.</span>
+            </label>
+            <input id="click-through-enabled" type="checkbox" />
+          </div>
+          <div class="toggle-row">
+            <label for="side-image-mode">
+              <span class="setting-label">Imagen</span>
+              <span class="setting-note">Elegí cómo acompaña Yumiko el encuadre.</span>
+            </label>
+            <select id="side-image-mode">
+              <option value="auto" selected>Auto</option>
+              <option value="left">Izquierda</option>
+              <option value="right">Derecha</option>
+            </select>
+          </div>
         </div>
-        <div class="auth-row">
-          <button id="chat-hotkey-save" class="panel-btn" type="button">Guardar atajo</button>
-          <button id="chat-hotkey-reset" class="panel-btn" type="button">Restablecer</button>
+
+        <div class="settings-group" aria-label="Atajos y accesos">
+          <div class="settings-group-header">
+            <span class="settings-kicker">Ritual</span>
+            <h3>Atajos y accesos</h3>
+          </div>
+          <div class="toggle-row">
+            <label for="shortcuts-enabled">
+              <span class="setting-label">Atajos globales</span>
+              <span class="setting-note">Activá la apertura rápida del salón desde cualquier momento.</span>
+            </label>
+            <input id="shortcuts-enabled" type="checkbox" />
+          </div>
+          <div class="toggle-row toggle-row--stacked">
+            <label for="chat-hotkey">
+              <span class="setting-label">Atajo para abrir chat</span>
+              <span class="setting-note">Usá una combinación sobria y fácil de recordar.</span>
+            </label>
+            <input id="chat-hotkey" type="text" placeholder="Control+Shift+J" />
+          </div>
+          <div class="auth-row auth-row--actions">
+            <button id="chat-hotkey-save" class="panel-btn" type="button">Guardar atajo</button>
+            <button id="chat-hotkey-reset" class="panel-btn panel-btn--ghost" type="button">Restablecer</button>
+          </div>
+          <p id="chat-hotkey-error" class="settings-error" hidden></p>
         </div>
-        <p id="chat-hotkey-error" class="settings-error" hidden></p>
-        <div class="toggle-row">
-          <label for="auto-message-enabled">Mensajes sutiles de Yumiko</label>
-          <input id="auto-message-enabled" type="checkbox" />
-        </div>
-        <div class="toggle-row">
-          <label for="auto-message-interval">Ritmo de mensajes</label>
-          <select id="auto-message-interval">
-            <option value="1">1 min</option>
-            <option value="2">2 min</option>
-            <option value="5">5 min</option>
-            <option value="10">10 min</option>
-            <option value="20" selected>20 min</option>
-          </select>
-        </div>
-        <div class="toggle-row">
-          <label for="side-image-mode">Imagen</label>
-          <select id="side-image-mode">
-            <option value="auto" selected>Auto</option>
-            <option value="left">Izquierda</option>
-            <option value="right">Derecha</option>
-          </select>
-        </div>
-        <div class="auth-row">
-          <span id="auth-status" class="auth-status">No conectado</span>
-          <button id="auth-action" class="panel-btn" type="button">Vincular</button>
+
+        <div class="settings-group" aria-label="Vinculación y mensajes sutiles">
+          <div class="settings-group-header">
+            <span class="settings-kicker">Intimidad</span>
+            <h3>Vinculación y susurros</h3>
+          </div>
+          <div class="toggle-row">
+            <label for="auto-message-enabled">
+              <span class="setting-label">Mensajes sutiles de Yumiko</span>
+              <span class="setting-note">Pequeñas apariciones para acompañarte sin invadir.</span>
+            </label>
+            <input id="auto-message-enabled" type="checkbox" />
+          </div>
+          <div class="toggle-row">
+            <label for="auto-message-interval">
+              <span class="setting-label">Ritmo de mensajes</span>
+              <span class="setting-note">Definí la cadencia de esa presencia.</span>
+            </label>
+            <select id="auto-message-interval">
+              <option value="1">1 min</option>
+              <option value="2">2 min</option>
+              <option value="5">5 min</option>
+              <option value="10">10 min</option>
+              <option value="20" selected>20 min</option>
+            </select>
+          </div>
+          <div class="auth-row auth-row--status">
+            <div>
+              <span class="setting-label">Estado de vinculación</span>
+              <span id="auth-status" class="auth-status">No conectado</span>
+            </div>
+            <button id="auth-action" class="panel-btn" type="button">Vincular</button>
+          </div>
         </div>
       </div>
 
