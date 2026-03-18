@@ -70,11 +70,13 @@
               <span class="setting-label">Imagen</span>
               <span class="setting-note">Elegí cómo acompaña Yumiko el encuadre.</span>
             </label>
-            <select id="side-image-mode">
-              <option value="auto" selected>Auto</option>
-              <option value="left">Izquierda</option>
-              <option value="right">Derecha</option>
-            </select>
+            <div class="select-shell">
+              <select id="side-image-mode" class="native-select">
+                <option value="auto" selected>Auto</option>
+                <option value="left">Izquierda</option>
+                <option value="right">Derecha</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -121,13 +123,15 @@
               <span class="setting-label">Ritmo de mensajes</span>
               <span class="setting-note">Definí la cadencia de esa presencia.</span>
             </label>
-            <select id="auto-message-interval">
-              <option value="1">1 min</option>
-              <option value="2">2 min</option>
-              <option value="5">5 min</option>
-              <option value="10">10 min</option>
-              <option value="20" selected>20 min</option>
-            </select>
+            <div class="select-shell">
+              <select id="auto-message-interval" class="native-select">
+                <option value="1">1 min</option>
+                <option value="2">2 min</option>
+                <option value="5">5 min</option>
+                <option value="10">10 min</option>
+                <option value="20" selected>20 min</option>
+              </select>
+            </div>
           </div>
           <div class="auth-row auth-row--status">
             <div>
