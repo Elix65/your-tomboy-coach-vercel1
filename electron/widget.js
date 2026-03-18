@@ -8,13 +8,14 @@ const DEFAULT_SETTINGS = {
 };
 const AUTO_MESSAGE_INTERVAL_OPTIONS = [1, 2, 5, 10, 20];
 const RECENT_FOCUS_REPLY_CARRY_WINDOW_MS = 7000;
-const CHAT_WINDOW_SIZE = { width: 488, height: 360 };
+const CHAT_WINDOW_SIZE = { width: 462, height: 352 };
 const MINI_SCALE_MIN = 0.35;
 const MINI_SCALE_MAX = 1;
 const MINI_BASE_FALLBACK = { width: 360, height: 520 };
-const MINI_BOUNDS_PADDING = 10;
-const MINI_MIN_WIDTH = 280;
-const MINI_MIN_HEIGHT = 320;
+const MINI_BOUNDS_PADDING_X = 6;
+const MINI_BOUNDS_PADDING_Y = 4;
+const MINI_MIN_WIDTH = 260;
+const MINI_MIN_HEIGHT = 300;
 const MINI_RETRY_LIMIT = 10;
 const MINI_MIN_SIZE_RETRY_LIMIT = 5;
 const DEV_FIT_LOG = window.location.search.includes('dev=1') || localStorage.getItem('yumiko_debug_fit') === '1';
@@ -451,8 +452,22 @@ function getCurrentScale() {
   return clamp(Number.isFinite(parsed) ? parsed : effectiveScale || 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
 }
 
+function isNodeEffectivelyVisible(node) {
+  if (!node || node.hidden) return false;
+  const computed = window.getComputedStyle(node);
+  return computed.display !== 'none' && computed.visibility !== 'hidden' && computed.opacity !== '0';
+}
+
 function getUnionRect() {
-  const rects = [mini, miniActions, quitAppButton]
+  const focusNodes = [miniWrap, miniActions];
+  if (isNodeEffectivelyVisible(bubble) && settings.mode === 'focus') {
+    focusNodes.push(bubble);
+  }
+  if (isNodeEffectivelyVisible(quitAppButton)) {
+    focusNodes.push(quitAppButton);
+  }
+
+  const rects = focusNodes
     .map((node) => node?.getBoundingClientRect?.())
     .filter((rect) => rect && rect.width > 0 && rect.height > 0);
 
@@ -652,8 +667,8 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
 
     const unionW = Math.ceil(unionRect.width);
     const unionH = Math.ceil(unionRect.height);
-    const rawWidth = Math.ceil(unionW + (MINI_BOUNDS_PADDING * 2));
-    const rawHeight = Math.ceil(unionH + (MINI_BOUNDS_PADDING * 2));
+    const rawWidth = Math.ceil(unionW + (MINI_BOUNDS_PADDING_X * 2));
+    const rawHeight = Math.ceil(unionH + (MINI_BOUNDS_PADDING_Y * 2));
 
     if (hasUnsafeCalculatedSize(rawWidth, rawHeight)) {
       console.warn('[yumiko][fit] invalid measured focus bounds', {
@@ -744,8 +759,8 @@ function updateFocusMinimumSize() {
     return;
   }
 
-  const minW = Math.ceil((baseWidth * MINI_SCALE_MIN) + (MINI_BOUNDS_PADDING * 2));
-  const minH = Math.ceil((baseHeight * MINI_SCALE_MIN) + (MINI_BOUNDS_PADDING * 2));
+  const minW = Math.ceil((baseWidth * MINI_SCALE_MIN) + (MINI_BOUNDS_PADDING_X * 2));
+  const minH = Math.ceil((baseHeight * MINI_SCALE_MIN) + (MINI_BOUNDS_PADDING_Y * 2));
 
   if (hasUnsafeCalculatedSize(minW, minH)) {
     return;
@@ -761,6 +776,7 @@ function hideBubble(reason = 'unspecified') {
   if (!bubble) return;
   bubble.classList.remove('visible');
   bubble.classList.add('hidden');
+  requestFitDebounced(`bubble-hide:${reason}`);
 }
 
 function showBubble(text, duration = 8000) {
@@ -776,6 +792,7 @@ function showBubble(text, duration = 8000) {
   bubble.classList.remove('hidden');
   scheduleBubblePosition();
   bubble.classList.add('visible');
+  requestFitDebounced('bubble-show');
   console.info('[yumiko][bubble] show:classes', {
     phase: 'show',
     className: bubble.className,
