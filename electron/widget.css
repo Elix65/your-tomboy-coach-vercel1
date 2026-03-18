@@ -78,24 +78,27 @@ body {
 
 .floating-quit {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 18px;
+  right: 18px;
   z-index: 60;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   border: 1px solid var(--moon-border-subtle);
   border-radius: var(--moon-radius-pill);
-  background: rgba(14, 10, 14, 0.66);
+  background: rgba(14, 10, 14, 0.7);
   color: var(--moon-color-text-secondary);
   cursor: pointer;
   backdrop-filter: blur(var(--moon-blur-md));
   box-shadow: var(--moon-shadow-soft);
-  transition: color var(--moon-timing-fast) var(--moon-ease-premium), border-color var(--moon-timing-fast) var(--moon-ease-premium);
+  opacity: 0.88;
+  transition: color var(--moon-timing-fast) var(--moon-ease-premium), border-color var(--moon-timing-fast) var(--moon-ease-premium), opacity var(--moon-timing-fast) var(--moon-ease-premium), transform var(--moon-timing-fast) var(--moon-ease-premium);
 }
 
 .floating-quit:hover {
   color: var(--moon-color-text-primary);
   border-color: var(--moon-border-accent);
+  opacity: 1;
+  transform: translateY(-1px);
 }
 
 .yumiko-widget {
@@ -155,18 +158,18 @@ body {
 .mini-wrap {
   position: relative;
   display: inline-block;
-  padding: 10px 12px 18px 18px;
+  padding: 6px 8px 12px 12px;
 }
 
 .mini-wrap::before {
   content: "";
   position: absolute;
-  inset: 4% 3% 8% 4%;
+  inset: 7% 5% 10% 6%;
   border-radius: 46% 52% 44% 50%;
   background:
     radial-gradient(74% 62% at 49% 55%, rgba(164, 107, 89, 0.22), rgba(164, 107, 89, 0) 72%),
     radial-gradient(66% 56% at 42% 74%, rgba(89, 60, 88, 0.24), rgba(89, 60, 88, 0) 78%);
-  filter: blur(14px);
+  filter: blur(12px);
   pointer-events: none;
   z-index: 0;
   opacity: 0.92;
@@ -175,23 +178,23 @@ body {
 .mini-wrap::after {
   content: "";
   position: absolute;
-  left: 8%;
-  right: 2%;
-  bottom: 5%;
-  height: 24%;
+  left: 10%;
+  right: 4%;
+  bottom: 6%;
+  height: 20%;
   border-radius: 50%;
   background:
     radial-gradient(62% 100% at 50% 50%, rgba(0, 0, 0, 0.42), rgba(0, 0, 0, 0) 72%),
     radial-gradient(48% 90% at 50% 42%, rgba(178, 126, 98, 0.16), rgba(178, 126, 98, 0) 80%);
-  filter: blur(14px);
-  opacity: 0.95;
+  filter: blur(12px);
+  opacity: 0.88;
   pointer-events: none;
   z-index: 0;
 }
 
 .mini-atmosphere {
   position: absolute;
-  inset: -4% -6% -8% -8%;
+  inset: -2% -3% -5% -5%;
   pointer-events: none;
   z-index: 0;
 }
@@ -249,8 +252,8 @@ body {
 
 #yumiko-mini {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  right: 12px;
+  bottom: 12px;
   zoom: var(--mini-scale);
   transform: translateY(0) scale(1);
   transform-origin: bottom right;
@@ -266,13 +269,13 @@ body {
   display: block;
   height: auto;
   width: auto;
-  max-width: 360px;
+  max-width: 332px;
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
   filter:
-    drop-shadow(0 22px 36px rgba(8, 5, 10, 0.48))
-    drop-shadow(0 10px 24px rgba(60, 36, 46, 0.18))
+    drop-shadow(0 18px 30px rgba(8, 5, 10, 0.42))
+    drop-shadow(0 8px 20px rgba(60, 36, 46, 0.16))
     saturate(1.03)
     contrast(1.02);
   pointer-events: none;
@@ -379,31 +382,31 @@ body {
 
 .mini-actions {
   position: absolute;
-  right: 28px;
-  bottom: 32px;
+  right: 24px;
+  bottom: 26px;
   display: flex;
-  gap: 10px;
+  gap: 8px;
   z-index: 10;
   pointer-events: auto;
   -webkit-app-region: no-drag;
   opacity: 0.9;
-  padding: 8px;
+  padding: 6px;
   border-radius: 999px;
   border: 1px solid rgba(247, 229, 207, 0.08);
   background: linear-gradient(180deg, rgba(18, 12, 18, 0.42), rgba(18, 12, 18, 0.16));
   backdrop-filter: blur(10px);
-  box-shadow: 0 10px 22px rgba(8, 4, 9, 0.18);
+  box-shadow: 0 8px 18px rgba(8, 4, 9, 0.18);
   transition: transform var(--moon-timing-base) var(--moon-ease-premium), opacity var(--moon-timing-base) var(--moon-ease-premium), border-color var(--moon-timing-fast) var(--moon-ease-premium);
 }
 
 .mini-btn {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--moon-radius-pill);
   border: 1px solid var(--moon-border-subtle);
   background: linear-gradient(160deg, rgba(46, 29, 43, 0.88), rgba(21, 15, 22, 0.9));
   color: var(--moon-color-text-secondary);
-  font-size: 16px;
+  font-size: 15px;
   cursor: pointer;
   backdrop-filter: blur(var(--moon-blur-md));
   box-shadow: 0 0 0 1px rgba(245, 228, 212, 0.03) inset, var(--moon-shadow-soft);
@@ -426,24 +429,24 @@ body {
 
 .yumiko-chat {
   position: absolute;
-  right: 14px;
-  bottom: 12px;
-  width: min(432px, calc(100vw - 24px));
-  max-height: min(80vh, 648px);
-  min-height: 336px;
+  right: 10px;
+  bottom: 10px;
+  width: min(412px, calc(100vw - 18px));
+  max-height: min(80vh, 624px);
+  min-height: 320px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 16px;
+  gap: 12px;
+  padding: 14px;
   border: 1px solid rgba(247, 229, 207, 0.12);
-  border-radius: 26px;
+  border-radius: 24px;
   background:
     radial-gradient(150% 130% at 12% 12%, rgba(180, 129, 106, 0.13), rgba(180, 129, 106, 0) 54%),
     radial-gradient(120% 160% at 100% 100%, rgba(100, 59, 77, 0.18), rgba(100, 59, 77, 0) 58%),
     linear-gradient(150deg, rgba(31, 20, 29, 0.94), rgba(14, 10, 15, 0.96));
   backdrop-filter: blur(calc(var(--moon-blur-lg) + 2px));
   box-shadow:
-    0 26px 58px rgba(6, 2, 9, 0.54),
+    0 22px 46px rgba(6, 2, 9, 0.5),
     0 0 0 1px rgba(255, 247, 236, 0.03) inset,
     var(--moon-glow-accent);
   overflow: hidden;
@@ -487,8 +490,8 @@ body {
 
 .panel-settings-btn {
   align-self: flex-end;
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border: 1px solid rgba(247, 229, 207, 0.14);
   border-radius: 14px;
   background:
@@ -508,24 +511,24 @@ body {
 
 .panel {
   position: absolute;
-  top: 48px;
-  right: 14px;
+  top: 44px;
+  right: 10px;
   z-index: 24;
-  width: min(332px, calc(100% - 28px));
+  width: min(316px, calc(100% - 20px));
   border: 1px solid rgba(247, 229, 207, 0.12);
   border-radius: 24px;
-  padding: 14px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  max-height: min(74vh, 560px);
+  gap: 12px;
+  max-height: min(74vh, 536px);
   overflow: auto;
   background:
     radial-gradient(140% 120% at 14% 0%, rgba(184, 136, 111, 0.12), rgba(184, 136, 111, 0) 56%),
     radial-gradient(100% 120% at 100% 100%, rgba(107, 67, 84, 0.16), rgba(107, 67, 84, 0) 62%),
     linear-gradient(180deg, rgba(34, 22, 30, 0.94), rgba(16, 11, 17, 0.97));
   backdrop-filter: blur(calc(var(--moon-blur-lg) + 2px));
-  box-shadow: 0 22px 48px rgba(7, 3, 8, 0.48), 0 0 0 1px rgba(255, 247, 236, 0.03) inset;
+  box-shadow: 0 18px 36px rgba(7, 3, 8, 0.44), 0 0 0 1px rgba(255, 247, 236, 0.03) inset;
   transform-origin: top right;
 }
 
@@ -572,8 +575,8 @@ body {
 
 .settings-group {
   display: grid;
-  gap: 12px;
-  padding: 14px;
+  gap: 10px;
+  padding: 12px;
   border: 1px solid rgba(247, 229, 207, 0.08);
   border-radius: 20px;
   background:
@@ -598,7 +601,7 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   font-size: 12px;
   color: var(--muted);
 }
@@ -630,11 +633,16 @@ body {
   text-wrap: pretty;
 }
 
+.select-shell,
+#chat-hotkey {
+  width: min(142px, 100%);
+}
+
 #auto-message-interval,
 #chat-hotkey,
-#side-image-mode {
-  width: min(142px, 100%);
-  min-height: 38px;
+#side-image-mode,
+.custom-select__trigger {
+  min-height: 36px;
   border: 1px solid rgba(247, 229, 207, 0.14);
   border-radius: 12px;
   padding: 0 12px;
@@ -649,10 +657,130 @@ body {
   width: 100%;
 }
 
+#auto-message-interval,
+#side-image-mode {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.select-shell {
+  position: relative;
+  min-width: 0;
+}
+
+.custom-select {
+  position: relative;
+}
+
+.custom-select__trigger {
+  position: relative;
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: 0 0 0 1px rgba(255, 245, 235, 0.02) inset;
+}
+
+.custom-select__label {
+  min-width: 0;
+  color: rgba(244, 236, 228, 0.92);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.custom-select__caret {
+  width: 8px;
+  height: 8px;
+  border-right: 1.5px solid rgba(233, 219, 205, 0.74);
+  border-bottom: 1.5px solid rgba(233, 219, 205, 0.74);
+  transform: rotate(45deg) translateY(-1px);
+  transition: transform var(--moon-timing-fast) var(--moon-ease-premium), opacity var(--moon-timing-fast) var(--moon-ease-premium);
+  opacity: 0.7;
+}
+
+.custom-select.is-open .custom-select__trigger,
+.custom-select__trigger:hover {
+  border-color: rgba(210, 159, 131, 0.24);
+  background: linear-gradient(180deg, rgba(56, 36, 49, 0.76), rgba(25, 17, 26, 0.92));
+}
+
+.custom-select.is-open .custom-select__trigger {
+  box-shadow: 0 0 0 3px rgba(170, 117, 96, 0.1);
+}
+
+.custom-select.is-open .custom-select__caret {
+  transform: rotate(225deg) translateY(1px);
+  opacity: 0.95;
+}
+
+.custom-select__menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid rgba(247, 229, 207, 0.12);
+  border-radius: 16px;
+  background:
+    radial-gradient(140% 120% at 14% 8%, rgba(184, 136, 111, 0.12), rgba(184, 136, 111, 0) 54%),
+    radial-gradient(110% 110% at 100% 100%, rgba(94, 57, 77, 0.2), rgba(94, 57, 77, 0) 56%),
+    linear-gradient(180deg, rgba(28, 18, 26, 0.98), rgba(14, 10, 16, 0.99));
+  backdrop-filter: blur(calc(var(--moon-blur-lg) + 2px));
+  box-shadow:
+    0 18px 34px rgba(5, 2, 7, 0.48),
+    0 0 0 1px rgba(255, 247, 236, 0.03) inset;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.985);
+  pointer-events: none;
+  transition: opacity var(--moon-timing-fast) var(--moon-ease-premium), transform var(--moon-timing-fast) var(--moon-ease-premium);
+}
+
+.custom-select.is-open .custom-select__menu {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.custom-select__option {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 11px;
+  background: transparent;
+  color: rgba(239, 228, 218, 0.82);
+  font-size: 12px;
+  line-height: 1.25;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--moon-timing-fast) var(--moon-ease-premium), color var(--moon-timing-fast) var(--moon-ease-premium), transform var(--moon-timing-fast) var(--moon-ease-premium);
+}
+
+.custom-select__option:hover,
+.custom-select__option:focus-visible {
+  background: linear-gradient(180deg, rgba(72, 45, 59, 0.56), rgba(34, 21, 31, 0.72));
+  color: rgba(247, 239, 232, 0.96);
+}
+
+.custom-select__option.is-selected {
+  background: linear-gradient(180deg, rgba(128, 81, 76, 0.26), rgba(74, 49, 68, 0.34));
+  color: #f7ede3;
+  box-shadow: 0 0 0 1px rgba(214, 168, 141, 0.08) inset;
+}
+
 #auto-message-interval:focus,
 #chat-hotkey:focus,
 #side-image-mode:focus,
-#yumiko-input:focus {
+#yumiko-input:focus,
+.custom-select.is-focused .custom-select__trigger {
   border-color: rgba(210, 159, 131, 0.34);
   box-shadow: 0 0 0 3px rgba(170, 117, 96, 0.12);
 }
@@ -750,8 +878,8 @@ input[type="checkbox"]:checked::after {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 8px 6px 10px;
+  gap: 12px;
+  padding: 6px 4px 8px;
   border-radius: 18px;
   background:
     linear-gradient(180deg, rgba(255, 248, 241, 0.03), rgba(255, 248, 241, 0.008)),
@@ -814,8 +942,8 @@ input[type="checkbox"]:checked::after {
 .chat-compose {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  padding-top: 2px;
+  gap: 8px;
+  padding-top: 0;
   transition: transform var(--moon-timing-slow) var(--moon-ease-premium), opacity var(--moon-timing-slow) var(--moon-ease-premium);
 }
 
@@ -852,7 +980,7 @@ input[type="checkbox"]:checked::after {
   background: linear-gradient(180deg, rgba(23, 15, 20, 0.8), rgba(15, 10, 15, 0.92));
   color: var(--moon-color-text-primary);
   padding: 0 14px;
-  min-height: 46px;
+  min-height: 42px;
   font-size: 13px;
   line-height: 1.4;
   outline: none;
@@ -863,8 +991,8 @@ input[type="checkbox"]:checked::after {
 }
 
 .icon-btn {
-  min-width: 84px;
-  min-height: 46px;
+  min-width: 80px;
+  min-height: 42px;
   border-radius: 16px;
   border: 1px solid rgba(247, 229, 207, 0.16);
   cursor: pointer;
@@ -909,21 +1037,21 @@ input[type="checkbox"]:checked::after {
 
 @media (max-width: 540px), (max-height: 720px) {
   .yumiko-chat {
-    right: 10px;
-    bottom: 10px;
-    width: min(400px, calc(100vw - 18px));
-    max-height: min(84vh, 580px);
-    min-height: 300px;
+    right: 8px;
+    bottom: 8px;
+    width: min(388px, calc(100vw - 14px));
+    max-height: min(84vh, 560px);
+    min-height: 294px;
     gap: 10px;
     padding: 12px;
     border-radius: 20px;
   }
 
   .panel {
-    top: 44px;
-    right: 12px;
-    width: min(320px, calc(100% - 24px));
-    max-height: min(72vh, 500px);
+    top: 40px;
+    right: 8px;
+    width: min(304px, calc(100% - 16px));
+    max-height: min(72vh, 484px);
     padding: 12px;
     gap: 12px;
     border-radius: 22px;
@@ -980,6 +1108,7 @@ input[type="checkbox"]:checked::after {
   #auto-message-interval,
   #chat-hotkey,
   #side-image-mode,
+  .select-shell,
   .auth-row--status .panel-btn {
     width: 100%;
   }
