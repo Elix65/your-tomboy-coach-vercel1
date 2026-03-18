@@ -8,11 +8,11 @@ const DEFAULT_SETTINGS = {
 };
 const AUTO_MESSAGE_INTERVAL_OPTIONS = [1, 2, 5, 10, 20];
 const RECENT_FOCUS_REPLY_CARRY_WINDOW_MS = 7000;
-const CHAT_WINDOW_SIZE = { width: 560, height: 380 };
+const CHAT_WINDOW_SIZE = { width: 488, height: 360 };
 const MINI_SCALE_MIN = 0.35;
 const MINI_SCALE_MAX = 1;
 const MINI_BASE_FALLBACK = { width: 360, height: 520 };
-const MINI_BOUNDS_PADDING = 16;
+const MINI_BOUNDS_PADDING = 10;
 const MINI_MIN_WIDTH = 280;
 const MINI_MIN_HEIGHT = 320;
 const MINI_RETRY_LIMIT = 10;
@@ -40,6 +40,7 @@ const authActionButton = document.getElementById('auth-action');
 const autoMessageToggle = document.getElementById('auto-message-enabled');
 const autoMessageIntervalSelect = document.getElementById('auto-message-interval');
 const sideImageModeSelect = document.getElementById('side-image-mode');
+const selectShells = Array.from(document.querySelectorAll('.select-shell'));
 
 const widget = document.getElementById('yumiko-widget');
 const mini = document.getElementById('yumiko-mini');
@@ -451,7 +452,7 @@ function getCurrentScale() {
 }
 
 function getUnionRect() {
-  const rects = [mini, miniActions]
+  const rects = [mini, miniActions, quitAppButton]
     .map((node) => node?.getBoundingClientRect?.())
     .filter((rect) => rect && rect.width > 0 && rect.height > 0);
 
@@ -469,6 +470,127 @@ function getUnionRect() {
     width: Math.max(0, union.right - union.left),
     height: Math.max(0, union.bottom - union.top)
   };
+}
+
+function closeCustomSelects({ except = null } = {}) {
+  selectShells.forEach((shell) => {
+    if (!shell) return;
+    const customSelect = shell.querySelector('.custom-select');
+    if (!customSelect || customSelect === except) return;
+    customSelect.classList.remove('is-open');
+    customSelect.querySelector('.custom-select__trigger')?.setAttribute('aria-expanded', 'false');
+  });
+}
+
+function syncCustomSelectUi(select, customSelect) {
+  if (!select || !customSelect) return;
+
+  const label = customSelect.querySelector('.custom-select__label');
+  const options = Array.from(customSelect.querySelectorAll('.custom-select__option'));
+  const selectedOption = Array.from(select.options).find((option) => option.value === select.value) || select.options[select.selectedIndex] || select.options[0];
+
+  if (label) label.textContent = selectedOption?.textContent?.trim() || '';
+  options.forEach((optionButton) => {
+    const isSelected = optionButton.dataset.value === select.value;
+    optionButton.classList.toggle('is-selected', isSelected);
+    optionButton.setAttribute('aria-selected', String(isSelected));
+  });
+}
+
+function enhanceSelect(select) {
+  if (!select || select.dataset.enhanced === 'true') return null;
+
+  const shell = select.closest('.select-shell');
+  if (!shell) return null;
+
+  const customSelect = document.createElement('div');
+  customSelect.className = 'custom-select';
+
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'custom-select__trigger';
+  trigger.setAttribute('aria-haspopup', 'listbox');
+  trigger.setAttribute('aria-expanded', 'false');
+
+  const label = document.createElement('span');
+  label.className = 'custom-select__label';
+
+  const caret = document.createElement('span');
+  caret.className = 'custom-select__caret';
+  caret.setAttribute('aria-hidden', 'true');
+
+  trigger.append(label, caret);
+
+  const menu = document.createElement('div');
+  menu.className = 'custom-select__menu';
+  menu.setAttribute('role', 'listbox');
+  menu.setAttribute('aria-label', select.getAttribute('aria-label') || select.id || 'Dropdown');
+
+  Array.from(select.options).forEach((option) => {
+    const optionButton = document.createElement('button');
+    optionButton.type = 'button';
+    optionButton.className = 'custom-select__option';
+    optionButton.textContent = option.textContent || '';
+    optionButton.dataset.value = option.value;
+    optionButton.setAttribute('role', 'option');
+    optionButton.addEventListener('click', () => {
+      if (select.value !== option.value) {
+        select.value = option.value;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      syncCustomSelectUi(select, customSelect);
+      customSelect.classList.remove('is-open');
+      trigger.setAttribute('aria-expanded', 'false');
+      trigger.focus();
+    });
+    menu.appendChild(optionButton);
+  });
+
+  trigger.addEventListener('click', () => {
+    const willOpen = !customSelect.classList.contains('is-open');
+    closeCustomSelects({ except: willOpen ? customSelect : null });
+    customSelect.classList.toggle('is-open', willOpen);
+    trigger.setAttribute('aria-expanded', String(willOpen));
+  });
+
+  trigger.addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowDown' && event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    closeCustomSelects({ except: customSelect });
+    customSelect.classList.add('is-open');
+    trigger.setAttribute('aria-expanded', 'true');
+    menu.querySelector('.custom-select__option.is-selected, .custom-select__option')?.focus();
+  });
+
+  customSelect.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    customSelect.classList.remove('is-open');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.focus();
+  });
+
+  customSelect.addEventListener('focusin', () => {
+    customSelect.classList.add('is-focused');
+  });
+
+  customSelect.addEventListener('focusout', () => {
+    window.setTimeout(() => {
+      if (!customSelect.contains(document.activeElement)) {
+        customSelect.classList.remove('is-focused');
+        customSelect.classList.remove('is-open');
+        trigger.setAttribute('aria-expanded', 'false');
+      }
+    }, 0);
+  });
+
+  select.addEventListener('change', () => syncCustomSelectUi(select, customSelect));
+
+  customSelect.append(trigger, menu);
+  shell.appendChild(customSelect);
+  select.dataset.enhanced = 'true';
+  syncCustomSelectUi(select, customSelect);
+  return customSelect;
 }
 
 function getBaseSize() {
@@ -1602,6 +1724,12 @@ window.addEventListener('mousedown', () => {
   markUserActivity({ event: 'window-mousedown', strength: 'weak' });
 }, { capture: true });
 
+window.addEventListener('pointerdown', (event) => {
+  const target = event.target;
+  if (!(target instanceof Element) || target.closest('.custom-select')) return;
+  closeCustomSelects();
+}, { capture: true });
+
 window.addEventListener('resize', () => {
   if (settings.mode !== 'focus') return;
 
@@ -1659,6 +1787,7 @@ window.addEventListener('DOMContentLoaded', () => {
   syncAutoMessageControls();
   startAutoMessageScheduler();
   persistAutoMessageSettings();
+  [sideImageModeSelect, autoMessageIntervalSelect].forEach((select) => enhanceSelect(select));
 
   if (img) {
     preloadCharacterImage(CHARACTER_SRC_WHEN_WINDOW_ON_RIGHT);
@@ -1683,6 +1812,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (mini) resizeObserver.observe(mini);
     if (miniWrap) resizeObserver.observe(miniWrap);
     if (miniActions) resizeObserver.observe(miniActions);
+    if (quitAppButton) resizeObserver.observe(quitAppButton);
     if (chat) resizeObserver.observe(chat);
   }
 
