@@ -1633,3 +1633,103 @@ body {
     padding-bottom: 28px;
   }
 }
+
+
+.invitation-door,
+.member-login-container {
+  gap: 20px;
+}
+
+.invitation-view {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.invitation-copy-block--locked {
+  gap: 12px;
+  max-width: 30rem;
+}
+
+.invitation-page--private-door .auth-shell,
+.member-login-page .auth-shell {
+  align-items: center;
+}
+
+.invitation-page--private-door .auth-left,
+.member-login-page .auth-left {
+  align-items: center;
+}
+
+.invitation-page--private-door #login-container,
+.member-login-page #login-container {
+  width: min(540px, 92vw);
+}
+
+.invitation-page--private-door .login-brand,
+.member-login-page .login-brand {
+  align-self: flex-start;
+}
+
+.invitation-page--private-door .invitation-status-pill,
+.member-login-page .invitation-status-pill {
+  align-self: flex-start;
+}
+
+.invitation-door[data-door-state="locked"] {
+  background:
+    linear-gradient(164deg, rgba(31, 20, 29, 0.86) 0%, rgba(21, 15, 24, 0.86) 56%, rgba(16, 11, 18, 0.92) 100%),
+    rgba(18, 12, 19, 0.84);
+}
+
+.invitation-door[data-door-state="approved"],
+.invitation-door[data-door-state="ready"],
+.member-login-container {
+  background:
+    linear-gradient(164deg, rgba(36, 22, 34, 0.84) 0%, rgba(24, 16, 25, 0.8) 56%, rgba(17, 12, 19, 0.86) 100%),
+    rgba(20, 14, 21, 0.8);
+}
+
+.invitation-section--focus {
+  padding: 20px 20px 22px;
+  background: linear-gradient(180deg, rgba(47, 30, 40, 0.76), rgba(28, 19, 26, 0.84));
+  border-color: rgba(201, 157, 126, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 232, 210, 0.04),
+    0 22px 38px rgba(7, 4, 12, 0.22);
+}
+
+.invitation-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.door-return-link {
+  margin: 0;
+  color: rgba(230, 216, 203, 0.64);
+  font-size: 14px;
+}
+
+.door-return-link .text-link {
+  color: rgba(245, 217, 191, 0.88);
+}
+
+#btn-member-signin::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  background: currentColor;
+  mask: center / contain no-repeat url('/svg/arrow-right.svg');
+}
+
+@media (max-width: 768px) {
+  .invitation-page--private-door .auth-shell,
+  .member-login-page .auth-shell {
+    padding-top: 32px;
+  }
+
+  .invitation-copy-block--locked {
+    max-width: none;
+  }
+}
