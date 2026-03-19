@@ -96,6 +96,18 @@
     {
       "source": "/api/overlay/nudge-settings",
       "destination": "/api/router?action=overlay-nudge-settings"
+    },
+    {
+      "source": "/api/arrival/request",
+      "destination": "/api/router?action=arrival-request"
+    },
+    {
+      "source": "/api/arrival/invite",
+      "destination": "/api/router?action=arrival-invite"
+    },
+    {
+      "source": "/api/arrival/complete",
+      "destination": "/api/router?action=arrival-complete"
     }
   ]
 }

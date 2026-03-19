@@ -2381,6 +2381,261 @@ async function overlayNudgeHandler(req, res) {
   }
 }
 
+
+function sanitizeArrivalRequest(row) {
+  if (!row) return null;
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    status: row.status,
+    account_enabled: row.status === 'account_enabled' || row.status === 'active' || Boolean(row.account_enabled_at)
+  };
+}
+
+function isArrivalApprovedStatus(status) {
+  return ['approved', 'invited', 'account_enabled', 'active'].includes(String(status || '').trim().toLowerCase());
+}
+
+function normalizeArrivalEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
+function normalizeOptionalText(value, maxLength) {
+  const text = String(value || '').trim();
+  if (!text) return null;
+  return text.slice(0, maxLength);
+}
+
+async function findArrivalRequestByEmail(supabaseAdmin, email) {
+  const { data, error } = await supabaseAdmin
+    .from('arrival_requests')
+    .select('id,name,email,status,invite_token,approved_at,invited_at,account_enabled_at,auth_user_id')
+    .ilike('email', email)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message || 'Error reading arrival_requests by email.');
+  }
+
+  return data || null;
+}
+
+async function findArrivalRequestByToken(supabaseAdmin, token) {
+  const { data, error } = await supabaseAdmin
+    .from('arrival_requests')
+    .select('id,name,email,status,invite_token,approved_at,invited_at,account_enabled_at,auth_user_id')
+    .eq('invite_token', token)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message || 'Error reading arrival_requests by token.');
+  }
+
+  return data || null;
+}
+
+async function arrivalRequestHandler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  let supabaseAdmin;
+  try {
+    supabaseAdmin = getSupabaseAdminClient();
+  } catch (clientError) {
+    return res.status(clientError?.statusCode || 500).json({ error: clientError?.message || 'Supabase admin init failed.' });
+  }
+
+  try {
+    const name = String(req.body?.name || '').trim().slice(0, 24);
+    const email = normalizeArrivalEmail(req.body?.email || '');
+    const desiredExperience = String(req.body?.desired_experience || '').trim().slice(0, 280);
+    const desiredMoments = String(req.body?.desired_moments || '').trim().slice(0, 280);
+    const optionalNote = normalizeOptionalText(req.body?.optional_note, 420);
+
+    if (name.length < 2) {
+      return res.status(400).json({ error: 'missing_name', error_description: 'Decime tu nombre para poder recibir tu llegada.' });
+    }
+
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      return res.status(400).json({ error: 'invalid_email', error_description: 'Necesito un email válido para poder escribirte si tu llegada es aprobada.' });
+    }
+
+    if (!desiredExperience) {
+      return res.status(400).json({ error: 'missing_desired_experience', error_description: 'Contame qué te gustaría encontrar en Yumiko.' });
+    }
+
+    if (!desiredMoments) {
+      return res.status(400).json({ error: 'missing_desired_moments', error_description: 'Contame en qué momentos te gustaría sentir su presencia.' });
+    }
+
+    const existing = await findArrivalRequestByEmail(supabaseAdmin, email);
+    const nextStatus = existing && isArrivalApprovedStatus(existing.status) ? existing.status : 'requested';
+    const updatePayload = {
+      name,
+      email,
+      desired_experience: desiredExperience,
+      desired_moments: desiredMoments,
+      optional_note: optionalNote,
+      status: nextStatus
+    };
+
+    let saved;
+    if (existing?.id) {
+      const { data, error } = await supabaseAdmin
+        .from('arrival_requests')
+        .update(updatePayload)
+        .eq('id', existing.id)
+        .select('id,name,email,status,invite_token,approved_at,invited_at,account_enabled_at,auth_user_id')
+        .single();
+
+      if (error) {
+        return res.status(500).json({ error: error.message || 'Error updating arrival request.' });
+      }
+      saved = data;
+    } else {
+      const { data, error } = await supabaseAdmin
+        .from('arrival_requests')
+        .insert({
+          ...updatePayload,
+          status: 'requested'
+        })
+        .select('id,name,email,status,invite_token,approved_at,invited_at,account_enabled_at,auth_user_id')
+        .single();
+
+      if (error) {
+        return res.status(500).json({ error: error.message || 'Error saving arrival request.' });
+      }
+      saved = data;
+    }
+
+    return res.status(200).json({
+      ok: true,
+      request: sanitizeArrivalRequest(saved)
+    });
+  } catch (error) {
+    console.error('arrival-request fatal:', error);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+async function arrivalInviteHandler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  let supabaseAdmin;
+  try {
+    supabaseAdmin = getSupabaseAdminClient();
+  } catch (clientError) {
+    return res.status(clientError?.statusCode || 500).json({ error: clientError?.message || 'Supabase admin init failed.' });
+  }
+
+  try {
+    const token = String(req.query?.token || getRequestUrl(req).searchParams.get('token') || '').trim();
+    if (!token) {
+      return res.status(400).json({ error: 'missing_token' });
+    }
+
+    const requestRow = await findArrivalRequestByToken(supabaseAdmin, token);
+    if (!requestRow || !isArrivalApprovedStatus(requestRow.status)) {
+      return res.status(404).json({ error: 'invite_not_found' });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      ...sanitizeArrivalRequest(requestRow)
+    });
+  } catch (error) {
+    console.error('arrival-invite fatal:', error);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+async function arrivalCompleteHandler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  let supabaseAdmin;
+  try {
+    supabaseAdmin = getSupabaseAdminClient();
+  } catch (clientError) {
+    return res.status(clientError?.statusCode || 500).json({ error: clientError?.message || 'Supabase admin init failed.' });
+  }
+
+  try {
+    const token = String(req.body?.token || '').trim();
+    const email = normalizeArrivalEmail(req.body?.email || '');
+    const password = String(req.body?.password || '');
+
+    if (!token) {
+      return res.status(400).json({ error: 'missing_token', error_description: 'Hace falta una invitación privada válida.' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'weak_password', error_description: 'Tu contraseña debe tener al menos 8 caracteres.' });
+    }
+
+    const requestRow = await findArrivalRequestByToken(supabaseAdmin, token);
+    if (!requestRow || !isArrivalApprovedStatus(requestRow.status)) {
+      return res.status(404).json({ error: 'invite_not_found', error_description: 'No pude reconocer esta invitación privada.' });
+    }
+
+    if (email && email !== normalizeArrivalEmail(requestRow.email)) {
+      return res.status(400).json({ error: 'email_mismatch', error_description: 'Esta invitación fue preparada para otro email reservado.' });
+    }
+
+    if (requestRow.auth_user_id || requestRow.status === 'account_enabled' || requestRow.status === 'active') {
+      return res.status(409).json({ error: 'account_already_enabled', error_description: 'Esta llegada ya fue habilitada.' });
+    }
+
+    const createdUser = await supabaseAdmin.auth.admin.createUser({
+      email: requestRow.email,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        name: requestRow.name,
+        arrival_request_id: requestRow.id
+      }
+    });
+
+    if (createdUser.error || !createdUser.data?.user?.id) {
+      return res.status(500).json({
+        error: 'account_creation_failed',
+        error_description: createdUser.error?.message || 'No pude habilitar este acceso.'
+      });
+    }
+
+    const enabledAt = new Date().toISOString();
+    const { error: updateErr } = await supabaseAdmin
+      .from('arrival_requests')
+      .update({
+        auth_user_id: createdUser.data.user.id,
+        status: 'account_enabled',
+        account_enabled_at: enabledAt,
+        invited_at: requestRow.status === 'approved' ? enabledAt : requestRow.invited_at || enabledAt,
+        approved_at: requestRow.approved_at || enabledAt
+      })
+      .eq('id', requestRow.id);
+
+    if (updateErr) {
+      return res.status(500).json({ error: updateErr.message || 'Error updating arrival request status.' });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      user_id: createdUser.data.user.id,
+      email: requestRow.email,
+      status: 'account_enabled'
+    });
+  } catch (error) {
+    console.error('arrival-complete fatal:', error);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
 module.exports = async function handler(req, res) {
   const action = getAction(req);
 
@@ -2438,6 +2693,14 @@ module.exports = async function handler(req, res) {
       case 'overlay-nudge-settings':
         req.body = await getJsonBody(req);
         return overlayNudgeSettingsHandler(req, res);
+      case 'arrival-request':
+        req.body = await getJsonBody(req);
+        return arrivalRequestHandler(req, res);
+      case 'arrival-invite':
+        return arrivalInviteHandler(req, res);
+      case 'arrival-complete':
+        req.body = await getJsonBody(req);
+        return arrivalCompleteHandler(req, res);
       case 'mp-init-point':
         return mpInitPointHandler(req, res);
       case 'mp-sync-voice':

@@ -1,12 +1,9 @@
-// ===============================
-// SUPABASE CLIENT
-// ===============================
 import supabaseClient from './supabase.js';
 
 const safeLocalStorage = (() => {
   try {
-    const testKey = "__yumiko_storage_test__";
-    window.localStorage.setItem(testKey, "1");
+    const testKey = '__yumiko_storage_test__';
+    window.localStorage.setItem(testKey, '1');
     window.localStorage.removeItem(testKey);
     return window.localStorage;
   } catch (error) {
@@ -14,17 +11,17 @@ const safeLocalStorage = (() => {
   }
 })();
 
-
-// Detectar página actual
 const currentPage = window.location.pathname;
-const returnToParam = new URLSearchParams(window.location.search).get("returnTo");
+const url = new URL(window.location.href);
+const returnToParam = url.searchParams.get('returnTo');
+const inviteTokenParam = (url.searchParams.get('token') || '').trim();
 
 function getSafeReturnTo() {
-  if (!returnToParam || !returnToParam.startsWith("/")) {
+  if (!returnToParam || !returnToParam.startsWith('/')) {
     return null;
   }
 
-  if (returnToParam.startsWith("//")) {
+  if (returnToParam.startsWith('//')) {
     return null;
   }
 
@@ -32,108 +29,138 @@ function getSafeReturnTo() {
 }
 
 function getPostLoginRedirectPath() {
-  const params = new URLSearchParams(window.location.search);
-  const returnTo = params.get("returnTo") || "";
-  if (returnTo.startsWith("/")) {
-    return returnTo;
-  }
-  return "/index.html";
+  const safeReturnTo = getSafeReturnTo();
+  return safeReturnTo || '/index.html';
 }
 
 const postLoginRedirectPath = getPostLoginRedirectPath();
 
 function isInitDebugFlagEnabled(flag) {
   const params = new URLSearchParams(window.location.search);
-  if (params.get(flag) === "1") return true;
-  const list = String(params.get("debug_init_flags") || "")
-    .split(",")
+  if (params.get(flag) === '1') return true;
+  const list = String(params.get('debug_init_flags') || '')
+    .split(',')
     .map((entry) => entry.trim().toUpperCase())
     .filter(Boolean);
   if (list.includes(flag)) return true;
-  return window.localStorage.getItem(flag) === "1" || window.sessionStorage.getItem(flag) === "1";
+  return window.localStorage.getItem(flag) === '1' || window.sessionStorage.getItem(flag) === '1';
 }
 
-
-function goWithTransition(url) {
-  if (typeof window.playPageTransitionAndGo === "function") {
-    window.playPageTransitionAndGo(url);
+function goWithTransition(targetUrl) {
+  if (typeof window.playPageTransitionAndGo === 'function') {
+    window.playPageTransitionAndGo(targetUrl);
     return;
   }
-  window.location.href = url;
+  window.location.href = targetUrl;
 }
 
-// ===============================
-// LOGIN.HTML → si hay sesión, redirigir al dojo
-// ===============================
-if (currentPage.includes("login")) {
-  supabaseClient.auth.getUser().then((res) => {
-    const user = res?.data?.user;
-    if (user) {
-      const safeReturnTo = getSafeReturnTo();
-      goWithTransition(safeReturnTo || "index.html");
-      goWithTransition(postLoginRedirectPath);
-    }
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[char] || char));
+}
+
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
+async function parseJsonResponse(response) {
+  const text = await response.text().catch(() => '');
+  if (!text) return {};
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    return {};
+  }
+}
+
+async function postJson(endpoint, payload) {
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(payload || {})
   });
+
+  const data = await parseJsonResponse(response);
+  if (!response.ok) {
+    const error = new Error(data?.error || 'request_failed');
+    error.status = response.status;
+    error.payload = data;
+    throw error;
+  }
+
+  return data;
 }
 
-// ===============================
-// INDEX.HTML / GACHA.HTML → si NO hay sesión, redirigir al login
-// ===============================
-if (currentPage.includes("index") || currentPage.includes("gacha")) {
-  if (isInitDebugFlagEnabled("DISABLE_AUTH_REHYDRATION")) {
-    console.info("[DEBUG_INIT] auth rehydration disabled by flag");
+function completeSignedInArrival() {
+  sessionStorage.setItem('show_entry_choice', '1');
+  goWithTransition(postLoginRedirectPath);
+}
+
+async function redirectIfSessionExists() {
+  if (!currentPage.includes('login') && !currentPage.includes('invitation')) {
+    return;
+  }
+
+  const res = await supabaseClient.auth.getUser();
+  const user = res?.data?.user;
+  if (user) {
+    completeSignedInArrival();
+  }
+}
+
+void redirectIfSessionExists();
+
+if (currentPage.includes('index') || currentPage.includes('gacha')) {
+  if (isInitDebugFlagEnabled('DISABLE_AUTH_REHYDRATION')) {
+    console.info('[DEBUG_INIT] auth rehydration disabled by flag');
   } else {
     supabaseClient.auth.getUser().then((res) => {
       const user = res?.data?.user;
       if (!user) {
-        window.location.href = "login.html";
+        window.location.href = 'login.html';
       }
     });
   }
 }
 
-// ===============================
-// LOGIN
-// ===============================
-const loginBtn = document.getElementById("btn-login");
-const registerBtn = document.getElementById("btn-register");
-const passwordInput = document.getElementById("password");
-const emailInput = document.getElementById("email");
-const errorBox = document.getElementById("login-error");
-const forgotPasswordLink = document.getElementById("forgot-password-link");
-const sendResetBtn = document.getElementById("btn-send-reset");
-const resetBackBtn = document.getElementById("btn-reset-back");
-const loginTitle = document.getElementById("login-title");
-const recoveryCopy = document.getElementById("recovery-copy");
-const loginContainer = document.getElementById("login-container");
-const onboardingStage = document.getElementById("onboarding-stage");
+const errorBox = document.getElementById('login-error');
+const loginContainer = document.getElementById('login-container');
+const onboardingStage = document.getElementById('onboarding-stage');
+const loginSteps = document.getElementById('login-steps');
+const loginStepsText = document.getElementById('login-steps-text');
 
-let isRecoveryMode = false;
-let isRegisterMode = false;
+function showAuthMessage(message, type = 'error') {
+  if (!errorBox) {
+    return;
+  }
 
-const arrivalNameInput = document.getElementById("arrival-name");
-const arrivalNextBtn = document.getElementById("btn-arrival-next");
-const arrivalContinueBtn = document.getElementById("btn-arrival-continue");
-const arrivalNameDisplay = document.getElementById("arrival-name-display");
-const arrivalAuthForm = document.getElementById("arrival-auth-form");
-const arrivalEmailInput = document.getElementById("arrival-email");
-const arrivalPasswordInput = document.getElementById("arrival-password");
-const arrivalSaveBtn = document.getElementById("btn-arrival-save");
-const arrivalEnterBtn = document.getElementById("btn-arrival-enter");
+  errorBox.textContent = message;
+  errorBox.classList.remove('hidden', 'success');
+  if (type === 'success') {
+    errorBox.classList.add('success');
+  }
+}
 
-const loginSteps = document.getElementById("login-steps");
-const loginStepsText = document.getElementById("login-steps-text");
+function clearAuthMessage() {
+  if (!errorBox) {
+    return;
+  }
 
-const RITUAL_LINES_BY_STEP = {
-  "1": "Tu llegada empieza ahora.",
-  "2": "Yumiko ya sabe cómo llamarte.",
-  "3": "Tu regreso quedará guardado.",
-  "4": "El salón ya está listo para vos."
-};
-
-const RITUAL_TEXT_TRANSITION_MS = 200;
+  errorBox.textContent = '';
+  errorBox.classList.add('hidden');
+  errorBox.classList.remove('success');
+}
 
 const STEP_TRANSITION_MS = 260;
+const RITUAL_TEXT_TRANSITION_MS = 200;
 let isStepTransitioning = false;
 
 function sleep(ms) {
@@ -148,17 +175,42 @@ function syncOnboardingStepVisibility(activeStep) {
   }
 
   const targetStep = String(activeStep);
-  const onboardingSteps = loginContainer.querySelectorAll("[data-onboarding-step]");
+  const onboardingSteps = loginContainer.querySelectorAll('[data-onboarding-step]');
 
   onboardingSteps.forEach((stepNode) => {
     const isActive = stepNode.dataset.onboardingStep === targetStep;
-    stepNode.classList.toggle("hidden", !isActive);
-    stepNode.setAttribute("aria-hidden", String(!isActive));
-    stepNode.dataset.active = isActive ? "true" : "false";
+    stepNode.classList.toggle('hidden', !isActive);
+    stepNode.setAttribute('aria-hidden', String(!isActive));
+    stepNode.dataset.active = isActive ? 'true' : 'false';
   });
 }
 
-async function setOnboardingStep(step) {
+async function syncRitualLine(step, ritualLinesByStep) {
+  if (!loginSteps || !loginStepsText) {
+    return;
+  }
+
+  const targetStep = String(step);
+  const nextLine = ritualLinesByStep[targetStep];
+  if (!nextLine) {
+    return;
+  }
+
+  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReducedMotion) {
+    loginStepsText.textContent = nextLine;
+    loginSteps.dataset.step = targetStep;
+    return;
+  }
+
+  loginStepsText.classList.add('is-changing');
+  await sleep(RITUAL_TEXT_TRANSITION_MS);
+  loginStepsText.textContent = nextLine;
+  loginSteps.dataset.step = targetStep;
+  loginStepsText.classList.remove('is-changing');
+}
+
+async function setOnboardingStep(step, ritualLinesByStep) {
   if (!loginContainer) {
     return;
   }
@@ -168,13 +220,12 @@ async function setOnboardingStep(step) {
   }
 
   const targetStep = String(step);
-  const currentStep = loginContainer.dataset.step || "1";
-
+  const currentStep = loginContainer.dataset.step || '1';
   if (currentStep === targetStep) {
     return;
   }
 
-  const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   const currentStepNode = loginContainer.querySelector(`[data-onboarding-step="${currentStep}"]`);
   const nextStepNode = loginContainer.querySelector(`[data-onboarding-step="${targetStep}"]`);
 
@@ -185,480 +236,549 @@ async function setOnboardingStep(step) {
   }
 
   isStepTransitioning = true;
-  loginContainer.classList.add("is-transitioning");
+  loginContainer.classList.add('is-transitioning');
 
   try {
     if (nextStepNode) {
-      nextStepNode.classList.remove("step-exit");
+      nextStepNode.classList.remove('step-exit');
       if (!prefersReducedMotion) {
-        nextStepNode.classList.add("step-enter");
+        nextStepNode.classList.add('step-enter');
       } else {
-        nextStepNode.classList.remove("step-enter");
+        nextStepNode.classList.remove('step-enter');
       }
-      nextStepNode.setAttribute("aria-hidden", "true");
-      nextStepNode.dataset.active = "false";
+      nextStepNode.setAttribute('aria-hidden', 'true');
+      nextStepNode.dataset.active = 'false';
     }
 
     if (!prefersReducedMotion && currentStepNode) {
-      currentStepNode.classList.add("step-exit");
+      currentStepNode.classList.add('step-exit');
       await sleep(STEP_TRANSITION_MS);
-      currentStepNode.classList.remove("step-exit");
+      currentStepNode.classList.remove('step-exit');
     }
 
     loginContainer.dataset.step = targetStep;
-    await syncRitualLine(targetStep);
-
+    await syncRitualLine(targetStep, ritualLinesByStep);
     syncOnboardingStepVisibility(targetStep);
 
     if (!prefersReducedMotion && nextStepNode) {
       void nextStepNode.offsetWidth;
-      nextStepNode.classList.remove("step-enter");
+      nextStepNode.classList.remove('step-enter');
       await sleep(STEP_TRANSITION_MS);
     } else if (nextStepNode) {
-      nextStepNode.classList.remove("step-enter");
+      nextStepNode.classList.remove('step-enter');
     }
   } finally {
     if (onboardingStage) {
-      onboardingStage.style.height = "";
-      onboardingStage.style.minHeight = "";
+      onboardingStage.style.height = '';
+      onboardingStage.style.minHeight = '';
     }
 
-    loginContainer.classList.remove("is-transitioning");
+    loginContainer.classList.remove('is-transitioning');
     isStepTransitioning = false;
   }
 }
 
-async function syncRitualLine(step) {
-  if (!loginSteps || !loginStepsText) {
+function setupPublicArrivalFlow() {
+  if (!currentPage.includes('login') || !loginContainer) {
     return;
   }
 
-  const targetStep = String(step);
-  const nextLine = RITUAL_LINES_BY_STEP[targetStep];
+  const arrivalNameInput = document.getElementById('arrival-name');
+  const arrivalNextBtn = document.getElementById('btn-arrival-next');
+  const arrivalContinueBtn = document.getElementById('btn-arrival-continue');
+  const arrivalNameDisplay = document.getElementById('arrival-name-display');
+  const arrivalRequestForm = document.getElementById('arrival-request-form');
+  const arrivalEmailInput = document.getElementById('arrival-email');
+  const desiredExperienceInput = document.getElementById('arrival-desired-experience');
+  const desiredMomentsInput = document.getElementById('arrival-desired-moments');
+  const optionalNoteInput = document.getElementById('arrival-optional-note');
+  const arrivalSubmitBtn = document.getElementById('btn-arrival-save');
+  const arrivalWaitName = document.getElementById('arrival-wait-name');
+  const arrivalWaitEmail = document.getElementById('arrival-wait-email');
+  const arrivalInviteLink = document.getElementById('arrival-invite-link');
 
-  if (!nextLine) {
-    return;
+  const RITUAL_LINES_BY_STEP = {
+    '1': 'Tu llegada empieza ahora.',
+    '2': 'Yumiko ya sabe cómo llamarte.',
+    '3': 'Tu solicitud quedará en resguardo.',
+    '4': 'La espera también forma parte del umbral.'
+  };
+
+  function validateArrivalName(rawName) {
+    const name = String(rawName || '').trim();
+    if (!name) {
+      return 'Decime tu nombre para que Yumiko pueda recibirte.';
+    }
+    if (name.length < 2) {
+      return 'Usá al menos 2 caracteres para tu nombre.';
+    }
+    if (name.length > 24) {
+      return 'Tu nombre puede tener hasta 24 caracteres.';
+    }
+    return null;
   }
 
-  const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+  function updateArrivalWelcomeName() {
+    const storedName = (window.sessionStorage.getItem('yumiko_arrival_name') || '').trim();
+    if (!storedName) {
+      void setOnboardingStep(1, RITUAL_LINES_BY_STEP);
+      arrivalNameInput?.focus();
+      return false;
+    }
 
-  if (prefersReducedMotion) {
-    loginStepsText.textContent = nextLine;
-    loginSteps.dataset.step = targetStep;
-    return;
+    if (arrivalNameDisplay) {
+      arrivalNameDisplay.textContent = storedName;
+    }
+
+    if (arrivalWaitName) {
+      arrivalWaitName.textContent = storedName;
+    }
+
+    return true;
   }
 
-  loginStepsText.classList.add("is-changing");
-  await sleep(RITUAL_TEXT_TRANSITION_MS);
-  loginStepsText.textContent = nextLine;
-  loginSteps.dataset.step = targetStep;
-  loginStepsText.classList.remove("is-changing");
-}
+  function populateWaitStep() {
+    const storedName = (window.sessionStorage.getItem('yumiko_arrival_name') || '').trim();
+    const storedEmail = normalizeEmail(window.sessionStorage.getItem('yumiko_arrival_email') || '');
 
-function validateArrivalName(rawName) {
-  const name = rawName.trim();
+    if (arrivalWaitName) {
+      arrivalWaitName.textContent = storedName || 'tu llegada';
+    }
 
-  if (!name) {
-    return "Decime tu nombre para que Yumiko pueda recibirte.";
+    if (arrivalWaitEmail) {
+      arrivalWaitEmail.textContent = storedEmail || 'tu email reservado';
+    }
+
+    if (arrivalInviteLink) {
+      const inviteUrl = new URL('/invitation.html', window.location.origin);
+      const safeReturnTo = getSafeReturnTo();
+      if (safeReturnTo) {
+        inviteUrl.searchParams.set('returnTo', safeReturnTo);
+      }
+      arrivalInviteLink.setAttribute('href', inviteUrl.pathname + inviteUrl.search);
+    }
   }
 
-  if (name.length < 2) {
-    return "Usá al menos 2 caracteres para tu nombre.";
+  function submitArrivalStepOne() {
+    const rawName = arrivalNameInput?.value || '';
+    const validationError = validateArrivalName(rawName);
+
+    if (validationError) {
+      showAuthMessage(validationError);
+      arrivalNameInput?.focus();
+      return;
+    }
+
+    clearAuthMessage();
+    const normalizedName = rawName.trim();
+    window.sessionStorage.setItem('yumiko_arrival_name', normalizedName);
+    void setOnboardingStep(2, RITUAL_LINES_BY_STEP);
   }
 
-  if (name.length > 24) {
-    return "Tu nombre puede tener hasta 24 caracteres.";
+  function submitArrivalStepTwo() {
+    clearAuthMessage();
+    void setOnboardingStep(3, RITUAL_LINES_BY_STEP);
   }
 
-  return null;
-}
-
-function submitArrivalStep() {
-  const rawName = arrivalNameInput?.value || "";
-  const validationError = validateArrivalName(rawName);
-
-  if (validationError) {
-    showAuthMessage(validationError);
-    arrivalNameInput?.focus();
-    return;
-  }
-
-  clearAuthMessage();
-  const normalizedName = rawName.trim();
-  window.sessionStorage.setItem("yumiko_arrival_name", normalizedName);
-  void setOnboardingStep(2);
-}
-
-
-function getStoredArrivalName() {
-  return (window.sessionStorage.getItem("yumiko_arrival_name") || "").trim();
-}
-
-function updateArrivalWelcomeName() {
-  const storedName = getStoredArrivalName();
-
-  if (!storedName) {
-    // Si no hay nombre, no dejamos al usuario en step 2.
-    void setOnboardingStep(1);
-    arrivalNameInput?.focus();
-    return false;
-  }
-
-  if (arrivalNameDisplay) {
-    arrivalNameDisplay.textContent = storedName;
-  }
-
-  return true;
-}
-
-function submitArrivalStepTwo() {
-  clearAuthMessage();
-  void setOnboardingStep(3);
-}
-
-async function runPasswordAuth({ email, password, registerMode = false }) {
-  const authResponse = registerMode
-    ? await supabaseClient.auth.signUp({ email, password })
-    : await supabaseClient.auth.signInWithPassword({ email, password });
-
-  if (authResponse.error) {
-    return { error: authResponse.error };
-  }
-
-  return { error: null };
-}
-
-async function submitArrivalStepThree() {
-  const email = arrivalEmailInput?.value.trim() || "";
-  const password = arrivalPasswordInput?.value || "";
-
-  if (!email || !password) {
-    showAuthMessage("Completá email y contraseña para guardar tu llegada.");
+  function validateArrivalRequestPayload({ email, desiredExperience, desiredMoments }) {
     if (!email) {
-      arrivalEmailInput?.focus();
-      return;
-    }
-    arrivalPasswordInput?.focus();
-    return;
-  }
-
-  clearAuthMessage();
-
-  if (arrivalSaveBtn) {
-    arrivalSaveBtn.disabled = true;
-  }
-
-  try {
-    const { error } = await runPasswordAuth({ email, password });
-
-    if (error) {
-      console.error("Arrival auth error:", error.message);
-      showAuthMessage(error.message);
-      return;
+      return 'Dejanos tu email para poder escribirte si tu llegada es aprobada.';
     }
 
-    // Dejamos listo el siguiente paso del onboarding premium.
-    await setOnboardingStep(4);
-  } catch (error) {
-    console.error("Arrival auth error:", error?.message || error);
-    showAuthMessage(error?.message || "Uhm… algo falló. ¿Revisamos e intentamos de nuevo? 🥺");
-  } finally {
-    if (arrivalSaveBtn) {
-      arrivalSaveBtn.disabled = false;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return 'Revisemos ese email y volvamos a intentarlo.';
     }
-  }
-}
 
-
-function submitArrivalStepFour() {
-  clearAuthMessage();
-  sessionStorage.setItem("show_entry_choice", "1");
-  const safeReturnTo = getSafeReturnTo();
-  goWithTransition(safeReturnTo || "index.html");
-  goWithTransition(postLoginRedirectPath);
-}
-
-function showAuthMessage(message, type = "error") {
-  if (!errorBox) {
-    return;
-  }
-
-  errorBox.textContent = message;
-  errorBox.classList.remove("hidden", "success");
-
-  if (type === "success") {
-    errorBox.classList.add("success");
-  }
-}
-
-function clearAuthMessage() {
-  if (!errorBox) {
-    return;
-  }
-
-  errorBox.textContent = "";
-  errorBox.classList.add("hidden");
-  errorBox.classList.remove("success");
-}
-
-function setRecoveryMode(enabled) {
-  isRecoveryMode = enabled;
-  clearAuthMessage();
-
-  if (passwordInput) {
-    passwordInput.classList.toggle("hidden", enabled);
-  }
-  if (loginBtn) {
-    loginBtn.classList.toggle("hidden", enabled);
-  }
-  if (registerBtn) {
-    registerBtn.classList.toggle("hidden", enabled);
-  }
-  if (forgotPasswordLink) {
-    forgotPasswordLink.classList.toggle("hidden", enabled);
-  }
-  if (sendResetBtn) {
-    sendResetBtn.classList.toggle("hidden", !enabled);
-  }
-  if (resetBackBtn) {
-    resetBackBtn.classList.toggle("hidden", !enabled);
-  }
-  if (loginTitle) {
-    loginTitle.textContent = enabled ? "Recuperar contraseña" : "Yumiko te estaba esperando";
-  }
-  if (recoveryCopy) {
-    recoveryCopy.classList.toggle("hidden", !enabled);
-  }
-}
-
-function setRegisterMode(enabled) {
-  isRegisterMode = enabled;
-  clearAuthMessage();
-
-  if (loginBtn) {
-    loginBtn.textContent = enabled ? "Crear cuenta" : "Entrar al Dojo";
-  }
-
-  if (registerBtn) {
-    registerBtn.textContent = enabled ? "Ya tengo cuenta" : "Crear cuenta";
-  }
-
-  if (loginContainer) {
-    loginContainer.classList.toggle("is-register", enabled);
-  }
-}
-
-setRegisterMode(false);
-syncOnboardingStepVisibility(loginContainer?.dataset.step || "1");
-void syncRitualLine(loginContainer?.dataset.step || "1");
-
-// Pantalla 1 del onboarding premium: captura nombre y avanza de step sin autenticar.
-if (arrivalNameInput && arrivalNextBtn) {
-  loginContainer.dataset.step = "1";
-
-  arrivalNextBtn.onclick = submitArrivalStep;
-  arrivalNameInput.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter") {
-      return;
+    if (!desiredExperience) {
+      return 'Contame qué te gustaría encontrar en Yumiko.';
     }
-    event.preventDefault();
-    submitArrivalStep();
-  });
-}
 
-if (arrivalContinueBtn) {
-  arrivalContinueBtn.onclick = submitArrivalStepTwo;
+    if (!desiredMoments) {
+      return 'Contame en qué momentos te gustaría sentir su presencia.';
+    }
 
-  // Enter también avanza cuando el foco está dentro del step 2.
-  const onboardingStepTwo = loginContainer?.querySelector('[data-onboarding-step="2"]');
-  onboardingStepTwo?.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" || event.defaultPrevented) {
+    return null;
+  }
+
+  async function submitArrivalStepThree() {
+    const name = (window.sessionStorage.getItem('yumiko_arrival_name') || '').trim();
+    const email = normalizeEmail(arrivalEmailInput?.value || '');
+    const desiredExperience = String(desiredExperienceInput?.value || '').trim();
+    const desiredMoments = String(desiredMomentsInput?.value || '').trim();
+    const optionalNote = String(optionalNoteInput?.value || '').trim();
+
+    const validationError = validateArrivalRequestPayload({
+      email,
+      desiredExperience,
+      desiredMoments
+    });
+
+    if (validationError) {
+      showAuthMessage(validationError);
+      if (!email) {
+        arrivalEmailInput?.focus();
+      } else if (!desiredExperience) {
+        desiredExperienceInput?.focus();
+      } else {
+        desiredMomentsInput?.focus();
+      }
       return;
     }
 
-    const activeElement = document.activeElement;
-    if (activeElement && !onboardingStepTwo.contains(activeElement)) {
-      return;
+    clearAuthMessage();
+    if (arrivalSubmitBtn) {
+      arrivalSubmitBtn.disabled = true;
     }
 
-    event.preventDefault();
-    submitArrivalStepTwo();
-  });
-}
+    try {
+      await postJson('/api/arrival/request', {
+        name,
+        email,
+        desired_experience: desiredExperience,
+        desired_moments: desiredMoments,
+        optional_note: optionalNote
+      });
 
-if (loginContainer) {
+      window.sessionStorage.setItem('yumiko_arrival_email', email);
+      populateWaitStep();
+      await setOnboardingStep(4, RITUAL_LINES_BY_STEP);
+      showAuthMessage('Tu solicitud ya quedó resguardada.', 'success');
+    } catch (error) {
+      console.error('Arrival request error:', error?.payload || error?.message || error);
+      const fallbackMessage = 'Uhm… algo interrumpió tu llegada. Intentemos de nuevo en un momento.';
+      showAuthMessage(error?.payload?.error_description || error?.payload?.error || fallbackMessage);
+    } finally {
+      if (arrivalSubmitBtn) {
+        arrivalSubmitBtn.disabled = false;
+      }
+    }
+  }
+
+  loginContainer.dataset.step = '1';
+  syncOnboardingStepVisibility('1');
+  void syncRitualLine('1', RITUAL_LINES_BY_STEP);
+  populateWaitStep();
+
+  if (arrivalNameInput && arrivalNextBtn) {
+    arrivalNextBtn.onclick = submitArrivalStepOne;
+    arrivalNameInput.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter') {
+        return;
+      }
+      event.preventDefault();
+      submitArrivalStepOne();
+    });
+  }
+
+  if (arrivalContinueBtn) {
+    arrivalContinueBtn.onclick = submitArrivalStepTwo;
+
+    const onboardingStepTwo = loginContainer.querySelector('[data-onboarding-step="2"]');
+    onboardingStepTwo?.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' || event.defaultPrevented) {
+        return;
+      }
+
+      const activeElement = document.activeElement;
+      if (activeElement && !onboardingStepTwo.contains(activeElement)) {
+        return;
+      }
+
+      event.preventDefault();
+      submitArrivalStepTwo();
+    });
+  }
+
+  if (arrivalRequestForm) {
+    arrivalRequestForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      await submitArrivalStepThree();
+    });
+  }
+
   const observer = new MutationObserver(() => {
     const currentStep = loginContainer.dataset.step;
 
-    if (currentStep === "2") {
+    if (currentStep === '2') {
       if (updateArrivalWelcomeName()) {
         arrivalContinueBtn?.focus();
       }
       return;
     }
 
-    if (currentStep === "3") {
-      if (!getStoredArrivalName()) {
-        void setOnboardingStep(1);
-        arrivalNameInput?.focus();
+    if (currentStep === '3') {
+      if (!updateArrivalWelcomeName()) {
         return;
       }
       arrivalEmailInput?.focus();
       return;
     }
 
-    if (currentStep === "4") {
-      arrivalEnterBtn?.focus();
+    if (currentStep === '4') {
+      populateWaitStep();
+      arrivalInviteLink?.focus();
     }
   });
 
   observer.observe(loginContainer, {
     attributes: true,
-    attributeFilter: ["data-step"]
+    attributeFilter: ['data-step']
   });
 }
 
-if (arrivalAuthForm) {
-  arrivalAuthForm.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    await submitArrivalStepThree();
-  });
-}
+function setupInvitationFlow() {
+  if (!currentPage.includes('invitation')) {
+    return;
+  }
 
-if (arrivalEnterBtn) {
-  arrivalEnterBtn.onclick = submitArrivalStepFour;
+  const invitationStatus = document.getElementById('invitation-status');
+  const invitationStatusText = document.getElementById('invitation-status-text');
+  const invitationGreeting = document.getElementById('invitation-greeting');
+  const invitationLead = document.getElementById('invitation-lead');
+  const invitationTokenForm = document.getElementById('invitation-token-form');
+  const invitationTokenInput = document.getElementById('invite-token');
+  const invitationTokenBtn = document.getElementById('btn-validate-invite');
+  const invitationCompletionBlock = document.getElementById('invitation-completion-block');
+  const invitationReadyBlock = document.getElementById('invitation-ready-block');
+  const invitationEmailInput = document.getElementById('invitation-email');
+  const invitationPasswordInput = document.getElementById('invitation-password');
+  const invitationCompleteBtn = document.getElementById('btn-complete-arrival');
+  const invitationSignInForm = document.getElementById('private-signin-form');
+  const signInEmailInput = document.getElementById('private-email');
+  const signInPasswordInput = document.getElementById('private-password');
+  const signInBtn = document.getElementById('btn-private-signin');
 
-  const onboardingStepFour = loginContainer?.querySelector('[data-onboarding-step="4"]');
-  onboardingStepFour?.addEventListener("keydown", (event) => {
-    if (event.key !== "Enter" || event.defaultPrevented) {
+  let activeInvitation = null;
+
+  function setInvitationState(state) {
+    if (!invitationStatus || !invitationStatusText) {
       return;
     }
 
-    const activeElement = document.activeElement;
-    if (activeElement && !onboardingStepFour.contains(activeElement)) {
+    invitationStatus.dataset.state = state;
+    if (state === 'approved') {
+      invitationStatusText.textContent = 'Acceso privado aprobado';
       return;
     }
 
-    event.preventDefault();
-    submitArrivalStepFour();
-  });
-}
+    if (state === 'ready') {
+      invitationStatusText.textContent = 'Acceso habilitado';
+      return;
+    }
 
-if (loginBtn) {
-  loginBtn.onclick = async () => {
-    const email = emailInput?.value.trim() || "";
-    const password = passwordInput?.value.trim() || "";
+    invitationStatusText.textContent = 'Invitación privada';
+  }
+
+  function renderInvitation(data) {
+    activeInvitation = data;
+    clearAuthMessage();
+
+    const name = data?.name || 'vos';
+    const email = data?.email || '';
+    const accountEnabled = Boolean(data?.account_enabled);
+
+    if (invitationGreeting) {
+      invitationGreeting.textContent = `${name}, tu acceso fue aprobado.`;
+    }
+
+    if (invitationLead) {
+      invitationLead.textContent = accountEnabled
+        ? 'Tu llegada ya quedó habilitada. Cuando quieras, podés volver a entrar desde esta puerta interior.'
+        : 'Ya podemos completar tu llegada. Elegí una contraseña para cruzar el umbral final.';
+    }
+
+    if (invitationEmailInput) {
+      invitationEmailInput.value = email;
+      invitationEmailInput.readOnly = true;
+    }
+
+    if (signInEmailInput && email && !signInEmailInput.value) {
+      signInEmailInput.value = email;
+    }
+
+    if (invitationCompletionBlock) {
+      invitationCompletionBlock.classList.toggle('hidden', accountEnabled);
+    }
+
+    if (invitationReadyBlock) {
+      invitationReadyBlock.classList.toggle('hidden', !accountEnabled);
+    }
+
+    setInvitationState(accountEnabled ? 'ready' : 'approved');
+  }
+
+  async function validateInvitation(token) {
+    const normalizedToken = String(token || '').trim();
+    if (!normalizedToken) {
+      showAuthMessage('Pegá tu invitación privada para continuar.');
+      invitationTokenInput?.focus();
+      return;
+    }
+
+    if (invitationTokenBtn) {
+      invitationTokenBtn.disabled = true;
+    }
 
     try {
-      const { error } = await runPasswordAuth({
-        email,
-        password,
-        registerMode: isRegisterMode
-      });
+      const response = await fetch(`/api/arrival/invite?token=${encodeURIComponent(normalizedToken)}`);
+      const data = await parseJsonResponse(response);
 
-      if (error) {
-        console.error(isRegisterMode ? "Register error:" : "Login error:", error.message);
-        showAuthMessage(error.message);
-        return;
+      if (!response.ok) {
+        throw Object.assign(new Error(data?.error || 'invalid_invite'), { payload: data, status: response.status });
       }
 
-      if (isRegisterMode) {
-        showAuthMessage("Registro exitoso. Revisa tu correo para confirmar.", "success");
-
-        if (safeLocalStorage) {
-          safeLocalStorage.setItem("yumiko_just_registered_at", String(Date.now()));
-        }
-
-        setRegisterMode(false);
-        return;
+      if (invitationTokenInput) {
+        invitationTokenInput.value = normalizedToken;
       }
 
-      sessionStorage.setItem("show_entry_choice", "1");
-      const safeReturnTo = getSafeReturnTo();
-      goWithTransition(safeReturnTo || "index.html");
-      goWithTransition(postLoginRedirectPath);
+      renderInvitation(data);
+      if (data?.account_enabled) {
+        signInPasswordInput?.focus();
+      } else {
+        invitationPasswordInput?.focus();
+      }
     } catch (error) {
-      console.error(isRegisterMode ? "Register error:" : "Login error:", error?.message || error);
-      showAuthMessage(error?.message || "Uhm… algo falló. ¿Revisamos e intentamos de nuevo? 🥺");
-    }
-  };
-}
-
-if (registerBtn) {
-  registerBtn.onclick = () => {
-    if (isRecoveryMode) {
-      setRecoveryMode(false);
-    }
-
-    setRegisterMode(!isRegisterMode);
-  };
-}
-
-if (forgotPasswordLink) {
-  forgotPasswordLink.onclick = () => {
-    setRecoveryMode(true);
-    emailInput?.focus();
-  };
-}
-
-if (resetBackBtn) {
-  resetBackBtn.onclick = () => {
-    setRecoveryMode(false);
-    passwordInput?.focus();
-    setRegisterMode(isRegisterMode);
-  };
-}
-
-if (sendResetBtn) {
-  sendResetBtn.onclick = async () => {
-    if (!isRecoveryMode) {
-      setRecoveryMode(true);
-    }
-
-    const email = emailInput?.value.trim() || "";
-    const originalLabel = "Enviar enlace";
-
-    if (!email) {
-      showAuthMessage("Uhm… algo falló. ¿Revisamos el email e intentamos de nuevo? 🥺");
-      return;
-    }
-
-    sendResetBtn.disabled = true;
-    sendResetBtn.textContent = "Enviando...";
-
-    try {
-      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password.html`
-      });
-
-      if (error) {
-        console.error("Reset password email error:", error.message);
-        showAuthMessage("Uhm… algo falló. ¿Revisamos el email e intentamos de nuevo? 🥺");
-        return;
+      console.error('Invitation validation error:', error?.payload || error?.message || error);
+      setInvitationState('idle');
+      activeInvitation = null;
+      if (invitationCompletionBlock) {
+        invitationCompletionBlock.classList.add('hidden');
       }
-
-      showAuthMessage("Listo. Revisa tu email para continuar… yo me quedo aquí 🫶", "success");
-    } catch (error) {
-      console.error("Reset password email error:", error?.message || error);
-      showAuthMessage("Uhm… algo falló. ¿Revisamos el email e intentamos de nuevo? 🥺");
+      if (invitationReadyBlock) {
+        invitationReadyBlock.classList.add('hidden');
+      }
+      showAuthMessage('No pude reconocer esa invitación. Revisemos el enlace privado e intentemos de nuevo.');
     } finally {
-      sendResetBtn.disabled = false;
-      sendResetBtn.textContent = originalLabel;
+      if (invitationTokenBtn) {
+        invitationTokenBtn.disabled = false;
+      }
     }
-  };
+  }
+
+  async function completeInvitationArrival() {
+    const token = invitationTokenInput?.value.trim() || inviteTokenParam;
+    const email = normalizeEmail(invitationEmailInput?.value || '');
+    const password = invitationPasswordInput?.value || '';
+
+    if (!activeInvitation) {
+      showAuthMessage('Primero validemos tu invitación privada.');
+      invitationTokenInput?.focus();
+      return;
+    }
+
+    if (!password || password.length < 8) {
+      showAuthMessage('Elegí una contraseña de al menos 8 caracteres para resguardar tu llegada.');
+      invitationPasswordInput?.focus();
+      return;
+    }
+
+    if (invitationCompleteBtn) {
+      invitationCompleteBtn.disabled = true;
+    }
+
+    try {
+      await postJson('/api/arrival/complete', {
+        token,
+        email,
+        password
+      });
+
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) {
+        throw error;
+      }
+
+      if (safeLocalStorage) {
+        safeLocalStorage.setItem('yumiko_private_access_completed_at', String(Date.now()));
+      }
+
+      completeSignedInArrival();
+    } catch (error) {
+      console.error('Invitation completion error:', error?.payload || error?.message || error);
+      const alreadyEnabled = error?.payload?.error === 'account_already_enabled';
+      showAuthMessage(
+        alreadyEnabled
+          ? 'Tu acceso ya estaba habilitado. Entrá con tu email y contraseña desde abajo.'
+          : error?.payload?.error_description || error?.message || 'No pude completar tu llegada. Intentemos de nuevo.'
+      );
+    } finally {
+      if (invitationCompleteBtn) {
+        invitationCompleteBtn.disabled = false;
+      }
+    }
+  }
+
+  async function submitPrivateSignIn() {
+    const email = normalizeEmail(signInEmailInput?.value || '');
+    const password = signInPasswordInput?.value || '';
+
+    if (!email || !password) {
+      showAuthMessage('Completá email y contraseña para cruzar esta puerta interior.');
+      if (!email) {
+        signInEmailInput?.focus();
+      } else {
+        signInPasswordInput?.focus();
+      }
+      return;
+    }
+
+    if (signInBtn) {
+      signInBtn.disabled = true;
+    }
+
+    try {
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) {
+        throw error;
+      }
+
+      completeSignedInArrival();
+    } catch (error) {
+      console.error('Private sign-in error:', error?.message || error);
+      showAuthMessage('No pude abrir tu acceso. Revisemos tus datos e intentemos de nuevo.');
+    } finally {
+      if (signInBtn) {
+        signInBtn.disabled = false;
+      }
+    }
+  }
+
+  invitationTokenForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    await validateInvitation(invitationTokenInput?.value || inviteTokenParam);
+  });
+
+  document.getElementById('invitation-completion-form')?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    await completeInvitationArrival();
+  });
+
+  invitationSignInForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    await submitPrivateSignIn();
+  });
+
+  setInvitationState('idle');
+
+  if (inviteTokenParam) {
+    if (invitationTokenInput) {
+      invitationTokenInput.value = inviteTokenParam;
+    }
+    void validateInvitation(inviteTokenParam);
+  }
 }
 
-// ===============================
-// LOGOUT (para index y gacha)
-// ===============================
+setupPublicArrivalFlow();
+setupInvitationFlow();
+
 const logoutButtons = [
-  document.getElementById("btn-logout"),
-  document.getElementById("m-logout")
+  document.getElementById('btn-logout'),
+  document.getElementById('m-logout')
 ].filter(Boolean);
 
 logoutButtons.forEach((logoutBtn) => {
   logoutBtn.onclick = async () => {
     await supabaseClient.auth.signOut();
-    goWithTransition("login.html");
+    goWithTransition('invitation.html');
   };
 });
