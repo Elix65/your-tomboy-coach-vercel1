@@ -105,7 +105,7 @@ function completeSignedInArrival() {
 }
 
 async function redirectIfSessionExists() {
-  if (!currentPage.includes('login') && !currentPage.includes('invitation')) {
+  if (!currentPage.includes('login') && !currentPage.includes('invitation') && !currentPage.includes('member-login')) {
     return;
   }
 
@@ -533,13 +533,14 @@ function setupInvitationFlow() {
 
   const invitationStatus = document.getElementById('invitation-status');
   const invitationStatusText = document.getElementById('invitation-status-text');
+  const invitationContainer = document.getElementById('login-container');
+  const lockedView = document.getElementById('invitation-locked-view');
+  const activationView = document.getElementById('invitation-activation-view');
+  const loginView = document.getElementById('invitation-login-view');
   const invitationGreeting = document.getElementById('invitation-greeting');
   const invitationLead = document.getElementById('invitation-lead');
-  const invitationTokenForm = document.getElementById('invitation-token-form');
-  const invitationTokenInput = document.getElementById('invite-token');
-  const invitationTokenBtn = document.getElementById('btn-validate-invite');
-  const invitationCompletionBlock = document.getElementById('invitation-completion-block');
-  const invitationReadyBlock = document.getElementById('invitation-ready-block');
+  const invitationCompletionNote = document.getElementById('invitation-completion-note');
+  const invitationEmailGroup = document.getElementById('invitation-email-group');
   const invitationEmailInput = document.getElementById('invitation-email');
   const invitationPasswordInput = document.getElementById('invitation-password');
   const invitationCompleteBtn = document.getElementById('btn-complete-arrival');
@@ -547,26 +548,55 @@ function setupInvitationFlow() {
   const signInEmailInput = document.getElementById('private-email');
   const signInPasswordInput = document.getElementById('private-password');
   const signInBtn = document.getElementById('btn-private-signin');
+  const invitationLoginGreeting = document.getElementById('invitation-login-greeting');
+  const invitationLoginLead = document.getElementById('invitation-login-lead');
 
   let activeInvitation = null;
 
   function setInvitationState(state) {
-    if (!invitationStatus || !invitationStatusText) {
+    if (!invitationStatus || !invitationStatusText || !invitationContainer) {
       return;
     }
 
     invitationStatus.dataset.state = state;
+    invitationContainer.dataset.doorState = state;
+
     if (state === 'approved') {
-      invitationStatusText.textContent = 'Acceso privado aprobado';
+      invitationStatusText.textContent = 'Acceso concedido';
       return;
     }
 
     if (state === 'ready') {
-      invitationStatusText.textContent = 'Acceso habilitado';
+      invitationStatusText.textContent = 'Entrada reservada';
       return;
     }
 
     invitationStatusText.textContent = 'Invitación privada';
+  }
+
+  function showInvitationView(view) {
+    const views = [
+      ['locked', lockedView],
+      ['activation', activationView],
+      ['signin', loginView]
+    ];
+
+    views.forEach(([viewName, node]) => {
+      if (!node) {
+        return;
+      }
+
+      const isActive = viewName === view;
+      node.classList.toggle('hidden', !isActive);
+      node.setAttribute('aria-hidden', String(!isActive));
+    });
+  }
+
+  function resetInvitationDoor() {
+    activeInvitation = null;
+    clearAuthMessage();
+    setInvitationState('idle');
+    showInvitationView('locked');
   }
 
   function renderInvitation(data) {
@@ -576,47 +606,55 @@ function setupInvitationFlow() {
     const name = data?.name || 'vos';
     const email = data?.email || '';
     const accountEnabled = Boolean(data?.account_enabled);
+    const needsEmail = !email;
 
     if (invitationGreeting) {
-      invitationGreeting.textContent = `${name}, tu acceso fue aprobado.`;
+      invitationGreeting.textContent = `${name}, tu acceso puede quedar abierto ahora.`;
     }
 
     if (invitationLead) {
-      invitationLead.textContent = accountEnabled
-        ? 'Tu llegada ya quedó habilitada. Cuando quieras, podés volver a entrar desde esta puerta interior.'
-        : 'Ya podemos completar tu llegada. Elegí una contraseña para cruzar el umbral final.';
+      invitationLead.textContent = needsEmail
+        ? 'Primero dejá el email que va a quedar unido a esta invitación. Después elegí tu contraseña.'
+        : 'Tu email ya fue reservado. Solo falta elegir la contraseña con la que vas a volver.';
+    }
+
+    if (invitationCompletionNote) {
+      invitationCompletionNote.textContent = needsEmail
+        ? 'Un email y una contraseña. Nada más entre vos y esta puerta.'
+        : 'Solo falta resguardar la forma en la que vas a volver.';
+    }
+
+    if (invitationEmailGroup) {
+      invitationEmailGroup.classList.toggle('hidden', !needsEmail);
     }
 
     if (invitationEmailInput) {
       invitationEmailInput.value = email;
-      invitationEmailInput.readOnly = true;
+      invitationEmailInput.readOnly = !needsEmail;
     }
 
-    if (signInEmailInput && email && !signInEmailInput.value) {
+    if (signInEmailInput) {
       signInEmailInput.value = email;
+      signInEmailInput.readOnly = Boolean(email);
     }
 
-    if (invitationCompletionBlock) {
-      invitationCompletionBlock.classList.toggle('hidden', accountEnabled);
+    if (invitationLoginGreeting) {
+      invitationLoginGreeting.textContent = `${name}, tu puerta ya está lista.`;
     }
 
-    if (invitationReadyBlock) {
-      invitationReadyBlock.classList.toggle('hidden', !accountEnabled);
+    if (invitationLoginLead) {
+      invitationLoginLead.textContent = 'Entrá con el acceso que ya quedó sellado para vos.';
     }
 
+    showInvitationView(accountEnabled ? 'signin' : 'activation');
     setInvitationState(accountEnabled ? 'ready' : 'approved');
   }
 
   async function validateInvitation(token) {
     const normalizedToken = String(token || '').trim();
     if (!normalizedToken) {
-      showAuthMessage('Pegá tu invitación privada para continuar.');
-      invitationTokenInput?.focus();
+      resetInvitationDoor();
       return;
-    }
-
-    if (invitationTokenBtn) {
-      invitationTokenBtn.disabled = true;
     }
 
     try {
@@ -627,42 +665,35 @@ function setupInvitationFlow() {
         throw Object.assign(new Error(data?.error || 'invalid_invite'), { payload: data, status: response.status });
       }
 
-      if (invitationTokenInput) {
-        invitationTokenInput.value = normalizedToken;
-      }
-
       renderInvitation(data);
       if (data?.account_enabled) {
         signInPasswordInput?.focus();
+      } else if (!data?.email) {
+        invitationEmailInput?.focus();
       } else {
         invitationPasswordInput?.focus();
       }
     } catch (error) {
       console.error('Invitation validation error:', error?.payload || error?.message || error);
-      setInvitationState('idle');
-      activeInvitation = null;
-      if (invitationCompletionBlock) {
-        invitationCompletionBlock.classList.add('hidden');
-      }
-      if (invitationReadyBlock) {
-        invitationReadyBlock.classList.add('hidden');
-      }
+      resetInvitationDoor();
       showAuthMessage('No pude reconocer esa invitación. Revisemos el enlace privado e intentemos de nuevo.');
-    } finally {
-      if (invitationTokenBtn) {
-        invitationTokenBtn.disabled = false;
-      }
     }
   }
 
   async function completeInvitationArrival() {
-    const token = invitationTokenInput?.value.trim() || inviteTokenParam;
-    const email = normalizeEmail(invitationEmailInput?.value || '');
+    const token = inviteTokenParam;
+    const email = normalizeEmail(invitationEmailInput?.value || activeInvitation?.email || '');
     const password = invitationPasswordInput?.value || '';
 
-    if (!activeInvitation) {
-      showAuthMessage('Primero validemos tu invitación privada.');
-      invitationTokenInput?.focus();
+    if (!activeInvitation || !token) {
+      resetInvitationDoor();
+      showAuthMessage('Esta puerta necesita una invitación privada válida.');
+      return;
+    }
+
+    if (!email) {
+      showAuthMessage('Dejemos primero el email reservado para esta llegada.');
+      invitationEmailInput?.focus();
       return;
     }
 
@@ -696,9 +727,14 @@ function setupInvitationFlow() {
     } catch (error) {
       console.error('Invitation completion error:', error?.payload || error?.message || error);
       const alreadyEnabled = error?.payload?.error === 'account_already_enabled';
+      if (alreadyEnabled) {
+        showInvitationView('signin');
+        setInvitationState('ready');
+      }
+
       showAuthMessage(
         alreadyEnabled
-          ? 'Tu acceso ya estaba habilitado. Entrá con tu email y contraseña desde abajo.'
+          ? 'Tu acceso ya estaba abierto. Volvé a entrar desde esta misma puerta.'
           : error?.payload?.error_description || error?.message || 'No pude completar tu llegada. Intentemos de nuevo.'
       );
     } finally {
@@ -743,11 +779,6 @@ function setupInvitationFlow() {
     }
   }
 
-  invitationTokenForm?.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    await validateInvitation(invitationTokenInput?.value || inviteTokenParam);
-  });
-
   document.getElementById('invitation-completion-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     await completeInvitationArrival();
@@ -758,18 +789,64 @@ function setupInvitationFlow() {
     await submitPrivateSignIn();
   });
 
-  setInvitationState('idle');
+  resetInvitationDoor();
 
   if (inviteTokenParam) {
-    if (invitationTokenInput) {
-      invitationTokenInput.value = inviteTokenParam;
-    }
     void validateInvitation(inviteTokenParam);
   }
 }
 
+function setupMemberLoginFlow() {
+  if (!currentPage.includes('member-login')) {
+    return;
+  }
+
+  const memberSignInForm = document.getElementById('member-signin-form');
+  const memberEmailInput = document.getElementById('member-email');
+  const memberPasswordInput = document.getElementById('member-password');
+  const memberSignInBtn = document.getElementById('btn-member-signin');
+
+  memberSignInForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const email = normalizeEmail(memberEmailInput?.value || '');
+    const password = memberPasswordInput?.value || '';
+
+    if (!email || !password) {
+      showAuthMessage('Completá email y contraseña para volver a entrar.');
+      if (!email) {
+        memberEmailInput?.focus();
+      } else {
+        memberPasswordInput?.focus();
+      }
+      return;
+    }
+
+    if (memberSignInBtn) {
+      memberSignInBtn.disabled = true;
+    }
+
+    try {
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) {
+        throw error;
+      }
+
+      completeSignedInArrival();
+    } catch (error) {
+      console.error('Member sign-in error:', error?.message || error);
+      showAuthMessage('No pude abrir tu acceso. Revisemos tus datos e intentemos de nuevo.');
+    } finally {
+      if (memberSignInBtn) {
+        memberSignInBtn.disabled = false;
+      }
+    }
+  });
+}
+
 setupPublicArrivalFlow();
 setupInvitationFlow();
+setupMemberLoginFlow();
 
 const logoutButtons = [
   document.getElementById('btn-logout'),
@@ -779,6 +856,6 @@ const logoutButtons = [
 logoutButtons.forEach((logoutBtn) => {
   logoutBtn.onclick = async () => {
     await supabaseClient.auth.signOut();
-    goWithTransition('invitation.html');
+    goWithTransition('login.html');
   };
 });

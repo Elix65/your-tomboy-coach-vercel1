@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="/style.v2.css">
   <link rel="stylesheet" href="/login.v2.css">
 </head>
-<body class="login-page invitation-page">
+<body class="login-page invitation-page invitation-page--private-door">
   <div class="login-root">
     <div class="bg-scene" aria-hidden="true"></div>
     <div class="yumiko-layer" aria-hidden="true">
@@ -21,7 +21,7 @@
 
     <div class="auth-shell">
       <div class="auth-left">
-        <div id="login-container" class="invitation-container" data-step="1">
+        <div id="login-container" class="invitation-container invitation-door" data-door-state="locked">
           <div class="panel-ornament" aria-hidden="true"></div>
           <div class="login-brand" aria-hidden="true">
             <img src="/svg/moon-sakura-logo.svg" alt="" class="login-brand-logo">
@@ -32,77 +32,86 @@
             <span id="invitation-status-text">Invitación privada</span>
           </div>
 
-          <div class="invitation-copy-block">
-            <p class="login-eyebrow">Puerta interior</p>
-            <h2 id="invitation-greeting" class="login-title">Tu llegada puede continuar desde acá.</h2>
-            <p id="invitation-lead" class="login-subtitle">Si recibiste una invitación privada, este es el umbral donde se completa el acceso real. Si tu cuenta ya está habilitada, también podés volver a entrar desde acá.</p>
-          </div>
-
-          <form id="invitation-token-form" class="arrival-auth-form invitation-token-form" novalidate>
-            <label for="invite-token" class="arrival-label">Invitación privada</label>
-            <input id="invite-token" type="text" placeholder="Pegá tu enlace o token privado" autocomplete="off" aria-label="Invitación privada">
-            <button id="btn-validate-invite" class="login-btn" type="submit">Reconocer mi invitación</button>
-          </form>
-
-          <div id="invitation-completion-block" class="invitation-section hidden">
-            <div class="invitation-section-copy">
-              <p class="section-kicker">Completar llegada</p>
-              <p class="section-note">Tu email queda reservado para esta invitación. Solo falta elegir la contraseña con la que vas a volver cuando quieras.</p>
+          <section id="invitation-locked-view" class="invitation-view invitation-view-locked hidden" aria-live="polite">
+            <div class="invitation-copy-block invitation-copy-block--locked">
+              <p class="login-eyebrow">Puerta interior</p>
+              <h2 class="login-title">Esta puerta se abre con una invitación privada.</h2>
+              <p class="login-subtitle">Nada más por ahora. Solo cuando el llamado llegue a tu nombre.</p>
             </div>
 
-            <form id="invitation-completion-form" class="arrival-auth-form" novalidate>
-              <label for="invitation-email" class="arrival-label">Email reservado</label>
-              <div class="input-wrap email-wrap">
-                <span class="input-icon" aria-hidden="true"></span>
-                <input id="invitation-email" type="email" autocomplete="email" aria-label="Email reservado">
-              </div>
+            <p class="door-return-link">
+              <a class="text-link" href="/login.html">Volver a la llegada pública</a>
+            </p>
+          </section>
 
-              <label for="invitation-password" class="arrival-label">Contraseña</label>
-              <div class="input-wrap password-wrap">
-                <span class="input-icon" aria-hidden="true"></span>
-                <input id="invitation-password" type="password" placeholder="••••••••" autocomplete="new-password" aria-label="Contraseña">
-              </div>
-
-              <button id="btn-complete-arrival" class="login-btn" type="submit">Completar mi llegada</button>
-            </form>
-          </div>
-
-          <div id="invitation-ready-block" class="invitation-section hidden">
-            <div class="invitation-section-copy">
-              <p class="section-kicker">Acceso habilitado</p>
-              <p class="section-note">Tu llegada ya fue habilitada. Podés volver a entrar cuando quieras desde este mismo umbral.</p>
-            </div>
-          </div>
-
-          <div class="invitation-divider" aria-hidden="true"></div>
-
-          <div class="invitation-section invitation-section-signin">
-            <div class="invitation-section-copy">
-              <p class="section-kicker">Ya tenés acceso</p>
-              <p class="section-note">Si tu llegada ya fue completada antes, entrá con tu email y tu contraseña.</p>
+          <section id="invitation-activation-view" class="invitation-view hidden" aria-live="polite">
+            <div class="invitation-copy-block">
+              <p class="login-eyebrow">Acceso concedido</p>
+              <h2 id="invitation-greeting" class="login-title">Tu llegada puede completarse acá.</h2>
+              <p id="invitation-lead" class="login-subtitle">Un gesto más y la puerta queda abierta para vos.</p>
             </div>
 
-            <form id="private-signin-form" class="arrival-auth-form" novalidate>
-              <label for="private-email" class="arrival-label">Email</label>
-              <div class="input-wrap email-wrap">
-                <span class="input-icon" aria-hidden="true"></span>
-                <input id="private-email" type="email" placeholder="tu@email.com" autocomplete="email" aria-label="Email">
+            <div id="invitation-completion-block" class="invitation-section invitation-section--focus">
+              <div class="invitation-section-copy">
+                <p class="section-kicker">Activar acceso</p>
+                <p id="invitation-completion-note" class="section-note">Solo falta resguardar la forma en la que vas a volver.</p>
               </div>
 
-              <label for="private-password" class="arrival-label">Contraseña</label>
-              <div class="input-wrap password-wrap">
-                <span class="input-icon" aria-hidden="true"></span>
-                <input id="private-password" type="password" placeholder="••••••••" autocomplete="current-password" aria-label="Contraseña">
+              <form id="invitation-completion-form" class="arrival-auth-form" novalidate>
+                <div id="invitation-email-group" class="invitation-field-group hidden">
+                  <label for="invitation-email" class="arrival-label">Email reservado</label>
+                  <div class="input-wrap email-wrap">
+                    <span class="input-icon" aria-hidden="true"></span>
+                    <input id="invitation-email" type="email" autocomplete="email" aria-label="Email reservado">
+                  </div>
+                </div>
+
+                <div id="invitation-password-group" class="invitation-field-group">
+                  <label for="invitation-password" class="arrival-label">Contraseña</label>
+                  <div class="input-wrap password-wrap">
+                    <span class="input-icon" aria-hidden="true"></span>
+                    <input id="invitation-password" type="password" placeholder="••••••••" autocomplete="new-password" aria-label="Contraseña">
+                  </div>
+                </div>
+
+                <button id="btn-complete-arrival" class="login-btn" type="submit">Activar mi acceso</button>
+              </form>
+            </div>
+          </section>
+
+          <section id="invitation-login-view" class="invitation-view hidden" aria-live="polite">
+            <div class="invitation-copy-block">
+              <p class="login-eyebrow">Entrada reservada</p>
+              <h2 id="invitation-login-greeting" class="login-title">Tu puerta ya reconoce tu nombre.</h2>
+              <p id="invitation-login-lead" class="login-subtitle">Entrá con calma. Lo demás ya fue dispuesto.</p>
+            </div>
+
+            <div class="invitation-section invitation-section--focus">
+              <div class="invitation-section-copy">
+                <p class="section-kicker">Volver a entrar</p>
+                <p class="section-note">Solo vos, tu email y la contraseña con la que quedó sellado este acceso.</p>
               </div>
 
-              <button id="btn-private-signin" class="login-btn" type="submit">Entrar al salón</button>
-            </form>
-          </div>
+              <form id="private-signin-form" class="arrival-auth-form" novalidate>
+                <label for="private-email" class="arrival-label">Email</label>
+                <div class="input-wrap email-wrap">
+                  <span class="input-icon" aria-hidden="true"></span>
+                  <input id="private-email" type="email" placeholder="tu@email.com" autocomplete="email" aria-label="Email">
+                </div>
+
+                <label for="private-password" class="arrival-label">Contraseña</label>
+                <div class="input-wrap password-wrap">
+                  <span class="input-icon" aria-hidden="true"></span>
+                  <input id="private-password" type="password" placeholder="••••••••" autocomplete="current-password" aria-label="Contraseña">
+                </div>
+
+                <button id="btn-private-signin" class="login-btn" type="submit">Entrar al salón</button>
+              </form>
+            </div>
+          </section>
 
           <p id="login-error" class="login-error hidden" role="status" aria-live="polite"></p>
         </div>
-
-        <p class="private-access-hint">Si todavía no dejaste tu solicitud, podés empezar desde <a class="text-link" href="/login.html">la llegada pública</a>.</p>
       </div>
     </div>
   </div>
