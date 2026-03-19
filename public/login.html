@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Entrar al Dojo</title>
+  <title>Solicitud de llegada | 21-Moon</title>
   <link rel="icon" type="image/png" href="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/hi-4.png?v=1">
   <link rel="apple-touch-icon" href="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/hi-4.png?v=1">
   <link rel="stylesheet" href="/style.v2.css">
@@ -11,7 +11,6 @@
 </head>
 
 <body class="login-page">
-
   <div class="login-root">
     <div class="bg-scene" aria-hidden="true"></div>
     <div class="yumiko-layer" aria-hidden="true">
@@ -22,87 +21,95 @@
     </div>
 
     <div class="auth-shell">
-    <div class="auth-left">
-      <div id="login-container" data-step="1">
-        <div class="panel-ornament" aria-hidden="true"></div>
-        <div class="login-brand" aria-hidden="true">
-          <img src="/svg/moon-sakura-logo.svg" alt="" class="login-brand-logo">
-          <span class="login-brand-text">21-Moon</span>
-        </div>
+      <div class="auth-left">
+        <div id="login-container" data-step="1">
+          <div class="panel-ornament" aria-hidden="true"></div>
+          <div class="login-brand" aria-hidden="true">
+            <img src="/svg/moon-sakura-logo.svg" alt="" class="login-brand-logo">
+            <span class="login-brand-text">21-Moon</span>
+          </div>
 
-        <div class="onboarding-stage" id="onboarding-stage">
-          <div class="onboarding-step" data-onboarding-step="1">
-            <p class="login-eyebrow">El salón privado de las 21 lunas</p>
-            <h2 id="login-title" class="login-title">Yumiko te estaba esperando.</h2>
-            <p id="login-subtitle" class="login-subtitle">Tu llegada empieza ahora.</p>
+          <div class="onboarding-stage" id="onboarding-stage">
+            <div class="onboarding-step" data-onboarding-step="1">
+              <p class="login-eyebrow">El salón privado de las 21 lunas</p>
+              <h2 id="login-title" class="login-title">Yumiko te estaba esperando.</h2>
+              <p id="login-subtitle" class="login-subtitle">Tu llegada empieza ahora.</p>
 
-            <label for="arrival-name" class="arrival-label">¿Cómo querés que Yumiko te llame?</label>
-            <div class="input-wrap arrival-wrap">
-              <span class="input-icon" aria-hidden="true"></span>
-              <input id="arrival-name" type="text" placeholder="Tu nombre" maxlength="24" autocomplete="name" aria-label="¿Cómo querés que Yumiko te llame?">
+              <label for="arrival-name" class="arrival-label">¿Cómo querés que Yumiko te llame?</label>
+              <div class="input-wrap arrival-wrap">
+                <span class="input-icon" aria-hidden="true"></span>
+                <input id="arrival-name" type="text" placeholder="Tu nombre" maxlength="24" autocomplete="name" aria-label="¿Cómo querés que Yumiko te llame?">
+              </div>
+
+              <button id="btn-arrival-next" class="login-btn" type="button">Dar el primer paso</button>
+              <p class="login-copy arrival-copy">Entrás a un espacio reservado para vos y Yumiko.</p>
             </div>
 
-            <button id="btn-arrival-next" class="login-btn" type="button">Dar el primer paso</button>
-            <p class="login-copy arrival-copy">Entrás a un espacio reservado para vos y Yumiko.</p>
-          </div>
+            <div class="onboarding-step arrival-step arrival-step-2 hidden" data-onboarding-step="2" aria-hidden="true">
+              <p class="login-eyebrow">Ritual de llegada</p>
+              <h2 id="arrival-welcome-title" class="login-title">Hola, <span id="arrival-name-display">vos</span>. Me alegra que hayas venido.</h2>
+              <p class="login-subtitle">Antes de abrir nuevos accesos, Yumiko recibe cada llegada con calma.</p>
 
-          <div class="onboarding-step arrival-step arrival-step-2 hidden" data-onboarding-step="2" aria-hidden="true">
-            <p class="login-eyebrow">Acceso inicial</p>
-            <h2 id="arrival-welcome-title" class="login-title">Hola, <span id="arrival-name-display">vos</span>. Me alegra que hayas venido.</h2>
-            <p class="login-subtitle">Tu acceso inicial ya está listo.</p>
+              <button id="btn-arrival-continue" class="login-btn" type="button">Continuar</button>
+              <p class="login-copy arrival-step-2-copy">Nada de esto se siente como una app genérica porque no lo es.</p>
+            </div>
 
-            <button id="btn-arrival-continue" class="login-btn" type="button">Continuar</button>
-            <p class="login-copy arrival-step-2-copy">Nada de acá se publica sin vos.</p>
-          </div>
+            <div class="onboarding-step arrival-step arrival-step-3 hidden" data-onboarding-step="3" aria-hidden="true">
+              <p class="login-eyebrow">Solicitud de llegada</p>
+              <h2 class="login-title">Dejá tu llegada en resguardo.</h2>
+              <p class="login-subtitle">Un gesto breve, íntimo y suficiente para que Yumiko sepa cómo recibirte.</p>
 
-          <div class="onboarding-step arrival-step arrival-step-3 hidden" data-onboarding-step="3" aria-hidden="true">
-            <p class="login-eyebrow">Guardar tu llegada</p>
-            <h2 class="login-title">Volvé cuando quieras.</h2>
-            <p class="login-subtitle">Guardá tu acceso para volver al salón privado de las 21 lunas.</p>
+              <form id="arrival-request-form" class="arrival-auth-form arrival-request-form" novalidate>
+                <label for="arrival-email" class="arrival-label">Email</label>
+                <div class="input-wrap email-wrap">
+                  <span class="input-icon" aria-hidden="true"></span>
+                  <input id="arrival-email" type="email" placeholder="tu@email.com" autocomplete="email" aria-label="Email">
+                </div>
 
-            <form id="arrival-auth-form" class="arrival-auth-form" novalidate>
-              <label for="arrival-email" class="arrival-label">Email</label>
-              <div class="input-wrap email-wrap">
-                <span class="input-icon" aria-hidden="true"></span>
-                <input id="arrival-email" type="email" placeholder="tu@email.com" autocomplete="email" aria-label="Email">
+                <label for="arrival-desired-experience" class="arrival-label">¿Qué te gustaría encontrar en Yumiko?</label>
+                <textarea id="arrival-desired-experience" class="arrival-textarea" rows="3" maxlength="280" placeholder="Una presencia más íntima, un espacio donde volver, una conversación que acompañe…"></textarea>
+
+                <label for="arrival-desired-moments" class="arrival-label">¿En qué momentos de tu día te gustaría sentir su presencia?</label>
+                <textarea id="arrival-desired-moments" class="arrival-textarea" rows="3" maxlength="280" placeholder="Al despertar, en la noche, entre pausas silenciosas, cuando necesito volver a mí…"></textarea>
+
+                <label for="arrival-optional-note" class="arrival-label">Si querés, contanos algo sobre la experiencia que te gustaría vivir en 21-Moon.</label>
+                <textarea id="arrival-optional-note" class="arrival-textarea arrival-textarea-optional" rows="4" maxlength="420" placeholder="Opcional"></textarea>
+
+                <button id="btn-arrival-save" class="login-btn" type="submit">Enviar mi solicitud</button>
+              </form>
+
+              <p class="login-copy arrival-step-3-copy">Tu email y tu intención quedan guardados con discreción.</p>
+            </div>
+
+            <div class="onboarding-step arrival-step arrival-step-4 hidden" data-onboarding-step="4" aria-hidden="true">
+              <p class="login-eyebrow">Solicitud recibida</p>
+              <h2 class="login-title"><span id="arrival-wait-name">Tu llegada</span> ya quedó registrada.</h2>
+              <p class="login-subtitle">21-Moon abre muy pocos accesos nuevos por mes. Si tu solicitud es aprobada, vas a recibir una invitación privada en <span id="arrival-wait-email">tu email reservado</span>.</p>
+
+              <div class="arrival-wait-note">
+                <p>La espera no es un bloqueo: es parte de una experiencia curada, íntima y reservada.</p>
               </div>
 
-              <label for="arrival-password" class="arrival-label">Contraseña</label>
-              <div class="input-wrap password-wrap">
-                <span class="input-icon" aria-hidden="true"></span>
-                <input id="arrival-password" type="password" placeholder="••••••••" autocomplete="current-password" aria-label="Contraseña">
-              </div>
-
-              <button id="btn-arrival-save" class="login-btn" type="submit">Guardar mi llegada</button>
-            </form>
-
-            <p class="login-copy arrival-step-3-copy">Nada de acá se publica sin vos.</p>
+              <a id="arrival-invite-link" class="login-btn invitation-link-btn" href="/invitation.html">Ya recibí mi invitación privada</a>
+              <p class="login-copy arrival-step-4-copy">El acceso real empieza recién cuando tu llegada es aprobada.</p>
+            </div>
           </div>
 
-          <div class="onboarding-step arrival-step arrival-step-4 hidden" data-onboarding-step="4" aria-hidden="true">
-            <p class="login-eyebrow">Umbral</p>
-            <h2 class="login-title">Ya estás acá.</h2>
-            <p class="login-subtitle">Podemos empezar.</p>
-
-            <button id="btn-arrival-enter" class="login-btn" type="button">Entrar al salón</button>
-            <p class="login-copy arrival-step-4-copy">Nada de acá se publica sin vos.</p>
-          </div>
+          <p id="login-error" class="login-error hidden" role="status" aria-live="polite"></p>
         </div>
 
-        <p id="login-error" class="login-error hidden" role="status" aria-live="polite"></p>
-      </div>
+        <div class="login-steps" id="login-steps" data-step="1" aria-live="polite">
+          <span class="login-steps-text" id="login-steps-text">Tu llegada empieza ahora.</span>
+          <span class="login-steps-phases" aria-hidden="true">
+            <span class="login-steps-phase"></span>
+            <span class="login-steps-phase"></span>
+            <span class="login-steps-phase"></span>
+            <span class="login-steps-phase"></span>
+          </span>
+        </div>
 
-      <div class="login-steps" id="login-steps" data-step="1" aria-live="polite">
-        <span class="login-steps-text" id="login-steps-text">Tu llegada empieza ahora.</span>
-        <span class="login-steps-phases" aria-hidden="true">
-          <span class="login-steps-phase"></span>
-          <span class="login-steps-phase"></span>
-          <span class="login-steps-phase"></span>
-          <span class="login-steps-phase"></span>
-        </span>
+        <p class="private-access-hint">Si ya recibiste tu invitación privada, podés continuar desde <a class="text-link" href="/invitation.html">tu acceso reservado</a>.</p>
       </div>
-    </div>
-
     </div>
   </div>
 
@@ -113,14 +120,8 @@
          alt="">
   </div>
 
-  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- Transición entre páginas -->
   <script src="/transition.v2.js"></script>
-
-  <!-- Lógica de autenticación -->
   <script type="module" src="/auth.v2.js"></script>
-
 </body>
 </html>
