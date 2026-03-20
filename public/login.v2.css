@@ -171,7 +171,10 @@ body {
   pointer-events: none;
   visibility: hidden;
   position: absolute;
-  inset: 0;
+  /* Keep full width without pinning bottom so JS can measure the next step's natural height before reveal. */
+  top: 0;
+  left: 0;
+  right: 0;
 }
 
 .onboarding-stage .onboarding-step[data-active="true"] {
