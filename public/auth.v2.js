@@ -470,7 +470,6 @@ function setupPublicArrivalFlow() {
       window.sessionStorage.setItem('yumiko_arrival_email', email);
       populateWaitStep();
       await setOnboardingStep(5, RITUAL_LINES_BY_STEP);
-      showAuthMessage('Tu solicitud ya quedó resguardada.', 'success');
     } catch (error) {
       console.error('Arrival request error:', error?.payload || error?.message || error);
       const fallbackMessage = 'Uhm… algo interrumpió tu llegada. Intentemos de nuevo en un momento.';
