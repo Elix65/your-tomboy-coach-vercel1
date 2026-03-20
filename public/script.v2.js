@@ -28,10 +28,12 @@ const btnRewards = document.getElementById("btn-rewards");
 const btnAudio = document.getElementById("btn-audio");
 const btnYumiko100 = document.getElementById("btn-yumiko-100");
 const btnOverlayConnect = document.getElementById("btn-overlay-connect");
+const btnArrivalAdmin = document.getElementById("btn-arrival-admin");
 const audioPopover = document.getElementById("audioPopover");
 const navAudio = btnAudio?.closest(".nav-audio") || null;
 const musicVolumeSlider = document.getElementById("music-volume-slider");
 const voiceVolumeSlider = document.getElementById("voice-volume-slider");
+const ARRIVAL_ADMIN_UID = "a5429e17-43e2-4922-9560-ab914f63283e";
 
 const MUSIC_VOLUME_STORAGE_KEY = "music_volume";
 const VOICE_VOLUME_STORAGE_KEY = "voice_volume";
@@ -451,6 +453,25 @@ const mAudio = document.getElementById("m-audio");
 const mRewards = document.getElementById("m-rewards");
 const mAudios = document.getElementById("m-audios");
 const mOverlayConnect = document.getElementById("m-overlay-connect");
+const mArrivalAdmin = document.getElementById("m-arrival-admin");
+
+function isArrivalAdminUser(userId) {
+  return String(userId || "").trim() === ARRIVAL_ADMIN_UID;
+}
+
+function syncArrivalAdminEntryVisibility(userId = currentUserId) {
+  const isAdmin = isArrivalAdminUser(userId);
+  [btnArrivalAdmin, mArrivalAdmin].forEach((button) => {
+    if (!button) return;
+    button.classList.toggle("hidden", !isAdmin);
+    button.setAttribute("aria-hidden", String(!isAdmin));
+    if (isAdmin) {
+      button.removeAttribute("tabindex");
+    } else {
+      button.setAttribute("tabindex", "-1");
+    }
+  });
+}
 
 function closeMobileMenu() {
   if (!mobileMenu || !hamburgerBtn) return;
@@ -622,6 +643,19 @@ if (mOverlayConnect) {
   mOverlayConnect.onclick = () => {
     closeMobileMenu();
     goWithTransition('/overlay/connect');
+  };
+}
+
+if (btnArrivalAdmin) {
+  btnArrivalAdmin.onclick = () => {
+    goWithTransition("/arrival-admin.html");
+  };
+}
+
+if (mArrivalAdmin) {
+  mArrivalAdmin.onclick = () => {
+    closeMobileMenu();
+    goWithTransition("/arrival-admin.html");
   };
 }
 
@@ -2660,6 +2694,7 @@ async function initializeChatSession() {
     await refreshAudioEntitlement({ withReturnPolling: shouldPollActivation });
     enforceAudioModeAccess();
     currentUserId = user.id;
+    syncArrivalAdminEntryVisibility(user.id);
     if (!isInitSubsystemDisabled("DISABLE_TIME_PERSONALIZATION")) {
       await refreshTimePersonalizationState(user.id);
     } else {
@@ -2841,6 +2876,7 @@ if (btnInventario) {
 async function initializeUI() {
   const { data: { user } = {} } = await supabaseClient.auth.getUser();
   if (!user) return;
+  syncArrivalAdminEntryVisibility(user.id);
   initTopBarAndMobileMenu();
 }
 
