@@ -454,6 +454,8 @@ const mRewards = document.getElementById("m-rewards");
 const mAudios = document.getElementById("m-audios");
 const mOverlayConnect = document.getElementById("m-overlay-connect");
 const mArrivalAdmin = document.getElementById("m-arrival-admin");
+const topbarMore = btnArrivalAdmin?.closest(".topbar-more") || null;
+let arrivalAdminAuthListenerBound = false;
 
 function isArrivalAdminUser(userId) {
   return String(userId || "").trim() === ARRIVAL_ADMIN_UID;
@@ -470,6 +472,39 @@ function syncArrivalAdminEntryVisibility(userId = currentUserId) {
     } else {
       button.setAttribute("tabindex", "-1");
     }
+  });
+}
+
+function closeTopbarMoreMenu() {
+  if (!topbarMore) return;
+  topbarMore.removeAttribute("open");
+}
+
+async function refreshArrivalAdminEntryVisibility() {
+  const { data: { session } = {} } = await supabaseClient.auth.getSession();
+  const nextUserId = session?.user?.id || null;
+  if (nextUserId) {
+    currentUserId = nextUserId;
+  }
+  syncArrivalAdminEntryVisibility(nextUserId);
+  return nextUserId;
+}
+
+function bindArrivalAdminVisibilitySync() {
+  if (arrivalAdminAuthListenerBound) return;
+  arrivalAdminAuthListenerBound = true;
+
+  void refreshArrivalAdminEntryVisibility().catch((error) => {
+    console.warn("No pude sincronizar la visibilidad de Sala de llegadas.", error);
+    syncArrivalAdminEntryVisibility(null);
+  });
+
+  supabaseClient.auth.onAuthStateChange((_event, session) => {
+    const nextUserId = session?.user?.id || null;
+    if (nextUserId) {
+      currentUserId = nextUserId;
+    }
+    syncArrivalAdminEntryVisibility(nextUserId);
   });
 }
 
@@ -648,6 +683,7 @@ if (mOverlayConnect) {
 
 if (btnArrivalAdmin) {
   btnArrivalAdmin.onclick = () => {
+    closeTopbarMoreMenu();
     goWithTransition("/arrival-admin.html");
   };
 }
@@ -2875,7 +2911,12 @@ if (btnInventario) {
 // ===============================
 async function initializeUI() {
   const { data: { user } = {} } = await supabaseClient.auth.getUser();
-  if (!user) return;
+  bindArrivalAdminVisibilitySync();
+  if (!user) {
+    syncArrivalAdminEntryVisibility(null);
+    return;
+  }
+  currentUserId = user.id;
   syncArrivalAdminEntryVisibility(user.id);
   initTopBarAndMobileMenu();
 }
