@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sala privada de llegadas | 21-Moon</title>
+  <link rel="icon" type="image/png" href="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/hi-4.png?v=1">
+  <link rel="apple-touch-icon" href="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/hi-4.png?v=1">
+  <link rel="stylesheet" href="/style.v2.css">
+  <link rel="stylesheet" href="/login.v2.css">
+  <link rel="stylesheet" href="/arrival-admin.css">
+</head>
+<body class="login-page arrival-admin-page">
+  <div class="login-root">
+    <div class="bg-scene" aria-hidden="true"></div>
+    <div class="yumiko-layer arrival-admin-layer" aria-hidden="true">
+      <img
+        class="yumiko-figure"
+        src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png"
+        alt="">
+    </div>
+
+    <div class="auth-shell arrival-admin-shell">
+      <div class="auth-left arrival-admin-layout">
+        <section id="arrival-admin-gate" class="arrival-admin-gate">
+          <div class="panel-ornament" aria-hidden="true"></div>
+          <div class="login-brand" aria-hidden="true">
+            <img src="/svg/moon-sakura-logo.svg" alt="" class="login-brand-logo">
+            <span class="login-brand-text">21-Moon</span>
+          </div>
+          <div class="invitation-status-pill" data-state="idle">
+            <span id="arrival-admin-gate-status">Sala privada</span>
+          </div>
+          <div class="invitation-copy-block">
+            <p class="login-eyebrow">Administración de llegadas</p>
+            <h1 class="login-title">Revisión reservada de solicitudes.</h1>
+            <p id="arrival-admin-gate-copy" class="login-subtitle">Validando acceso privado…</p>
+          </div>
+          <div class="arrival-admin-gate-actions">
+            <a id="arrival-admin-login-link" class="login-btn hidden" href="/member-login.html?returnTo=/arrival-admin.html">Entrar con sesión autorizada</a>
+            <button id="arrival-admin-retry" class="premium-secondary-door hidden" type="button">Reintentar validación</button>
+          </div>
+          <p id="arrival-admin-gate-error" class="login-error hidden" role="status" aria-live="polite"></p>
+        </section>
+
+        <section id="arrival-admin-app" class="arrival-admin-app hidden" aria-live="polite">
+          <div class="arrival-admin-panel arrival-admin-panel--header">
+            <div>
+              <p class="login-eyebrow">Sala privada</p>
+              <h1 class="login-title">Gestión de llegadas</h1>
+              <p class="login-subtitle">`arrival_requests` sigue siendo la fuente de verdad. Acá solo la revisás y la movés con criterio.</p>
+            </div>
+            <div class="arrival-admin-header-actions">
+              <div class="invitation-status-pill invitation-status-pill--admin" id="arrival-admin-session-pill" data-state="ready">
+                <span>Sesión validada</span>
+              </div>
+              <button id="arrival-admin-refresh" class="premium-secondary-door" type="button">Actualizar lista</button>
+              <button id="arrival-admin-signout" class="premium-secondary-door" type="button">Cerrar sesión</button>
+            </div>
+          </div>
+
+          <div class="arrival-admin-workspace">
+            <aside class="arrival-admin-panel arrival-admin-sidebar">
+              <div class="arrival-admin-toolbar">
+                <label class="arrival-admin-search-label" for="arrival-admin-search">Buscar</label>
+                <input id="arrival-admin-search" class="arrival-admin-search" type="search" placeholder="Nombre o email">
+                <label class="arrival-admin-search-label" for="arrival-admin-status-filter">Estado</label>
+                <select id="arrival-admin-status-filter" class="arrival-admin-select">
+                  <option value="all">Todos</option>
+                  <option value="requested">requested</option>
+                  <option value="approved">approved</option>
+                  <option value="invited">invited</option>
+                  <option value="payment_pending">payment_pending</option>
+                  <option value="paid">paid</option>
+                  <option value="account_enabled">account_enabled</option>
+                  <option value="active">active</option>
+                </select>
+              </div>
+
+              <div class="arrival-admin-list-meta">
+                <span id="arrival-admin-count">0 solicitudes</span>
+                <span id="arrival-admin-loading" class="arrival-admin-loading hidden">Actualizando…</span>
+              </div>
+
+              <div id="arrival-admin-list" class="arrival-admin-list" role="listbox" aria-label="Solicitudes de llegada"></div>
+            </aside>
+
+            <section class="arrival-admin-panel arrival-admin-detail">
+              <div id="arrival-admin-empty" class="arrival-admin-empty">
+                <p class="section-kicker">Detalle</p>
+                <h2>Elegí una solicitud.</h2>
+                <p>Vas a poder revisar respuestas, timestamps, estado y disparar las acciones mínimas de esta v1.</p>
+              </div>
+
+              <div id="arrival-admin-detail-card" class="arrival-admin-detail-card hidden">
+                <div class="arrival-admin-detail-header">
+                  <div>
+                    <p class="section-kicker">Solicitud seleccionada</p>
+                    <h2 id="detail-name">—</h2>
+                    <p id="detail-email" class="arrival-admin-email">—</p>
+                  </div>
+                  <div class="arrival-admin-status-block">
+                    <span id="detail-status" class="arrival-admin-status-badge">—</span>
+                    <span id="detail-created-at" class="arrival-admin-timestamp">—</span>
+                  </div>
+                </div>
+
+                <div class="arrival-admin-detail-grid">
+                  <article class="arrival-admin-info-card">
+                    <p class="section-kicker">Qué busca</p>
+                    <p id="detail-experience" class="arrival-admin-body-copy">—</p>
+                  </article>
+                  <article class="arrival-admin-info-card">
+                    <p class="section-kicker">Cuándo quiere sentirlo</p>
+                    <p id="detail-moments" class="arrival-admin-body-copy">—</p>
+                  </article>
+                </div>
+
+                <article class="arrival-admin-info-card">
+                  <p class="section-kicker">Nota opcional</p>
+                  <p id="detail-optional-note" class="arrival-admin-body-copy">Sin nota opcional.</p>
+                </article>
+
+                <div class="arrival-admin-meta-grid">
+                  <article class="arrival-admin-info-card">
+                    <p class="section-kicker">Token y acceso</p>
+                    <div class="arrival-admin-token-block">
+                      <code id="detail-token">—</code>
+                      <div class="arrival-admin-inline-actions">
+                        <button id="copy-token-btn" class="premium-secondary-door" type="button">Copiar token</button>
+                        <button id="copy-link-btn" class="premium-secondary-door" type="button">Copiar link privado</button>
+                      </div>
+                    </div>
+                    <a id="detail-invite-link" class="text-link" href="#" target="_blank" rel="noreferrer">Abrir invitación</a>
+                  </article>
+
+                  <article class="arrival-admin-info-card">
+                    <p class="section-kicker">Timestamps</p>
+                    <dl class="arrival-admin-timestamps-list">
+                      <div>
+                        <dt>Creada</dt>
+                        <dd id="detail-created-full">—</dd>
+                      </div>
+                      <div>
+                        <dt>Aprobada</dt>
+                        <dd id="detail-approved-at">—</dd>
+                      </div>
+                      <div>
+                        <dt>Invitada</dt>
+                        <dd id="detail-invited-at">—</dd>
+                      </div>
+                      <div>
+                        <dt>Cuenta habilitada</dt>
+                        <dd id="detail-account-enabled-at">—</dd>
+                      </div>
+                    </dl>
+                  </article>
+                </div>
+
+                <article class="arrival-admin-info-card">
+                  <div class="arrival-admin-note-header">
+                    <div>
+                      <p class="section-kicker">Nota interna</p>
+                      <p class="section-note">Opcional, corta y útil para seguimiento manual.</p>
+                    </div>
+                    <button id="save-note-btn" class="premium-secondary-door" type="button">Guardar nota</button>
+                  </div>
+                  <textarea id="detail-internal-note" class="arrival-textarea arrival-admin-note-input" rows="4" maxlength="600" placeholder="Aprobado manualmente, esperar, follow-up…"></textarea>
+                </article>
+
+                <article class="arrival-admin-info-card">
+                  <div class="arrival-admin-note-header">
+                    <div>
+                      <p class="section-kicker">Acciones mínimas</p>
+                      <p class="section-note">Sin panel enterprise: solo los cambios que hoy hacen falta.</p>
+                    </div>
+                  </div>
+                  <div class="arrival-admin-inline-actions arrival-admin-inline-actions--status">
+                    <button id="approve-btn" class="login-btn arrival-admin-action-btn" type="button">Aprobar</button>
+                    <button id="invite-btn" class="premium-secondary-door arrival-admin-action-btn" type="button">Marcar invited</button>
+                    <button id="enable-btn" class="premium-secondary-door arrival-admin-action-btn" type="button">Marcar account_enabled</button>
+                  </div>
+                </article>
+              </div>
+            </section>
+          </div>
+
+          <p id="arrival-admin-feedback" class="login-error hidden" role="status" aria-live="polite"></p>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script type="module" src="/arrival-admin.js"></script>
+</body>
+</html>

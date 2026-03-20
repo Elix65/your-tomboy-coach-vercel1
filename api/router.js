@@ -16,12 +16,34 @@ const mpPreapprovalPlanId = process.env.MP_PREAPPROVAL_PLAN_ID;
 const overlayJwtSecret = process.env.OVERLAY_JWT_SECRET || process.env.SUPABASE_JWT_SECRET || '';
 const mpAdminBypassEnabled = process.env.MP_ADMIN_BYPASS === '1';
 const MP_ADMIN_TEST_USER_ID = 'a5429e17-43e2-4922-9560-ab914f63283e';
+const DEFAULT_ARRIVAL_ADMIN_UID = 'a5429e17-43e2-4922-9560-ab914f63283e';
 const VOICE_PLAN = 'pacto_voz_triunfante';
 const ACTIVE_VOICE_PLANS = ['voice_lite', 'voice_plus'];
 const OVERLAY_CODE_TTL_MS = 2 * 60 * 1000;
 const OVERLAY_ACCESS_TTL_SECONDS = 15 * 60;
 const OVERLAY_REFRESH_TTL_SECONDS = 30 * 24 * 60 * 60;
 const OVERLAY_NUDGE_INTERVAL_OPTIONS = [1, 2, 5, 10, 20];
+const ARRIVAL_ADMIN_SELECT = '*';
+const ARRIVAL_ADMIN_MUTABLE_STATUSES = ['approved', 'invited', 'account_enabled'];
+
+function getArrivalAdminUserIds() {
+  const configured = String(process.env.ARRIVAL_ADMIN_UIDS || process.env.ARRIVAL_ADMIN_UID || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  if (configured.length) {
+    return configured;
+  }
+
+  return [DEFAULT_ARRIVAL_ADMIN_UID];
+}
+
+function isArrivalAdminUser(userId) {
+  const normalizedUserId = String(userId || '').trim();
+  if (!normalizedUserId) return false;
+  return getArrivalAdminUserIds().includes(normalizedUserId);
+}
 
 function normalizeMpErrorMessage(mpData) {
   return String(mpData?.message || mpData?.error || '').trim().toLowerCase();
@@ -199,6 +221,20 @@ async function getAuthUserOrNull(supabaseAdmin, token) {
   const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
   if (userErr || !userData?.user) return null;
   return userData.user;
+}
+
+async function requireArrivalAdminAccess(supabaseAdmin, req) {
+  const auth = await resolveOverlayOrSupabaseAuth(supabaseAdmin, req);
+
+  if (!isArrivalAdminUser(auth.userId)) {
+    const error = new Error('arrival_admin_forbidden');
+    error.httpStatus = 403;
+    error.errorCode = 'arrival_admin_forbidden';
+    error.userId = auth.userId;
+    throw error;
+  }
+
+  return auth;
 }
 
 function buildActiveSubscriptionQuery(supabaseAdmin, userId, { provider } = {}) {
@@ -2407,6 +2443,37 @@ function normalizeOptionalText(value, maxLength) {
   return text.slice(0, maxLength);
 }
 
+function sanitizeArrivalAdminRow(row, req) {
+  if (!row) return null;
+
+  const origin = String(req.headers.origin || '').trim() || 'https://21-moon.com';
+  const inviteUrl = new URL('/invitation.html', origin);
+  inviteUrl.searchParams.set('token', row.invite_token);
+
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    desired_experience: row.desired_experience,
+    desired_moments: row.desired_moments,
+    optional_note: row.optional_note,
+    internal_note: row.internal_note || null,
+    status: row.status,
+    invite_token: row.invite_token,
+    invite_url: inviteUrl.toString(),
+    approved_at: row.approved_at,
+    invited_at: row.invited_at,
+    account_enabled_at: row.account_enabled_at,
+    auth_user_id: row.auth_user_id,
+    created_at: row.created_at,
+    updated_at: row.updated_at
+  };
+}
+
+function normalizeArrivalAdminStatus(status) {
+  return String(status || '').trim().toLowerCase();
+}
+
 async function findArrivalRequestByEmail(supabaseAdmin, email) {
   const { data, error } = await supabaseAdmin
     .from('arrival_requests')
@@ -2661,6 +2728,206 @@ async function arrivalCompleteHandler(req, res) {
   }
 }
 
+async function arrivalAdminListHandler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  let supabaseAdmin;
+  try {
+    supabaseAdmin = getSupabaseAdminClient();
+  } catch (clientError) {
+    return res.status(clientError?.statusCode || 500).json({ error: clientError?.message || 'Supabase admin init failed.' });
+  }
+
+  try {
+    const auth = await requireArrivalAdminAccess(supabaseAdmin, req);
+    const requestUrl = getRequestUrl(req);
+    const status = normalizeArrivalAdminStatus(req.query?.status || requestUrl.searchParams.get('status') || '');
+    const search = String(req.query?.search || requestUrl.searchParams.get('search') || '').trim();
+
+    let query = supabaseAdmin
+      .from('arrival_requests')
+      .select(ARRIVAL_ADMIN_SELECT)
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (status && status !== 'all') {
+      query = query.eq('status', status);
+    }
+
+    if (search) {
+      const escapedSearch = search.replace(/[%_,]/g, ' ');
+      query = query.or(`name.ilike.%${escapedSearch}%,email.ilike.%${escapedSearch}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      return res.status(500).json({ error: error.message || 'Error loading arrival requests.' });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      admin_user_id: auth.userId,
+      requests: Array.isArray(data) ? data.map((row) => sanitizeArrivalAdminRow(row, req)) : []
+    });
+  } catch (error) {
+    const status = error?.httpStatus || 500;
+    if (status === 401 || status === 403) {
+      return res.status(status).json({ error: error?.errorCode || error?.message || 'arrival_admin_forbidden' });
+    }
+    console.error('arrival-admin-list fatal:', error);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+async function arrivalAdminDetailHandler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  let supabaseAdmin;
+  try {
+    supabaseAdmin = getSupabaseAdminClient();
+  } catch (clientError) {
+    return res.status(clientError?.statusCode || 500).json({ error: clientError?.message || 'Supabase admin init failed.' });
+  }
+
+  try {
+    await requireArrivalAdminAccess(supabaseAdmin, req);
+    const requestUrl = getRequestUrl(req);
+    const id = String(req.query?.id || requestUrl.searchParams.get('id') || '').trim();
+
+    if (!id) {
+      return res.status(400).json({ error: 'missing_arrival_request_id' });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('arrival_requests')
+      .select(ARRIVAL_ADMIN_SELECT)
+      .eq('id', id)
+      .maybeSingle();
+
+    if (error) {
+      return res.status(500).json({ error: error.message || 'Error loading arrival request.' });
+    }
+
+    if (!data) {
+      return res.status(404).json({ error: 'arrival_request_not_found' });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      request: sanitizeArrivalAdminRow(data, req)
+    });
+  } catch (error) {
+    const status = error?.httpStatus || 500;
+    if (status === 401 || status === 403) {
+      return res.status(status).json({ error: error?.errorCode || error?.message || 'arrival_admin_forbidden' });
+    }
+    console.error('arrival-admin-detail fatal:', error);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+async function arrivalAdminUpdateHandler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  let supabaseAdmin;
+  try {
+    supabaseAdmin = getSupabaseAdminClient();
+  } catch (clientError) {
+    return res.status(clientError?.statusCode || 500).json({ error: clientError?.message || 'Supabase admin init failed.' });
+  }
+
+  try {
+    await requireArrivalAdminAccess(supabaseAdmin, req);
+
+    const id = String(req.body?.id || '').trim();
+    const nextStatus = normalizeArrivalAdminStatus(req.body?.status || '');
+    const internalNote = req.body?.internal_note === undefined
+      ? undefined
+      : normalizeOptionalText(req.body?.internal_note, 600);
+
+    if (!id) {
+      return res.status(400).json({ error: 'missing_arrival_request_id' });
+    }
+
+    if (!nextStatus && internalNote === undefined) {
+      return res.status(400).json({ error: 'missing_arrival_admin_update' });
+    }
+
+    if (nextStatus && !ARRIVAL_ADMIN_MUTABLE_STATUSES.includes(nextStatus)) {
+      return res.status(400).json({ error: 'invalid_arrival_status' });
+    }
+
+    const { data: existing, error: existingErr } = await supabaseAdmin
+      .from('arrival_requests')
+      .select(ARRIVAL_ADMIN_SELECT)
+      .eq('id', id)
+      .maybeSingle();
+
+    if (existingErr) {
+      return res.status(500).json({ error: existingErr.message || 'Error reading arrival request.' });
+    }
+
+    if (!existing) {
+      return res.status(404).json({ error: 'arrival_request_not_found' });
+    }
+
+    const nowIso = new Date().toISOString();
+    const updatePayload = {};
+
+    if (nextStatus) {
+      updatePayload.status = nextStatus;
+
+      if (nextStatus === 'approved') {
+        updatePayload.approved_at = existing.approved_at || nowIso;
+      }
+
+      if (nextStatus === 'invited') {
+        updatePayload.approved_at = existing.approved_at || nowIso;
+        updatePayload.invited_at = existing.invited_at || nowIso;
+      }
+
+      if (nextStatus === 'account_enabled') {
+        updatePayload.approved_at = existing.approved_at || nowIso;
+        updatePayload.invited_at = existing.invited_at || nowIso;
+        updatePayload.account_enabled_at = existing.account_enabled_at || nowIso;
+      }
+    }
+
+    if (internalNote !== undefined) {
+      updatePayload.internal_note = internalNote;
+    }
+
+    const { data: updated, error: updateErr } = await supabaseAdmin
+      .from('arrival_requests')
+      .update(updatePayload)
+      .eq('id', id)
+      .select(ARRIVAL_ADMIN_SELECT)
+      .single();
+
+    if (updateErr) {
+      return res.status(500).json({ error: updateErr.message || 'Error updating arrival request.' });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      request: sanitizeArrivalAdminRow(updated, req)
+    });
+  } catch (error) {
+    const status = error?.httpStatus || 500;
+    if (status === 401 || status === 403) {
+      return res.status(status).json({ error: error?.errorCode || error?.message || 'arrival_admin_forbidden' });
+    }
+    console.error('arrival-admin-update fatal:', error);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
 module.exports = async function handler(req, res) {
   const action = getAction(req);
 
@@ -2726,6 +2993,13 @@ module.exports = async function handler(req, res) {
       case 'arrival-complete':
         req.body = await getJsonBody(req);
         return arrivalCompleteHandler(req, res);
+      case 'arrival-admin-list':
+        return arrivalAdminListHandler(req, res);
+      case 'arrival-admin-detail':
+        return arrivalAdminDetailHandler(req, res);
+      case 'arrival-admin-update':
+        req.body = await getJsonBody(req);
+        return arrivalAdminUpdateHandler(req, res);
       case 'mp-init-point':
         return mpInitPointHandler(req, res);
       case 'mp-sync-voice':
