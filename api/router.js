@@ -2422,10 +2422,13 @@ async function findArrivalRequestByEmail(supabaseAdmin, email) {
 }
 
 async function findArrivalRequestByToken(supabaseAdmin, token) {
+  const normalizedToken = String(token || '').trim();
+  if (!normalizedToken) return null;
+
   const { data, error } = await supabaseAdmin
     .from('arrival_requests')
     .select('id,name,email,status,invite_token,approved_at,invited_at,account_enabled_at,auth_user_id')
-    .eq('invite_token', token)
+    .ilike('invite_token', normalizedToken)
     .maybeSingle();
 
   if (error) {
@@ -2520,6 +2523,21 @@ async function arrivalRequestHandler(req, res) {
   }
 }
 
+async function findArrivalRequestByManualAccess(supabaseAdmin, { email, code }) {
+  const normalizedEmail = normalizeArrivalEmail(email);
+  const normalizedCode = String(code || '').trim();
+  if (!normalizedEmail || !normalizedCode) return null;
+
+  const requestRow = await findArrivalRequestByToken(supabaseAdmin, normalizedCode);
+  if (!requestRow) return null;
+
+  if (normalizeArrivalEmail(requestRow.email) !== normalizedEmail) {
+    return null;
+  }
+
+  return requestRow;
+}
+
 async function arrivalInviteHandler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -2533,12 +2551,19 @@ async function arrivalInviteHandler(req, res) {
   }
 
   try {
-    const token = String(req.query?.token || getRequestUrl(req).searchParams.get('token') || '').trim();
-    if (!token) {
-      return res.status(400).json({ error: 'missing_token' });
+    const requestUrl = getRequestUrl(req);
+    const token = String(req.query?.token || requestUrl.searchParams.get('token') || '').trim();
+    const email = normalizeArrivalEmail(req.query?.email || requestUrl.searchParams.get('email') || '');
+    const code = String(req.query?.code || requestUrl.searchParams.get('code') || '').trim();
+
+    if (!token && (!email || !code)) {
+      return res.status(400).json({ error: 'missing_invite_access' });
     }
 
-    const requestRow = await findArrivalRequestByToken(supabaseAdmin, token);
+    const requestRow = token
+      ? await findArrivalRequestByToken(supabaseAdmin, token)
+      : await findArrivalRequestByManualAccess(supabaseAdmin, { email, code });
+
     if (!requestRow || !isArrivalApprovedStatus(requestRow.status)) {
       return res.status(404).json({ error: 'invite_not_found' });
     }

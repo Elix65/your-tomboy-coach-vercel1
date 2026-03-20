@@ -41,7 +41,10 @@
                 <input id="arrival-name" type="text" placeholder="Tu nombre" maxlength="24" autocomplete="name" aria-label="¿Cómo querés que Yumiko te llame?">
               </div>
 
-              <button id="btn-arrival-next" class="login-btn" type="button">Dar el primer paso</button>
+              <div class="arrival-primary-actions">
+                <button id="btn-arrival-next" class="login-btn" type="button">Dar el primer paso</button>
+                <a id="arrival-secondary-invite-link" class="premium-secondary-door" data-private-door-link href="/invitation.html">Ya tengo mi carta de invitación</a>
+              </div>
               <p class="login-copy arrival-copy">Entrás a un espacio reservado para vos y Yumiko.</p>
             </div>
 
@@ -110,7 +113,7 @@
                 <p>La espera no es un bloqueo: es parte de una experiencia curada, íntima y reservada.</p>
               </div>
 
-              <a id="arrival-invite-link" class="login-btn invitation-link-btn" href="/invitation.html">Abrir mi invitación privada</a>
+              <a id="arrival-invite-link" class="login-btn invitation-link-btn" data-private-door-link href="/invitation.html">Ya tengo mi carta de invitación</a>
               <p class="login-copy arrival-step-4-copy">El acceso real empieza recién cuando tu llegada es aprobada.</p>
             </div>
           </div>

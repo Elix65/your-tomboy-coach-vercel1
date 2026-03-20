@@ -16,6 +16,10 @@ const url = new URL(window.location.href);
 const returnToParam = url.searchParams.get('returnTo');
 const inviteTokenParam = (url.searchParams.get('token') || '').trim();
 
+function normalizeInvitationCode(code) {
+  return String(code || '').trim();
+}
+
 function getSafeReturnTo() {
   if (!returnToParam || !returnToParam.startsWith('/')) {
     return null;
@@ -296,7 +300,7 @@ function setupPublicArrivalFlow() {
   const arrivalSubmitBtn = document.getElementById('btn-arrival-save');
   const arrivalWaitName = document.getElementById('arrival-wait-name');
   const arrivalWaitEmail = document.getElementById('arrival-wait-email');
-  const arrivalInviteLink = document.getElementById('arrival-invite-link');
+  const arrivalInviteLinks = Array.from(document.querySelectorAll('[data-private-door-link]'));
 
   const RITUAL_LINES_BY_STEP = {
     '1': 'Tu llegada empieza ahora.',
@@ -351,13 +355,14 @@ function setupPublicArrivalFlow() {
       arrivalWaitEmail.textContent = storedEmail || 'tu email reservado';
     }
 
-    if (arrivalInviteLink) {
+    if (arrivalInviteLinks.length) {
       const inviteUrl = new URL('/invitation.html', window.location.origin);
       const safeReturnTo = getSafeReturnTo();
       if (safeReturnTo) {
         inviteUrl.searchParams.set('returnTo', safeReturnTo);
       }
-      arrivalInviteLink.setAttribute('href', inviteUrl.pathname + inviteUrl.search);
+      const href = inviteUrl.pathname + inviteUrl.search;
+      arrivalInviteLinks.forEach((link) => link.setAttribute('href', href));
     }
   }
 
@@ -554,7 +559,7 @@ function setupPublicArrivalFlow() {
 
     if (currentStep === '5') {
       populateWaitStep();
-      arrivalInviteLink?.focus();
+      document.getElementById('arrival-invite-link')?.focus();
     }
   });
 
@@ -588,8 +593,13 @@ function setupInvitationFlow() {
   const signInBtn = document.getElementById('btn-private-signin');
   const invitationLoginGreeting = document.getElementById('invitation-login-greeting');
   const invitationLoginLead = document.getElementById('invitation-login-lead');
+  const manualInvitationForm = document.getElementById('manual-invitation-form');
+  const manualInvitationEmailInput = document.getElementById('manual-invitation-email');
+  const manualInvitationCodeInput = document.getElementById('manual-invitation-code');
+  const manualInvitationBtn = document.getElementById('btn-open-invitation');
 
   let activeInvitation = null;
+  let activeInvitationToken = inviteTokenParam;
 
   function setInvitationState(state) {
     if (!invitationStatus || !invitationStatusText || !invitationContainer) {
@@ -632,13 +642,23 @@ function setupInvitationFlow() {
 
   function resetInvitationDoor() {
     activeInvitation = null;
+    activeInvitationToken = inviteTokenParam;
     clearAuthMessage();
     setInvitationState('idle');
     showInvitationView('locked');
+
+    if (manualInvitationEmailInput) {
+      manualInvitationEmailInput.value = normalizeEmail(window.sessionStorage.getItem('yumiko_arrival_email') || '');
+    }
+
+    if (manualInvitationCodeInput && !inviteTokenParam) {
+      manualInvitationCodeInput.value = '';
+    }
   }
 
-  function renderInvitation(data) {
+  function renderInvitation(data, tokenUsed = '') {
     activeInvitation = data;
+    activeInvitationToken = normalizeInvitationCode(tokenUsed || data?.invite_token || activeInvitationToken);
     clearAuthMessage();
 
     const name = data?.name || 'vos';
@@ -688,22 +708,42 @@ function setupInvitationFlow() {
     setInvitationState(accountEnabled ? 'ready' : 'approved');
   }
 
-  async function validateInvitation(token) {
-    const normalizedToken = String(token || '').trim();
-    if (!normalizedToken) {
+  async function validateInvitation({ token = '', email = '', code = '' } = {}) {
+    const normalizedToken = normalizeInvitationCode(token);
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedCode = normalizeInvitationCode(code);
+
+    if (!normalizedToken && (!normalizedEmail || !normalizedCode)) {
       resetInvitationDoor();
       return;
     }
 
+    const requestUrl = new URL('/api/arrival/invite', window.location.origin);
+    if (normalizedToken) {
+      requestUrl.searchParams.set('token', normalizedToken);
+    } else {
+      requestUrl.searchParams.set('email', normalizedEmail);
+      requestUrl.searchParams.set('code', normalizedCode);
+    }
+
     try {
-      const response = await fetch(`/api/arrival/invite?token=${encodeURIComponent(normalizedToken)}`);
+      const response = await fetch(requestUrl.pathname + requestUrl.search);
       const data = await parseJsonResponse(response);
 
       if (!response.ok) {
         throw Object.assign(new Error(data?.error || 'invalid_invite'), { payload: data, status: response.status });
       }
 
-      renderInvitation(data);
+      renderInvitation(data, normalizedToken || normalizedCode);
+
+      if (manualInvitationEmailInput && data?.email) {
+        manualInvitationEmailInput.value = data.email;
+      }
+
+      if (manualInvitationCodeInput && (normalizedToken || normalizedCode)) {
+        manualInvitationCodeInput.value = normalizedToken || normalizedCode;
+      }
+
       if (data?.account_enabled) {
         signInPasswordInput?.focus();
       } else if (!data?.email) {
@@ -714,12 +754,19 @@ function setupInvitationFlow() {
     } catch (error) {
       console.error('Invitation validation error:', error?.payload || error?.message || error);
       resetInvitationDoor();
-      showAuthMessage('No pude reconocer esa invitación. Revisemos el enlace privado e intentemos de nuevo.');
+      showAuthMessage(
+        normalizedToken
+          ? 'No pude reconocer esa carta privada. Revisemos el enlace e intentemos de nuevo.'
+          : 'No pude reconocer esa entrada reservada. Revisemos el email y el código único.'
+      );
+      if (!normalizedToken) {
+        manualInvitationEmailInput?.focus();
+      }
     }
   }
 
   async function completeInvitationArrival() {
-    const token = inviteTokenParam;
+    const token = activeInvitationToken;
     const email = normalizeEmail(invitationEmailInput?.value || activeInvitation?.email || '');
     const password = invitationPasswordInput?.value || '';
 
@@ -817,6 +864,35 @@ function setupInvitationFlow() {
     }
   }
 
+  manualInvitationForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const email = normalizeEmail(manualInvitationEmailInput?.value || '');
+    const code = normalizeInvitationCode(manualInvitationCodeInput?.value || '');
+
+    if (!email || !code) {
+      showAuthMessage('Dejemos el email reservado y el código de invitación para abrir esta entrada.');
+      if (!email) {
+        manualInvitationEmailInput?.focus();
+      } else {
+        manualInvitationCodeInput?.focus();
+      }
+      return;
+    }
+
+    if (manualInvitationBtn) {
+      manualInvitationBtn.disabled = true;
+    }
+
+    try {
+      await validateInvitation({ email, code });
+    } finally {
+      if (manualInvitationBtn) {
+        manualInvitationBtn.disabled = false;
+      }
+    }
+  });
+
   document.getElementById('invitation-completion-form')?.addEventListener('submit', async (event) => {
     event.preventDefault();
     await completeInvitationArrival();
@@ -830,7 +906,7 @@ function setupInvitationFlow() {
   resetInvitationDoor();
 
   if (inviteTokenParam) {
-    void validateInvitation(inviteTokenParam);
+    void validateInvitation({ token: inviteTokenParam });
   }
 }
 
