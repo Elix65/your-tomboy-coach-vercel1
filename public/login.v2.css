@@ -1523,6 +1523,14 @@ body {
   gap: 12px;
 }
 
+.secondary-door-note {
+  margin: -2px 2px 0;
+  color: rgba(226, 207, 190, 0.72);
+  font-size: 13px;
+  line-height: 1.45;
+  text-align: center;
+}
+
 .premium-secondary-door {
   position: relative;
   display: inline-flex;
@@ -1639,13 +1647,13 @@ body {
 }
 
 .invitation-page .auth-shell {
-  align-items: start;
-  padding-top: 42px;
-  padding-bottom: 42px;
+  align-items: center;
+  padding-top: clamp(18px, 3dvh, 32px);
+  padding-bottom: clamp(18px, 3dvh, 32px);
 }
 
 .invitation-container {
-  gap: 18px;
+  gap: 16px;
 }
 
 .invitation-status-pill {
@@ -1673,7 +1681,7 @@ body {
 .invitation-copy-block {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .invitation-token-form input[type="text"] {
@@ -1683,8 +1691,8 @@ body {
 .invitation-section {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 18px 18px 20px;
+  gap: 14px;
+  padding: 16px 16px 18px;
   border-radius: 20px;
   background: linear-gradient(180deg, rgba(44, 29, 39, 0.7), rgba(28, 19, 26, 0.8));
   border: 1px solid rgba(197, 155, 124, 0.16);
@@ -1694,7 +1702,7 @@ body {
 .invitation-section-copy {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .section-kicker {
@@ -1708,7 +1716,15 @@ body {
 .section-note {
   margin: 0;
   color: rgba(229, 213, 195, 0.76);
-  line-height: 1.5;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.invitation-inline-hint {
+  margin: -2px 0 0;
+  color: rgba(224, 205, 187, 0.68);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 .invitation-divider {
@@ -1751,18 +1767,18 @@ body {
 
 .invitation-door,
 .member-login-container {
-  gap: 20px;
+  gap: 18px;
 }
 
 .invitation-view {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
 }
 
 .invitation-copy-block--locked {
-  gap: 12px;
-  max-width: 30rem;
+  gap: 10px;
+  max-width: 27.5rem;
 }
 
 .invitation-page--private-door .auth-shell,
@@ -1777,8 +1793,8 @@ body {
 
 .invitation-page--private-door #login-container,
 .member-login-page #login-container {
-  width: min(540px, 100%);
-  max-width: min(540px, calc(100vw - 32px));
+  width: min(520px, 100%);
+  max-width: min(520px, calc(100vw - 32px));
 }
 
 .invitation-page--private-door .login-brand,
@@ -1806,7 +1822,7 @@ body {
 }
 
 .invitation-section--focus {
-  padding: 20px 20px 22px;
+  padding: 18px 18px 20px;
   background: linear-gradient(180deg, rgba(47, 30, 40, 0.76), rgba(28, 19, 26, 0.84));
   border-color: rgba(201, 157, 126, 0.22);
   box-shadow:
@@ -1817,7 +1833,7 @@ body {
 .invitation-field-group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 }
 
 .door-return-link {
@@ -1844,13 +1860,112 @@ body {
   mask: center / contain no-repeat url('/svg/arrow-right.svg');
 }
 
+.invitation-page--private-door .yumiko-layer {
+  right: clamp(22px, 4.3vw, 78px);
+  width: min(36vw, 620px);
+  height: min(88vh, 900px);
+}
+
+.invitation-page--private-door #login-container {
+  gap: 16px;
+  padding: clamp(22px, 2.6vw, 30px);
+}
+
+.invitation-page--private-door .login-brand,
+.member-login-page .login-brand {
+  margin-bottom: 2px;
+}
+
+.invitation-page--private-door .login-title,
+.member-login-page .login-title {
+  font-size: clamp(30px, 3.2vw, 40px);
+  line-height: 1.08;
+}
+
+.invitation-page--private-door .login-subtitle,
+.member-login-page .login-subtitle {
+  font-size: clamp(15px, 1.5vw, 18px);
+  line-height: 1.32;
+  color: rgba(241, 228, 214, 0.84);
+}
+
+.invitation-page--private-door .arrival-auth-form,
+.member-login-page .arrival-auth-form {
+  gap: 10px;
+}
+
+.invitation-page--private-door #login-container input,
+.invitation-page--private-door .login-btn,
+.member-login-page #login-container input,
+.member-login-page .login-btn {
+  min-height: clamp(46px, 5vh, 50px);
+  height: clamp(46px, 5vh, 50px);
+  font-size: 16px;
+}
+
 @media (max-width: 768px) {
   .invitation-page--private-door .auth-shell,
   .member-login-page .auth-shell {
-    padding-top: 32px;
+    padding-top: 28px;
   }
 
   .invitation-copy-block--locked {
     max-width: none;
+  }
+
+  .secondary-door-note {
+    margin-top: -1px;
+  }
+}
+
+@media (min-width: 768px) and (max-height: 820px) {
+  .invitation-page--private-door .auth-shell,
+  .member-login-page .auth-shell {
+    padding-top: 14px;
+    padding-bottom: 14px;
+  }
+
+  .invitation-page--private-door #login-container,
+  .member-login-page #login-container {
+    gap: 14px;
+    padding: 20px 20px 22px;
+  }
+
+  .invitation-page--private-door .login-title,
+  .member-login-page .login-title {
+    font-size: clamp(28px, 3vw, 36px);
+  }
+
+  .invitation-view {
+    gap: 12px;
+  }
+
+  .invitation-section--focus {
+    padding: 16px;
+  }
+
+  .invitation-page--private-door #login-container input,
+  .invitation-page--private-door .login-btn,
+  .member-login-page #login-container input,
+  .member-login-page .login-btn {
+    min-height: 44px;
+    height: 44px;
+  }
+}
+
+@media (min-width: 1025px) {
+  .invitation-page--private-door .auth-shell,
+  .member-login-page .auth-shell {
+    width: min(1260px, 100%);
+  }
+
+  .invitation-page--private-door .auth-left,
+  .member-login-page .auth-left {
+    padding-left: clamp(24px, 4vw, 76px);
+  }
+
+  .invitation-page--private-door #login-container,
+  .member-login-page #login-container {
+    max-width: min(520px, calc(100vw - 32px - clamp(24px, 4vw, 76px)));
   }
 }
