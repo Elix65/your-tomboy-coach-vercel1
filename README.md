@@ -90,3 +90,22 @@ Prueba manual rápida (comentada) para validar que devuelve `access_token` y `re
 #   -H "Content-Type: application/json" \
 #   -d '{"code":"<CODE>","device_id":"device-test-1","device_name":"Test Device"}' | jq
 ```
+
+## Alertas email para nuevas llegadas
+La creación inicial de una fila en `public.arrival_requests` dispara una alerta operativa al admin sin reemplazar la sala privada de llegadas.
+
+### Variables de entorno
+- `RESEND_API_KEY`: API key del proyecto de Resend que va a enviar la alerta.
+- `ARRIVAL_ALERT_FROM`: remitente visible. Ejemplo recomendado si el dominio ya está validado en Resend: `21-Moon <arrival@21-moon.com>`.
+- `APP_ORIGIN` (opcional): URL pública base para construir el link directo a `/arrival-admin.html`. Si falta, se intenta inferir desde los headers de Vercel.
+- `ARRIVAL_ALERT_CC_BACKUP` (opcional): por defecto incluye `soporte@21-moon.com` en cc. Setear en `0` para desactivarlo.
+- `ARRIVAL_ALERT_SUBJECT` (opcional): override del asunto, por defecto `Nueva carta de llegada`.
+
+### Destinatarios por defecto
+- Principal: `angelezequielojeda01@gmail.com`
+- Backup en cc: `soporte@21-moon.com`
+
+### Comportamiento v1
+- Se envía **solo cuando la llegada es nueva**.
+- Si el mismo email reintenta o actualiza su solicitud existente, se actualiza la fila pero **no** se reenvía la alerta.
+- Si el proveedor de email falla o falta configuración, el guardado de `arrival_requests` sigue respondiendo OK y el error queda en logs del servidor.

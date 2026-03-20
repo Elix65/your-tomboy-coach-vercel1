@@ -1,6 +1,10 @@
 const crypto = require('crypto');
 const OpenAI = require('openai');
 const { createClient } = require('@supabase/supabase-js');
+const {
+  sendArrivalAdminNotification,
+  shouldSendArrivalAdminNotification
+} = require('../lib/arrivalNotificationEmail');
 const { getSupabaseAdminClient, getSupabaseAdminEnvState } = require('../lib/supabaseAdmin');
 const { buildYumikoSystemMessages } = require('../lib/yumikoPrompt');
 const { buildYumikoConversationContext } = require('../lib/conversationContext');
@@ -2551,6 +2555,7 @@ async function arrivalRequestHandler(req, res) {
       status: nextStatus
     };
 
+    const shouldNotifyAdmin = shouldSendArrivalAdminNotification(existing);
     let saved;
     if (existing?.id) {
       const { data, error } = await supabaseAdmin
@@ -2578,6 +2583,29 @@ async function arrivalRequestHandler(req, res) {
         return res.status(500).json({ error: error.message || 'Error saving arrival request.' });
       }
       saved = data;
+    }
+
+    if (shouldNotifyAdmin && saved?.id) {
+      sendArrivalAdminNotification({
+        arrivalRequest: {
+          id: saved.id,
+          name,
+          email,
+          desired_experience: desiredExperience,
+          desired_moments: desiredMoments,
+          optional_note: optionalNote,
+          status: saved.status || 'requested'
+        },
+        req
+      }).catch((notificationError) => {
+        console.error('arrival-request notification failed:', {
+          message: notificationError?.message || 'unknown_error',
+          status: notificationError?.status || null,
+          responseData: notificationError?.responseData || null,
+          arrivalRequestId: saved.id,
+          email
+        });
+      });
     }
 
     return res.status(200).json({
