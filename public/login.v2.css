@@ -79,6 +79,7 @@ body {
 .login-root {
   position: relative;
   min-height: 100dvh;
+  width: 100%;
   overflow-x: clip;
 }
 
@@ -198,13 +199,17 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 #login-container {
   position: relative;
   z-index: 2;
   isolation: isolate;
-  width: min(560px, 92vw);
+  width: min(560px, 100%);
+  max-width: min(560px, calc(100vw - 32px));
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
@@ -1131,7 +1136,8 @@ body {
   }
 
   #login-container {
-    width: min(560px, 92vw);
+    width: min(560px, 100%);
+    max-width: min(560px, calc(100vw - 32px));
     margin: 0 auto;
   }
 
@@ -1142,7 +1148,8 @@ body {
   }
 
   .login-steps {
-    width: min(460px, 92vw);
+    width: min(460px, 100%);
+    max-width: min(460px, calc(100vw - 32px));
     border-radius: 18px;
     margin-top: 10px;
     padding: 9px 13px;
@@ -1191,7 +1198,8 @@ body {
   }
 
   #login-container {
-    width: min(560px, 92vw);
+    width: min(560px, 100%);
+    max-width: min(560px, calc(100vw - 32px));
     margin-top: 0;
   }
 }
@@ -1237,6 +1245,7 @@ body {
   .auth-shell {
     min-height: 100dvh;
     width: min(1320px, 100%);
+    max-width: 100%;
     display: grid;
     align-items: center;
     justify-items: start;
@@ -1251,12 +1260,14 @@ body {
 
   #login-container {
     width: min(600px, 46vw);
+    max-width: min(600px, calc(100vw - 32px - clamp(24px, 4.8vw, 92px)));
   }
 
   .login-steps {
     justify-content: flex-start;
     text-align: left;
     width: min(540px, 44vw);
+    max-width: min(540px, calc(100vw - 32px - clamp(24px, 4.8vw, 92px)));
   }
 }
 
@@ -1506,9 +1517,57 @@ body {
   margin: 0;
 }
 
+.arrival-primary-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.premium-secondary-door {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 48px;
+  padding: 14px 18px;
+  border-radius: 13px;
+  border: 1px solid rgba(214, 180, 149, 0.22);
+  background: linear-gradient(180deg, rgba(62, 42, 49, 0.46), rgba(34, 24, 31, 0.42));
+  color: rgba(247, 226, 206, 0.92);
+  text-decoration: none;
+  box-shadow: inset 0 1px 0 rgba(255, 235, 215, 0.05);
+  transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.premium-secondary-door::before {
+  content: "";
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  background: currentColor;
+  mask: center / contain no-repeat url('/svg/arrow-right.svg');
+}
+
+.premium-secondary-door:hover {
+  transform: translateY(-1px);
+  border-color: rgba(224, 189, 158, 0.34);
+  background: linear-gradient(180deg, rgba(70, 47, 56, 0.54), rgba(37, 25, 33, 0.48));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 215, 0.08),
+    0 12px 24px rgba(11, 7, 14, 0.18);
+}
+
+.premium-secondary-door:focus-visible {
+  outline: 2px solid rgba(255, 209, 229, 0.96);
+  outline-offset: 2px;
+}
+
 #login-container[data-step="3"],
 #login-container[data-step="4"] {
-  max-width: min(560px, 92vw);
+  max-width: min(560px, calc(100vw - 32px));
 }
 
 @media (min-width: 1025px) {
@@ -1565,7 +1624,8 @@ body {
 
 .private-access-hint {
   margin: 18px auto 0;
-  max-width: min(560px, 92vw);
+  width: min(560px, 100%);
+  max-width: min(560px, calc(100vw - 32px));
   text-align: center;
   color: rgba(230, 216, 203, 0.72);
   font-size: 14px;
@@ -1717,7 +1777,8 @@ body {
 
 .invitation-page--private-door #login-container,
 .member-login-page #login-container {
-  width: min(540px, 92vw);
+  width: min(540px, 100%);
+  max-width: min(540px, calc(100vw - 32px));
 }
 
 .invitation-page--private-door .login-brand,
@@ -1769,6 +1830,12 @@ body {
   color: rgba(245, 217, 191, 0.88);
 }
 
+.invitation-code-wrap .input-icon {
+  background: currentColor;
+  mask: center / contain no-repeat url('/svg/shield.svg');
+}
+
+#btn-open-invitation::before,
 #btn-member-signin::before {
   content: "";
   width: 18px;

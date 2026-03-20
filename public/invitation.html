@@ -34,9 +34,36 @@
 
           <section id="invitation-locked-view" class="invitation-view invitation-view-locked hidden" aria-live="polite">
             <div class="invitation-copy-block invitation-copy-block--locked">
-              <p class="login-eyebrow">Puerta interior</p>
-              <h2 class="login-title">Esta puerta se abre con una invitación privada.</h2>
-              <p class="login-subtitle">Nada más por ahora. Solo cuando el llamado llegue a tu nombre.</p>
+              <p class="login-eyebrow">Entrada reservada</p>
+              <h2 class="login-title">Si tu carta ya llegó, esta puerta puede reconocerte ahora.</h2>
+              <p class="login-subtitle">Podés entrar desde tu enlace privado o con el email reservado y el código único que vino con tu invitación.</p>
+            </div>
+
+            <div class="invitation-section invitation-section--focus">
+              <div class="invitation-section-copy">
+                <p class="section-kicker">Abrir mi carta</p>
+                <p class="section-note">Una entrada mínima, discreta y suficiente para volver al umbral correcto.</p>
+              </div>
+
+              <form id="manual-invitation-form" class="arrival-auth-form" novalidate>
+                <div class="invitation-field-group">
+                  <label for="manual-invitation-email" class="arrival-label">Email reservado</label>
+                  <div class="input-wrap email-wrap">
+                    <span class="input-icon" aria-hidden="true"></span>
+                    <input id="manual-invitation-email" type="email" placeholder="tu@email.com" autocomplete="email" aria-label="Email reservado">
+                  </div>
+                </div>
+
+                <div class="invitation-field-group">
+                  <label for="manual-invitation-code" class="arrival-label">Código de invitación</label>
+                  <div class="input-wrap invitation-code-wrap">
+                    <span class="input-icon" aria-hidden="true"></span>
+                    <input id="manual-invitation-code" type="text" placeholder="Tu código único" autocomplete="one-time-code" aria-label="Código de invitación">
+                  </div>
+                </div>
+
+                <button id="btn-open-invitation" class="login-btn" type="submit">Abrir mi entrada reservada</button>
+              </form>
             </div>
 
             <p class="door-return-link">
