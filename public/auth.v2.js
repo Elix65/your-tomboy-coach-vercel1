@@ -287,6 +287,7 @@ function setupPublicArrivalFlow() {
   const arrivalNextBtn = document.getElementById('btn-arrival-next');
   const arrivalContinueBtn = document.getElementById('btn-arrival-continue');
   const arrivalNameDisplay = document.getElementById('arrival-name-display');
+  const arrivalIntentionForm = document.getElementById('arrival-intention-form');
   const arrivalRequestForm = document.getElementById('arrival-request-form');
   const arrivalEmailInput = document.getElementById('arrival-email');
   const desiredExperienceInput = document.getElementById('arrival-desired-experience');
@@ -300,8 +301,9 @@ function setupPublicArrivalFlow() {
   const RITUAL_LINES_BY_STEP = {
     '1': 'Tu llegada empieza ahora.',
     '2': 'Yumiko ya sabe cómo llamarte.',
-    '3': 'Tu solicitud quedará en resguardo.',
-    '4': 'La espera también forma parte del umbral.'
+    '3': 'Tu intención ya quedó en el umbral.',
+    '4': 'Un último gesto, si querés.',
+    '5': 'La espera también forma parte del umbral.'
   };
 
   function validateArrivalName(rawName) {
@@ -380,7 +382,7 @@ function setupPublicArrivalFlow() {
     void setOnboardingStep(3, RITUAL_LINES_BY_STEP);
   }
 
-  function validateArrivalRequestPayload({ email, desiredExperience, desiredMoments }) {
+  function validateArrivalIntentionPayload({ email, desiredExperience, desiredMoments }) {
     if (!email) {
       return 'Dejanos tu email para poder escribirte si tu llegada es aprobada.';
     }
@@ -400,14 +402,11 @@ function setupPublicArrivalFlow() {
     return null;
   }
 
-  async function submitArrivalStepThree() {
-    const name = (window.sessionStorage.getItem('yumiko_arrival_name') || '').trim();
+  function submitArrivalStepThree() {
     const email = normalizeEmail(arrivalEmailInput?.value || '');
     const desiredExperience = String(desiredExperienceInput?.value || '').trim();
     const desiredMoments = String(desiredMomentsInput?.value || '').trim();
-    const optionalNote = String(optionalNoteInput?.value || '').trim();
-
-    const validationError = validateArrivalRequestPayload({
+    const validationError = validateArrivalIntentionPayload({
       email,
       desiredExperience,
       desiredMoments
@@ -422,6 +421,30 @@ function setupPublicArrivalFlow() {
       } else {
         desiredMomentsInput?.focus();
       }
+      return;
+    }
+
+    clearAuthMessage();
+    window.sessionStorage.setItem('yumiko_arrival_email', email);
+    void setOnboardingStep(4, RITUAL_LINES_BY_STEP);
+  }
+
+  async function submitArrivalStepFour() {
+    const name = (window.sessionStorage.getItem('yumiko_arrival_name') || '').trim();
+    const email = normalizeEmail(arrivalEmailInput?.value || window.sessionStorage.getItem('yumiko_arrival_email') || '');
+    const desiredExperience = String(desiredExperienceInput?.value || '').trim();
+    const desiredMoments = String(desiredMomentsInput?.value || '').trim();
+    const optionalNote = String(optionalNoteInput?.value || '').trim();
+
+    const validationError = validateArrivalIntentionPayload({
+      email,
+      desiredExperience,
+      desiredMoments
+    });
+
+    if (validationError) {
+      showAuthMessage(validationError);
+      void setOnboardingStep(3, RITUAL_LINES_BY_STEP);
       return;
     }
 
@@ -441,7 +464,7 @@ function setupPublicArrivalFlow() {
 
       window.sessionStorage.setItem('yumiko_arrival_email', email);
       populateWaitStep();
-      await setOnboardingStep(4, RITUAL_LINES_BY_STEP);
+      await setOnboardingStep(5, RITUAL_LINES_BY_STEP);
       showAuthMessage('Tu solicitud ya quedó resguardada.', 'success');
     } catch (error) {
       console.error('Arrival request error:', error?.payload || error?.message || error);
@@ -489,10 +512,17 @@ function setupPublicArrivalFlow() {
     });
   }
 
+  if (arrivalIntentionForm) {
+    arrivalIntentionForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      submitArrivalStepThree();
+    });
+  }
+
   if (arrivalRequestForm) {
     arrivalRequestForm.addEventListener('submit', async (event) => {
       event.preventDefault();
-      await submitArrivalStepThree();
+      await submitArrivalStepFour();
     });
   }
 
@@ -515,6 +545,14 @@ function setupPublicArrivalFlow() {
     }
 
     if (currentStep === '4') {
+      if (!updateArrivalWelcomeName()) {
+        return;
+      }
+      optionalNoteInput?.focus();
+      return;
+    }
+
+    if (currentStep === '5') {
       populateWaitStep();
       arrivalInviteLink?.focus();
     }
