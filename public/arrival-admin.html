@@ -54,7 +54,12 @@
               <div class="invitation-status-pill invitation-status-pill--admin" id="arrival-admin-session-pill" data-state="ready">
                 <span>Sesión validada</span>
               </div>
-              <button id="arrival-admin-refresh" class="premium-secondary-door" type="button">Actualizar lista</button>
+              <button id="arrival-admin-refresh" class="premium-secondary-door arrival-admin-action-shell" type="button">
+                <span class="arrival-admin-action-copy">
+                  <span class="arrival-admin-action-label">Actualizar lista</span>
+                  <span class="arrival-admin-action-meta">Sincronizar sala</span>
+                </span>
+              </button>
               <button id="arrival-admin-signout" class="premium-secondary-door" type="button">Cerrar sesión</button>
             </div>
           </div>
@@ -127,11 +132,22 @@
                     <div class="arrival-admin-token-block">
                       <code id="detail-token">—</code>
                       <div class="arrival-admin-inline-actions">
-                        <button id="copy-token-btn" class="premium-secondary-door" type="button">Copiar token</button>
-                        <button id="copy-link-btn" class="premium-secondary-door" type="button">Copiar link privado</button>
+                        <button id="copy-token-btn" class="premium-secondary-door arrival-admin-action-shell" type="button">
+                          <span class="arrival-admin-action-copy">
+                            <span class="arrival-admin-action-label">Copiar token</span>
+                            <span class="arrival-admin-action-meta">Portapapeles</span>
+                          </span>
+                        </button>
+                        <button id="copy-link-btn" class="premium-secondary-door arrival-admin-action-shell" type="button">
+                          <span class="arrival-admin-action-copy">
+                            <span class="arrival-admin-action-label">Copiar link privado</span>
+                            <span class="arrival-admin-action-meta">Acceso reservado</span>
+                          </span>
+                        </button>
                       </div>
                     </div>
                     <a id="detail-invite-link" class="text-link" href="#" target="_blank" rel="noreferrer">Abrir invitación</a>
+                    <p id="arrival-admin-token-feedback" class="arrival-admin-inline-feedback hidden" role="status" aria-live="polite"></p>
                   </article>
 
                   <article class="arrival-admin-info-card">
@@ -163,9 +179,15 @@
                       <p class="section-kicker">Nota interna</p>
                       <p class="section-note">Opcional, corta y útil para seguimiento manual.</p>
                     </div>
-                    <button id="save-note-btn" class="premium-secondary-door" type="button">Guardar nota</button>
+                    <button id="save-note-btn" class="premium-secondary-door arrival-admin-action-shell" type="button">
+                      <span class="arrival-admin-action-copy">
+                        <span class="arrival-admin-action-label">Guardar nota</span>
+                        <span class="arrival-admin-action-meta">Persistir seguimiento</span>
+                      </span>
+                    </button>
                   </div>
                   <textarea id="detail-internal-note" class="arrival-textarea arrival-admin-note-input" rows="4" maxlength="600" placeholder="Aprobado manualmente, esperar, follow-up…"></textarea>
+                  <p id="arrival-admin-note-feedback" class="arrival-admin-inline-feedback hidden" role="status" aria-live="polite"></p>
                 </article>
 
                 <article class="arrival-admin-info-card">
@@ -176,10 +198,26 @@
                     </div>
                   </div>
                   <div class="arrival-admin-inline-actions arrival-admin-inline-actions--status">
-                    <button id="approve-btn" class="login-btn arrival-admin-action-btn" type="button">Aprobar</button>
-                    <button id="invite-btn" class="premium-secondary-door arrival-admin-action-btn" type="button">Marcar invited</button>
-                    <button id="enable-btn" class="premium-secondary-door arrival-admin-action-btn" type="button">Marcar account_enabled</button>
+                    <button id="approve-btn" class="login-btn arrival-admin-action-btn arrival-admin-action-shell" type="button">
+                      <span class="arrival-admin-action-copy">
+                        <span class="arrival-admin-action-label">Aprobar</span>
+                        <span class="arrival-admin-action-meta">Primer paso</span>
+                      </span>
+                    </button>
+                    <button id="invite-btn" class="premium-secondary-door arrival-admin-action-btn arrival-admin-action-shell" type="button">
+                      <span class="arrival-admin-action-copy">
+                        <span class="arrival-admin-action-label">Marcar invited</span>
+                        <span class="arrival-admin-action-meta">Enviar acceso</span>
+                      </span>
+                    </button>
+                    <button id="enable-btn" class="premium-secondary-door arrival-admin-action-btn arrival-admin-action-shell" type="button">
+                      <span class="arrival-admin-action-copy">
+                        <span class="arrival-admin-action-label">Marcar account_enabled</span>
+                        <span class="arrival-admin-action-meta">Habilitar cuenta</span>
+                      </span>
+                    </button>
                   </div>
+                  <p id="arrival-admin-status-feedback" class="arrival-admin-inline-feedback hidden" role="status" aria-live="polite"></p>
                 </article>
               </div>
             </section>
