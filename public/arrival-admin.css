@@ -1,0 +1,366 @@
+.arrival-admin-page .auth-shell {
+  max-width: min(1380px, calc(100vw - 48px));
+}
+
+.arrival-admin-layer {
+  opacity: 0.18;
+  filter: saturate(0.85) blur(0.2px);
+}
+
+.arrival-admin-layout {
+  width: 100%;
+}
+
+.arrival-admin-gate,
+.arrival-admin-app {
+  position: relative;
+  width: 100%;
+}
+
+.arrival-admin-gate {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 40px 36px;
+  border-radius: 32px;
+  background: rgba(12, 10, 20, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.32);
+}
+
+.arrival-admin-gate-actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.arrival-admin-panel {
+  position: relative;
+  overflow: hidden;
+  border-radius: 28px;
+  background: rgba(11, 10, 20, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
+}
+
+.arrival-admin-panel--header {
+  padding: 32px;
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+
+.arrival-admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.invitation-status-pill--admin {
+  margin-bottom: 0;
+}
+
+.arrival-admin-workspace {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.92fr) minmax(0, 1.35fr);
+  gap: 20px;
+}
+
+.arrival-admin-sidebar,
+.arrival-admin-detail {
+  min-height: 68vh;
+  padding: 24px;
+}
+
+.arrival-admin-toolbar {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.arrival-admin-search-label {
+  font-size: 0.78rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 234, 243, 0.72);
+}
+
+.arrival-admin-search,
+.arrival-admin-select {
+  width: 100%;
+  min-height: 50px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff7fb;
+  padding: 0 16px;
+  font: inherit;
+}
+
+.arrival-admin-search:focus,
+.arrival-admin-select:focus {
+  outline: none;
+  border-color: rgba(255, 191, 217, 0.56);
+  box-shadow: 0 0 0 3px rgba(255, 191, 217, 0.16);
+}
+
+.arrival-admin-list-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.92rem;
+  color: rgba(255, 241, 247, 0.72);
+  margin-bottom: 16px;
+}
+
+.arrival-admin-loading {
+  color: rgba(255, 214, 231, 0.92);
+}
+
+.arrival-admin-list {
+  display: grid;
+  gap: 12px;
+  max-height: calc(68vh - 130px);
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.arrival-admin-list-item {
+  width: 100%;
+  text-align: left;
+  border-radius: 22px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.035);
+  color: inherit;
+  padding: 18px;
+  cursor: pointer;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.arrival-admin-list-item:hover,
+.arrival-admin-list-item:focus-visible,
+.arrival-admin-list-item.is-selected {
+  transform: translateY(-1px);
+  border-color: rgba(255, 194, 219, 0.4);
+  background: rgba(255, 217, 232, 0.08);
+  outline: none;
+}
+
+.arrival-admin-list-top,
+.arrival-admin-list-bottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.arrival-admin-list-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #fff8fb;
+}
+
+.arrival-admin-list-email,
+.arrival-admin-list-preview,
+.arrival-admin-email,
+.arrival-admin-timestamp,
+.arrival-admin-empty p,
+.section-note {
+  color: rgba(255, 241, 247, 0.72);
+}
+
+.arrival-admin-list-preview {
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+.arrival-admin-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  border-radius: 999px;
+  padding: 0 12px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff7fb;
+}
+
+.arrival-admin-status-badge[data-status="requested"] {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.arrival-admin-status-badge[data-status="approved"],
+.arrival-admin-status-badge[data-status="paid"] {
+  background: rgba(191, 165, 255, 0.18);
+  border-color: rgba(191, 165, 255, 0.28);
+}
+
+.arrival-admin-status-badge[data-status="invited"] {
+  background: rgba(255, 208, 148, 0.18);
+  border-color: rgba(255, 208, 148, 0.26);
+}
+
+.arrival-admin-status-badge[data-status="account_enabled"],
+.arrival-admin-status-badge[data-status="active"] {
+  background: rgba(158, 255, 214, 0.18);
+  border-color: rgba(158, 255, 214, 0.24);
+}
+
+.arrival-admin-empty,
+.arrival-admin-detail-card {
+  height: 100%;
+}
+
+.arrival-admin-empty {
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  min-height: 100%;
+  text-align: center;
+}
+
+.arrival-admin-detail-card {
+  display: grid;
+  gap: 18px;
+}
+
+.arrival-admin-detail-header,
+.arrival-admin-note-header,
+.arrival-admin-token-block {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.arrival-admin-detail-grid,
+.arrival-admin-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.arrival-admin-info-card {
+  padding: 20px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.arrival-admin-body-copy {
+  margin-top: 10px;
+  white-space: pre-wrap;
+  line-height: 1.6;
+  color: #fff8fb;
+}
+
+.arrival-admin-token-block {
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.arrival-admin-token-block code {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.06);
+  font-size: 0.92rem;
+  word-break: break-all;
+}
+
+.arrival-admin-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.arrival-admin-inline-actions--status .arrival-admin-action-btn {
+  min-width: 180px;
+}
+
+.arrival-admin-timestamps-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.arrival-admin-timestamps-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+}
+
+.arrival-admin-timestamps-list dt {
+  color: rgba(255, 241, 247, 0.72);
+}
+
+.arrival-admin-timestamps-list dd {
+  margin: 0;
+  color: #fff8fb;
+  text-align: right;
+}
+
+.arrival-admin-note-input {
+  margin-top: 12px;
+  min-height: 130px;
+}
+
+.arrival-admin-feedback {
+  margin-top: 20px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+@media (max-width: 1120px) {
+  .arrival-admin-workspace,
+  .arrival-admin-detail-grid,
+  .arrival-admin-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .arrival-admin-panel--header,
+  .arrival-admin-detail-header,
+  .arrival-admin-note-header,
+  .arrival-admin-token-block {
+    flex-direction: column;
+  }
+
+  .arrival-admin-header-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .arrival-admin-page .auth-shell {
+    max-width: calc(100vw - 20px);
+  }
+
+  .arrival-admin-gate,
+  .arrival-admin-sidebar,
+  .arrival-admin-detail,
+  .arrival-admin-panel--header {
+    padding: 20px;
+  }
+
+  .arrival-admin-inline-actions--status .arrival-admin-action-btn {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .arrival-admin-list {
+    max-height: none;
+  }
+}

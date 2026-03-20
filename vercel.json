@@ -108,6 +108,18 @@
     {
       "source": "/api/arrival/complete",
       "destination": "/api/router?action=arrival-complete"
+    },
+    {
+      "source": "/api/arrival/admin/list",
+      "destination": "/api/router?action=arrival-admin-list"
+    },
+    {
+      "source": "/api/arrival/admin/detail",
+      "destination": "/api/router?action=arrival-admin-detail"
+    },
+    {
+      "source": "/api/arrival/admin/update",
+      "destination": "/api/router?action=arrival-admin-update"
     }
   ]
 }
