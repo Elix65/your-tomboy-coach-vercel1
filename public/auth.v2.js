@@ -301,15 +301,15 @@ function setupPublicArrivalFlow() {
   const RITUAL_LINES_BY_STEP = {
     '1': 'Tu llegada empieza ahora.',
     '2': 'Tu acceso se abre desde tu email.',
-    '3': 'Elegí la pasarela para abrir tu acceso.'
+    '3': 'Elegí cómo querés abrir tu acceso.'
   };
   const ARRIVAL_PROVIDER_LABELS = {
     mercadopago: 'Mercado Pago',
     paypal: 'PayPal'
   };
   const ARRIVAL_PROVIDER_RECOMMENDATION_COPY = {
-    mercadopago: 'Te recomendamos Mercado Pago por tu ubicación, pero podés elegir la opción que te resulte más cómoda.',
-    paypal: 'Te recomendamos PayPal por tu ubicación, pero podés elegir la opción que te resulte más cómoda.'
+    mercadopago: 'Mercado Pago',
+    paypal: 'PayPal'
   };
 
 
@@ -367,7 +367,7 @@ function setupPublicArrivalFlow() {
     }
 
     if (arrivalProviderSecondary) {
-      arrivalProviderSecondary.textContent = `Continuar con ${alternativeLabel}`;
+      arrivalProviderSecondary.textContent = `Usar ${alternativeLabel}`;
       arrivalProviderSecondary.href = alternativeUrl;
     }
   }

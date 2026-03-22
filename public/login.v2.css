@@ -594,30 +594,32 @@ body {
 
 
 .arrival-step-3 {
-  gap: 12px;
-  padding-top: 2px;
+  gap: 18px;
+  padding-top: 6px;
 }
 
 .arrival-step-3 .login-eyebrow {
-  margin-bottom: 3px;
-  color: rgba(219, 193, 165, 0.82);
+  margin-bottom: 0;
+  color: rgba(226, 198, 168, 0.88);
 }
 
 .arrival-step-3 .login-title {
   margin: 0;
-  font-size: clamp(32px, 4.3vw, 42px);
-  line-height: 1.12;
-  letter-spacing: 0.24px;
-  font-weight: 750;
-  color: #f1e4d3;
-  text-shadow: 0 10px 30px rgba(9, 5, 13, 0.42);
+  max-width: 11ch;
+  font-size: clamp(36px, 4.8vw, 48px);
+  line-height: 1.04;
+  letter-spacing: 0.02em;
+  font-weight: 780;
+  color: #f5e9da;
+  text-shadow: 0 12px 34px rgba(9, 5, 13, 0.5);
 }
 
 .arrival-step-3 .login-subtitle {
-  margin: 0 0 4px;
-  color: rgba(222, 206, 188, 0.79);
-  font-size: clamp(15px, 1.55vw, 17px);
-  line-height: 1.3;
+  margin: -2px 0 0;
+  max-width: 31ch;
+  color: rgba(230, 213, 195, 0.82);
+  font-size: clamp(15px, 1.7vw, 18px);
+  line-height: 1.5;
 }
 
 .arrival-auth-form {
@@ -647,16 +649,55 @@ body {
   margin-top: 0;
 }
 
+.arrival-provider-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 20px;
+  border-radius: 22px;
+  border: 1px solid rgba(213, 178, 145, 0.18);
+  background:
+    radial-gradient(circle at top left, rgba(174, 111, 78, 0.12), transparent 42%),
+    linear-gradient(180deg, rgba(49, 32, 37, 0.76), rgba(29, 20, 25, 0.88));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 232, 214, 0.06),
+    0 22px 44px rgba(8, 5, 10, 0.26);
+  overflow: hidden;
+}
+
+.arrival-provider-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 235, 215, 0.06), transparent 46%);
+  pointer-events: none;
+}
+
+.arrival-provider-card-eyebrow {
+  position: relative;
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(224, 194, 162, 0.68);
+}
+
 .arrival-provider-recommendation {
-  margin: 2px 0 0;
-  color: rgba(230, 211, 194, 0.82);
-  line-height: 1.5;
+  position: relative;
+  margin: 0;
+  max-width: 18ch;
+  font-size: clamp(24px, 3vw, 30px);
+  line-height: 1.18;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #f6ecdf;
 }
 
 .arrival-provider-actions {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .arrival-provider-btn {
@@ -664,8 +705,56 @@ body {
   box-sizing: border-box;
 }
 
+.arrival-provider-btn--primary {
+  position: relative;
+  min-height: 58px;
+  color: #f8ecdf;
+  background: linear-gradient(180deg, rgba(92, 56, 65, 0.96), rgba(54, 33, 40, 0.98));
+  border: 1px solid rgba(209, 169, 134, 0.42);
+  box-shadow:
+    0 18px 30px rgba(16, 10, 17, 0.5),
+    0 0 0 1px rgba(255, 233, 214, 0.06) inset,
+    0 0 26px rgba(177, 132, 95, 0.12);
+  transition:
+    transform 180ms var(--moon-ease-premium),
+    box-shadow 180ms var(--moon-ease-premium),
+    filter 180ms ease,
+    border-color 180ms ease;
+}
+
+.arrival-provider-btn--primary::before {
+  content: "";
+  width: 18px;
+  height: 18px;
+  background: currentColor;
+  mask: center / contain no-repeat url('/svg/arrow-right.svg');
+}
+
+.arrival-provider-btn--primary:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+  border-color: rgba(221, 185, 153, 0.5);
+  box-shadow:
+    0 22px 34px rgba(15, 9, 16, 0.58),
+    0 0 0 1px rgba(255, 233, 214, 0.08) inset,
+    0 0 34px rgba(177, 132, 95, 0.18);
+}
+
+.arrival-provider-divider {
+  margin: -2px 0;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
+  color: rgba(219, 196, 174, 0.58);
+}
+
 .arrival-provider-btn--secondary {
-  min-height: 52px;
+  min-height: 54px;
+  border-color: rgba(219, 186, 156, 0.18);
+  background: linear-gradient(180deg, rgba(56, 39, 45, 0.32), rgba(27, 20, 25, 0.34));
+  color: rgba(245, 231, 217, 0.92);
 }
 
 #btn-arrival-intention-next,
@@ -707,8 +796,9 @@ body {
 }
 
 .arrival-step-3-copy {
-  margin-top: 4px;
-  color: rgba(205, 181, 161, 0.58);
+  margin-top: 2px;
+  max-width: 34ch;
+  color: rgba(214, 190, 170, 0.62);
   letter-spacing: 0.01em;
 }
 
@@ -1638,6 +1728,15 @@ body {
     0 12px 24px rgba(11, 7, 14, 0.18);
 }
 
+.arrival-provider-btn--secondary:hover {
+  color: #fff0e1;
+  border-color: rgba(223, 190, 158, 0.28);
+  background: linear-gradient(180deg, rgba(68, 47, 54, 0.4), rgba(30, 22, 27, 0.42));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 236, 217, 0.08),
+    0 16px 28px rgba(11, 7, 14, 0.18);
+}
+
 .premium-secondary-door:focus-visible {
   outline: 2px solid rgba(255, 209, 229, 0.96);
   outline-offset: 2px;
@@ -1698,6 +1797,22 @@ body {
   .arrival-step-4,
   .arrival-step-5 {
     gap: 14px;
+  }
+
+  .arrival-step-3 .login-title {
+    max-width: 12ch;
+    font-size: clamp(34px, 10vw, 42px);
+  }
+
+  .arrival-step-3 .login-subtitle,
+  .arrival-step-3-copy,
+  .arrival-provider-recommendation {
+    max-width: none;
+  }
+
+  .arrival-provider-card {
+    padding: 16px 16px 17px;
+    border-radius: 20px;
   }
 
   .arrival-request-form,
