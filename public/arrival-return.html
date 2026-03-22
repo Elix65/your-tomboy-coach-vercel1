@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Retorno de llegada | 21-Moon</title>
+  <link rel="icon" type="image/png" href="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/hi-4.png?v=1">
+  <link rel="apple-touch-icon" href="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/hi-4.png?v=1">
+  <link rel="stylesheet" href="/style.v2.css">
+  <link rel="stylesheet" href="/login.v2.css">
+</head>
+<body class="login-page arrival-return-page">
+  <div class="login-root">
+    <div class="bg-scene" aria-hidden="true"></div>
+    <div class="yumiko-layer" aria-hidden="true">
+      <img class="yumiko-figure" src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png" alt="">
+    </div>
+
+    <div class="auth-shell">
+      <div class="auth-left">
+        <div id="login-container" class="arrival-access-shell" data-return-state="pending">
+          <div class="panel-ornament" aria-hidden="true"></div>
+          <div class="login-brand" aria-hidden="true">
+            <img src="/svg/moon-sakura-logo.svg" alt="" class="login-brand-logo">
+            <span class="login-brand-text">21-Moon</span>
+          </div>
+
+          <div class="invitation-status-pill" data-state="ready">
+            <span id="arrival-return-status-text">Verificando</span>
+          </div>
+
+          <div class="arrival-access-copy-block">
+            <p id="arrival-return-eyebrow" class="login-eyebrow">CONFIRMANDO TU LLEGADA</p>
+            <h1 id="arrival-return-title" class="login-title">Tu acceso está siendo confirmado.</h1>
+            <p id="arrival-return-subtitle" class="login-subtitle">Estamos esperando la confirmación final de la pasarela.</p>
+          </div>
+
+          <div class="arrival-access-actions">
+            <a id="arrival-return-primary" class="login-btn" href="#">Actualizar estado</a>
+            <a id="arrival-return-secondary" class="premium-secondary-door" href="/login.html">Volver al inicio</a>
+          </div>
+
+          <p id="login-error" class="login-error hidden" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="pageTransition" class="page-transition" aria-hidden="true">
+    <div class="page-transition-bg"></div>
+    <img id="runner" class="runner" src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/run-1.png" alt="">
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/transition.v2.js"></script>
+  <script type="module" src="/arrival-access.js"></script>
+</body>
+</html>

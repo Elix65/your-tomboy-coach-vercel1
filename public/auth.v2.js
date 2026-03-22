@@ -344,12 +344,45 @@ function setupPublicArrivalFlow() {
     void setOnboardingStep(2, RITUAL_LINES_BY_STEP);
   }
 
+  function buildArrivalReturnUrl(provider) {
+    const email = normalizeEmail(window.sessionStorage.getItem('yumiko_arrival_email') || '');
+    const returnUrl = new URL('/arrival/return', window.location.origin);
+    if (email) {
+      returnUrl.searchParams.set('email', email);
+    }
+    if (provider) {
+      returnUrl.searchParams.set('provider', provider);
+    }
+    return returnUrl;
+  }
+
+  function withReturnParams(paymentUrl, provider) {
+    const normalizedPaymentUrl = String(paymentUrl || '').trim();
+    if (!normalizedPaymentUrl) {
+      return normalizedPaymentUrl;
+    }
+
+    const urlObject = new URL(normalizedPaymentUrl);
+    const returnUrl = buildArrivalReturnUrl(provider);
+
+    urlObject.searchParams.set('return', returnUrl.toString());
+    urlObject.searchParams.set('cancel_return', returnUrl.toString());
+    urlObject.searchParams.set('custom', normalizeEmail(window.sessionStorage.getItem('yumiko_arrival_email') || ''));
+    urlObject.searchParams.set('external_reference', normalizeEmail(window.sessionStorage.getItem('yumiko_arrival_email') || ''));
+    urlObject.searchParams.set('back_url', returnUrl.toString());
+    urlObject.searchParams.set('back_url_success', returnUrl.toString());
+    urlObject.searchParams.set('back_url_pending', returnUrl.toString());
+    urlObject.searchParams.set('back_url_failure', returnUrl.toString());
+
+    return urlObject.toString();
+  }
+
   function updateArrivalProviderChoice(data) {
     const recommendedProvider = String(data?.recommended_provider || '').trim().toLowerCase();
     const alternativeProvider = String(data?.alternative_provider || '').trim().toLowerCase();
     const paymentUrls = data?.payment_urls && typeof data.payment_urls === 'object' ? data.payment_urls : {};
-    const recommendedUrl = String(paymentUrls?.[recommendedProvider] || '').trim();
-    const alternativeUrl = String(paymentUrls?.[alternativeProvider] || '').trim();
+    const recommendedUrl = withReturnParams(paymentUrls?.[recommendedProvider], recommendedProvider);
+    const alternativeUrl = withReturnParams(paymentUrls?.[alternativeProvider], alternativeProvider);
     const recommendedLabel = ARRIVAL_PROVIDER_LABELS[recommendedProvider];
     const alternativeLabel = ARRIVAL_PROVIDER_LABELS[alternativeProvider];
 

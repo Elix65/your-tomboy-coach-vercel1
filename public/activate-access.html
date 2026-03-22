@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activar acceso | 21-Moon</title>
+  <link rel="icon" type="image/png" href="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/hi-4.png?v=1">
+  <link rel="apple-touch-icon" href="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/hi-4.png?v=1">
+  <link rel="stylesheet" href="/style.v2.css">
+  <link rel="stylesheet" href="/login.v2.css">
+</head>
+<body class="login-page activation-page">
+  <div class="login-root">
+    <div class="bg-scene" aria-hidden="true"></div>
+    <div class="yumiko-layer" aria-hidden="true">
+      <img class="yumiko-figure" src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png" alt="">
+    </div>
+
+    <div class="auth-shell">
+      <div class="auth-left">
+        <div id="login-container" class="arrival-access-shell">
+          <div class="panel-ornament" aria-hidden="true"></div>
+          <div class="login-brand" aria-hidden="true">
+            <img src="/svg/moon-sakura-logo.svg" alt="" class="login-brand-logo">
+            <span class="login-brand-text">21-Moon</span>
+          </div>
+
+          <div class="invitation-status-pill" data-state="ready">
+            <span id="activation-status-text">Verificando</span>
+          </div>
+
+          <div class="arrival-access-copy-block">
+            <p id="activation-eyebrow" class="login-eyebrow">TU ACCESO YA FUE ABIERTO</p>
+            <h1 id="activation-title" class="login-title">Elegí tu contraseña para entrar.</h1>
+            <p id="activation-subtitle" class="login-subtitle">Tu llegada ya fue confirmada. Este es el último paso para abrir tu espacio con Yumiko.</p>
+          </div>
+
+          <form id="activation-form" class="arrival-auth-form" novalidate>
+            <div class="arrival-form-block">
+              <label for="activation-password" class="arrival-label">Nueva contraseña</label>
+              <div class="input-wrap password-wrap">
+                <span class="input-icon" aria-hidden="true"></span>
+                <input id="activation-password" type="password" placeholder="••••••••" autocomplete="new-password" aria-label="Nueva contraseña">
+              </div>
+            </div>
+
+            <div class="arrival-form-block">
+              <label for="activation-password-confirm" class="arrival-label">Repetí tu contraseña</label>
+              <div class="input-wrap password-wrap">
+                <span class="input-icon" aria-hidden="true"></span>
+                <input id="activation-password-confirm" type="password" placeholder="••••••••" autocomplete="new-password" aria-label="Repetí tu contraseña">
+              </div>
+            </div>
+
+            <button id="activation-submit" class="login-btn" type="submit">Entrar a 21-Moon</button>
+          </form>
+
+          <p id="activation-helper" class="login-copy">Tu acceso quedará activado apenas confirmes este paso.</p>
+
+          <div class="arrival-access-actions arrival-access-actions--fallback">
+            <a id="activation-fallback-primary" class="login-btn hidden" href="/login.html">Volver al inicio</a>
+            <a id="activation-fallback-secondary" class="premium-secondary-door hidden" href="/member-login.html">Ir al login</a>
+          </div>
+
+          <p id="login-error" class="login-error hidden" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="pageTransition" class="page-transition" aria-hidden="true">
+    <div class="page-transition-bg"></div>
+    <img id="runner" class="runner" src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/run-1.png" alt="">
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/transition.v2.js"></script>
+  <script type="module" src="/arrival-access.js"></script>
+</body>
+</html>

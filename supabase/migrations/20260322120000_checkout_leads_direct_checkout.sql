@@ -1,8 +1,13 @@
 create table if not exists public.checkout_leads (
   email text primary key,
+  auth_user_id uuid references auth.users(id) on delete set null,
   country_code text,
   payment_provider text not null check (payment_provider in ('mercadopago', 'paypal')),
   payment_url text not null,
+  payment_status text not null default 'pending' check (payment_status in ('pending', 'paid', 'failed', 'cancelled')),
+  payment_reference text,
+  payment_confirmed_at timestamptz,
+  activated_at timestamptz,
   source text not null default 'public_direct_checkout',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
