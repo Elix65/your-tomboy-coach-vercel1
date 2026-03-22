@@ -2577,7 +2577,7 @@ function hashActivationToken(token) {
   return crypto.createHash('sha256').update(String(token || '')).digest('hex');
 }
 
-function buildActivationUrl(req, token, path = '/arrival/activate') {
+function buildActivationUrl(req, token, path = '/activate-access') {
   const origin = String(req.headers.origin || '').trim() || 'https://21-moon.com';
   const activationUrl = new URL(path, origin);
   activationUrl.searchParams.set('token', token);
@@ -2743,7 +2743,7 @@ async function createActivationToken(supabaseAdmin, req, checkoutLead, options =
 
   const purpose = String(options.purpose || POST_PAYMENT_ACTIVATION_PURPOSE).trim() || POST_PAYMENT_ACTIVATION_PURPOSE;
   const ttlHours = Number(options.ttlHours || POST_PAYMENT_ACTIVATION_TTL_HOURS) || POST_PAYMENT_ACTIVATION_TTL_HOURS;
-  const activationPath = purpose === MANUAL_RESCUE_PURPOSE ? '/arrival/rescue' : '/arrival/activate';
+  const activationPath = '/activate-access';
 
   await invalidateActivationTokens(supabaseAdmin, normalizedEmail, purpose);
 
