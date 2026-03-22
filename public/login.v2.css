@@ -2176,3 +2176,35 @@ body {
     max-width: min(520px, calc(100vw - 32px - clamp(24px, 4vw, 76px)));
   }
 }
+
+.arrival-access-shell {
+  align-items: flex-start;
+}
+
+.arrival-access-copy-block {
+  display: grid;
+  gap: 10px;
+}
+
+.arrival-access-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.arrival-access-actions .login-btn,
+.arrival-access-actions .premium-secondary-door {
+  width: 100%;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.arrival-access-actions--fallback {
+  margin-top: 6px;
+}
+
+.activation-page .arrival-auth-form,
+.arrival-return-page .arrival-auth-form {
+  width: 100%;
+}

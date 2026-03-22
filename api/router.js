@@ -32,6 +32,8 @@ const ARRIVAL_ADMIN_MUTABLE_STATUSES = ['approved', 'invited', 'account_enabled'
 const DIRECT_CHECKOUT_SOURCE = 'public_direct_checkout';
 const DIRECT_CHECKOUT_MP_URL = 'https://mpago.li/2knhqJD';
 const DIRECT_CHECKOUT_PAYPAL_URL = 'https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=4QRV84VRFED6L';
+const POST_PAYMENT_ACTIVATION_TTL_HOURS = 24;
+const POST_PAYMENT_ACTIVATION_PURPOSE = 'post_payment_activation';
 
 function getArrivalAdminUserIds() {
   const configured = String(process.env.ARRIVAL_ADMIN_UIDS || process.env.ARRIVAL_ADMIN_UID || '')
@@ -2476,6 +2478,9 @@ async function saveDirectCheckoutLead(supabaseAdmin, { email, countryCode, payme
     country_code: countryCode,
     payment_provider: paymentProvider,
     payment_url: paymentUrl,
+    payment_status: 'pending',
+    payment_reference: null,
+    payment_confirmed_at: null,
     source: DIRECT_CHECKOUT_SOURCE
   };
 
@@ -2502,6 +2507,8 @@ async function saveDirectCheckoutLead(supabaseAdmin, { email, countryCode, payme
     country_code: countryCode,
     payment_provider: paymentProvider,
     payment_url: paymentUrl,
+    payment_status: 'pending',
+    payment_reference: null,
     source: DIRECT_CHECKOUT_SOURCE,
     upsert_status: status || null,
     upsert_status_text: statusText || null
@@ -2509,6 +2516,274 @@ async function saveDirectCheckoutLead(supabaseAdmin, { email, countryCode, payme
 
   console.info('checkout-leads upsert succeeded:', result);
   return result;
+}
+
+function normalizeCheckoutPaymentStatus(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+
+  if (['paid', 'approved', 'authorized', 'active'].includes(normalized)) return 'paid';
+  if (['cancelled', 'canceled'].includes(normalized)) return 'cancelled';
+  if (['failed', 'failure', 'rejected', 'refunded', 'charged_back'].includes(normalized)) return 'failed';
+  if (['pending', 'in_process', 'in_progress', 'processing', 'authorized_pending'].includes(normalized)) return 'pending';
+
+  return null;
+}
+
+function hashActivationToken(token) {
+  return crypto.createHash('sha256').update(String(token || '')).digest('hex');
+}
+
+function buildActivationUrl(req, token) {
+  const origin = String(req.headers.origin || '').trim() || 'https://21-moon.com';
+  const activationUrl = new URL('/arrival/activate', origin);
+  activationUrl.searchParams.set('token', token);
+  return activationUrl.toString();
+}
+
+async function findCheckoutLeadByEmail(supabaseAdmin, email) {
+  const normalizedEmail = normalizeArrivalEmail(email);
+  if (!normalizedEmail) return null;
+
+  const { data, error } = await supabaseAdmin
+    .from('checkout_leads')
+    .select('email,auth_user_id,country_code,payment_provider,payment_url,payment_status,payment_reference,payment_confirmed_at,activated_at,source,created_at,updated_at')
+    .ilike('email', normalizedEmail)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message || 'Error reading checkout_leads by email.');
+  }
+
+  return data || null;
+}
+
+async function updateCheckoutLeadStatus(supabaseAdmin, email, updates) {
+  const normalizedEmail = normalizeArrivalEmail(email);
+  if (!normalizedEmail) return null;
+
+  const payload = { ...updates };
+  if (Object.prototype.hasOwnProperty.call(payload, 'payment_status')) {
+    payload.payment_status = normalizeCheckoutPaymentStatus(payload.payment_status) || 'pending';
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('checkout_leads')
+    .update(payload)
+    .ilike('email', normalizedEmail)
+    .select('email,auth_user_id,country_code,payment_provider,payment_url,payment_status,payment_reference,payment_confirmed_at,activated_at,source,created_at,updated_at')
+    .single();
+
+  if (error) {
+    throw new Error(error.message || 'Error updating checkout lead status.');
+  }
+
+  return data || null;
+}
+
+async function fetchMercadoPagoDirectPayment(paymentId) {
+  const normalizedId = String(paymentId || '').trim();
+  if (!normalizedId || !mpAccessToken) return null;
+
+  const response = await fetch(`https://api.mercadopago.com/v1/payments/${encodeURIComponent(normalizedId)}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${mpAccessToken}`
+    }
+  });
+
+  const data = await parseMpResponseBody(response);
+  if (!response.ok) {
+    return null;
+  }
+
+  return {
+    reference: String(data?.id || normalizedId).trim() || normalizedId,
+    status: normalizeCheckoutPaymentStatus(data?.status) || 'pending'
+  };
+}
+
+async function reconcileDirectCheckoutPayment(supabaseAdmin, req, checkoutLead) {
+  if (!checkoutLead?.email) return null;
+
+  const requestUrl = getRequestUrl(req);
+  const query = req.query || {};
+  const provider = String(query.provider || requestUrl.searchParams.get('provider') || checkoutLead.payment_provider || '').trim().toLowerCase();
+  const currentStatus = normalizeCheckoutPaymentStatus(checkoutLead.payment_status) || 'pending';
+  const queryStatus = normalizeCheckoutPaymentStatus(
+    query.payment_status
+    || query.status
+    || query.collection_status
+    || query.preapproval_status
+    || requestUrl.searchParams.get('payment_status')
+    || requestUrl.searchParams.get('status')
+    || requestUrl.searchParams.get('collection_status')
+    || requestUrl.searchParams.get('preapproval_status')
+    || ''
+  );
+  const reference = String(
+    query.payment_reference
+    || query.payment_id
+    || query.collection_id
+    || query.preapproval_id
+    || query.tx
+    || requestUrl.searchParams.get('payment_reference')
+    || requestUrl.searchParams.get('payment_id')
+    || requestUrl.searchParams.get('collection_id')
+    || requestUrl.searchParams.get('preapproval_id')
+    || requestUrl.searchParams.get('tx')
+    || checkoutLead.payment_reference
+    || ''
+  ).trim();
+
+  let resolvedStatus = currentStatus;
+  let resolvedReference = reference || checkoutLead.payment_reference || null;
+
+  if (currentStatus === 'paid') {
+    return checkoutLead;
+  }
+
+  if (provider === 'mercadopago' && reference) {
+    const verifiedPayment = await fetchMercadoPagoDirectPayment(reference);
+    if (verifiedPayment?.status) {
+      resolvedStatus = verifiedPayment.status;
+      resolvedReference = verifiedPayment.reference || resolvedReference;
+    }
+  }
+
+  if (resolvedStatus !== 'paid' && queryStatus && ['pending', 'failed', 'cancelled'].includes(queryStatus)) {
+    resolvedStatus = queryStatus;
+  }
+
+  if (resolvedStatus === currentStatus && resolvedReference === (checkoutLead.payment_reference || null)) {
+    return checkoutLead;
+  }
+
+  const nowIso = new Date().toISOString();
+  return updateCheckoutLeadStatus(supabaseAdmin, checkoutLead.email, {
+    payment_status: resolvedStatus,
+    payment_reference: resolvedReference,
+    payment_confirmed_at: resolvedStatus === 'paid' ? nowIso : checkoutLead.payment_confirmed_at || null
+  });
+}
+
+async function invalidatePostPaymentActivationTokens(supabaseAdmin, email) {
+  const normalizedEmail = normalizeArrivalEmail(email);
+  if (!normalizedEmail) return;
+
+  const nowIso = new Date().toISOString();
+  const { error } = await supabaseAdmin
+    .from('activation_tokens')
+    .update({ invalidated_at: nowIso })
+    .eq('purpose', POST_PAYMENT_ACTIVATION_PURPOSE)
+    .ilike('email', normalizedEmail)
+    .is('used_at', null)
+    .is('invalidated_at', null)
+    .gt('expires_at', nowIso);
+
+  if (error) {
+    throw new Error(error.message || 'Error invalidating previous activation tokens.');
+  }
+}
+
+async function createPostPaymentActivationToken(supabaseAdmin, req, checkoutLead) {
+  const normalizedEmail = normalizeArrivalEmail(checkoutLead?.email || '');
+  if (!normalizedEmail) {
+    throw new Error('missing_checkout_email');
+  }
+
+  await invalidatePostPaymentActivationTokens(supabaseAdmin, normalizedEmail);
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + (POST_PAYMENT_ACTIVATION_TTL_HOURS * 60 * 60 * 1000)).toISOString();
+  const payload = {
+    auth_user_id: checkoutLead.auth_user_id || null,
+    email: normalizedEmail,
+    checkout_email: normalizedEmail,
+    checkout_provider: checkoutLead.payment_provider || null,
+    checkout_reference: checkoutLead.payment_reference || null,
+    purpose: POST_PAYMENT_ACTIVATION_PURPOSE,
+    token_hash: hashActivationToken(rawToken),
+    expires_at: expiresAt
+  };
+
+  const { error } = await supabaseAdmin
+    .from('activation_tokens')
+    .insert(payload);
+
+  if (error) {
+    throw new Error(error.message || 'Error creating activation token.');
+  }
+
+  return {
+    token: rawToken,
+    activation_url: buildActivationUrl(req, rawToken),
+    expires_at: expiresAt
+  };
+}
+
+async function findActivationTokenByRawToken(supabaseAdmin, token) {
+  const normalizedToken = String(token || '').trim();
+  if (!normalizedToken) return null;
+
+  const { data, error } = await supabaseAdmin
+    .from('activation_tokens')
+    .select('*')
+    .eq('token_hash', hashActivationToken(normalizedToken))
+    .eq('purpose', POST_PAYMENT_ACTIVATION_PURPOSE)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message || 'Error reading activation token.');
+  }
+
+  return data || null;
+}
+
+async function listAuthUsersByEmail(supabaseAdmin, email) {
+  const normalizedEmail = normalizeArrivalEmail(email);
+  if (!normalizedEmail) return [];
+
+  const matches = [];
+  for (let page = 1; page <= 10; page += 1) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 200 });
+    if (error) {
+      throw new Error(error.message || 'Error listing auth users.');
+    }
+
+    const users = Array.isArray(data?.users) ? data.users : [];
+    matches.push(...users.filter((user) => normalizeArrivalEmail(user?.email || '') === normalizedEmail));
+
+    if (users.length < 200) break;
+  }
+
+  return matches;
+}
+
+async function preparePostPaymentActivation(supabaseAdmin, req, checkoutLead) {
+  const paymentStatus = normalizeCheckoutPaymentStatus(checkoutLead?.payment_status) || 'pending';
+  if (paymentStatus !== 'paid') {
+    return {
+      status: paymentStatus,
+      activation_ready: false,
+      activation_url: null
+    };
+  }
+
+  const activation = await createPostPaymentActivationToken(supabaseAdmin, req, checkoutLead);
+  return {
+    status: 'paid',
+    activation_ready: true,
+    activation_url: activation.activation_url,
+    expires_at: activation.expires_at
+  };
+}
+
+function resolveActivationTokenState(tokenRow) {
+  if (!tokenRow) return 'invalid';
+  if (tokenRow.used_at) return 'used';
+  if (tokenRow.invalidated_at) return 'invalid';
+  if (new Date(tokenRow.expires_at).getTime() <= Date.now()) return 'expired';
+  return 'ready';
 }
 
 function sanitizeArrivalRequest(row) {
@@ -2922,6 +3197,222 @@ async function arrivalCompleteHandler(req, res) {
   }
 }
 
+async function arrivalReturnHandler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  let supabaseAdmin;
+  try {
+    supabaseAdmin = getSupabaseAdminClient();
+  } catch (clientError) {
+    return res.status(clientError?.statusCode || 500).json({ error: clientError?.message || 'Supabase admin init failed.' });
+  }
+
+  try {
+    const requestUrl = getRequestUrl(req);
+    const email = normalizeArrivalEmail(req.query?.email || requestUrl.searchParams.get('email') || '');
+
+    if (!email) {
+      return res.status(400).json({ error: 'missing_email', state: 'missing_email' });
+    }
+
+    let checkoutLead = await findCheckoutLeadByEmail(supabaseAdmin, email);
+    if (!checkoutLead) {
+      return res.status(404).json({ error: 'checkout_not_found', state: 'not_found' });
+    }
+
+    checkoutLead = await reconcileDirectCheckoutPayment(supabaseAdmin, req, checkoutLead) || checkoutLead;
+    const paymentStatus = normalizeCheckoutPaymentStatus(checkoutLead.payment_status) || 'pending';
+
+    if (paymentStatus === 'paid') {
+      const activationState = await preparePostPaymentActivation(supabaseAdmin, req, checkoutLead);
+      return res.status(200).json({
+        ok: true,
+        state: 'activation_ready',
+        email: checkoutLead.email,
+        payment_status: 'paid',
+        activation_url: activationState.activation_url,
+        expires_at: activationState.expires_at || null
+      });
+    }
+
+    if (paymentStatus === 'pending') {
+      return res.status(200).json({
+        ok: true,
+        state: 'pending',
+        email: checkoutLead.email,
+        payment_status: 'pending'
+      });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      state: 'payment_unavailable',
+      email: checkoutLead.email,
+      payment_status: paymentStatus
+    });
+  } catch (error) {
+    console.error('arrival-return fatal:', error);
+    return res.status(500).json({ error: 'Internal error', state: 'error' });
+  }
+}
+
+async function arrivalActivationStatusHandler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  let supabaseAdmin;
+  try {
+    supabaseAdmin = getSupabaseAdminClient();
+  } catch (clientError) {
+    return res.status(clientError?.statusCode || 500).json({ error: clientError?.message || 'Supabase admin init failed.' });
+  }
+
+  try {
+    const requestUrl = getRequestUrl(req);
+    const token = String(req.query?.token || requestUrl.searchParams.get('token') || '').trim();
+    if (!token) {
+      return res.status(400).json({ error: 'missing_token', state: 'invalid' });
+    }
+
+    const tokenRow = await findActivationTokenByRawToken(supabaseAdmin, token);
+    const tokenState = resolveActivationTokenState(tokenRow);
+    if (tokenState !== 'ready') {
+      return res.status(200).json({ ok: true, state: tokenState });
+    }
+
+    const checkoutLead = await findCheckoutLeadByEmail(supabaseAdmin, tokenRow.checkout_email || tokenRow.email);
+    if (!checkoutLead || normalizeCheckoutPaymentStatus(checkoutLead.payment_status) !== 'paid') {
+      return res.status(200).json({ ok: true, state: 'pending' });
+    }
+
+    return res.status(200).json({
+      ok: true,
+      state: 'ready',
+      email: tokenRow.email,
+      expires_at: tokenRow.expires_at
+    });
+  } catch (error) {
+    console.error('arrival-activation status fatal:', error);
+    return res.status(500).json({ error: 'Internal error', state: 'error' });
+  }
+}
+
+async function arrivalActivateHandler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  let supabaseAdmin;
+  try {
+    supabaseAdmin = getSupabaseAdminClient();
+  } catch (clientError) {
+    return res.status(clientError?.statusCode || 500).json({ error: clientError?.message || 'Supabase admin init failed.' });
+  }
+
+  try {
+    const token = String(req.body?.token || '').trim();
+    const password = String(req.body?.password || '');
+
+    if (!token) {
+      return res.status(400).json({ error: 'missing_token', error_description: 'Hace falta un acceso válido para completar esta llegada.' });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'weak_password', error_description: 'Elegí una contraseña de al menos 8 caracteres.' });
+    }
+
+    const tokenRow = await findActivationTokenByRawToken(supabaseAdmin, token);
+    const tokenState = resolveActivationTokenState(tokenRow);
+    if (tokenState !== 'ready') {
+      return res.status(410).json({ error: 'activation_unavailable', state: tokenState, error_description: 'Este acceso ya no está disponible.' });
+    }
+
+    const checkoutLead = await findCheckoutLeadByEmail(supabaseAdmin, tokenRow.checkout_email || tokenRow.email);
+    if (!checkoutLead || normalizeCheckoutPaymentStatus(checkoutLead.payment_status) !== 'paid') {
+      return res.status(409).json({ error: 'payment_not_confirmed', error_description: 'Todavía estamos esperando la confirmación final del pago.' });
+    }
+
+    const authUsers = await listAuthUsersByEmail(supabaseAdmin, tokenRow.email);
+    const existingUser = authUsers[0] || null;
+    const nowIso = new Date().toISOString();
+    let authUserId = checkoutLead.auth_user_id || tokenRow.auth_user_id || existingUser?.id || null;
+
+    if (checkoutLead.activated_at && authUserId) {
+      return res.status(409).json({ error: 'account_already_enabled', error_description: 'Tu acceso ya está activo. Entrá desde tu puerta reservada.' });
+    }
+
+    if (!authUserId) {
+      const createdUser = await supabaseAdmin.auth.admin.createUser({
+        email: tokenRow.email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          source: 'post_payment_activation',
+          checkout_email: checkoutLead.email
+        }
+      });
+
+      if (createdUser.error || !createdUser.data?.user?.id) {
+        return res.status(500).json({
+          error: 'account_creation_failed',
+          error_description: createdUser.error?.message || 'No pude preparar tu acceso.'
+        });
+      }
+
+      authUserId = createdUser.data.user.id;
+    } else {
+      const updateResult = await supabaseAdmin.auth.admin.updateUserById(authUserId, {
+        password,
+        email_confirm: true,
+        user_metadata: {
+          source: 'post_payment_activation',
+          checkout_email: checkoutLead.email
+        }
+      });
+
+      if (updateResult.error) {
+        return res.status(500).json({
+          error: 'account_update_failed',
+          error_description: updateResult.error.message || 'No pude terminar de abrir tu acceso.'
+        });
+      }
+    }
+
+    const { error: tokenUpdateError } = await supabaseAdmin
+      .from('activation_tokens')
+      .update({
+        auth_user_id: authUserId,
+        used_at: nowIso
+      })
+      .eq('id', tokenRow.id)
+      .is('used_at', null)
+      .is('invalidated_at', null);
+
+    if (tokenUpdateError) {
+      return res.status(500).json({ error: 'activation_token_update_failed', error_description: tokenUpdateError.message || 'No pude cerrar este acceso.' });
+    }
+
+    const updatedLead = await updateCheckoutLeadStatus(supabaseAdmin, checkoutLead.email, {
+      auth_user_id: authUserId,
+      activated_at: nowIso
+    });
+
+    return res.status(200).json({
+      ok: true,
+      email: tokenRow.email,
+      user_id: authUserId,
+      redirect_to: '/index.html',
+      status: updatedLead?.activated_at ? 'active' : 'account_enabled'
+    });
+  } catch (error) {
+    console.error('arrival-activate fatal:', error);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
 async function arrivalAdminListHandler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -3187,6 +3678,13 @@ module.exports = async function handler(req, res) {
       case 'arrival-complete':
         req.body = await getJsonBody(req);
         return arrivalCompleteHandler(req, res);
+      case 'arrival-return':
+        return arrivalReturnHandler(req, res);
+      case 'arrival-activation':
+        return arrivalActivationStatusHandler(req, res);
+      case 'arrival-activate':
+        req.body = await getJsonBody(req);
+        return arrivalActivateHandler(req, res);
       case 'arrival-admin-list':
         return arrivalAdminListHandler(req, res);
       case 'arrival-admin-detail':

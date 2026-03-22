@@ -18,6 +18,14 @@
       "destination": "/index.html"
     },
     {
+      "source": "/arrival/return",
+      "destination": "/arrival-return.html"
+    },
+    {
+      "source": "/arrival/activate",
+      "destination": "/activate-access.html"
+    },
+    {
       "source": "/overlay/connect",
       "destination": "/overlay/connect/index.html"
     },
@@ -108,6 +116,18 @@
     {
       "source": "/api/arrival/complete",
       "destination": "/api/router?action=arrival-complete"
+    },
+    {
+      "source": "/api/arrival/return",
+      "destination": "/api/router?action=arrival-return"
+    },
+    {
+      "source": "/api/arrival/activation",
+      "destination": "/api/router?action=arrival-activation"
+    },
+    {
+      "source": "/api/arrival/activate",
+      "destination": "/api/router?action=arrival-activate"
     },
     {
       "source": "/api/arrival/admin/list",
