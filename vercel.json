@@ -150,6 +150,10 @@
       "destination": "/api/router?action=arrival-admin-rescue-detail"
     },
     {
+      "source": "/api/arrival/admin/rescue-create",
+      "destination": "/api/router?action=arrival-admin-rescue-create"
+    },
+    {
       "source": "/api/arrival/admin/rescue-verify",
       "destination": "/api/router?action=arrival-admin-rescue-verify"
     },

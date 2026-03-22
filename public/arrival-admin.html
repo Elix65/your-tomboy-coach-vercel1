@@ -114,7 +114,35 @@
 
                 <div id="arrival-admin-rescue-empty" class="arrival-admin-empty arrival-admin-rescue-empty">
                   <p class="section-kicker">Sin lead cargado</p>
-                  <p>Buscá por email para revisar estado de pago, referencia y rescate premium.</p>
+                  <p id="arrival-admin-rescue-empty-copy">Buscá por email para revisar estado de pago, referencia y rescate premium.</p>
+                  <div id="arrival-admin-rescue-create" class="arrival-admin-rescue-create hidden">
+                    <div class="arrival-admin-rescue-create-grid">
+                      <label>
+                        <span class="arrival-admin-search-label">payment_provider</span>
+                        <select id="arrival-admin-rescue-provider" class="arrival-admin-select">
+                          <option value="mercadopago">mercadopago</option>
+                          <option value="paypal">paypal</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span class="arrival-admin-search-label">payment_status</span>
+                        <select id="arrival-admin-rescue-payment-status" class="arrival-admin-select">
+                          <option value="pending">pending</option>
+                          <option value="paid">paid</option>
+                        </select>
+                      </label>
+                    </div>
+
+                    <label for="arrival-admin-rescue-create-note" class="arrival-admin-search-label">manual_verification_note</label>
+                    <textarea id="arrival-admin-rescue-create-note" class="arrival-textarea arrival-admin-note-input" rows="4" maxlength="600" placeholder="Lead creado manualmente desde arrival-admin; pago validado por captura, DM o soporte…"></textarea>
+
+                    <button id="arrival-admin-rescue-create-btn" class="login-btn arrival-admin-action-shell" type="button">
+                      <span class="arrival-admin-action-copy">
+                        <span class="arrival-admin-action-label">Crear lead manual</span>
+                        <span class="arrival-admin-action-meta">Insertar en checkout_leads</span>
+                      </span>
+                    </button>
+                  </div>
                 </div>
 
                 <div id="arrival-admin-rescue-detail" class="arrival-admin-rescue-detail hidden">

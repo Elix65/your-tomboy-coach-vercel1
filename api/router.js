@@ -2573,6 +2573,12 @@ function normalizeCheckoutPaymentStatus(value) {
   return null;
 }
 
+function normalizeCheckoutPaymentProvider(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized === 'paypal') return 'paypal';
+  return 'mercadopago';
+}
+
 function hashActivationToken(token) {
   return crypto.createHash('sha256').update(String(token || '')).digest('hex');
 }
@@ -2628,6 +2634,51 @@ async function updateCheckoutLeadStatus(supabaseAdmin, email, updates) {
       operation: 'update',
       email: normalizedEmail,
       updates: Object.keys(payload).sort()
+    });
+  }
+
+  return data || null;
+}
+
+async function createManualCheckoutLead(supabaseAdmin, { email, paymentProvider, paymentStatus, note, verifiedBy }) {
+  const normalizedEmail = normalizeArrivalEmail(email);
+  if (!normalizedEmail) {
+    throw new Error('missing_checkout_email');
+  }
+
+  const normalizedProvider = normalizeCheckoutPaymentProvider(paymentProvider);
+  const normalizedStatus = normalizeCheckoutPaymentStatus(paymentStatus) || 'pending';
+  const nowIso = new Date().toISOString();
+  const paymentUrls = {
+    mercadopago: DIRECT_CHECKOUT_MP_URL,
+    paypal: DIRECT_CHECKOUT_PAYPAL_URL
+  };
+  const isPaid = normalizedStatus === 'paid';
+  const payload = {
+    email: normalizedEmail,
+    payment_provider: normalizedProvider,
+    payment_url: paymentUrls[normalizedProvider],
+    payment_status: normalizedStatus,
+    payment_confirmed_at: isPaid ? nowIso : null,
+    manually_verified_at: isPaid ? nowIso : null,
+    manually_verified_by: isPaid ? verifiedBy || null : null,
+    manual_verification_note: normalizeOptionalText(note, 600),
+    source: 'arrival_admin_manual_rescue'
+  };
+
+  const { data, error } = await supabaseAdmin
+    .from('checkout_leads')
+    .insert(payload)
+    .select(CHECKOUT_LEADS_SELECT)
+    .single();
+
+  if (error) {
+    throw createSupabaseQueryError('Error inserting manual checkout lead.', error, {
+      table: 'checkout_leads',
+      operation: 'insert',
+      email: normalizedEmail,
+      payment_provider: normalizedProvider,
+      payment_status: normalizedStatus
     });
   }
 
@@ -3798,6 +3849,54 @@ async function arrivalAdminRescueVerifyHandler(req, res) {
   }
 }
 
+async function arrivalAdminRescueCreateHandler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  let supabaseAdmin;
+  try {
+    supabaseAdmin = getSupabaseAdminClient();
+  } catch (clientError) {
+    return res.status(clientError?.statusCode || 500).json({ error: clientError?.message || 'Supabase admin init failed.' });
+  }
+
+  try {
+    const auth = await requireArrivalAdminAccess(supabaseAdmin, req);
+    const email = normalizeArrivalEmail(req.body?.email || '');
+    const note = normalizeOptionalText(req.body?.note, 600);
+    const paymentProvider = normalizeCheckoutPaymentProvider(req.body?.payment_provider || req.body?.paymentProvider || '');
+    const paymentStatus = normalizeCheckoutPaymentStatus(req.body?.payment_status || req.body?.paymentStatus || '') || 'pending';
+
+    if (!email) {
+      return res.status(400).json({ error: 'missing_checkout_email' });
+    }
+
+    const existingLead = await findCheckoutLeadByEmail(supabaseAdmin, email);
+    if (existingLead) {
+      return res.status(409).json({ error: 'checkout_lead_already_exists' });
+    }
+
+    const checkoutLead = await createManualCheckoutLead(supabaseAdmin, {
+      email,
+      paymentProvider,
+      paymentStatus,
+      note,
+      verifiedBy: auth.userId
+    });
+
+    const rescue = await buildArrivalAdminRescuePayload(supabaseAdmin, req, checkoutLead);
+    return res.status(200).json({ ok: true, rescue });
+  } catch (error) {
+    const status = error?.httpStatus || 500;
+    if (status === 401 || status === 403) {
+      return res.status(status).json({ error: error?.errorCode || error?.message || 'arrival_admin_forbidden' });
+    }
+    console.error('arrival-admin-rescue-create fatal:', error);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
 async function arrivalAdminRescueGenerateHandler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method Not Allowed' });
@@ -4133,6 +4232,9 @@ module.exports = async function handler(req, res) {
         return arrivalAdminUpdateHandler(req, res);
       case 'arrival-admin-rescue-detail':
         return arrivalAdminRescueDetailHandler(req, res);
+      case 'arrival-admin-rescue-create':
+        req.body = await getJsonBody(req);
+        return arrivalAdminRescueCreateHandler(req, res);
       case 'arrival-admin-rescue-verify':
         req.body = await getJsonBody(req);
         return arrivalAdminRescueVerifyHandler(req, res);
