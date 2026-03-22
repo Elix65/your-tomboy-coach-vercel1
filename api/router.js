@@ -33,7 +33,9 @@ const DIRECT_CHECKOUT_SOURCE = 'public_direct_checkout';
 const DIRECT_CHECKOUT_MP_URL = 'https://mpago.li/2knhqJD';
 const DIRECT_CHECKOUT_PAYPAL_URL = 'https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=4QRV84VRFED6L';
 const POST_PAYMENT_ACTIVATION_TTL_HOURS = 24;
+const MANUAL_RESCUE_TTL_HOURS = 24;
 const POST_PAYMENT_ACTIVATION_PURPOSE = 'post_payment_activation';
+const MANUAL_RESCUE_PURPOSE = 'manual_rescue';
 
 function getArrivalAdminUserIds() {
   const configured = String(process.env.ARRIVAL_ADMIN_UIDS || process.env.ARRIVAL_ADMIN_UID || '')
@@ -2533,9 +2535,9 @@ function hashActivationToken(token) {
   return crypto.createHash('sha256').update(String(token || '')).digest('hex');
 }
 
-function buildActivationUrl(req, token) {
+function buildActivationUrl(req, token, path = '/arrival/activate') {
   const origin = String(req.headers.origin || '').trim() || 'https://21-moon.com';
-  const activationUrl = new URL('/arrival/activate', origin);
+  const activationUrl = new URL(path, origin);
   activationUrl.searchParams.set('token', token);
   return activationUrl.toString();
 }
@@ -2546,7 +2548,7 @@ async function findCheckoutLeadByEmail(supabaseAdmin, email) {
 
   const { data, error } = await supabaseAdmin
     .from('checkout_leads')
-    .select('email,auth_user_id,country_code,payment_provider,payment_url,payment_status,payment_reference,payment_confirmed_at,activated_at,source,created_at,updated_at')
+    .select('email,auth_user_id,country_code,payment_provider,payment_url,payment_status,payment_reference,payment_confirmed_at,activated_at,manually_verified_at,manually_verified_by,manual_verification_note,rescue_link_generated_at,source,created_at,updated_at')
     .ilike('email', normalizedEmail)
     .maybeSingle();
 
@@ -2570,7 +2572,7 @@ async function updateCheckoutLeadStatus(supabaseAdmin, email, updates) {
     .from('checkout_leads')
     .update(payload)
     .ilike('email', normalizedEmail)
-    .select('email,auth_user_id,country_code,payment_provider,payment_url,payment_status,payment_reference,payment_confirmed_at,activated_at,source,created_at,updated_at')
+    .select('email,auth_user_id,country_code,payment_provider,payment_url,payment_status,payment_reference,payment_confirmed_at,activated_at,manually_verified_at,manually_verified_by,manual_verification_note,rescue_link_generated_at,source,created_at,updated_at')
     .single();
 
   if (error) {
@@ -2651,15 +2653,21 @@ async function reconcileDirectCheckoutPayment(supabaseAdmin, req, checkoutLead) 
   });
 }
 
-async function invalidatePostPaymentActivationTokens(supabaseAdmin, email) {
+function isCheckoutLeadRescueEligible(checkoutLead) {
+  const paymentStatus = normalizeCheckoutPaymentStatus(checkoutLead?.payment_status) || 'pending';
+  return paymentStatus === 'paid' || Boolean(checkoutLead?.manually_verified_at);
+}
+
+async function invalidateActivationTokens(supabaseAdmin, email, purpose) {
   const normalizedEmail = normalizeArrivalEmail(email);
-  if (!normalizedEmail) return;
+  const normalizedPurpose = String(purpose || '').trim();
+  if (!normalizedEmail || !normalizedPurpose) return;
 
   const nowIso = new Date().toISOString();
   const { error } = await supabaseAdmin
     .from('activation_tokens')
     .update({ invalidated_at: nowIso })
-    .eq('purpose', POST_PAYMENT_ACTIVATION_PURPOSE)
+    .eq('purpose', normalizedPurpose)
     .ilike('email', normalizedEmail)
     .is('used_at', null)
     .is('invalidated_at', null)
@@ -2670,23 +2678,27 @@ async function invalidatePostPaymentActivationTokens(supabaseAdmin, email) {
   }
 }
 
-async function createPostPaymentActivationToken(supabaseAdmin, req, checkoutLead) {
+async function createActivationToken(supabaseAdmin, req, checkoutLead, options = {}) {
   const normalizedEmail = normalizeArrivalEmail(checkoutLead?.email || '');
   if (!normalizedEmail) {
     throw new Error('missing_checkout_email');
   }
 
-  await invalidatePostPaymentActivationTokens(supabaseAdmin, normalizedEmail);
+  const purpose = String(options.purpose || POST_PAYMENT_ACTIVATION_PURPOSE).trim() || POST_PAYMENT_ACTIVATION_PURPOSE;
+  const ttlHours = Number(options.ttlHours || POST_PAYMENT_ACTIVATION_TTL_HOURS) || POST_PAYMENT_ACTIVATION_TTL_HOURS;
+  const activationPath = purpose === MANUAL_RESCUE_PURPOSE ? '/arrival/rescue' : '/arrival/activate';
+
+  await invalidateActivationTokens(supabaseAdmin, normalizedEmail, purpose);
 
   const rawToken = crypto.randomBytes(32).toString('hex');
-  const expiresAt = new Date(Date.now() + (POST_PAYMENT_ACTIVATION_TTL_HOURS * 60 * 60 * 1000)).toISOString();
+  const expiresAt = new Date(Date.now() + (ttlHours * 60 * 60 * 1000)).toISOString();
   const payload = {
     auth_user_id: checkoutLead.auth_user_id || null,
     email: normalizedEmail,
     checkout_email: normalizedEmail,
     checkout_provider: checkoutLead.payment_provider || null,
     checkout_reference: checkoutLead.payment_reference || null,
-    purpose: POST_PAYMENT_ACTIVATION_PURPOSE,
+    purpose,
     token_hash: hashActivationToken(rawToken),
     expires_at: expiresAt
   };
@@ -2701,9 +2713,29 @@ async function createPostPaymentActivationToken(supabaseAdmin, req, checkoutLead
 
   return {
     token: rawToken,
-    activation_url: buildActivationUrl(req, rawToken),
-    expires_at: expiresAt
+    activation_url: buildActivationUrl(req, rawToken, activationPath),
+    expires_at: expiresAt,
+    purpose
   };
+}
+
+async function createPostPaymentActivationToken(supabaseAdmin, req, checkoutLead) {
+  return createActivationToken(supabaseAdmin, req, checkoutLead, {
+    purpose: POST_PAYMENT_ACTIVATION_PURPOSE,
+    ttlHours: POST_PAYMENT_ACTIVATION_TTL_HOURS
+  });
+}
+
+async function createManualRescueToken(supabaseAdmin, req, checkoutLead) {
+  const normalizedEmail = normalizeArrivalEmail(checkoutLead?.email || '');
+  if (normalizedEmail) {
+    await invalidateActivationTokens(supabaseAdmin, normalizedEmail, POST_PAYMENT_ACTIVATION_PURPOSE);
+  }
+
+  return createActivationToken(supabaseAdmin, req, checkoutLead, {
+    purpose: MANUAL_RESCUE_PURPOSE,
+    ttlHours: MANUAL_RESCUE_TTL_HOURS
+  });
 }
 
 async function findActivationTokenByRawToken(supabaseAdmin, token) {
@@ -2714,7 +2746,7 @@ async function findActivationTokenByRawToken(supabaseAdmin, token) {
     .from('activation_tokens')
     .select('*')
     .eq('token_hash', hashActivationToken(normalizedToken))
-    .eq('purpose', POST_PAYMENT_ACTIVATION_PURPOSE)
+    .in('purpose', [POST_PAYMENT_ACTIVATION_PURPOSE, MANUAL_RESCUE_PURPOSE])
     .maybeSingle();
 
   if (error) {
@@ -2794,6 +2826,73 @@ function normalizeOptionalText(value, maxLength) {
   const text = String(value || '').trim();
   if (!text) return null;
   return text.slice(0, maxLength);
+}
+
+function sanitizeCheckoutLeadForAdmin(checkoutLead) {
+  if (!checkoutLead) return null;
+
+  return {
+    email: checkoutLead.email,
+    auth_user_id: checkoutLead.auth_user_id || null,
+    country_code: checkoutLead.country_code || null,
+    payment_provider: checkoutLead.payment_provider || null,
+    payment_url: checkoutLead.payment_url || null,
+    payment_status: normalizeCheckoutPaymentStatus(checkoutLead.payment_status) || 'pending',
+    payment_reference: checkoutLead.payment_reference || null,
+    payment_confirmed_at: checkoutLead.payment_confirmed_at || null,
+    activated_at: checkoutLead.activated_at || null,
+    manually_verified_at: checkoutLead.manually_verified_at || null,
+    manually_verified_by: checkoutLead.manually_verified_by || null,
+    manual_verification_note: checkoutLead.manual_verification_note || null,
+    rescue_link_generated_at: checkoutLead.rescue_link_generated_at || null,
+    source: checkoutLead.source || null,
+    created_at: checkoutLead.created_at || null,
+    updated_at: checkoutLead.updated_at || null,
+    rescue_eligible: isCheckoutLeadRescueEligible(checkoutLead)
+  };
+}
+
+async function buildArrivalAdminRescuePayload(supabaseAdmin, req, checkoutLead) {
+  const sanitizedLead = sanitizeCheckoutLeadForAdmin(checkoutLead);
+  if (!sanitizedLead) return null;
+
+  const authUsers = await listAuthUsersByEmail(supabaseAdmin, sanitizedLead.email);
+  const matchingUser = authUsers[0] || null;
+  const requestRow = await findArrivalRequestByEmail(supabaseAdmin, sanitizedLead.email).catch(() => null);
+  const nowIso = new Date().toISOString();
+
+  const { data: activeTokenRows, error: tokenErr } = await supabaseAdmin
+    .from('activation_tokens')
+    .select('id,expires_at,used_at,invalidated_at,created_at,purpose')
+    .eq('purpose', MANUAL_RESCUE_PURPOSE)
+    .ilike('email', sanitizedLead.email)
+    .is('used_at', null)
+    .is('invalidated_at', null)
+    .gt('expires_at', nowIso)
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (tokenErr) {
+    throw new Error(tokenErr.message || 'Error loading manual rescue tokens.');
+  }
+
+  const activeToken = Array.isArray(activeTokenRows) ? activeTokenRows[0] || null : null;
+
+  return {
+    checkout_lead: sanitizedLead,
+    account_state: {
+      auth_user_id: sanitizedLead.auth_user_id || matchingUser?.id || null,
+      has_account: Boolean(sanitizedLead.auth_user_id || matchingUser?.id),
+      activation_mode: sanitizedLead.auth_user_id || matchingUser?.id ? 'reset_password' : 'create_password'
+    },
+    linked_arrival_request: requestRow ? sanitizeArrivalAdminRow(requestRow, req) : null,
+    active_rescue_token: activeToken
+      ? {
+          created_at: activeToken.created_at || null,
+          expires_at: activeToken.expires_at || null
+        }
+      : null
+  };
 }
 
 function sanitizeArrivalAdminRow(row, req) {
@@ -3270,15 +3369,22 @@ async function arrivalActivationStatusHandler(req, res) {
     }
 
     const checkoutLead = await findCheckoutLeadByEmail(supabaseAdmin, tokenRow.checkout_email || tokenRow.email);
-    if (!checkoutLead || normalizeCheckoutPaymentStatus(checkoutLead.payment_status) !== 'paid') {
-      return res.status(200).json({ ok: true, state: 'pending' });
+    const isManualRescue = tokenRow.purpose === MANUAL_RESCUE_PURPOSE;
+    const rescueEligible = isManualRescue ? isCheckoutLeadRescueEligible(checkoutLead) : normalizeCheckoutPaymentStatus(checkoutLead?.payment_status) === 'paid';
+    if (!checkoutLead || !rescueEligible) {
+      return res.status(200).json({ ok: true, state: isManualRescue ? 'invalid' : 'pending' });
     }
+
+    const authUsers = await listAuthUsersByEmail(supabaseAdmin, tokenRow.email);
+    const existingUser = authUsers[0] || null;
 
     return res.status(200).json({
       ok: true,
       state: 'ready',
       email: tokenRow.email,
-      expires_at: tokenRow.expires_at
+      expires_at: tokenRow.expires_at,
+      purpose: tokenRow.purpose || POST_PAYMENT_ACTIVATION_PURPOSE,
+      mode: checkoutLead.auth_user_id || tokenRow.auth_user_id || existingUser?.id ? 'reset_password' : 'create_password'
     });
   } catch (error) {
     console.error('arrival-activation status fatal:', error);
@@ -3317,8 +3423,15 @@ async function arrivalActivateHandler(req, res) {
     }
 
     const checkoutLead = await findCheckoutLeadByEmail(supabaseAdmin, tokenRow.checkout_email || tokenRow.email);
-    if (!checkoutLead || normalizeCheckoutPaymentStatus(checkoutLead.payment_status) !== 'paid') {
-      return res.status(409).json({ error: 'payment_not_confirmed', error_description: 'Todavía estamos esperando la confirmación final del pago.' });
+    const isManualRescue = tokenRow.purpose === MANUAL_RESCUE_PURPOSE;
+    const rescueEligible = isManualRescue ? isCheckoutLeadRescueEligible(checkoutLead) : normalizeCheckoutPaymentStatus(checkoutLead?.payment_status) === 'paid';
+    if (!checkoutLead || !rescueEligible) {
+      return res.status(isManualRescue ? 403 : 409).json({
+        error: isManualRescue ? 'manual_rescue_not_verified' : 'payment_not_confirmed',
+        error_description: isManualRescue
+          ? 'Este rescate solo puede abrirse cuando el lead está pagado o verificado manualmente.'
+          : 'Todavía estamos esperando la confirmación final del pago.'
+      });
     }
 
     const authUsers = await listAuthUsersByEmail(supabaseAdmin, tokenRow.email);
@@ -3326,7 +3439,7 @@ async function arrivalActivateHandler(req, res) {
     const nowIso = new Date().toISOString();
     let authUserId = checkoutLead.auth_user_id || tokenRow.auth_user_id || existingUser?.id || null;
 
-    if (checkoutLead.activated_at && authUserId) {
+    if (checkoutLead.activated_at && authUserId && !isManualRescue) {
       return res.status(409).json({ error: 'account_already_enabled', error_description: 'Tu acceso ya está activo. Entrá desde tu puerta reservada.' });
     }
 
@@ -3336,7 +3449,7 @@ async function arrivalActivateHandler(req, res) {
         password,
         email_confirm: true,
         user_metadata: {
-          source: 'post_payment_activation',
+          source: isManualRescue ? 'manual_rescue' : 'post_payment_activation',
           checkout_email: checkoutLead.email
         }
       });
@@ -3354,7 +3467,7 @@ async function arrivalActivateHandler(req, res) {
         password,
         email_confirm: true,
         user_metadata: {
-          source: 'post_payment_activation',
+          source: isManualRescue ? 'manual_rescue' : 'post_payment_activation',
           checkout_email: checkoutLead.email
         }
       });
@@ -3383,7 +3496,7 @@ async function arrivalActivateHandler(req, res) {
 
     const updatedLead = await updateCheckoutLeadStatus(supabaseAdmin, checkoutLead.email, {
       auth_user_id: authUserId,
-      activated_at: nowIso
+      activated_at: checkoutLead.activated_at || nowIso
     });
 
     return res.status(200).json({
@@ -3395,6 +3508,145 @@ async function arrivalActivateHandler(req, res) {
     });
   } catch (error) {
     console.error('arrival-activate fatal:', error);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+async function arrivalAdminRescueDetailHandler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  let supabaseAdmin;
+  try {
+    supabaseAdmin = getSupabaseAdminClient();
+  } catch (clientError) {
+    return res.status(clientError?.statusCode || 500).json({ error: clientError?.message || 'Supabase admin init failed.' });
+  }
+
+  try {
+    await requireArrivalAdminAccess(supabaseAdmin, req);
+    const requestUrl = getRequestUrl(req);
+    const email = normalizeArrivalEmail(req.query?.email || requestUrl.searchParams.get('email') || '');
+
+    if (!email) {
+      return res.status(400).json({ error: 'missing_checkout_email' });
+    }
+
+    const checkoutLead = await findCheckoutLeadByEmail(supabaseAdmin, email);
+    if (!checkoutLead) {
+      return res.status(404).json({ error: 'checkout_lead_not_found' });
+    }
+
+    const rescue = await buildArrivalAdminRescuePayload(supabaseAdmin, req, checkoutLead);
+    return res.status(200).json({ ok: true, rescue });
+  } catch (error) {
+    const status = error?.httpStatus || 500;
+    if (status === 401 || status === 403) {
+      return res.status(status).json({ error: error?.errorCode || error?.message || 'arrival_admin_forbidden' });
+    }
+    console.error('arrival-admin-rescue-detail fatal:', error);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+async function arrivalAdminRescueVerifyHandler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  let supabaseAdmin;
+  try {
+    supabaseAdmin = getSupabaseAdminClient();
+  } catch (clientError) {
+    return res.status(clientError?.statusCode || 500).json({ error: clientError?.message || 'Supabase admin init failed.' });
+  }
+
+  try {
+    const auth = await requireArrivalAdminAccess(supabaseAdmin, req);
+    const email = normalizeArrivalEmail(req.body?.email || '');
+    const note = normalizeOptionalText(req.body?.note, 600);
+
+    if (!email) {
+      return res.status(400).json({ error: 'missing_checkout_email' });
+    }
+
+    const checkoutLead = await findCheckoutLeadByEmail(supabaseAdmin, email);
+    if (!checkoutLead) {
+      return res.status(404).json({ error: 'checkout_lead_not_found' });
+    }
+
+    const nowIso = new Date().toISOString();
+    const updatedLead = await updateCheckoutLeadStatus(supabaseAdmin, email, {
+      payment_status: 'paid',
+      payment_confirmed_at: checkoutLead.payment_confirmed_at || nowIso,
+      manually_verified_at: nowIso,
+      manually_verified_by: auth.userId,
+      manual_verification_note: note || checkoutLead.manual_verification_note || null
+    });
+
+    const rescue = await buildArrivalAdminRescuePayload(supabaseAdmin, req, updatedLead);
+    return res.status(200).json({ ok: true, rescue });
+  } catch (error) {
+    const status = error?.httpStatus || 500;
+    if (status === 401 || status === 403) {
+      return res.status(status).json({ error: error?.errorCode || error?.message || 'arrival_admin_forbidden' });
+    }
+    console.error('arrival-admin-rescue-verify fatal:', error);
+    return res.status(500).json({ error: 'Internal error' });
+  }
+}
+
+async function arrivalAdminRescueGenerateHandler(req, res) {
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
+
+  let supabaseAdmin;
+  try {
+    supabaseAdmin = getSupabaseAdminClient();
+  } catch (clientError) {
+    return res.status(clientError?.statusCode || 500).json({ error: clientError?.message || 'Supabase admin init failed.' });
+  }
+
+  try {
+    await requireArrivalAdminAccess(supabaseAdmin, req);
+    const email = normalizeArrivalEmail(req.body?.email || '');
+    const note = normalizeOptionalText(req.body?.note, 600);
+
+    if (!email) {
+      return res.status(400).json({ error: 'missing_checkout_email' });
+    }
+
+    const checkoutLead = await findCheckoutLeadByEmail(supabaseAdmin, email);
+    if (!checkoutLead) {
+      return res.status(404).json({ error: 'checkout_lead_not_found' });
+    }
+
+    if (!isCheckoutLeadRescueEligible(checkoutLead)) {
+      return res.status(403).json({ error: 'checkout_lead_not_verified' });
+    }
+
+    const activation = await createManualRescueToken(supabaseAdmin, req, checkoutLead);
+    const nowIso = new Date().toISOString();
+    const updatedLead = await updateCheckoutLeadStatus(supabaseAdmin, email, {
+      rescue_link_generated_at: nowIso,
+      manual_verification_note: note || checkoutLead.manual_verification_note || null
+    });
+
+    const rescue = await buildArrivalAdminRescuePayload(supabaseAdmin, req, updatedLead);
+    return res.status(200).json({
+      ok: true,
+      rescue,
+      rescue_link: activation.activation_url,
+      expires_at: activation.expires_at
+    });
+  } catch (error) {
+    const status = error?.httpStatus || 500;
+    if (status === 401 || status === 403) {
+      return res.status(status).json({ error: error?.errorCode || error?.message || 'arrival_admin_forbidden' });
+    }
+    console.error('arrival-admin-rescue-generate fatal:', error);
     return res.status(500).json({ error: 'Internal error' });
   }
 }
@@ -3678,6 +3930,14 @@ module.exports = async function handler(req, res) {
       case 'arrival-admin-update':
         req.body = await getJsonBody(req);
         return arrivalAdminUpdateHandler(req, res);
+      case 'arrival-admin-rescue-detail':
+        return arrivalAdminRescueDetailHandler(req, res);
+      case 'arrival-admin-rescue-verify':
+        req.body = await getJsonBody(req);
+        return arrivalAdminRescueVerifyHandler(req, res);
+      case 'arrival-admin-rescue-generate':
+        req.body = await getJsonBody(req);
+        return arrivalAdminRescueGenerateHandler(req, res);
       case 'mp-init-point':
         return mpInitPointHandler(req, res);
       case 'mp-sync-voice':

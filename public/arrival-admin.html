@@ -48,7 +48,7 @@
             <div>
               <p class="login-eyebrow">Sala privada</p>
               <h1 class="login-title">Gestión de llegadas</h1>
-              <p class="login-subtitle">`arrival_requests` sigue siendo la fuente de verdad. Acá solo la revisás y la movés con criterio.</p>
+              <p class="login-subtitle">`arrival_requests` y `checkout_leads` conviven acá: revisás invitaciones privadas y también rescates manuales post-pago sin tocar flujos privados.</p>
             </div>
             <div class="arrival-admin-header-actions">
               <div class="invitation-status-pill invitation-status-pill--admin" id="arrival-admin-session-pill" data-state="ready">
@@ -91,6 +91,112 @@
             </aside>
 
             <section class="arrival-admin-panel arrival-admin-detail">
+              <article class="arrival-admin-info-card arrival-admin-rescue-card">
+                <div class="arrival-admin-note-header">
+                  <div>
+                    <p class="section-kicker">Rescate manual</p>
+                    <p class="section-note">Buscá un checkout lead por email, verificá el pago manualmente si corresponde y generá un link privado de rescate.</p>
+                  </div>
+                </div>
+
+                <div class="arrival-admin-rescue-search">
+                  <div>
+                    <label class="arrival-admin-search-label" for="arrival-admin-rescue-email">Email del lead</label>
+                    <input id="arrival-admin-rescue-email" class="arrival-admin-search" type="email" placeholder="usuario@correo.com" autocomplete="email">
+                  </div>
+                  <button id="arrival-admin-rescue-search-btn" class="premium-secondary-door arrival-admin-action-shell" type="button">
+                    <span class="arrival-admin-action-copy">
+                      <span class="arrival-admin-action-label">Buscar lead</span>
+                      <span class="arrival-admin-action-meta">checkout_leads</span>
+                    </span>
+                  </button>
+                </div>
+
+                <div id="arrival-admin-rescue-empty" class="arrival-admin-empty arrival-admin-rescue-empty">
+                  <p class="section-kicker">Sin lead cargado</p>
+                  <p>Buscá por email para revisar estado de pago, referencia y rescate premium.</p>
+                </div>
+
+                <div id="arrival-admin-rescue-detail" class="arrival-admin-rescue-detail hidden">
+                  <div class="arrival-admin-detail-header">
+                    <div>
+                      <p class="section-kicker">Lead de checkout</p>
+                      <h2 id="rescue-email-title">—</h2>
+                      <p id="rescue-account-copy" class="arrival-admin-email">—</p>
+                    </div>
+                    <div class="arrival-admin-status-block">
+                      <span id="rescue-payment-status" class="arrival-admin-status-badge">—</span>
+                      <span id="rescue-eligibility" class="arrival-admin-timestamp">—</span>
+                    </div>
+                  </div>
+
+                  <div class="arrival-admin-meta-grid">
+                    <article class="arrival-admin-info-card">
+                      <p class="section-kicker">Checkout y auditoría</p>
+                      <dl class="arrival-admin-timestamps-list">
+                        <div><dt>payment_reference</dt><dd id="rescue-payment-reference">—</dd></div>
+                        <div><dt>Provider</dt><dd id="rescue-provider">—</dd></div>
+                        <div><dt>Pago confirmado</dt><dd id="rescue-payment-confirmed-at">—</dd></div>
+                        <div><dt>Verificado manual</dt><dd id="rescue-manually-verified-at">—</dd></div>
+                        <div><dt>Verificado por</dt><dd id="rescue-manually-verified-by">—</dd></div>
+                        <div><dt>Link generado</dt><dd id="rescue-link-generated-at">—</dd></div>
+                      </dl>
+                    </article>
+
+                    <article class="arrival-admin-info-card">
+                      <p class="section-kicker">Cuenta y acceso</p>
+                      <dl class="arrival-admin-timestamps-list">
+                        <div><dt>Auth user</dt><dd id="rescue-auth-user-id">—</dd></div>
+                        <div><dt>Modo</dt><dd id="rescue-activation-mode">—</dd></div>
+                        <div><dt>Activa desde</dt><dd id="rescue-activated-at">—</dd></div>
+                        <div><dt>Arrival request</dt><dd id="rescue-arrival-status">—</dd></div>
+                        <div><dt>Token activo</dt><dd id="rescue-active-token">—</dd></div>
+                      </dl>
+                    </article>
+                  </div>
+
+                  <article class="arrival-admin-info-card">
+                    <div class="arrival-admin-note-header">
+                      <div>
+                        <p class="section-kicker">Nota interna de rescate</p>
+                        <p class="section-note">Se guarda en checkout_leads como auditoría del rescate manual.</p>
+                      </div>
+                    </div>
+                    <textarea id="arrival-admin-rescue-note" class="arrival-textarea arrival-admin-note-input" rows="4" maxlength="600" placeholder="Pago visto en proveedor, retorno falló, enviar link premium por DM…"></textarea>
+                  </article>
+
+                  <article class="arrival-admin-info-card">
+                    <div class="arrival-admin-note-header">
+                      <div>
+                        <p class="section-kicker">Acciones de rescate</p>
+                        <p class="section-note">Solo genera acceso si el lead ya está paid o si lo marcás manualmente como verificado.</p>
+                      </div>
+                    </div>
+                    <div class="arrival-admin-inline-actions arrival-admin-inline-actions--status">
+                      <button id="arrival-admin-mark-paid-btn" class="login-btn arrival-admin-action-btn arrival-admin-action-shell" type="button">
+                        <span class="arrival-admin-action-copy">
+                          <span class="arrival-admin-action-label">Marcar como pagado</span>
+                          <span class="arrival-admin-action-meta">Verificación manual</span>
+                        </span>
+                      </button>
+                      <button id="arrival-admin-generate-rescue-btn" class="premium-secondary-door arrival-admin-action-btn arrival-admin-action-shell" type="button">
+                        <span class="arrival-admin-action-copy">
+                          <span class="arrival-admin-action-label">Generar link de acceso</span>
+                          <span class="arrival-admin-action-meta">Single-use + expira</span>
+                        </span>
+                      </button>
+                      <button id="arrival-admin-copy-rescue-btn" class="premium-secondary-door arrival-admin-action-btn arrival-admin-action-shell" type="button">
+                        <span class="arrival-admin-action-copy">
+                          <span class="arrival-admin-action-label">Copiar link</span>
+                          <span class="arrival-admin-action-meta">Enviar manualmente</span>
+                        </span>
+                      </button>
+                    </div>
+                    <p id="arrival-admin-rescue-feedback" class="arrival-admin-inline-feedback hidden" role="status" aria-live="polite"></p>
+                  </article>
+                </div>
+              </article>
+
               <div id="arrival-admin-empty" class="arrival-admin-empty">
                 <p class="section-kicker">Detalle</p>
                 <h2>Elegí una solicitud.</h2>

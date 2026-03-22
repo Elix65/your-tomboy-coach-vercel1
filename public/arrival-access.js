@@ -149,7 +149,67 @@ async function setupArrivalReturnPage() {
   }
 }
 
-function setActivationState(state) {
+function applyActivationCopy({ eyebrow, title, subtitle, statusPill, primaryLink, secondaryLink, state, purpose, mode }) {
+  const isManualRescue = purpose === 'manual_rescue';
+  const wantsReset = mode === 'reset_password';
+
+  if (state === 'ready') {
+    if (isManualRescue) {
+      statusPill.textContent = 'Rescate listo';
+      eyebrow.textContent = 'RESCATE PRIVADO ABIERTO';
+      title.textContent = wantsReset ? 'Redefiní tu contraseña y volvé a Yumiko.' : 'Creá tu contraseña y abrí Yumiko.';
+      subtitle.textContent = wantsReset
+        ? 'Este link privado reabre tu acceso sin pasar por email. Confirmá una nueva contraseña y entrás directo.'
+        : 'Este link privado confirma tu acceso sin pasar por email. Elegí tu contraseña y entrás directo.';
+      return;
+    }
+
+    statusPill.textContent = 'Acceso confirmado';
+    eyebrow.textContent = 'TU ACCESO YA FUE ABIERTO';
+    title.textContent = 'Elegí tu contraseña para entrar.';
+    subtitle.textContent = 'Tu llegada ya fue confirmada. Este es el último paso para abrir tu espacio con Yumiko.';
+    return;
+  }
+
+  if (state === 'pending') {
+    statusPill.textContent = 'Confirmación pendiente';
+    eyebrow.textContent = 'CONFIRMANDO TU LLEGADA';
+    title.textContent = 'Estamos confirmando tu pago...';
+    subtitle.textContent = 'Todavía no hay verificación suficiente para habilitar tu contraseña. Apenas el backend confirme el pago, este acceso se abrirá.';
+    primaryLink.textContent = 'Actualizar estado';
+    primaryLink.href = '/arrival/return' + window.location.search.replace(/^[^?]*/, '');
+    secondaryLink.textContent = 'Volver al inicio';
+    secondaryLink.href = '/login.html';
+    return;
+  }
+
+  if (state === 'used') {
+    statusPill.textContent = isManualRescue ? 'Rescate ya usado' : 'Acceso ya usado';
+    eyebrow.textContent = isManualRescue ? 'ESTE RESCATE YA FUE USADO' : 'TU ACCESO YA QUEDÓ ABIERTO';
+    title.textContent = isManualRescue ? 'Este link de rescate ya se consumió.' : 'Este acceso ya fue utilizado.';
+    subtitle.textContent = isManualRescue
+      ? 'Si todavía necesitás ayuda, generá un nuevo link privado desde arrival-admin.'
+      : 'Si ya elegiste tu contraseña, entrá desde la puerta reservada.';
+    primaryLink.textContent = 'Ir al login';
+    primaryLink.href = '/member-login.html';
+    secondaryLink.textContent = 'Volver al inicio';
+    secondaryLink.href = '/login.html';
+    return;
+  }
+
+  statusPill.textContent = isManualRescue ? 'Rescate no disponible' : 'Acceso no disponible';
+  eyebrow.textContent = isManualRescue ? 'RESCATE NO DISPONIBLE' : 'ACCESO NO DISPONIBLE';
+  title.textContent = isManualRescue ? 'Este rescate ya no está disponible.' : 'Este acceso ya no está disponible.';
+  subtitle.textContent = isManualRescue
+    ? 'Puede que haya expirado, que ya se haya usado o que el lead todavía no esté verificado.'
+    : 'Puede que haya expirado o que ya haya sido usado.';
+  primaryLink.textContent = 'Volver al inicio';
+  primaryLink.href = '/login.html';
+  secondaryLink.textContent = 'Ir al login';
+  secondaryLink.href = '/member-login.html';
+}
+
+function setActivationState(state, payload = {}) {
   const statusPill = document.getElementById('activation-status-text');
   const eyebrow = document.getElementById('activation-eyebrow');
   const title = document.getElementById('activation-title');
@@ -171,50 +231,21 @@ function setActivationState(state) {
   primaryLink.classList.toggle('hidden', ready);
   secondaryLink.classList.toggle('hidden', ready);
 
-  if (ready) {
-    statusPill.textContent = 'Acceso confirmado';
-    eyebrow.textContent = 'TU ACCESO YA FUE ABIERTO';
-    title.textContent = 'Elegí tu contraseña para entrar.';
-    subtitle.textContent = 'Tu llegada ya fue confirmada. Este es el último paso para abrir tu espacio con Yumiko.';
-    return;
-  }
-
-  if (state === 'pending') {
-    statusPill.textContent = 'Confirmación pendiente';
-    eyebrow.textContent = 'CONFIRMANDO TU LLEGADA';
-    title.textContent = 'Estamos confirmando tu pago...';
-    subtitle.textContent = 'Todavía no hay verificación suficiente para habilitar tu contraseña. Apenas el backend confirme el pago, este acceso se abrirá.';
-    primaryLink.textContent = 'Actualizar estado';
-    primaryLink.href = '/arrival/return' + window.location.search.replace(/^[^?]*/, '');
-    secondaryLink.textContent = 'Volver al inicio';
-    secondaryLink.href = '/login.html';
-    return;
-  }
-
-  if (state === 'used') {
-    statusPill.textContent = 'Acceso ya usado';
-    eyebrow.textContent = 'TU ACCESO YA QUEDÓ ABIERTO';
-    title.textContent = 'Este acceso ya fue utilizado.';
-    subtitle.textContent = 'Si ya elegiste tu contraseña, entrá desde la puerta reservada.';
-    primaryLink.textContent = 'Ir al login';
-    primaryLink.href = '/member-login.html';
-    secondaryLink.textContent = 'Volver al inicio';
-    secondaryLink.href = '/login.html';
-    return;
-  }
-
-  statusPill.textContent = 'Acceso no disponible';
-  eyebrow.textContent = 'ACCESO NO DISPONIBLE';
-  title.textContent = 'Este acceso ya no está disponible.';
-  subtitle.textContent = 'Puede que haya expirado o que ya haya sido usado.';
-  primaryLink.textContent = 'Volver al inicio';
-  primaryLink.href = '/login.html';
-  secondaryLink.textContent = 'Ir al login';
-  secondaryLink.href = '/member-login.html';
+  applyActivationCopy({
+    eyebrow,
+    title,
+    subtitle,
+    statusPill,
+    primaryLink,
+    secondaryLink,
+    state,
+    purpose: payload.purpose,
+    mode: payload.mode
+  });
 }
 
 async function setupActivationPage() {
-  if (!currentPage.includes('/activate-access') && !currentPage.includes('/arrival/activate')) {
+  if (!currentPage.includes('/activate-access') && !currentPage.includes('/arrival/activate') && !currentPage.includes('/arrival/rescue')) {
     return;
   }
 
@@ -239,7 +270,7 @@ async function setupActivationPage() {
       throw Object.assign(new Error(data?.error || 'activation_status_failed'), { payload: data, status: response.status });
     }
 
-    setActivationState(data?.state || 'invalid');
+    setActivationState(data?.state || 'invalid', data || {});
   } catch (error) {
     console.error('Activation status error:', error?.payload || error?.message || error);
     setActivationState('invalid');
