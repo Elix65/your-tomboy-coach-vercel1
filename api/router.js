@@ -2472,11 +2472,9 @@ async function saveDirectCheckoutLead(supabaseAdmin, { email, countryCode, payme
     source: DIRECT_CHECKOUT_SOURCE
   };
 
-  const { data, error } = await supabaseAdmin
+  const { error, status, statusText } = await supabaseAdmin
     .from('checkout_leads')
-    .upsert(payload, { onConflict: 'email' })
-    .select('email,country_code,payment_provider,payment_url,source,created_at,updated_at')
-    .single();
+    .upsert(payload, { onConflict: 'email' });
 
   if (error) {
     console.error('checkout-leads upsert failed:', {
@@ -2492,7 +2490,18 @@ async function saveDirectCheckoutLead(supabaseAdmin, { email, countryCode, payme
     throw wrappedError;
   }
 
-  return data;
+  const result = {
+    email,
+    country_code: countryCode,
+    payment_provider: paymentProvider,
+    payment_url: paymentUrl,
+    source: DIRECT_CHECKOUT_SOURCE,
+    upsert_status: status || null,
+    upsert_status_text: statusText || null
+  };
+
+  console.info('checkout-leads upsert succeeded:', result);
+  return result;
 }
 
 function sanitizeArrivalRequest(row) {
@@ -2598,18 +2607,54 @@ async function arrivalRequestHandler(req, res) {
     const source = String(req.body?.source || '').trim();
     const name = String(req.body?.name || '').trim().slice(0, 24);
     const email = normalizeArrivalEmail(req.body?.email || '');
+    const directCheckoutBranch = source === DIRECT_CHECKOUT_SOURCE;
+    const { supabaseUrlHost } = getSupabaseAdminEnvState();
 
-    if (source === DIRECT_CHECKOUT_SOURCE) {
+    console.info('arrival-request input:', {
+      source,
+      directCheckoutBranch,
+      supabaseHost: supabaseUrlHost
+    });
+
+    if (directCheckoutBranch) {
+      console.info('arrival-request direct checkout branch entered:', {
+        source,
+        supabaseHost: supabaseUrlHost
+      });
+
       if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
         return res.status(400).json({ error: 'invalid_email', error_description: 'Necesito un email válido para abrir tu acceso.' });
       }
 
       const { countryCode, paymentProvider, paymentUrl } = resolveDirectCheckoutTarget(req);
-      await saveDirectCheckoutLead(supabaseAdmin, {
+      let savedDirectCheckoutLead;
+      try {
+        savedDirectCheckoutLead = await saveDirectCheckoutLead(supabaseAdmin, {
+          email,
+          countryCode,
+          paymentProvider,
+          paymentUrl
+        });
+      } catch (error) {
+        console.error('arrival-request direct checkout save failed:', {
+          source,
+          directCheckoutBranch,
+          supabaseHost: supabaseUrlHost,
+          message: error?.message || 'unknown_error',
+          code: error?.cause?.code || null,
+          details: error?.cause?.details || null,
+          hint: error?.cause?.hint || null,
+          email
+        });
+        throw error;
+      }
+
+      console.info('arrival-request saveDirectCheckoutLead result:', savedDirectCheckoutLead);
+      console.info('arrival-request direct checkout returning success:', {
         email,
-        countryCode,
-        paymentProvider,
-        paymentUrl
+        payment_url: paymentUrl,
+        payment_provider: paymentProvider,
+        country_code: countryCode
       });
 
       return res.status(200).json({
@@ -2710,7 +2755,13 @@ async function arrivalRequestHandler(req, res) {
       request: sanitizeArrivalRequest(saved)
     });
   } catch (error) {
-    console.error('arrival-request fatal:', error);
+    console.error('arrival-request fatal:', {
+      message: error?.message || 'unknown_error',
+      code: error?.cause?.code || null,
+      details: error?.cause?.details || null,
+      hint: error?.cause?.hint || null,
+      stack: error?.stack || null
+    });
     return res.status(500).json({ error: 'Internal error' });
   }
 }
