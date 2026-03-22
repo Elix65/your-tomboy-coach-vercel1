@@ -2453,13 +2453,20 @@ function resolveRequestCountryCode(req) {
 
 function resolveDirectCheckoutTarget(req) {
   const countryCode = resolveRequestCountryCode(req);
-  const paymentProvider = countryCode === 'AR' ? 'mercadopago' : 'paypal';
-  const paymentUrl = paymentProvider === 'mercadopago' ? DIRECT_CHECKOUT_MP_URL : DIRECT_CHECKOUT_PAYPAL_URL;
+  const recommendedProvider = countryCode === 'AR' ? 'mercadopago' : 'paypal';
+  const alternativeProvider = recommendedProvider === 'mercadopago' ? 'paypal' : 'mercadopago';
+  const paymentUrls = {
+    mercadopago: DIRECT_CHECKOUT_MP_URL,
+    paypal: DIRECT_CHECKOUT_PAYPAL_URL
+  };
 
   return {
     countryCode,
-    paymentProvider,
-    paymentUrl
+    recommendedProvider,
+    alternativeProvider,
+    paymentUrls,
+    paymentProvider: recommendedProvider,
+    paymentUrl: paymentUrls[recommendedProvider]
   };
 }
 
@@ -2626,7 +2633,14 @@ async function arrivalRequestHandler(req, res) {
         return res.status(400).json({ error: 'invalid_email', error_description: 'Necesito un email válido para abrir tu acceso.' });
       }
 
-      const { countryCode, paymentProvider, paymentUrl } = resolveDirectCheckoutTarget(req);
+      const {
+        countryCode,
+        recommendedProvider,
+        alternativeProvider,
+        paymentUrls,
+        paymentProvider,
+        paymentUrl
+      } = resolveDirectCheckoutTarget(req);
       let savedDirectCheckoutLead;
       try {
         savedDirectCheckoutLead = await saveDirectCheckoutLead(supabaseAdmin, {
@@ -2659,10 +2673,14 @@ async function arrivalRequestHandler(req, res) {
 
       return res.status(200).json({
         ok: true,
+        success: true,
         email,
         country_code: countryCode,
+        recommended_provider: recommendedProvider,
+        alternative_provider: alternativeProvider,
         payment_provider: paymentProvider,
-        payment_url: paymentUrl
+        payment_url: paymentUrl,
+        payment_urls: paymentUrls
       });
     }
 
