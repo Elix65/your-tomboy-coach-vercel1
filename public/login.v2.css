@@ -647,6 +647,27 @@ body {
   margin-top: 0;
 }
 
+.arrival-provider-recommendation {
+  margin: 2px 0 0;
+  color: rgba(230, 211, 194, 0.82);
+  line-height: 1.5;
+}
+
+.arrival-provider-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.arrival-provider-btn {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.arrival-provider-btn--secondary {
+  min-height: 52px;
+}
+
 #btn-arrival-intention-next,
 #btn-arrival-save {
   margin-top: 6px;

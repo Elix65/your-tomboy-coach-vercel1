@@ -293,11 +293,23 @@ function setupPublicArrivalFlow() {
   const arrivalNameDisplay = document.getElementById('arrival-name-display');
   const arrivalCheckoutForm = document.getElementById('arrival-direct-checkout-form');
   const arrivalEmailInput = document.getElementById('arrival-email');
+  const arrivalProviderRecommendation = document.getElementById('arrival-provider-recommendation');
+  const arrivalProviderPrimary = document.getElementById('arrival-provider-primary');
+  const arrivalProviderSecondary = document.getElementById('arrival-provider-secondary');
   const arrivalInviteLinks = Array.from(document.querySelectorAll('[data-private-door-link]'));
 
   const RITUAL_LINES_BY_STEP = {
     '1': 'Tu llegada empieza ahora.',
-    '2': 'Tu acceso se abre desde tu email.'
+    '2': 'Tu acceso se abre desde tu email.',
+    '3': 'Elegí la pasarela para abrir tu acceso.'
+  };
+  const ARRIVAL_PROVIDER_LABELS = {
+    mercadopago: 'Mercado Pago',
+    paypal: 'PayPal'
+  };
+  const ARRIVAL_PROVIDER_RECOMMENDATION_COPY = {
+    mercadopago: 'Te recomendamos Mercado Pago por tu ubicación, pero podés elegir la opción que te resulte más cómoda.',
+    paypal: 'Te recomendamos PayPal por tu ubicación, pero podés elegir la opción que te resulte más cómoda.'
   };
 
 
@@ -330,6 +342,34 @@ function setupPublicArrivalFlow() {
       window.sessionStorage.removeItem('yumiko_arrival_name');
     }
     void setOnboardingStep(2, RITUAL_LINES_BY_STEP);
+  }
+
+  function updateArrivalProviderChoice(data) {
+    const recommendedProvider = String(data?.recommended_provider || '').trim().toLowerCase();
+    const alternativeProvider = String(data?.alternative_provider || '').trim().toLowerCase();
+    const paymentUrls = data?.payment_urls && typeof data.payment_urls === 'object' ? data.payment_urls : {};
+    const recommendedUrl = String(paymentUrls?.[recommendedProvider] || '').trim();
+    const alternativeUrl = String(paymentUrls?.[alternativeProvider] || '').trim();
+    const recommendedLabel = ARRIVAL_PROVIDER_LABELS[recommendedProvider];
+    const alternativeLabel = ARRIVAL_PROVIDER_LABELS[alternativeProvider];
+
+    if (!recommendedLabel || !alternativeLabel || !recommendedUrl || !alternativeUrl) {
+      throw new Error('missing_payment_options');
+    }
+
+    if (arrivalProviderRecommendation) {
+      arrivalProviderRecommendation.textContent = ARRIVAL_PROVIDER_RECOMMENDATION_COPY[recommendedProvider] || ARRIVAL_PROVIDER_RECOMMENDATION_COPY.paypal;
+    }
+
+    if (arrivalProviderPrimary) {
+      arrivalProviderPrimary.textContent = `Continuar con ${recommendedLabel}`;
+      arrivalProviderPrimary.href = recommendedUrl;
+    }
+
+    if (arrivalProviderSecondary) {
+      arrivalProviderSecondary.textContent = `Continuar con ${alternativeLabel}`;
+      arrivalProviderSecondary.href = alternativeUrl;
+    }
   }
 
   function validateArrivalCheckoutEmail(email) {
@@ -365,13 +405,9 @@ function setupPublicArrivalFlow() {
         source: 'public_direct_checkout'
       });
 
+      updateArrivalProviderChoice(data);
       window.sessionStorage.setItem('yumiko_arrival_email', email);
-      const paymentUrl = String(data?.payment_url || '').trim();
-      if (!paymentUrl) {
-        throw new Error('missing_payment_url');
-      }
-
-      window.location.replace(paymentUrl);
+      await setOnboardingStep(3, RITUAL_LINES_BY_STEP);
     } catch (error) {
       console.error('Arrival checkout error:', error?.payload || error?.message || error);
       const fallbackMessage = 'Uhm… algo interrumpió tu acceso. Intentemos de nuevo en un momento.';
@@ -410,6 +446,11 @@ function setupPublicArrivalFlow() {
     if (loginContainer.dataset.step === '2') {
       updateArrivalWelcomeName();
       arrivalEmailInput?.focus();
+      return;
+    }
+
+    if (loginContainer.dataset.step === '3') {
+      arrivalProviderPrimary?.focus();
     }
   });
 

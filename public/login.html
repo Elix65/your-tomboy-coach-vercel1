@@ -52,7 +52,7 @@
             <div class="onboarding-step arrival-step arrival-step-2 hidden" data-onboarding-step="2" aria-hidden="true">
               <p class="login-eyebrow">Tu acceso reservado</p>
               <h2 id="arrival-welcome-title" class="login-title">Hola, <span id="arrival-name-display">vos</span>. Sigamos por acá.</h2>
-              <p class="login-subtitle">Dejá tu email y te abrimos directo la pasarela correspondiente.</p>
+              <p class="login-subtitle">Dejá tu email y después elegí la pasarela que prefieras.</p>
 
               <form id="arrival-direct-checkout-form" class="arrival-auth-form arrival-request-form" novalidate>
                 <div class="arrival-form-block">
@@ -65,7 +65,19 @@
 
                 <button id="btn-arrival-continue" class="login-btn" type="submit">Continuar al pago</button>
               </form>
-              <p class="login-copy arrival-step-2-copy">Tu email queda resguardado antes de abrir la pasarela.</p>
+              <p class="login-copy arrival-step-2-copy">Tu email queda resguardado antes de elegir la pasarela.</p>
+            </div>
+
+            <div class="onboarding-step arrival-step arrival-step-3 hidden" data-onboarding-step="3" aria-hidden="true">
+              <p class="login-eyebrow">Tu acceso reservado</p>
+              <h2 class="login-title">Elegí cómo querés abrir tu acceso.</h2>
+              <p class="login-subtitle">Tu email ya quedó resguardado. Ahora solo falta elegir la pasarela que prefieras.</p>
+              <p id="arrival-provider-recommendation" class="arrival-provider-recommendation">Te recomendamos PayPal por tu ubicación, pero podés elegir la opción que te resulte más cómoda.</p>
+
+              <div class="arrival-provider-actions">
+                <a id="arrival-provider-primary" class="login-btn arrival-provider-btn" href="#" rel="noreferrer noopener">Continuar con PayPal</a>
+                <a id="arrival-provider-secondary" class="premium-secondary-door arrival-provider-btn arrival-provider-btn--secondary" href="#" rel="noreferrer noopener">Continuar con Mercado Pago</a>
+              </div>
             </div>
 
           </div>
@@ -76,6 +88,7 @@
         <div class="login-steps" id="login-steps" data-step="1" aria-live="polite">
           <span class="login-steps-text" id="login-steps-text">Tu llegada empieza ahora.</span>
           <span class="login-steps-phases" aria-hidden="true">
+            <span class="login-steps-phase"></span>
             <span class="login-steps-phase"></span>
             <span class="login-steps-phase"></span>
           </span>
