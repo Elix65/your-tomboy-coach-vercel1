@@ -2479,7 +2479,17 @@ async function saveDirectCheckoutLead(supabaseAdmin, { email, countryCode, payme
     .single();
 
   if (error) {
-    throw new Error(error.message || 'Error saving checkout lead.');
+    console.error('checkout-leads upsert failed:', {
+      message: error.message || 'unknown_error',
+      code: error.code || null,
+      details: error.details || null,
+      hint: error.hint || null,
+      payload
+    });
+
+    const wrappedError = new Error(error.message || 'Error saving checkout lead.');
+    wrappedError.cause = error;
+    throw wrappedError;
   }
 
   return data;
