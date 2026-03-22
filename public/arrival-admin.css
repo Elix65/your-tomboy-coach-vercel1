@@ -652,6 +652,18 @@
   margin-top: 16px;
 }
 
+.arrival-admin-rescue-create {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.arrival-admin-rescue-create-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .arrival-admin-rescue-detail {
   display: grid;
   gap: 16px;
@@ -666,6 +678,10 @@
 
 @media (max-width: 720px) {
   .arrival-admin-rescue-search {
+    grid-template-columns: 1fr;
+  }
+
+  .arrival-admin-rescue-create-grid {
     grid-template-columns: 1fr;
   }
 }
