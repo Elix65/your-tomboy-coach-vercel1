@@ -2609,17 +2609,6 @@ async function reconcileDirectCheckoutPayment(supabaseAdmin, req, checkoutLead) 
   const query = req.query || {};
   const provider = String(query.provider || requestUrl.searchParams.get('provider') || checkoutLead.payment_provider || '').trim().toLowerCase();
   const currentStatus = normalizeCheckoutPaymentStatus(checkoutLead.payment_status) || 'pending';
-  const queryStatus = normalizeCheckoutPaymentStatus(
-    query.payment_status
-    || query.status
-    || query.collection_status
-    || query.preapproval_status
-    || requestUrl.searchParams.get('payment_status')
-    || requestUrl.searchParams.get('status')
-    || requestUrl.searchParams.get('collection_status')
-    || requestUrl.searchParams.get('preapproval_status')
-    || ''
-  );
   const reference = String(
     query.payment_reference
     || query.payment_id
@@ -2648,10 +2637,6 @@ async function reconcileDirectCheckoutPayment(supabaseAdmin, req, checkoutLead) 
       resolvedStatus = verifiedPayment.status;
       resolvedReference = verifiedPayment.reference || resolvedReference;
     }
-  }
-
-  if (resolvedStatus !== 'paid' && queryStatus && ['pending', 'failed', 'cancelled'].includes(queryStatus)) {
-    resolvedStatus = queryStatus;
   }
 
   if (resolvedStatus === currentStatus && resolvedReference === (checkoutLead.payment_reference || null)) {
@@ -3242,7 +3227,8 @@ async function arrivalReturnHandler(req, res) {
         ok: true,
         state: 'pending',
         email: checkoutLead.email,
-        payment_status: 'pending'
+        payment_status: 'pending',
+        verification_status: checkoutLead.payment_reference ? 'verifying_with_provider' : 'awaiting_provider_confirmation'
       });
     }
 
