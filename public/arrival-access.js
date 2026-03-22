@@ -85,7 +85,7 @@ function setReturnState(state, payload = {}) {
     subtitle.textContent = 'Tu llegada ya fue confirmada. Este es el último paso para abrir tu espacio con Yumiko.';
     statusPill.textContent = 'Acceso confirmado';
     primaryCta.textContent = 'Elegir mi contraseña';
-    primaryCta.href = payload.activation_url || '/arrival/activate';
+    primaryCta.href = payload.activation_url || '/activate-access';
     secondaryCta.textContent = 'Volver al inicio';
     secondaryCta.href = '/login.html';
     return;
