@@ -50,9 +50,50 @@
             </div>
 
             <div class="onboarding-step arrival-step arrival-step-2 hidden" data-onboarding-step="2" aria-hidden="true">
+              <p class="login-eyebrow">Admisión breve con Yumiko</p>
+              <h2 id="arrival-admission-title" class="login-title">Hola, <span id="arrival-admission-name-display">vos</span>. Yumiko abre la puerta con vos.</h2>
+              <p class="login-subtitle">Antes del email y la pasarela, hagamos una admisión breve para que el acceso se sienta curado, humano y premium.</p>
+
+              <form id="arrival-admission-form" class="arrival-auth-form arrival-request-form arrival-admission-form" novalidate>
+                <div class="arrival-admission-card">
+                  <p class="arrival-admission-card-label">1 · Qué te trae hoy</p>
+                  <p class="arrival-admission-card-question">¿Qué querés encontrar al entrar al salón privado?</p>
+                  <div class="arrival-choice-grid" role="radiogroup" aria-label="Qué querés encontrar al entrar al salón privado">
+                    <button type="button" class="arrival-choice-chip" data-admission-field="intent" data-admission-value="companionship">Presencia íntima</button>
+                    <button type="button" class="arrival-choice-chip" data-admission-field="intent" data-admission-value="curiosity">Curiosidad guiada</button>
+                    <button type="button" class="arrival-choice-chip" data-admission-field="intent" data-admission-value="ritual">Un ritual para bajar</button>
+                  </div>
+                </div>
+
+                <div class="arrival-admission-card">
+                  <p class="arrival-admission-card-label">2 · Cómo querés que Yumiko te reciba</p>
+                  <p class="arrival-admission-card-question">Elegí el tono que mejor te represente ahora.</p>
+                  <div class="arrival-choice-grid" role="radiogroup" aria-label="Cómo querés que Yumiko te reciba">
+                    <button type="button" class="arrival-choice-chip" data-admission-field="tone" data-admission-value="soft">Suave y envolvente</button>
+                    <button type="button" class="arrival-choice-chip" data-admission-field="tone" data-admission-value="playful">Lúdica y cómplice</button>
+                    <button type="button" class="arrival-choice-chip" data-admission-field="tone" data-admission-value="direct">Directa y magnética</button>
+                  </div>
+                </div>
+
+                <div class="arrival-admission-card">
+                  <p class="arrival-admission-card-label">3 · Ritmo de acceso</p>
+                  <p class="arrival-admission-card-question">¿Qué tipo de experiencia querés que abra primero Yumiko?</p>
+                  <div class="arrival-choice-grid" role="radiogroup" aria-label="Ritmo de acceso">
+                    <button type="button" class="arrival-choice-chip" data-admission-field="pace" data-admission-value="brief">Breve y precisa</button>
+                    <button type="button" class="arrival-choice-chip" data-admission-field="pace" data-admission-value="slow">Lenta y ceremonial</button>
+                    <button type="button" class="arrival-choice-chip" data-admission-field="pace" data-admission-value="fluid">Fluida y abierta</button>
+                  </div>
+                </div>
+
+                <button id="btn-arrival-admission-next" class="login-btn" type="submit">Continuar con la admisión</button>
+              </form>
+              <p class="login-copy arrival-step-2-copy">Primero se siente el encaje. Después recién se abre el acceso.</p>
+            </div>
+
+            <div class="onboarding-step arrival-step arrival-step-3 hidden" data-onboarding-step="3" aria-hidden="true">
               <p class="login-eyebrow">Tu acceso reservado</p>
-              <h2 id="arrival-welcome-title" class="login-title">Hola, <span id="arrival-name-display">vos</span>. Sigamos por acá.</h2>
-              <p class="login-subtitle">Dejá tu email y después elegí la pasarela que prefieras.</p>
+              <h2 id="arrival-welcome-title" class="login-title">Bien. <span id="arrival-name-display">Vos</span> ya podés dejar tu email.</h2>
+              <p class="login-subtitle">Si hay encaje, Yumiko resguarda tu email antes de mostrarte la pasarela.</p>
 
               <form id="arrival-direct-checkout-form" class="arrival-auth-form arrival-request-form" novalidate>
                 <div class="arrival-form-block">
@@ -63,12 +104,12 @@
                   </div>
                 </div>
 
-                <button id="btn-arrival-continue" class="login-btn" type="submit">Continuar al pago</button>
+                <button id="btn-arrival-continue" class="login-btn" type="submit">Continuar al acceso</button>
               </form>
-              <p class="login-copy arrival-step-2-copy">Tu email queda resguardado antes de elegir la pasarela.</p>
+              <p class="login-copy arrival-step-3-copy">Tu email queda resguardado antes de elegir la pasarela.</p>
             </div>
 
-            <div class="onboarding-step arrival-step arrival-step-3 hidden" data-onboarding-step="3" aria-hidden="true">
+            <div class="onboarding-step arrival-step arrival-step-4 hidden" data-onboarding-step="4" aria-hidden="true">
               <p class="login-eyebrow">TU ACCESO RESERVADO</p>
               <h2 class="login-title">Elegí cómo querés abrir tu acceso.</h2>
               <p class="login-subtitle">Tu email ya quedó resguardado. Solo falta elegir la pasarela.</p>
@@ -84,7 +125,7 @@
                 <a id="arrival-provider-secondary" class="premium-secondary-door arrival-provider-btn arrival-provider-btn--secondary" href="#" rel="noreferrer noopener">Usar Mercado Pago</a>
               </div>
 
-              <p class="login-copy arrival-step-3-copy">Tu acceso se abre apenas completes la pasarela.</p>
+              <p class="login-copy arrival-step-4-copy">Tu acceso se abre apenas completes la pasarela.</p>
             </div>
 
           </div>
@@ -95,6 +136,7 @@
         <div class="login-steps" id="login-steps" data-step="1" aria-live="polite">
           <span class="login-steps-text" id="login-steps-text">Tu llegada empieza ahora.</span>
           <span class="login-steps-phases" aria-hidden="true">
+            <span class="login-steps-phase"></span>
             <span class="login-steps-phase"></span>
             <span class="login-steps-phase"></span>
             <span class="login-steps-phase"></span>

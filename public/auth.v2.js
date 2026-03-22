@@ -289,7 +289,10 @@ function setupPublicArrivalFlow() {
 
   const arrivalNameInput = document.getElementById('arrival-name');
   const arrivalNextBtn = document.getElementById('btn-arrival-next');
+  const arrivalAdmissionForm = document.getElementById('arrival-admission-form');
+  const arrivalAdmissionNextBtn = document.getElementById('btn-arrival-admission-next');
   const arrivalContinueBtn = document.getElementById('btn-arrival-continue');
+  const arrivalAdmissionNameDisplay = document.getElementById('arrival-admission-name-display');
   const arrivalNameDisplay = document.getElementById('arrival-name-display');
   const arrivalCheckoutForm = document.getElementById('arrival-direct-checkout-form');
   const arrivalEmailInput = document.getElementById('arrival-email');
@@ -300,8 +303,9 @@ function setupPublicArrivalFlow() {
 
   const RITUAL_LINES_BY_STEP = {
     '1': 'Tu llegada empieza ahora.',
-    '2': 'Tu acceso se abre desde tu email.',
-    '3': 'Elegí cómo querés abrir tu acceso.'
+    '2': 'Yumiko abre una admisión breve.',
+    '3': 'Tu email queda resguardado antes del acceso.',
+    '4': 'Elegí cómo querés abrir tu acceso.'
   };
   const ARRIVAL_PROVIDER_LABELS = {
     mercadopago: 'Mercado Pago',
@@ -311,10 +315,13 @@ function setupPublicArrivalFlow() {
     mercadopago: 'Mercado Pago',
     paypal: 'PayPal'
   };
-
+  const ARRIVAL_ADMISSION_FIELDS = ['intent', 'tone', 'pace'];
 
   function updateArrivalWelcomeName() {
     const storedName = (window.sessionStorage.getItem('yumiko_arrival_name') || '').trim();
+    if (arrivalAdmissionNameDisplay) {
+      arrivalAdmissionNameDisplay.textContent = storedName || 'vos';
+    }
     if (arrivalNameDisplay) {
       arrivalNameDisplay.textContent = storedName || 'vos';
     }
@@ -341,7 +348,66 @@ function setupPublicArrivalFlow() {
     } else {
       window.sessionStorage.removeItem('yumiko_arrival_name');
     }
+    updateArrivalWelcomeName();
     void setOnboardingStep(2, RITUAL_LINES_BY_STEP);
+  }
+
+  function getAdmissionSelections() {
+    return ARRIVAL_ADMISSION_FIELDS.reduce((acc, field) => {
+      acc[field] = String(window.sessionStorage.getItem(`yumiko_arrival_${field}`) || '').trim();
+      return acc;
+    }, {});
+  }
+
+  function syncAdmissionChoiceState() {
+    const selections = getAdmissionSelections();
+    const chips = Array.from(loginContainer.querySelectorAll('[data-admission-field][data-admission-value]'));
+
+    chips.forEach((chip) => {
+      const field = chip.dataset.admissionField;
+      const value = chip.dataset.admissionValue;
+      const selected = selections[field] === value;
+      chip.classList.toggle('is-selected', selected);
+      chip.setAttribute('aria-pressed', String(selected));
+    });
+  }
+
+  function selectAdmissionChoice(field, value) {
+    if (!ARRIVAL_ADMISSION_FIELDS.includes(field)) {
+      return;
+    }
+
+    const normalizedValue = String(value || '').trim();
+    if (!normalizedValue) {
+      window.sessionStorage.removeItem(`yumiko_arrival_${field}`);
+    } else {
+      window.sessionStorage.setItem(`yumiko_arrival_${field}`, normalizedValue);
+    }
+
+    syncAdmissionChoiceState();
+    clearAuthMessage();
+  }
+
+  function validateAdmissionSelections() {
+    const selections = getAdmissionSelections();
+    const missingField = ARRIVAL_ADMISSION_FIELDS.find((field) => !selections[field]);
+
+    if (!missingField) {
+      return null;
+    }
+
+    return 'Dejame sentir tu encaje con Yumiko en estas tres respuestas cortas.';
+  }
+
+  async function submitArrivalAdmission() {
+    const validationError = validateAdmissionSelections();
+    if (validationError) {
+      showAuthMessage(validationError);
+      return;
+    }
+
+    clearAuthMessage();
+    await setOnboardingStep(3, RITUAL_LINES_BY_STEP);
   }
 
   function buildArrivalReturnUrl(provider) {
@@ -440,7 +506,7 @@ function setupPublicArrivalFlow() {
 
       updateArrivalProviderChoice(data);
       window.sessionStorage.setItem('yumiko_arrival_email', email);
-      await setOnboardingStep(3, RITUAL_LINES_BY_STEP);
+      await setOnboardingStep(4, RITUAL_LINES_BY_STEP);
     } catch (error) {
       console.error('Arrival checkout error:', error?.payload || error?.message || error);
       const fallbackMessage = 'Uhm… algo interrumpió tu acceso. Intentemos de nuevo en un momento.';
@@ -456,6 +522,8 @@ function setupPublicArrivalFlow() {
   syncOnboardingStepVisibility('1');
   void syncRitualLine('1', RITUAL_LINES_BY_STEP);
   syncPrivateDoorLinks();
+  updateArrivalWelcomeName();
+  syncAdmissionChoiceState();
 
   if (arrivalNameInput && arrivalNextBtn) {
     arrivalNextBtn.onclick = submitArrivalStepOne;
@@ -468,6 +536,19 @@ function setupPublicArrivalFlow() {
     });
   }
 
+  if (arrivalAdmissionForm) {
+    arrivalAdmissionForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      await submitArrivalAdmission();
+    });
+  }
+
+  loginContainer.querySelectorAll('[data-admission-field][data-admission-value]').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      selectAdmissionChoice(chip.dataset.admissionField, chip.dataset.admissionValue);
+    });
+  });
+
   if (arrivalCheckoutForm) {
     arrivalCheckoutForm.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -478,11 +559,20 @@ function setupPublicArrivalFlow() {
   const observer = new MutationObserver(() => {
     if (loginContainer.dataset.step === '2') {
       updateArrivalWelcomeName();
-      arrivalEmailInput?.focus();
+      const firstUnselectedField = ARRIVAL_ADMISSION_FIELDS.find((field) => !window.sessionStorage.getItem(`yumiko_arrival_${field}`));
+      const focusTarget = firstUnselectedField
+        ? loginContainer.querySelector(`[data-admission-field="${firstUnselectedField}"]`)
+        : arrivalAdmissionNextBtn;
+      focusTarget?.focus();
       return;
     }
 
     if (loginContainer.dataset.step === '3') {
+      arrivalEmailInput?.focus();
+      return;
+    }
+
+    if (loginContainer.dataset.step === '4') {
       arrivalProviderPrimary?.focus();
     }
   });
