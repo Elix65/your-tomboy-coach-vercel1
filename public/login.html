@@ -69,15 +69,22 @@
             </div>
 
             <div class="onboarding-step arrival-step arrival-step-3 hidden" data-onboarding-step="3" aria-hidden="true">
-              <p class="login-eyebrow">Tu acceso reservado</p>
+              <p class="login-eyebrow">TU ACCESO RESERVADO</p>
               <h2 class="login-title">Elegí cómo querés abrir tu acceso.</h2>
-              <p class="login-subtitle">Tu email ya quedó resguardado. Ahora solo falta elegir la pasarela que prefieras.</p>
-              <p id="arrival-provider-recommendation" class="arrival-provider-recommendation">Te recomendamos PayPal por tu ubicación, pero podés elegir la opción que te resulte más cómoda.</p>
+              <p class="login-subtitle">Tu email ya quedó resguardado. Solo falta elegir la pasarela.</p>
+
+              <div class="arrival-provider-card" aria-live="polite">
+                <p class="arrival-provider-card-eyebrow">Recomendado para tu ubicación</p>
+                <p id="arrival-provider-recommendation" class="arrival-provider-recommendation">PayPal</p>
+              </div>
 
               <div class="arrival-provider-actions">
-                <a id="arrival-provider-primary" class="login-btn arrival-provider-btn" href="#" rel="noreferrer noopener">Continuar con PayPal</a>
-                <a id="arrival-provider-secondary" class="premium-secondary-door arrival-provider-btn arrival-provider-btn--secondary" href="#" rel="noreferrer noopener">Continuar con Mercado Pago</a>
+                <a id="arrival-provider-primary" class="login-btn arrival-provider-btn arrival-provider-btn--primary" href="#" rel="noreferrer noopener">Continuar con PayPal</a>
+                <p class="arrival-provider-divider" aria-hidden="true">o si lo preferís</p>
+                <a id="arrival-provider-secondary" class="premium-secondary-door arrival-provider-btn arrival-provider-btn--secondary" href="#" rel="noreferrer noopener">Usar Mercado Pago</a>
               </div>
+
+              <p class="login-copy arrival-step-3-copy">Tu acceso se abre apenas completes la pasarela.</p>
             </div>
 
           </div>
