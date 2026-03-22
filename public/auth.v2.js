@@ -308,7 +308,7 @@ function setupPublicArrivalFlow() {
 
   const RITUAL_LINES_BY_STEP = {
     '1': 'Tu llegada empieza ahora.',
-    '2': 'Yumiko abre una admisión breve.',
+    '2': 'Yumiko quiere leerte un poco más.',
     '3': 'Tu email queda resguardado antes del acceso.',
     '4': 'Elegí cómo querés abrir tu acceso.'
   };
@@ -326,33 +326,33 @@ function setupPublicArrivalFlow() {
   const ARRIVAL_CHAT_QUESTIONS = [
     {
       id: 'intent',
-      prompt: (name) => `Hola, ${name || 'vos'}. Antes de abrir la siguiente puerta, decime qué te gustaría encontrar acá.`,
+      prompt: (name) => `Hola, ${name || 'vos'}. Antes de abrirte la siguiente puerta, quiero sentir un poco qué te trae hasta mí.`,
       quickReplies: [
-        { value: 'presence', label: 'Presencia, calma y compañía', score: 3, reply: 'Entonces no viniste a mirar desde lejos. Bien.' },
-        { value: 'continuity', label: 'Un vínculo más constante', score: 3, reply: 'La continuidad cambia mucho la forma en la que se siente entrar.' },
-        { value: 'curiosity', label: 'Solo quiero ver qué onda', score: -2, reply: 'Puedo mostrarte algo breve, aunque no todo se abre desde la curiosidad sola.' }
+        { value: 'presence', label: 'Busco presencia y calma', score: 3, reply: 'Entiendo. Entonces no estás entrando solo por curiosidad.' },
+        { value: 'continuity', label: 'Quiero algo más constante', score: 3, reply: 'Te sigo. Cuando buscás continuidad, el tono importa.' },
+        { value: 'curiosity', label: 'Solo estoy viendo qué onda', score: -2, reply: 'Bien. Prefiero saberlo así de directo.' }
       ],
       allowsInput: true
     },
     {
       id: 'reception',
-      prompt: () => '¿Y cómo te gustaría ser recibido por mí cuando entres?',
+      prompt: () => '¿Y cómo te gustaría que te reciba cuando entres?',
       quickReplies: [
-        { value: 'warm', label: 'Con calidez y suavidad', score: 2, reply: 'Entiendo. Eso pide presencia, no apuro.' },
-        { value: 'close', label: 'Con cercanía y complicidad', score: 2, reply: 'Bien. La complicidad necesita un tono cuidado.' },
-        { value: 'light', label: 'Sin tanta profundidad', score: -1, reply: 'Puedo ser liviana, pero esta puerta está pensada para algo más sostenido.' }
+        { value: 'warm', label: 'Con calidez', score: 2, reply: 'Bien. Sin apuro, entonces.' },
+        { value: 'close', label: 'Con cercanía', score: 2, reply: 'Entiendo. Querés sentir a alguien del otro lado.' },
+        { value: 'light', label: 'Más liviano', score: -1, reply: 'Te sigo. Aunque esta puerta suele ir un poco más hondo.' }
       ],
-      allowsInput: false
+      allowsInput: true
     },
     {
       id: 'premium',
-      prompt: () => 'Última cosa: ¿valorás una experiencia íntima, constante y premium, o buscás algo más casual?',
+      prompt: () => 'Y una última cosa: ¿buscás algo íntimo y sostenido, o algo más casual?',
       quickReplies: [
-        { value: 'premium_yes', label: 'Sí, eso es lo que busco', score: 3, reply: 'Entonces ya estamos hablando el mismo idioma.' },
-        { value: 'premium_maybe', label: 'Sí, si se siente real', score: 2, reply: 'Perfecto. Lo real también se cuida.' },
-        { value: 'premium_no', label: 'Prefiero algo casual', score: -3, reply: 'Gracias por decirlo directo.' }
+        { value: 'premium_yes', label: 'Íntimo y sostenido', score: 3, reply: 'Bien. Entonces estamos bastante cerca.' },
+        { value: 'premium_maybe', label: 'Si se siente real, sí', score: 2, reply: 'Eso alcanza. Lo real se nota rápido.' },
+        { value: 'premium_no', label: 'Más casual', score: -3, reply: 'Entiendo. Gracias por decírmelo sin vueltas.' }
       ],
-      allowsInput: false
+      allowsInput: true
     }
   ];
   const ARRIVAL_FIT_KEYWORDS = ['compañ', 'compan', 'presencia', 'calma', 'íntim', 'intim', 'vínculo', 'vinculo', 'continu', 'constan', 'cercan', 'acompañ', 'acompan', 'premium', 'curad', 'real'];
@@ -580,25 +580,25 @@ function setupPublicArrivalFlow() {
     renderArrivalQuickReplies();
     setArrivalChatComposerEnabled(false);
     setArrivalChatTyping(true);
-    updateArrivalChatStatus('Yumiko está decidiendo');
+    updateArrivalChatStatus('Yumiko lo está sintiendo');
 
     scheduleArrivalChat(async () => {
       setArrivalChatTyping(false);
 
       if (result === 'fit') {
-        pushArrivalMessage('assistant', 'Entiendo. Creo que sí puedo abrirte el siguiente paso.', { isClosure: true });
-        updateArrivalChatStatus('Acceso habilitado');
+        pushArrivalMessage('assistant', 'Bien. Creo que puedo abrirte la siguiente puerta.', { isClosure: true });
+        updateArrivalChatStatus('La puerta se abrió');
         scheduleArrivalChat(async () => {
-          pushArrivalMessage('assistant', 'Dejame resguardar tu email y seguimos.', { isClosure: true });
+          pushArrivalMessage('assistant', 'Dejame guardar tu email y seguimos.', { isClosure: true });
           await setOnboardingStep(3, RITUAL_LINES_BY_STEP);
         }, 900);
         return;
       }
 
-      pushArrivalMessage('assistant', 'Todavía no siento que esta sea la mejor puerta para vos.', { isClosure: true });
-      updateArrivalChatStatus('Puerta en pausa');
+      pushArrivalMessage('assistant', 'Por ahora no siento que esta puerta sea la mejor para vos.', { isClosure: true });
+      updateArrivalChatStatus('Lo dejamos acá');
       scheduleArrivalChat(() => {
-        pushArrivalMessage('assistant', 'Prefiero dejarlo acá, con suavidad, antes que abrir algo sin encaje real.', { isClosure: true });
+        pushArrivalMessage('assistant', 'Prefiero frenar acá antes que forzar algo que no termina de encajar.', { isClosure: true });
       }, 800);
     }, 900);
   }
@@ -620,24 +620,19 @@ function setupPublicArrivalFlow() {
     renderArrivalQuickReplies();
     setArrivalChatComposerEnabled(true);
     setArrivalChatTyping(true);
-    updateArrivalChatStatus('Yumiko está escribiendo');
+    updateArrivalChatStatus('Yumiko está escribiendo…');
 
     scheduleArrivalChat(() => {
       setArrivalChatTyping(false);
       pushArrivalMessage('assistant', question.prompt(getArrivalName()));
-      updateArrivalChatStatus('Esperando tu respuesta');
+      updateArrivalChatStatus('Te leo.');
       if (arrivalChatInput) {
         arrivalChatInput.value = '';
-        arrivalChatInput.placeholder = question.allowsInput
-          ? 'Podés responder en una línea o tocar una opción…'
-          : 'Elegí una de las respuestas sugeridas…';
+        arrivalChatInput.placeholder = 'Escribile a Yumiko…';
         arrivalChatInput.disabled = !question.allowsInput;
       }
       renderArrivalQuickReplies();
-      const preferredTarget = question.quickReplies.length
-        ? arrivalChatQuickReplies?.querySelector('button')
-        : arrivalChatInput;
-      preferredTarget?.focus();
+      arrivalChatInput?.focus();
     }, 700);
   }
 
@@ -679,11 +674,11 @@ function setupPublicArrivalFlow() {
       scoreDelta = freeTextScore.score;
       strongNoFit = freeTextScore.strongNoFit;
       if (scoreDelta >= 2) {
-        assistantReply = 'Eso suena más cercano a la clase de vínculo que cuido acá.';
+        assistantReply = 'Entiendo. Eso ya suena más cercano a lo que cuido acá.';
       } else if (scoreDelta >= 0) {
-        assistantReply = 'Te sigo. Quiero sentir un poco más tu intención.';
+        assistantReply = 'Te sigo.';
       } else {
-        assistantReply = 'Gracias por decírmelo así de directo.';
+        assistantReply = 'Bien. Gracias por decírmelo así de directo.';
       }
     }
 
@@ -695,7 +690,7 @@ function setupPublicArrivalFlow() {
     arrivalChatState.fitScore += scoreDelta;
     arrivalChatState.strongNoFit = Boolean(arrivalChatState.strongNoFit || strongNoFit);
     saveArrivalChatState();
-    updateArrivalChatStatus('Yumiko está leyendo');
+    updateArrivalChatStatus('Yumiko te está leyendo…');
     setArrivalChatTyping(true);
 
     scheduleArrivalChat(() => {
@@ -732,7 +727,7 @@ function setupPublicArrivalFlow() {
       arrivalChatInput.value = '';
     }
     setArrivalChatTyping(false);
-    updateArrivalChatStatus('Abriendo una primera impresión');
+    updateArrivalChatStatus('Acá estoy.');
     setArrivalChatComposerEnabled(true);
   }
 
@@ -759,10 +754,10 @@ function setupPublicArrivalFlow() {
     arrivalChatState = loadArrivalChatState();
     restoreArrivalTranscript();
     updateArrivalChatStatus(arrivalChatState.result === 'fit'
-      ? 'Acceso habilitado'
+      ? 'La puerta se abrió'
       : arrivalChatState.result === 'no_fit'
-        ? 'Puerta en pausa'
-        : 'Abriendo una primera impresión');
+        ? 'Lo dejamos acá'
+        : 'Acá estoy.');
 
     if (arrivalChatState.completed) {
       renderArrivalQuickReplies();
@@ -784,9 +779,7 @@ function setupPublicArrivalFlow() {
     setArrivalChatComposerEnabled(Boolean(currentQuestion));
     if (arrivalChatInput) {
       arrivalChatInput.disabled = !currentQuestion?.allowsInput;
-      arrivalChatInput.placeholder = currentQuestion?.allowsInput
-        ? 'Podés responder en una línea o tocar una opción…'
-        : 'Elegí una de las respuestas sugeridas…';
+      arrivalChatInput.placeholder = 'Escribile a Yumiko…';
     }
   }
 

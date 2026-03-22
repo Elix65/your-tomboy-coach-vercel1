@@ -519,25 +519,27 @@ body {
 }
 
 .arrival-step-2 .login-eyebrow {
-  margin-bottom: 1px;
-  color: rgba(223, 196, 167, 0.84);
+  margin-bottom: -2px;
+  color: rgba(223, 196, 167, 0.64);
+  letter-spacing: 0.12em;
 }
 
 .arrival-step-2 .login-title {
   margin: 0;
-  font-size: clamp(33px, 5vw, 47px);
-  line-height: 1.14;
-  font-weight: 740;
-  letter-spacing: 0.3px;
-  color: #f1e4d2;
-  text-shadow: 0 8px 26px rgba(9, 4, 12, 0.4);
+  font-size: clamp(30px, 4.4vw, 40px);
+  line-height: 1.06;
+  font-weight: 720;
+  letter-spacing: 0.2px;
+  color: #f3e6d5;
+  text-shadow: 0 8px 26px rgba(9, 4, 12, 0.32);
 }
 
 .arrival-step-2 .login-subtitle {
   margin: 0;
-  color: rgba(226, 210, 193, 0.78);
-  font-size: clamp(16px, 1.8vw, 19px);
-  line-height: 1.34;
+  max-width: 28ch;
+  color: rgba(226, 210, 193, 0.72);
+  font-size: clamp(15px, 1.6vw, 18px);
+  line-height: 1.32;
 }
 
 .arrival-admission-form {
@@ -551,9 +553,9 @@ body {
 .arrival-chat-window {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   padding: 18px;
-  border-radius: 28px;
+  border-radius: 30px;
   border: 1px solid rgba(205, 167, 139, 0.2);
   background:
     linear-gradient(180deg, rgba(58, 39, 46, 0.46), rgba(28, 20, 27, 0.7)),
@@ -614,8 +616,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  min-height: 290px;
-  max-height: 360px;
+  min-height: 310px;
+  max-height: 380px;
   overflow-y: auto;
   padding: 4px 4px 2px;
   scroll-behavior: smooth;
@@ -698,19 +700,20 @@ body {
 .arrival-chat-quick-replies {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
+  margin-top: 2px;
 }
 
 .arrival-quick-reply {
-  min-height: 42px;
-  padding: 10px 14px;
+  min-height: 38px;
+  padding: 9px 13px;
   border-radius: 999px;
-  border: 1px solid rgba(220, 184, 155, 0.18);
-  background: linear-gradient(180deg, rgba(66, 44, 52, 0.42), rgba(31, 23, 28, 0.48));
-  color: rgba(245, 232, 221, 0.92);
+  border: 1px solid rgba(220, 184, 155, 0.12);
+  background: linear-gradient(180deg, rgba(66, 44, 52, 0.28), rgba(31, 23, 28, 0.34));
+  color: rgba(245, 232, 221, 0.82);
   font: inherit;
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 520;
   line-height: 1.2;
   cursor: pointer;
   transition:
@@ -735,14 +738,30 @@ body {
 .arrival-chat-composer {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(233, 201, 176, 0.14);
+  background: linear-gradient(180deg, rgba(35, 25, 31, 0.92), rgba(22, 17, 23, 0.96));
+  box-shadow: inset 0 1px 0 rgba(255, 229, 205, 0.04);
 }
 
 #arrival-chat-input {
-  min-height: 52px;
+  min-height: 46px;
   height: auto;
-  padding-right: 16px;
+  padding: 0 14px 0 16px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+#arrival-chat-input::placeholder {
+  color: rgba(221, 200, 184, 0.48);
+}
+
+#arrival-chat-input:focus {
+  outline: none;
 }
 
 #arrival-chat-input:disabled {
@@ -772,6 +791,20 @@ body {
     inset 0 1px 0 rgba(255, 229, 196, 0.12);
 }
 
+#btn-arrival-admission-next {
+  margin-top: 0;
+  width: 46px;
+  min-width: 46px;
+  min-height: 46px;
+  height: 46px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0;
+  box-shadow:
+    0 10px 18px rgba(13, 8, 15, 0.36),
+    inset 0 1px 0 rgba(255, 229, 196, 0.12);
+}
+
 #btn-arrival-admission-next::before,
 #btn-arrival-continue::before {
   content: "";
@@ -793,12 +826,6 @@ body {
 #btn-arrival-admission-next:active,
 #btn-arrival-continue:active {
   transform: translateY(0);
-}
-
-.arrival-step-2-copy {
-  margin-top: 4px;
-  color: rgba(213, 188, 166, 0.62);
-  letter-spacing: 0.01em;
 }
 
 #login-container[data-step="2"] {
@@ -1521,6 +1548,12 @@ body {
     inset 0 0 0 1px rgba(255, 241, 225, 0.54),
     0 0 10px rgba(255, 209, 170, 0.28);
   transform: scale(1.12);
+}
+
+#login-container[data-step="2"] + .login-steps {
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
 }
 
 .login-error {
