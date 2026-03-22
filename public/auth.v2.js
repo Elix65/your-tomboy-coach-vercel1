@@ -291,70 +291,25 @@ function setupPublicArrivalFlow() {
   const arrivalNextBtn = document.getElementById('btn-arrival-next');
   const arrivalContinueBtn = document.getElementById('btn-arrival-continue');
   const arrivalNameDisplay = document.getElementById('arrival-name-display');
-  const arrivalIntentionForm = document.getElementById('arrival-intention-form');
-  const arrivalRequestForm = document.getElementById('arrival-request-form');
+  const arrivalCheckoutForm = document.getElementById('arrival-direct-checkout-form');
   const arrivalEmailInput = document.getElementById('arrival-email');
-  const desiredExperienceInput = document.getElementById('arrival-desired-experience');
-  const desiredMomentsInput = document.getElementById('arrival-desired-moments');
-  const optionalNoteInput = document.getElementById('arrival-optional-note');
-  const arrivalSubmitBtn = document.getElementById('btn-arrival-save');
-  const arrivalWaitName = document.getElementById('arrival-wait-name');
-  const arrivalWaitEmail = document.getElementById('arrival-wait-email');
   const arrivalInviteLinks = Array.from(document.querySelectorAll('[data-private-door-link]'));
 
   const RITUAL_LINES_BY_STEP = {
     '1': 'Tu llegada empieza ahora.',
-    '2': 'Yumiko ya sabe cómo llamarte.',
-    '3': 'Tu intención ya quedó en el umbral.',
-    '4': 'Un último gesto, si querés.',
-    '5': 'La espera también forma parte del umbral.'
+    '2': 'Tu acceso se abre desde tu email.'
   };
 
-  function validateArrivalName(rawName) {
-    const name = String(rawName || '').trim();
-    if (!name) {
-      return 'Decime tu nombre para que Yumiko pueda recibirte.';
-    }
-    if (name.length < 2) {
-      return 'Usá al menos 2 caracteres para tu nombre.';
-    }
-    if (name.length > 24) {
-      return 'Tu nombre puede tener hasta 24 caracteres.';
-    }
-    return null;
-  }
 
   function updateArrivalWelcomeName() {
     const storedName = (window.sessionStorage.getItem('yumiko_arrival_name') || '').trim();
-    if (!storedName) {
-      void setOnboardingStep(1, RITUAL_LINES_BY_STEP);
-      arrivalNameInput?.focus();
-      return false;
-    }
-
     if (arrivalNameDisplay) {
-      arrivalNameDisplay.textContent = storedName;
+      arrivalNameDisplay.textContent = storedName || 'vos';
     }
-
-    if (arrivalWaitName) {
-      arrivalWaitName.textContent = storedName;
-    }
-
     return true;
   }
 
-  function populateWaitStep() {
-    const storedName = (window.sessionStorage.getItem('yumiko_arrival_name') || '').trim();
-    const storedEmail = normalizeEmail(window.sessionStorage.getItem('yumiko_arrival_email') || '');
-
-    if (arrivalWaitName) {
-      arrivalWaitName.textContent = storedName || 'tu llegada';
-    }
-
-    if (arrivalWaitEmail) {
-      arrivalWaitEmail.textContent = storedEmail || 'tu email reservado';
-    }
-
+  function syncPrivateDoorLinks() {
     if (arrivalInviteLinks.length) {
       const inviteUrl = new URL('/invitation.html', window.location.origin);
       const safeReturnTo = getSafeReturnTo();
@@ -367,117 +322,63 @@ function setupPublicArrivalFlow() {
   }
 
   function submitArrivalStepOne() {
-    const rawName = arrivalNameInput?.value || '';
-    const validationError = validateArrivalName(rawName);
-
-    if (validationError) {
-      showAuthMessage(validationError);
-      arrivalNameInput?.focus();
-      return;
-    }
-
     clearAuthMessage();
-    const normalizedName = rawName.trim();
-    window.sessionStorage.setItem('yumiko_arrival_name', normalizedName);
+    const normalizedName = String(arrivalNameInput?.value || '').trim();
+    if (normalizedName) {
+      window.sessionStorage.setItem('yumiko_arrival_name', normalizedName.slice(0, 24));
+    } else {
+      window.sessionStorage.removeItem('yumiko_arrival_name');
+    }
     void setOnboardingStep(2, RITUAL_LINES_BY_STEP);
   }
 
-  function submitArrivalStepTwo() {
-    clearAuthMessage();
-    void setOnboardingStep(3, RITUAL_LINES_BY_STEP);
-  }
-
-  function validateArrivalIntentionPayload({ email, desiredExperience, desiredMoments }) {
+  function validateArrivalCheckoutEmail(email) {
     if (!email) {
-      return 'Dejanos tu email para poder escribirte si tu llegada es aprobada.';
+      return 'Dejanos tu email para poder abrir tu acceso ahora.';
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return 'Revisemos ese email y volvamos a intentarlo.';
     }
 
-    if (!desiredExperience) {
-      return 'Contame qué te gustaría encontrar en Yumiko.';
-    }
-
-    if (!desiredMoments) {
-      return 'Contame en qué momentos te gustaría sentir su presencia.';
-    }
-
     return null;
   }
 
-  function submitArrivalStepThree() {
+  async function submitArrivalCheckout() {
     const email = normalizeEmail(arrivalEmailInput?.value || '');
-    const desiredExperience = String(desiredExperienceInput?.value || '').trim();
-    const desiredMoments = String(desiredMomentsInput?.value || '').trim();
-    const validationError = validateArrivalIntentionPayload({
-      email,
-      desiredExperience,
-      desiredMoments
-    });
+    const validationError = validateArrivalCheckoutEmail(email);
 
     if (validationError) {
       showAuthMessage(validationError);
-      if (!email) {
-        arrivalEmailInput?.focus();
-      } else if (!desiredExperience) {
-        desiredExperienceInput?.focus();
-      } else {
-        desiredMomentsInput?.focus();
-      }
+      arrivalEmailInput?.focus();
       return;
     }
 
     clearAuthMessage();
-    window.sessionStorage.setItem('yumiko_arrival_email', email);
-    void setOnboardingStep(4, RITUAL_LINES_BY_STEP);
-  }
-
-  async function submitArrivalStepFour() {
-    const name = (window.sessionStorage.getItem('yumiko_arrival_name') || '').trim();
-    const email = normalizeEmail(arrivalEmailInput?.value || window.sessionStorage.getItem('yumiko_arrival_email') || '');
-    const desiredExperience = String(desiredExperienceInput?.value || '').trim();
-    const desiredMoments = String(desiredMomentsInput?.value || '').trim();
-    const optionalNote = String(optionalNoteInput?.value || '').trim();
-
-    const validationError = validateArrivalIntentionPayload({
-      email,
-      desiredExperience,
-      desiredMoments
-    });
-
-    if (validationError) {
-      showAuthMessage(validationError);
-      void setOnboardingStep(3, RITUAL_LINES_BY_STEP);
-      return;
-    }
-
-    clearAuthMessage();
-    if (arrivalSubmitBtn) {
-      arrivalSubmitBtn.disabled = true;
+    if (arrivalContinueBtn) {
+      arrivalContinueBtn.disabled = true;
     }
 
     try {
-      await postJson('/api/arrival/request', {
-        name,
+      const data = await postJson('/api/arrival/request', {
         email,
-        desired_experience: desiredExperience,
-        desired_moments: desiredMoments,
-        optional_note: optionalNote
+        source: 'public_direct_checkout'
       });
 
       window.sessionStorage.setItem('yumiko_arrival_email', email);
-      populateWaitStep();
-      await setOnboardingStep(5, RITUAL_LINES_BY_STEP);
-      showAuthMessage('Tu solicitud ya quedó resguardada.', 'success');
+      const paymentUrl = String(data?.payment_url || '').trim();
+      if (!paymentUrl) {
+        throw new Error('missing_payment_url');
+      }
+
+      window.location.replace(paymentUrl);
     } catch (error) {
-      console.error('Arrival request error:', error?.payload || error?.message || error);
-      const fallbackMessage = 'Uhm… algo interrumpió tu llegada. Intentemos de nuevo en un momento.';
+      console.error('Arrival checkout error:', error?.payload || error?.message || error);
+      const fallbackMessage = 'Uhm… algo interrumpió tu acceso. Intentemos de nuevo en un momento.';
       showAuthMessage(error?.payload?.error_description || error?.payload?.error || fallbackMessage);
     } finally {
-      if (arrivalSubmitBtn) {
-        arrivalSubmitBtn.disabled = false;
+      if (arrivalContinueBtn) {
+        arrivalContinueBtn.disabled = false;
       }
     }
   }
@@ -485,7 +386,7 @@ function setupPublicArrivalFlow() {
   loginContainer.dataset.step = '1';
   syncOnboardingStepVisibility('1');
   void syncRitualLine('1', RITUAL_LINES_BY_STEP);
-  populateWaitStep();
+  syncPrivateDoorLinks();
 
   if (arrivalNameInput && arrivalNextBtn) {
     arrivalNextBtn.onclick = submitArrivalStepOne;
@@ -498,68 +399,17 @@ function setupPublicArrivalFlow() {
     });
   }
 
-  if (arrivalContinueBtn) {
-    arrivalContinueBtn.onclick = submitArrivalStepTwo;
-
-    const onboardingStepTwo = loginContainer.querySelector('[data-onboarding-step="2"]');
-    onboardingStepTwo?.addEventListener('keydown', (event) => {
-      if (event.key !== 'Enter' || event.defaultPrevented) {
-        return;
-      }
-
-      const activeElement = document.activeElement;
-      if (activeElement && !onboardingStepTwo.contains(activeElement)) {
-        return;
-      }
-
+  if (arrivalCheckoutForm) {
+    arrivalCheckoutForm.addEventListener('submit', async (event) => {
       event.preventDefault();
-      submitArrivalStepTwo();
-    });
-  }
-
-  if (arrivalIntentionForm) {
-    arrivalIntentionForm.addEventListener('submit', (event) => {
-      event.preventDefault();
-      submitArrivalStepThree();
-    });
-  }
-
-  if (arrivalRequestForm) {
-    arrivalRequestForm.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      await submitArrivalStepFour();
+      await submitArrivalCheckout();
     });
   }
 
   const observer = new MutationObserver(() => {
-    const currentStep = loginContainer.dataset.step;
-
-    if (currentStep === '2') {
-      if (updateArrivalWelcomeName()) {
-        arrivalContinueBtn?.focus();
-      }
-      return;
-    }
-
-    if (currentStep === '3') {
-      if (!updateArrivalWelcomeName()) {
-        return;
-      }
+    if (loginContainer.dataset.step === '2') {
+      updateArrivalWelcomeName();
       arrivalEmailInput?.focus();
-      return;
-    }
-
-    if (currentStep === '4') {
-      if (!updateArrivalWelcomeName()) {
-        return;
-      }
-      optionalNoteInput?.focus();
-      return;
-    }
-
-    if (currentStep === '5') {
-      populateWaitStep();
-      document.getElementById('arrival-invite-link')?.focus();
     }
   });
 

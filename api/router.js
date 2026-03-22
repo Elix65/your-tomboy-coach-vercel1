@@ -29,6 +29,9 @@ const OVERLAY_REFRESH_TTL_SECONDS = 30 * 24 * 60 * 60;
 const OVERLAY_NUDGE_INTERVAL_OPTIONS = [1, 2, 5, 10, 20];
 const ARRIVAL_ADMIN_SELECT = '*';
 const ARRIVAL_ADMIN_MUTABLE_STATUSES = ['approved', 'invited', 'account_enabled'];
+const DIRECT_CHECKOUT_SOURCE = 'public_direct_checkout';
+const DIRECT_CHECKOUT_MP_URL = 'https://mpago.li/2knhqJD';
+const DIRECT_CHECKOUT_PAYPAL_URL = 'https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=4QRV84VRFED6L';
 
 function getArrivalAdminUserIds() {
   const configured = String(process.env.ARRIVAL_ADMIN_UIDS || process.env.ARRIVAL_ADMIN_UID || '')
@@ -2422,6 +2425,66 @@ async function overlayNudgeHandler(req, res) {
 }
 
 
+function normalizeCountryCode(value) {
+  const code = String(value || '').trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(code)) return null;
+  if (['XX', 'ZZ', 'T1'].includes(code)) return null;
+  return code;
+}
+
+function resolveRequestCountryCode(req) {
+  const candidates = [
+    req.headers['x-vercel-ip-country'],
+    req.headers['cf-ipcountry'],
+    req.headers['cloudfront-viewer-country'],
+    req.headers['x-country-code'],
+    req.headers['x-country']
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeCountryCode(candidate);
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return null;
+}
+
+function resolveDirectCheckoutTarget(req) {
+  const countryCode = resolveRequestCountryCode(req);
+  const paymentProvider = countryCode === 'AR' ? 'mercadopago' : 'paypal';
+  const paymentUrl = paymentProvider === 'mercadopago' ? DIRECT_CHECKOUT_MP_URL : DIRECT_CHECKOUT_PAYPAL_URL;
+
+  return {
+    countryCode,
+    paymentProvider,
+    paymentUrl
+  };
+}
+
+async function saveDirectCheckoutLead(supabaseAdmin, { email, countryCode, paymentProvider, paymentUrl }) {
+  const payload = {
+    email,
+    country_code: countryCode,
+    payment_provider: paymentProvider,
+    payment_url: paymentUrl,
+    source: DIRECT_CHECKOUT_SOURCE
+  };
+
+  const { data, error } = await supabaseAdmin
+    .from('checkout_leads')
+    .upsert(payload, { onConflict: 'email' })
+    .select('email,country_code,payment_provider,payment_url,source,created_at,updated_at')
+    .single();
+
+  if (error) {
+    throw new Error(error.message || 'Error saving checkout lead.');
+  }
+
+  return data;
+}
+
 function sanitizeArrivalRequest(row) {
   if (!row) return null;
   return {
@@ -2522,8 +2585,32 @@ async function arrivalRequestHandler(req, res) {
   }
 
   try {
+    const source = String(req.body?.source || '').trim();
     const name = String(req.body?.name || '').trim().slice(0, 24);
     const email = normalizeArrivalEmail(req.body?.email || '');
+
+    if (source === DIRECT_CHECKOUT_SOURCE) {
+      if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+        return res.status(400).json({ error: 'invalid_email', error_description: 'Necesito un email válido para abrir tu acceso.' });
+      }
+
+      const { countryCode, paymentProvider, paymentUrl } = resolveDirectCheckoutTarget(req);
+      await saveDirectCheckoutLead(supabaseAdmin, {
+        email,
+        countryCode,
+        paymentProvider,
+        paymentUrl
+      });
+
+      return res.status(200).json({
+        ok: true,
+        email,
+        country_code: countryCode,
+        payment_provider: paymentProvider,
+        payment_url: paymentUrl
+      });
+    }
+
     const desiredExperience = String(req.body?.desired_experience || '').trim().slice(0, 280);
     const desiredMoments = String(req.body?.desired_moments || '').trim().slice(0, 280);
     const optionalNote = normalizeOptionalText(req.body?.optional_note, 420);

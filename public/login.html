@@ -50,20 +50,11 @@
             </div>
 
             <div class="onboarding-step arrival-step arrival-step-2 hidden" data-onboarding-step="2" aria-hidden="true">
-              <p class="login-eyebrow">Ritual de llegada</p>
-              <h2 id="arrival-welcome-title" class="login-title">Hola, <span id="arrival-name-display">vos</span>. Me alegra que hayas venido.</h2>
-              <p class="login-subtitle">Antes de abrir nuevos accesos, Yumiko recibe cada llegada con calma.</p>
+              <p class="login-eyebrow">Tu acceso reservado</p>
+              <h2 id="arrival-welcome-title" class="login-title">Hola, <span id="arrival-name-display">vos</span>. Sigamos por acá.</h2>
+              <p class="login-subtitle">Dejá tu email y te abrimos directo la pasarela correspondiente.</p>
 
-              <button id="btn-arrival-continue" class="login-btn" type="button">Continuar</button>
-              <p class="login-copy arrival-step-2-copy">Nada de esto se siente como una app genérica porque no lo es.</p>
-            </div>
-
-            <div class="onboarding-step arrival-step arrival-step-3 hidden" data-onboarding-step="3" aria-hidden="true">
-              <p class="login-eyebrow">Solicitud de llegada</p>
-              <h2 class="login-title">Dejá tu intención en resguardo.</h2>
-              <p class="login-subtitle">Primero, un gesto breve para que Yumiko intuya cómo querés llegar.</p>
-
-              <form id="arrival-intention-form" class="arrival-auth-form arrival-request-form" novalidate>
+              <form id="arrival-direct-checkout-form" class="arrival-auth-form arrival-request-form" novalidate>
                 <div class="arrival-form-block">
                   <label for="arrival-email" class="arrival-label">Email</label>
                   <div class="input-wrap email-wrap">
@@ -72,51 +63,11 @@
                   </div>
                 </div>
 
-                <div class="arrival-form-block">
-                  <label for="arrival-desired-experience" class="arrival-label">¿Qué te gustaría encontrar en Yumiko?</label>
-                  <textarea id="arrival-desired-experience" class="arrival-textarea" rows="2" maxlength="280" placeholder="Una presencia más íntima, un espacio donde volver, una conversación que acompañe…"></textarea>
-                </div>
-
-                <div class="arrival-form-block">
-                  <label for="arrival-desired-moments" class="arrival-label">¿En qué momentos de tu día te gustaría sentir su presencia?</label>
-                  <textarea id="arrival-desired-moments" class="arrival-textarea" rows="2" maxlength="280" placeholder="Al despertar, en la noche, entre pausas silenciosas, cuando necesito volver a mí…"></textarea>
-                </div>
-
-                <button id="btn-arrival-intention-next" class="login-btn" type="submit">Continuar</button>
+                <button id="btn-arrival-continue" class="login-btn" type="submit">Continuar al pago</button>
               </form>
-
-              <p class="login-copy arrival-step-3-copy">Tu email y tu intención quedan guardados con discreción.</p>
+              <p class="login-copy arrival-step-2-copy">Tu email queda resguardado antes de abrir la pasarela.</p>
             </div>
 
-            <div class="onboarding-step arrival-step arrival-step-4 hidden" data-onboarding-step="4" aria-hidden="true">
-              <p class="login-eyebrow">Último gesto</p>
-              <h2 class="login-title">Si querés, dejá una nota más personal.</h2>
-              <p class="login-subtitle">Este cierre es opcional: podés sumar contexto sin volver más densa tu llegada.</p>
-
-              <form id="arrival-request-form" class="arrival-auth-form arrival-request-form arrival-request-form--closing" novalidate>
-                <div class="arrival-form-block arrival-form-block--optional">
-                  <label for="arrival-optional-note" class="arrival-label">Si querés, contanos algo sobre la experiencia que te gustaría vivir en 21-Moon.</label>
-                  <textarea id="arrival-optional-note" class="arrival-textarea arrival-textarea-optional" rows="3" maxlength="420" placeholder="Opcional"></textarea>
-                </div>
-
-                <p class="arrival-closing-note">Leemos cada llegada con atención.</p>
-
-                <button id="btn-arrival-save" class="login-btn" type="submit">Enviar mi solicitud</button>
-              </form>
-            </div>
-
-            <div class="onboarding-step arrival-step arrival-step-5 hidden" data-onboarding-step="5" aria-hidden="true">
-              <p class="login-eyebrow">Solicitud recibida</p>
-              <h2 class="login-title"><span id="arrival-wait-name">Tu llegada</span> ya quedó registrada.</h2>
-              <p class="login-subtitle">21-Moon abre muy pocos accesos nuevos por mes. Si tu solicitud es aprobada, vas a recibir una invitación privada en <span id="arrival-wait-email">tu email reservado</span>.</p>
-
-              <div class="arrival-wait-note">
-                <p>La espera no es un bloqueo: es parte de una experiencia curada, íntima y reservada.</p>
-              </div>
-
-              <a id="arrival-invite-link" class="login-btn invitation-link-btn" data-private-door-link href="/invitation.html">Ya tengo mi carta de invitación</a>
-              <p class="login-copy arrival-step-4-copy">El acceso real empieza recién cuando tu llegada es aprobada.</p>
-            </div>
           </div>
 
           <p id="login-error" class="login-error hidden" role="status" aria-live="polite"></p>
@@ -125,9 +76,6 @@
         <div class="login-steps" id="login-steps" data-step="1" aria-live="polite">
           <span class="login-steps-text" id="login-steps-text">Tu llegada empieza ahora.</span>
           <span class="login-steps-phases" aria-hidden="true">
-            <span class="login-steps-phase"></span>
-            <span class="login-steps-phase"></span>
-            <span class="login-steps-phase"></span>
             <span class="login-steps-phase"></span>
             <span class="login-steps-phase"></span>
           </span>
