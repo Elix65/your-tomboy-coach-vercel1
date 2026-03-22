@@ -3688,20 +3688,25 @@ async function arrivalAdminRescueDetailHandler(req, res) {
     return res.status(clientError?.statusCode || 500).json({ error: clientError?.message || 'Supabase admin init failed.' });
   }
 
+  const requestUrl = getRequestUrl(req);
+  const email = normalizeArrivalEmail(req.query?.email || requestUrl.searchParams.get('email') || '');
+  let phase = 'require_arrival_admin_access';
+  let checkoutLead = null;
+
   try {
     await requireArrivalAdminAccess(supabaseAdmin, req);
-    const requestUrl = getRequestUrl(req);
-    const email = normalizeArrivalEmail(req.query?.email || requestUrl.searchParams.get('email') || '');
 
     if (!email) {
       return res.status(400).json({ error: 'missing_checkout_email' });
     }
 
-    const checkoutLead = await findCheckoutLeadByEmail(supabaseAdmin, email);
+    phase = 'find_checkout_lead_by_email';
+    checkoutLead = await findCheckoutLeadByEmail(supabaseAdmin, email);
     if (!checkoutLead) {
       return res.status(404).json({ error: 'checkout_lead_not_found' });
     }
 
+    phase = 'build_arrival_admin_rescue_payload';
     const rescue = await buildArrivalAdminRescuePayload(supabaseAdmin, req, checkoutLead);
     return res.status(200).json({ ok: true, rescue });
   } catch (error) {
@@ -3718,7 +3723,27 @@ async function arrivalAdminRescueDetailHandler(req, res) {
     }
 
     console.error('arrival-admin-rescue-detail fatal:', {
-      email: normalizeArrivalEmail(req.query?.email || getRequestUrl(req).searchParams.get('email') || ''),
+      phase,
+      email,
+      checkout_lead_found: Boolean(checkoutLead),
+      checkout_lead_snapshot: checkoutLead
+        ? {
+            email: checkoutLead.email || null,
+            payment_status: checkoutLead.payment_status || null,
+            payment_reference: checkoutLead.payment_reference || null,
+            payment_confirmed_at: checkoutLead.payment_confirmed_at || null,
+            manually_verified_at: checkoutLead.manually_verified_at || null,
+            manually_verified_by: checkoutLead.manually_verified_by || null,
+            rescue_link_generated_at: checkoutLead.rescue_link_generated_at || null,
+            activated_at: checkoutLead.activated_at || null,
+            auth_user_id: checkoutLead.auth_user_id || null
+          }
+        : null,
+      expected_checkout_leads_columns: CHECKOUT_LEADS_SELECT_COLUMNS,
+      expected_activation_tokens_columns: Array.from(new Set([
+        ...ACTIVATION_TOKENS_RESCUE_SELECT_COLUMNS,
+        ...ACTIVATION_TOKENS_WRITE_COLUMNS
+      ])).sort(),
       ...serializeErrorDetails(error),
       schema: schemaSnapshot
     });
