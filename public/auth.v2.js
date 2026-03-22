@@ -167,6 +167,18 @@ const STEP_TRANSITION_MS = 260;
 const RITUAL_TEXT_TRANSITION_MS = 200;
 let isStepTransitioning = false;
 
+function syncLoginPageStepState(step) {
+  const targetStep = String(step || '');
+
+  if (loginContainer) {
+    loginContainer.dataset.step = targetStep;
+  }
+
+  if (document.body?.classList.contains('login-page')) {
+    document.body.dataset.loginStep = targetStep;
+  }
+}
+
 function sleep(ms) {
   return new Promise((resolve) => {
     window.setTimeout(resolve, ms);
@@ -179,6 +191,7 @@ function syncOnboardingStepVisibility(activeStep) {
   }
 
   const targetStep = String(activeStep);
+  syncLoginPageStepState(targetStep);
   const onboardingSteps = loginContainer.querySelectorAll('[data-onboarding-step]');
 
   onboardingSteps.forEach((stepNode) => {
@@ -260,7 +273,7 @@ async function setOnboardingStep(step, ritualLinesByStep) {
       currentStepNode.classList.remove('step-exit');
     }
 
-    loginContainer.dataset.step = targetStep;
+    syncLoginPageStepState(targetStep);
     await syncRitualLine(targetStep, ritualLinesByStep);
     syncOnboardingStepVisibility(targetStep);
 
@@ -891,7 +904,7 @@ function setupPublicArrivalFlow() {
     }
   }
 
-  loginContainer.dataset.step = '1';
+  syncLoginPageStepState('1');
   syncOnboardingStepVisibility('1');
   void syncRitualLine('1', RITUAL_LINES_BY_STEP);
   syncPrivateDoorLinks();
