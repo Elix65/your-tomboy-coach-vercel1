@@ -291,6 +291,11 @@ function setupPublicArrivalFlow() {
   const arrivalNextBtn = document.getElementById('btn-arrival-next');
   const arrivalAdmissionForm = document.getElementById('arrival-admission-form');
   const arrivalAdmissionNextBtn = document.getElementById('btn-arrival-admission-next');
+  const arrivalChatLog = document.getElementById('arrival-chat-log');
+  const arrivalChatQuickReplies = document.getElementById('arrival-chat-quick-replies');
+  const arrivalChatInput = document.getElementById('arrival-chat-input');
+  const arrivalChatTyping = document.getElementById('arrival-chat-typing');
+  const arrivalChatStatus = document.getElementById('arrival-chat-status');
   const arrivalContinueBtn = document.getElementById('btn-arrival-continue');
   const arrivalAdmissionNameDisplay = document.getElementById('arrival-admission-name-display');
   const arrivalNameDisplay = document.getElementById('arrival-name-display');
@@ -315,7 +320,47 @@ function setupPublicArrivalFlow() {
     mercadopago: 'Mercado Pago',
     paypal: 'PayPal'
   };
-  const ARRIVAL_ADMISSION_FIELDS = ['intent', 'tone', 'pace'];
+  const ARRIVAL_CHAT_STATE_KEY = 'yumiko_arrival_chat_state';
+  const ARRIVAL_CHAT_TRANSCRIPT_KEY = 'yumiko_arrival_chat_transcript';
+  const ARRIVAL_CHAT_RESULT_KEY = 'yumiko_arrival_fit_result';
+  const ARRIVAL_CHAT_QUESTIONS = [
+    {
+      id: 'intent',
+      prompt: (name) => `Hola, ${name || 'vos'}. Antes de abrir la siguiente puerta, decime qué te gustaría encontrar acá.`,
+      quickReplies: [
+        { value: 'presence', label: 'Presencia, calma y compañía', score: 3, reply: 'Entonces no viniste a mirar desde lejos. Bien.' },
+        { value: 'continuity', label: 'Un vínculo más constante', score: 3, reply: 'La continuidad cambia mucho la forma en la que se siente entrar.' },
+        { value: 'curiosity', label: 'Solo quiero ver qué onda', score: -2, reply: 'Puedo mostrarte algo breve, aunque no todo se abre desde la curiosidad sola.' }
+      ],
+      allowsInput: true
+    },
+    {
+      id: 'reception',
+      prompt: () => '¿Y cómo te gustaría ser recibido por mí cuando entres?',
+      quickReplies: [
+        { value: 'warm', label: 'Con calidez y suavidad', score: 2, reply: 'Entiendo. Eso pide presencia, no apuro.' },
+        { value: 'close', label: 'Con cercanía y complicidad', score: 2, reply: 'Bien. La complicidad necesita un tono cuidado.' },
+        { value: 'light', label: 'Sin tanta profundidad', score: -1, reply: 'Puedo ser liviana, pero esta puerta está pensada para algo más sostenido.' }
+      ],
+      allowsInput: false
+    },
+    {
+      id: 'premium',
+      prompt: () => 'Última cosa: ¿valorás una experiencia íntima, constante y premium, o buscás algo más casual?',
+      quickReplies: [
+        { value: 'premium_yes', label: 'Sí, eso es lo que busco', score: 3, reply: 'Entonces ya estamos hablando el mismo idioma.' },
+        { value: 'premium_maybe', label: 'Sí, si se siente real', score: 2, reply: 'Perfecto. Lo real también se cuida.' },
+        { value: 'premium_no', label: 'Prefiero algo casual', score: -3, reply: 'Gracias por decirlo directo.' }
+      ],
+      allowsInput: false
+    }
+  ];
+  const ARRIVAL_FIT_KEYWORDS = ['compañ', 'compan', 'presencia', 'calma', 'íntim', 'intim', 'vínculo', 'vinculo', 'continu', 'constan', 'cercan', 'acompañ', 'acompan', 'premium', 'curad', 'real'];
+  const ARRIVAL_NO_FIT_KEYWORDS = ['solo ver', 'solo mirar', 'por que si', 'porque si', 'aburr', 'meme', 'probar', 'casual', 'random', 'nada', 'da igual'];
+
+  let arrivalChatState = null;
+  let arrivalChatTimers = [];
+  let arrivalChatBootstrapped = false;
 
   function updateArrivalWelcomeName() {
     const storedName = (window.sessionStorage.getItem('yumiko_arrival_name') || '').trim();
@@ -326,6 +371,10 @@ function setupPublicArrivalFlow() {
       arrivalNameDisplay.textContent = storedName || 'vos';
     }
     return true;
+  }
+
+  function getArrivalName() {
+    return (window.sessionStorage.getItem('yumiko_arrival_name') || '').trim() || 'vos';
   }
 
   function syncPrivateDoorLinks() {
@@ -348,66 +397,397 @@ function setupPublicArrivalFlow() {
     } else {
       window.sessionStorage.removeItem('yumiko_arrival_name');
     }
+    resetArrivalChatState();
     updateArrivalWelcomeName();
     void setOnboardingStep(2, RITUAL_LINES_BY_STEP);
   }
 
-  function getAdmissionSelections() {
-    return ARRIVAL_ADMISSION_FIELDS.reduce((acc, field) => {
-      acc[field] = String(window.sessionStorage.getItem(`yumiko_arrival_${field}`) || '').trim();
-      return acc;
-    }, {});
+  function clearArrivalChatTimers() {
+    arrivalChatTimers.forEach((timerId) => window.clearTimeout(timerId));
+    arrivalChatTimers = [];
   }
 
-  function syncAdmissionChoiceState() {
-    const selections = getAdmissionSelections();
-    const chips = Array.from(loginContainer.querySelectorAll('[data-admission-field][data-admission-value]'));
+  function scheduleArrivalChat(callback, delay) {
+    const timerId = window.setTimeout(() => {
+      arrivalChatTimers = arrivalChatTimers.filter((entry) => entry !== timerId);
+      callback();
+    }, delay);
+    arrivalChatTimers.push(timerId);
+  }
 
-    chips.forEach((chip) => {
-      const field = chip.dataset.admissionField;
-      const value = chip.dataset.admissionValue;
-      const selected = selections[field] === value;
-      chip.classList.toggle('is-selected', selected);
-      chip.setAttribute('aria-pressed', String(selected));
+  function getDefaultArrivalChatState() {
+    return {
+      phase: 'intro',
+      currentQuestionIndex: -1,
+      answers: {},
+      fitScore: 0,
+      strongNoFit: false,
+      completed: false,
+      result: null
+    };
+  }
+
+  function saveArrivalChatState() {
+    window.sessionStorage.setItem(ARRIVAL_CHAT_STATE_KEY, JSON.stringify(arrivalChatState || getDefaultArrivalChatState()));
+    window.sessionStorage.setItem(ARRIVAL_CHAT_TRANSCRIPT_KEY, arrivalChatLog?.innerHTML || '');
+    if (arrivalChatState?.result) {
+      window.sessionStorage.setItem(ARRIVAL_CHAT_RESULT_KEY, arrivalChatState.result);
+    } else {
+      window.sessionStorage.removeItem(ARRIVAL_CHAT_RESULT_KEY);
+    }
+  }
+
+  function loadArrivalChatState() {
+    try {
+      const rawState = window.sessionStorage.getItem(ARRIVAL_CHAT_STATE_KEY);
+      if (!rawState) {
+        return getDefaultArrivalChatState();
+      }
+
+      return {
+        ...getDefaultArrivalChatState(),
+        ...JSON.parse(rawState)
+      };
+    } catch (error) {
+      return getDefaultArrivalChatState();
+    }
+  }
+
+  function pushArrivalMessage(role, content, meta = {}) {
+    if (!arrivalChatLog) {
+      return;
+    }
+
+    const bubble = document.createElement('div');
+    bubble.className = `arrival-chat-message arrival-chat-message--${role}`;
+    if (meta.isClosure) {
+      bubble.classList.add('arrival-chat-message--closure');
+    }
+
+    const bubbleInner = document.createElement('div');
+    bubbleInner.className = 'arrival-chat-bubble';
+    bubbleInner.textContent = content;
+    bubble.appendChild(bubbleInner);
+    arrivalChatLog.appendChild(bubble);
+    arrivalChatLog.scrollTop = arrivalChatLog.scrollHeight;
+    saveArrivalChatState();
+  }
+
+  function setArrivalChatTyping(visible) {
+    if (!arrivalChatTyping) {
+      return;
+    }
+
+    arrivalChatTyping.classList.toggle('hidden', !visible);
+    arrivalChatTyping.setAttribute('aria-hidden', String(!visible));
+  }
+
+  function updateArrivalChatStatus(text) {
+    if (arrivalChatStatus) {
+      arrivalChatStatus.textContent = text;
+    }
+  }
+
+  function setArrivalChatComposerEnabled(enabled) {
+    if (arrivalChatInput) {
+      arrivalChatInput.disabled = !enabled;
+    }
+    if (arrivalAdmissionNextBtn) {
+      arrivalAdmissionNextBtn.disabled = !enabled;
+    }
+  }
+
+  function renderArrivalQuickReplies() {
+    if (!arrivalChatQuickReplies) {
+      return;
+    }
+
+    arrivalChatQuickReplies.innerHTML = '';
+
+    if (!arrivalChatState || arrivalChatState.completed || arrivalChatState.phase !== 'question') {
+      return;
+    }
+
+    const question = ARRIVAL_CHAT_QUESTIONS[arrivalChatState.currentQuestionIndex];
+    if (!question) {
+      return;
+    }
+
+    question.quickReplies.forEach((option) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'arrival-quick-reply';
+      button.textContent = option.label;
+      button.addEventListener('click', () => {
+        void handleArrivalChatAnswer({
+          value: option.value,
+          label: option.label,
+          source: 'quick_reply'
+        });
+      });
+      arrivalChatQuickReplies.appendChild(button);
     });
   }
 
-  function selectAdmissionChoice(field, value) {
-    if (!ARRIVAL_ADMISSION_FIELDS.includes(field)) {
+  function normalizeArrivalChatText(value) {
+    return String(value || '').trim().replace(/\s+/g, ' ');
+  }
+
+  function scoreArrivalFreeText(text) {
+    const normalized = normalizeArrivalChatText(text).toLowerCase();
+    if (!normalized) {
+      return { score: -3, strongNoFit: true };
+    }
+
+    let score = normalized.length >= 18 ? 1 : 0;
+    ARRIVAL_FIT_KEYWORDS.forEach((keyword) => {
+      if (normalized.includes(keyword)) {
+        score += 1;
+      }
+    });
+    ARRIVAL_NO_FIT_KEYWORDS.forEach((keyword) => {
+      if (normalized.includes(keyword)) {
+        score -= 2;
+      }
+    });
+
+    const strongNoFit = normalized.length < 6 || ARRIVAL_NO_FIT_KEYWORDS.some((keyword) => normalized.includes(keyword));
+    return { score, strongNoFit };
+  }
+
+  function evaluateArrivalFit() {
+    if (!arrivalChatState) {
+      return 'no_fit';
+    }
+
+    if (arrivalChatState.strongNoFit) {
+      return 'no_fit';
+    }
+
+    const premiumAnswer = arrivalChatState.answers?.premium?.value;
+    if (premiumAnswer === 'premium_no') {
+      return 'no_fit';
+    }
+
+    return arrivalChatState.fitScore >= 4 ? 'fit' : 'no_fit';
+  }
+
+  async function concludeArrivalChat() {
+    const result = evaluateArrivalFit();
+    arrivalChatState.completed = true;
+    arrivalChatState.result = result;
+    saveArrivalChatState();
+    renderArrivalQuickReplies();
+    setArrivalChatComposerEnabled(false);
+    setArrivalChatTyping(true);
+    updateArrivalChatStatus('Yumiko está decidiendo');
+
+    scheduleArrivalChat(async () => {
+      setArrivalChatTyping(false);
+
+      if (result === 'fit') {
+        pushArrivalMessage('assistant', 'Entiendo. Creo que sí puedo abrirte el siguiente paso.', { isClosure: true });
+        updateArrivalChatStatus('Acceso habilitado');
+        scheduleArrivalChat(async () => {
+          pushArrivalMessage('assistant', 'Dejame resguardar tu email y seguimos.', { isClosure: true });
+          await setOnboardingStep(3, RITUAL_LINES_BY_STEP);
+        }, 900);
+        return;
+      }
+
+      pushArrivalMessage('assistant', 'Todavía no siento que esta sea la mejor puerta para vos.', { isClosure: true });
+      updateArrivalChatStatus('Puerta en pausa');
+      scheduleArrivalChat(() => {
+        pushArrivalMessage('assistant', 'Prefiero dejarlo acá, con suavidad, antes que abrir algo sin encaje real.', { isClosure: true });
+      }, 800);
+    }, 900);
+  }
+
+  function askArrivalQuestion(index) {
+    if (!arrivalChatState) {
       return;
     }
 
-    const normalizedValue = String(value || '').trim();
-    if (!normalizedValue) {
-      window.sessionStorage.removeItem(`yumiko_arrival_${field}`);
+    const question = ARRIVAL_CHAT_QUESTIONS[index];
+    if (!question) {
+      void concludeArrivalChat();
+      return;
+    }
+
+    arrivalChatState.currentQuestionIndex = index;
+    arrivalChatState.phase = 'question';
+    saveArrivalChatState();
+    renderArrivalQuickReplies();
+    setArrivalChatComposerEnabled(true);
+    setArrivalChatTyping(true);
+    updateArrivalChatStatus('Yumiko está escribiendo');
+
+    scheduleArrivalChat(() => {
+      setArrivalChatTyping(false);
+      pushArrivalMessage('assistant', question.prompt(getArrivalName()));
+      updateArrivalChatStatus('Esperando tu respuesta');
+      if (arrivalChatInput) {
+        arrivalChatInput.value = '';
+        arrivalChatInput.placeholder = question.allowsInput
+          ? 'Podés responder en una línea o tocar una opción…'
+          : 'Elegí una de las respuestas sugeridas…';
+        arrivalChatInput.disabled = !question.allowsInput;
+      }
+      renderArrivalQuickReplies();
+      const preferredTarget = question.quickReplies.length
+        ? arrivalChatQuickReplies?.querySelector('button')
+        : arrivalChatInput;
+      preferredTarget?.focus();
+    }, 700);
+  }
+
+  async function handleArrivalChatAnswer({ value = '', label = '', source = 'input' } = {}) {
+    if (!arrivalChatState || arrivalChatState.completed || arrivalChatState.phase !== 'question') {
+      return;
+    }
+
+    const question = ARRIVAL_CHAT_QUESTIONS[arrivalChatState.currentQuestionIndex];
+    if (!question) {
+      return;
+    }
+
+    const normalizedLabel = normalizeArrivalChatText(label || value);
+    if (!normalizedLabel) {
+      showAuthMessage('Dejame sentir una respuesta real antes de seguir.');
+      arrivalChatInput?.focus();
+      return;
+    }
+
+    clearAuthMessage();
+    setArrivalChatComposerEnabled(false);
+    arrivalChatState.phase = 'answer';
+    saveArrivalChatState();
+    renderArrivalQuickReplies();
+    pushArrivalMessage('user', normalizedLabel);
+
+    let scoreDelta = 0;
+    let strongNoFit = false;
+    let assistantReply = 'Entiendo.';
+
+    if (source === 'quick_reply') {
+      const selectedOption = question.quickReplies.find((option) => option.value === value || option.label === normalizedLabel);
+      scoreDelta = selectedOption?.score || 0;
+      assistantReply = selectedOption?.reply || assistantReply;
+      strongNoFit = scoreDelta <= -3;
     } else {
-      window.sessionStorage.setItem(`yumiko_arrival_${field}`, normalizedValue);
+      const freeTextScore = scoreArrivalFreeText(normalizedLabel);
+      scoreDelta = freeTextScore.score;
+      strongNoFit = freeTextScore.strongNoFit;
+      if (scoreDelta >= 2) {
+        assistantReply = 'Eso suena más cercano a la clase de vínculo que cuido acá.';
+      } else if (scoreDelta >= 0) {
+        assistantReply = 'Te sigo. Quiero sentir un poco más tu intención.';
+      } else {
+        assistantReply = 'Gracias por decírmelo así de directo.';
+      }
     }
 
-    syncAdmissionChoiceState();
-    clearAuthMessage();
+    arrivalChatState.answers[question.id] = {
+      value: normalizeArrivalChatText(value),
+      label: normalizedLabel,
+      source
+    };
+    arrivalChatState.fitScore += scoreDelta;
+    arrivalChatState.strongNoFit = Boolean(arrivalChatState.strongNoFit || strongNoFit);
+    saveArrivalChatState();
+    updateArrivalChatStatus('Yumiko está leyendo');
+    setArrivalChatTyping(true);
+
+    scheduleArrivalChat(() => {
+      setArrivalChatTyping(false);
+      pushArrivalMessage('assistant', assistantReply);
+      const nextIndex = arrivalChatState.currentQuestionIndex + 1;
+      if (nextIndex >= ARRIVAL_CHAT_QUESTIONS.length) {
+        void concludeArrivalChat();
+        return;
+      }
+
+      askArrivalQuestion(nextIndex);
+    }, 700);
   }
 
-  function validateAdmissionSelections() {
-    const selections = getAdmissionSelections();
-    const missingField = ARRIVAL_ADMISSION_FIELDS.find((field) => !selections[field]);
-
-    if (!missingField) {
-      return null;
+  function resetArrivalChatState({ preserveName = true } = {}) {
+    clearArrivalChatTimers();
+    arrivalChatState = getDefaultArrivalChatState();
+    arrivalChatBootstrapped = false;
+    if (!preserveName) {
+      window.sessionStorage.removeItem('yumiko_arrival_name');
     }
-
-    return 'Dejame sentir tu encaje con Yumiko en estas tres respuestas cortas.';
+    window.sessionStorage.removeItem(ARRIVAL_CHAT_STATE_KEY);
+    window.sessionStorage.removeItem(ARRIVAL_CHAT_TRANSCRIPT_KEY);
+    window.sessionStorage.removeItem(ARRIVAL_CHAT_RESULT_KEY);
+    ['intent', 'reception', 'premium'].forEach((field) => window.sessionStorage.removeItem(`yumiko_arrival_${field}`));
+    if (arrivalChatLog) {
+      arrivalChatLog.innerHTML = '';
+    }
+    if (arrivalChatQuickReplies) {
+      arrivalChatQuickReplies.innerHTML = '';
+    }
+    if (arrivalChatInput) {
+      arrivalChatInput.value = '';
+    }
+    setArrivalChatTyping(false);
+    updateArrivalChatStatus('Abriendo una primera impresión');
+    setArrivalChatComposerEnabled(true);
   }
 
-  async function submitArrivalAdmission() {
-    const validationError = validateAdmissionSelections();
-    if (validationError) {
-      showAuthMessage(validationError);
+  function restoreArrivalTranscript() {
+    if (!arrivalChatLog) {
       return;
     }
 
-    clearAuthMessage();
-    await setOnboardingStep(3, RITUAL_LINES_BY_STEP);
+    const rawTranscript = window.sessionStorage.getItem(ARRIVAL_CHAT_TRANSCRIPT_KEY);
+    if (rawTranscript) {
+      arrivalChatLog.innerHTML = rawTranscript;
+      arrivalChatLog.scrollTop = arrivalChatLog.scrollHeight;
+    } else {
+      arrivalChatLog.innerHTML = '';
+    }
+  }
+
+  function ensureArrivalChatStarted() {
+    if (!arrivalAdmissionForm || !arrivalChatLog) {
+      return;
+    }
+
+    clearArrivalChatTimers();
+    arrivalChatState = loadArrivalChatState();
+    restoreArrivalTranscript();
+    updateArrivalChatStatus(arrivalChatState.result === 'fit'
+      ? 'Acceso habilitado'
+      : arrivalChatState.result === 'no_fit'
+        ? 'Puerta en pausa'
+        : 'Abriendo una primera impresión');
+
+    if (arrivalChatState.completed) {
+      renderArrivalQuickReplies();
+      setArrivalChatComposerEnabled(false);
+      return;
+    }
+
+    if (!arrivalChatBootstrapped && !arrivalChatLog.innerHTML) {
+      arrivalChatState = getDefaultArrivalChatState();
+      saveArrivalChatState();
+      arrivalChatBootstrapped = true;
+      askArrivalQuestion(0);
+      return;
+    }
+
+    arrivalChatBootstrapped = true;
+    renderArrivalQuickReplies();
+    const currentQuestion = ARRIVAL_CHAT_QUESTIONS[arrivalChatState.currentQuestionIndex];
+    setArrivalChatComposerEnabled(Boolean(currentQuestion));
+    if (arrivalChatInput) {
+      arrivalChatInput.disabled = !currentQuestion?.allowsInput;
+      arrivalChatInput.placeholder = currentQuestion?.allowsInput
+        ? 'Podés responder en una línea o tocar una opción…'
+        : 'Elegí una de las respuestas sugeridas…';
+    }
   }
 
   function buildArrivalReturnUrl(provider) {
@@ -523,7 +903,8 @@ function setupPublicArrivalFlow() {
   void syncRitualLine('1', RITUAL_LINES_BY_STEP);
   syncPrivateDoorLinks();
   updateArrivalWelcomeName();
-  syncAdmissionChoiceState();
+  arrivalChatState = loadArrivalChatState();
+  restoreArrivalTranscript();
 
   if (arrivalNameInput && arrivalNextBtn) {
     arrivalNextBtn.onclick = submitArrivalStepOne;
@@ -539,15 +920,16 @@ function setupPublicArrivalFlow() {
   if (arrivalAdmissionForm) {
     arrivalAdmissionForm.addEventListener('submit', async (event) => {
       event.preventDefault();
-      await submitArrivalAdmission();
+      await handleArrivalChatAnswer({
+        value: normalizeArrivalChatText(arrivalChatInput?.value || ''),
+        label: normalizeArrivalChatText(arrivalChatInput?.value || ''),
+        source: 'input'
+      });
+      if (arrivalChatInput) {
+        arrivalChatInput.value = '';
+      }
     });
   }
-
-  loginContainer.querySelectorAll('[data-admission-field][data-admission-value]').forEach((chip) => {
-    chip.addEventListener('click', () => {
-      selectAdmissionChoice(chip.dataset.admissionField, chip.dataset.admissionValue);
-    });
-  });
 
   if (arrivalCheckoutForm) {
     arrivalCheckoutForm.addEventListener('submit', async (event) => {
@@ -559,11 +941,7 @@ function setupPublicArrivalFlow() {
   const observer = new MutationObserver(() => {
     if (loginContainer.dataset.step === '2') {
       updateArrivalWelcomeName();
-      const firstUnselectedField = ARRIVAL_ADMISSION_FIELDS.find((field) => !window.sessionStorage.getItem(`yumiko_arrival_${field}`));
-      const focusTarget = firstUnselectedField
-        ? loginContainer.querySelector(`[data-admission-field="${firstUnselectedField}"]`)
-        : arrivalAdmissionNextBtn;
-      focusTarget?.focus();
+      ensureArrivalChatStarted();
       return;
     }
 
