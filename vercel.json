@@ -26,6 +26,10 @@
       "destination": "/activate-access.html"
     },
     {
+      "source": "/arrival/rescue",
+      "destination": "/activate-access.html"
+    },
+    {
       "source": "/overlay/connect",
       "destination": "/overlay/connect/index.html"
     },
@@ -140,6 +144,18 @@
     {
       "source": "/api/arrival/admin/update",
       "destination": "/api/router?action=arrival-admin-update"
+    },
+    {
+      "source": "/api/arrival/admin/rescue-detail",
+      "destination": "/api/router?action=arrival-admin-rescue-detail"
+    },
+    {
+      "source": "/api/arrival/admin/rescue-verify",
+      "destination": "/api/router?action=arrival-admin-rescue-verify"
+    },
+    {
+      "source": "/api/arrival/admin/rescue-generate",
+      "destination": "/api/router?action=arrival-admin-rescue-generate"
     }
   ]
 }

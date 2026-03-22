@@ -634,3 +634,38 @@
     animation: none !important;
   }
 }
+
+.arrival-admin-rescue-card {
+  margin-bottom: 18px;
+}
+
+.arrival-admin-rescue-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-top: 14px;
+}
+
+.arrival-admin-rescue-empty {
+  min-height: 0;
+  margin-top: 16px;
+}
+
+.arrival-admin-rescue-detail {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.arrival-admin-status-block {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
+@media (max-width: 720px) {
+  .arrival-admin-rescue-search {
+    grid-template-columns: 1fr;
+  }
+}

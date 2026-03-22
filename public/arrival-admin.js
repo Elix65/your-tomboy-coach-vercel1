@@ -26,6 +26,30 @@ const sessionPillEl = document.getElementById('arrival-admin-session-pill');
 const tokenFeedbackEl = document.getElementById('arrival-admin-token-feedback');
 const noteFeedbackEl = document.getElementById('arrival-admin-note-feedback');
 const statusFeedbackEl = document.getElementById('arrival-admin-status-feedback');
+const rescueSearchInputEl = document.getElementById('arrival-admin-rescue-email');
+const rescueSearchBtn = document.getElementById('arrival-admin-rescue-search-btn');
+const rescueEmptyEl = document.getElementById('arrival-admin-rescue-empty');
+const rescueDetailEl = document.getElementById('arrival-admin-rescue-detail');
+const rescueEmailTitleEl = document.getElementById('rescue-email-title');
+const rescueAccountCopyEl = document.getElementById('rescue-account-copy');
+const rescuePaymentStatusEl = document.getElementById('rescue-payment-status');
+const rescueEligibilityEl = document.getElementById('rescue-eligibility');
+const rescuePaymentReferenceEl = document.getElementById('rescue-payment-reference');
+const rescueProviderEl = document.getElementById('rescue-provider');
+const rescuePaymentConfirmedAtEl = document.getElementById('rescue-payment-confirmed-at');
+const rescueManuallyVerifiedAtEl = document.getElementById('rescue-manually-verified-at');
+const rescueManuallyVerifiedByEl = document.getElementById('rescue-manually-verified-by');
+const rescueLinkGeneratedAtEl = document.getElementById('rescue-link-generated-at');
+const rescueAuthUserIdEl = document.getElementById('rescue-auth-user-id');
+const rescueActivationModeEl = document.getElementById('rescue-activation-mode');
+const rescueActivatedAtEl = document.getElementById('rescue-activated-at');
+const rescueArrivalStatusEl = document.getElementById('rescue-arrival-status');
+const rescueActiveTokenEl = document.getElementById('rescue-active-token');
+const rescueNoteInputEl = document.getElementById('arrival-admin-rescue-note');
+const rescueFeedbackEl = document.getElementById('arrival-admin-rescue-feedback');
+const markPaidBtn = document.getElementById('arrival-admin-mark-paid-btn');
+const generateRescueBtn = document.getElementById('arrival-admin-generate-rescue-btn');
+const copyRescueBtn = document.getElementById('arrival-admin-copy-rescue-btn');
 
 const detailNameEl = document.getElementById('detail-name');
 const detailEmailEl = document.getElementById('detail-email');
@@ -60,7 +84,10 @@ const state = {
   listAbortController: null,
   feedbackTimer: null,
   inlineFeedbackTimers: new WeakMap(),
-  buttonTimers: new WeakMap()
+  buttonTimers: new WeakMap(),
+  rescueEmail: '',
+  rescueData: null,
+  generatedRescueLink: ''
 };
 
 function showGate({ title, copy, error, showLogin = false, showRetry = false, tone = 'idle' }) {
@@ -233,6 +260,143 @@ function updateCount() {
 
 function getSelectedRequest() {
   return state.requests.find((item) => item.id === state.selectedId) || null;
+}
+
+function getRescueLead() {
+  return state.rescueData?.checkout_lead || null;
+}
+
+function getRescueNote() {
+  return rescueNoteInputEl?.value?.trim() || '';
+}
+
+function getRescueSummary(rescue) {
+  const lead = rescue?.checkout_lead;
+  const account = rescue?.account_state;
+  if (!lead) return 'Sin lead cargado';
+  if (account?.has_account) {
+    return account.activation_mode === 'reset_password'
+      ? 'Ya existe cuenta: el link abrirá un reset premium de contraseña.'
+      : 'Existe auth user asociado.';
+  }
+  return 'Todavía no hay cuenta: el link abrirá creación de contraseña.';
+}
+
+function getRescueEligibilityLabel(lead) {
+  if (!lead) return 'Sin verificar';
+  if (lead.manually_verified_at) return 'Verificado manualmente';
+  if (lead.payment_status === 'paid') return 'Pago confirmado';
+  return 'Falta verificar';
+}
+
+function getMarkPaidVisual(lead = getRescueLead()) {
+  if (!lead) return { label: 'Marcar como pagado', meta: 'Buscá un lead', disabled: true, tone: 'done' };
+  if (lead.payment_status === 'paid' && lead.manually_verified_at) {
+    return { label: 'Verificado', meta: 'Auditoría lista', disabled: true, tone: 'done' };
+  }
+  return { label: 'Marcar como pagado', meta: 'Verificación manual', disabled: false, tone: 'idle' };
+}
+
+function getGenerateRescueVisual(lead = getRescueLead()) {
+  if (!lead) return { label: 'Generar link de acceso', meta: 'Buscá un lead', disabled: true, tone: 'done' };
+  if (!lead.rescue_eligible) return { label: 'Generar link de acceso', meta: 'Primero verificá', disabled: true, tone: 'done' };
+  return { label: 'Generar link de acceso', meta: 'Single-use + expira', disabled: false, tone: 'idle' };
+}
+
+function getCopyRescueVisual() {
+  if (!state.generatedRescueLink) return { label: 'Copiar link', meta: 'Generá uno nuevo', disabled: true, tone: 'done' };
+  return { label: 'Copiar link', meta: 'Enviar manualmente', disabled: false, tone: 'idle' };
+}
+
+function renderRescueActionStates() {
+  setButtonVisual(markPaidBtn, getMarkPaidVisual());
+  setButtonVisual(generateRescueBtn, getGenerateRescueVisual());
+  setButtonVisual(copyRescueBtn, getCopyRescueVisual());
+}
+
+function renderRescueDetail(rescue = state.rescueData) {
+  const lead = rescue?.checkout_lead || null;
+  const account = rescue?.account_state || null;
+  const linkedRequest = rescue?.linked_arrival_request || null;
+  const activeToken = rescue?.active_rescue_token || null;
+
+  if (!lead) {
+    rescueEmptyEl?.classList.remove('hidden');
+    rescueDetailEl?.classList.add('hidden');
+    if (rescueNoteInputEl) rescueNoteInputEl.value = '';
+    renderRescueActionStates();
+    clearInlineFeedback(rescueFeedbackEl);
+    return;
+  }
+
+  rescueEmptyEl?.classList.add('hidden');
+  rescueDetailEl?.classList.remove('hidden');
+  rescueEmailTitleEl.textContent = lead.email || '—';
+  rescueAccountCopyEl.textContent = getRescueSummary(rescue);
+  setStatusBadge(rescuePaymentStatusEl, lead.payment_status || 'pending');
+  rescueEligibilityEl.textContent = getRescueEligibilityLabel(lead);
+  rescuePaymentReferenceEl.textContent = lead.payment_reference || '—';
+  rescueProviderEl.textContent = lead.payment_provider || '—';
+  rescuePaymentConfirmedAtEl.textContent = formatDate(lead.payment_confirmed_at);
+  rescueManuallyVerifiedAtEl.textContent = formatDate(lead.manually_verified_at);
+  rescueManuallyVerifiedByEl.textContent = lead.manually_verified_by || '—';
+  rescueLinkGeneratedAtEl.textContent = formatDate(lead.rescue_link_generated_at);
+  rescueAuthUserIdEl.textContent = account?.auth_user_id || '—';
+  rescueActivationModeEl.textContent = account?.activation_mode === 'reset_password' ? 'reset_password' : 'create_password';
+  rescueActivatedAtEl.textContent = formatDate(lead.activated_at);
+  rescueArrivalStatusEl.textContent = linkedRequest?.status || 'Sin arrival_request';
+  rescueActiveTokenEl.textContent = activeToken?.expires_at
+    ? `Activo hasta ${formatDate(activeToken.expires_at)}`
+    : 'No hay token activo';
+  rescueNoteInputEl.value = lead.manual_verification_note || '';
+  renderRescueActionStates();
+}
+
+async function loadRescueDetail(email, options = {}) {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!normalizedEmail) {
+    state.rescueEmail = '';
+    state.rescueData = null;
+    state.generatedRescueLink = '';
+    renderRescueDetail(null);
+    return null;
+  }
+
+  const { announce = false } = options;
+  if (announce) {
+    showInlineFeedback(rescueFeedbackEl, 'Buscando checkout lead…', 'loading', { autoHide: false });
+  }
+
+  const data = await apiFetch(`/api/arrival/admin/rescue-detail?email=${encodeURIComponent(normalizedEmail)}`);
+  state.rescueEmail = normalizedEmail;
+  state.rescueData = data?.rescue || null;
+  state.generatedRescueLink = '';
+  if (rescueSearchInputEl) rescueSearchInputEl.value = normalizedEmail;
+  renderRescueDetail(state.rescueData);
+  if (announce) {
+    showInlineFeedback(rescueFeedbackEl, 'Lead cargado.', 'success');
+  } else {
+    clearInlineFeedback(rescueFeedbackEl);
+  }
+  return state.rescueData;
+}
+
+async function updateRescue(endpoint, body, options = {}) {
+  const lead = getRescueLead();
+  const email = String(body?.email || lead?.email || state.rescueEmail || '').trim().toLowerCase();
+  if (!email) {
+    showInlineFeedback(rescueFeedbackEl, 'Primero buscá un lead por email.', 'error', { autoHide: false });
+    return null;
+  }
+
+  const data = await apiFetch(endpoint, { method: 'POST', body: { ...body, email } });
+  state.rescueEmail = email;
+  state.rescueData = data?.rescue || null;
+  if (data?.rescue_link) {
+    state.generatedRescueLink = data.rescue_link;
+  }
+  renderRescueDetail(state.rescueData);
+  return data;
 }
 
 function setButtonVisual(button, options = {}) {
@@ -664,6 +828,9 @@ async function loadDetail(id) {
     state.requests = state.requests.map((item) => (item.id === id ? detail : item));
     renderList();
     renderDetail(detail);
+    if (detail?.email && rescueSearchInputEl && !state.rescueEmail) {
+      rescueSearchInputEl.value = detail.email;
+    }
     clearFeedback();
   } catch (error) {
     console.error('Detail load error:', error);
@@ -705,6 +872,14 @@ async function fetchList(options = {}) {
     renderList();
     renderDetail(getSelectedRequest());
 
+    if (state.rescueEmail) {
+      try {
+        await loadRescueDetail(state.rescueEmail);
+      } catch (rescueError) {
+        console.error('Rescue load error:', rescueError);
+      }
+    }
+
     if (announce) {
       showFeedback('Lista actualizada.', 'success');
     } else {
@@ -745,6 +920,11 @@ async function updateRequest(payload) {
   state.selectedId = updated.id;
   renderList();
   renderDetail(updated);
+  if (updated?.email && updated.email === state.rescueEmail) {
+    void loadRescueDetail(updated.email).catch((rescueError) => {
+      console.error('Rescue reload error:', rescueError);
+    });
+  }
   return updated;
 }
 
@@ -816,6 +996,14 @@ async function validateSessionAndBoot() {
 
   if (sessionPillEl) {
     sessionPillEl.querySelector('span').textContent = `UID ${user.id === ALLOWED_ADMIN_UID ? 'autorizado' : 'validando backend'}`;
+  }
+
+  if (rescueSearchInputEl) {
+    const initialEmail = String(new URL(window.location.href).searchParams.get('rescueEmail') || '').trim().toLowerCase();
+    if (initialEmail) {
+      state.rescueEmail = initialEmail;
+      rescueSearchInputEl.value = initialEmail;
+    }
   }
 
   try {
@@ -981,6 +1169,78 @@ supabaseClient.auth.onAuthStateChange((_event, session) => {
   state.session = session?.user || null;
 });
 
+rescueSearchBtn?.addEventListener('click', () => {
+  void loadRescueDetail(rescueSearchInputEl?.value, { announce: true }).catch((error) => {
+    console.error('Rescue search error:', error);
+    showInlineFeedback(rescueFeedbackEl, describeApiError(error, 'No pude cargar ese checkout lead.'), 'error', { autoHide: false });
+  });
+});
+
+rescueSearchInputEl?.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    rescueSearchBtn?.click();
+  }
+});
+
+markPaidBtn?.addEventListener('click', () => {
+  void runTransientButtonAction({
+    button: markPaidBtn,
+    feedbackNode: rescueFeedbackEl,
+    loadingLabel: 'Verificando…',
+    loadingMeta: 'Auditoría manual',
+    loadingMessage: 'Marcando lead como verificado…',
+    successLabel: 'Lead verificado',
+    successMeta: 'Pago confirmado',
+    successMessage: 'Lead marcado manualmente como pagado/verificado.',
+    errorLabel: 'No se verificó',
+    errorMeta: 'Reintentar',
+    action: async () => {
+      await updateRescue('/api/arrival/admin/rescue-verify', { note: getRescueNote() });
+    },
+    reset: () => {
+      renderRescueActionStates();
+    }
+  }).catch((error) => {
+    console.error('Rescue verify error:', error);
+  });
+});
+
+generateRescueBtn?.addEventListener('click', () => {
+  void runTransientButtonAction({
+    button: generateRescueBtn,
+    feedbackNode: rescueFeedbackEl,
+    loadingLabel: 'Generando…',
+    loadingMeta: 'Link privado',
+    loadingMessage: 'Generando link de rescate…',
+    successLabel: 'Link listo',
+    successMeta: 'Single-use',
+    successMessage: 'Link de rescate generado. Ya podés copiarlo.',
+    errorLabel: 'No se generó',
+    errorMeta: 'Reintentar',
+    action: async () => {
+      await updateRescue('/api/arrival/admin/rescue-generate', { note: getRescueNote() });
+    },
+    reset: () => {
+      renderRescueActionStates();
+    }
+  }).catch((error) => {
+    console.error('Rescue generate error:', error);
+  });
+});
+
+copyRescueBtn?.addEventListener('click', () => {
+  void copyText(state.generatedRescueLink, {
+    button: copyRescueBtn,
+    feedbackNode: rescueFeedbackEl,
+    successMessage: 'Link de rescate copiado.',
+    idleReset: () => renderRescueActionStates()
+  }).catch((error) => {
+    console.error('Clipboard error:', error);
+  });
+});
+
 renderActionStates(null);
+renderRescueActionStates();
 setLoading(false);
 void validateSessionAndBoot();
