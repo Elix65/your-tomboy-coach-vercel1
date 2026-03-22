@@ -540,6 +540,89 @@ body {
   line-height: 1.34;
 }
 
+.arrival-admission-form {
+  gap: 14px;
+}
+
+.arrival-admission-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(214, 180, 149, 0.18);
+  background:
+    linear-gradient(180deg, rgba(54, 37, 42, 0.52), rgba(30, 22, 27, 0.58)),
+    rgba(28, 20, 26, 0.66);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 234, 214, 0.05),
+    0 16px 28px rgba(9, 5, 11, 0.18);
+}
+
+.arrival-admission-card-label {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(226, 197, 168, 0.62);
+}
+
+.arrival-admission-card-question {
+  margin: 0;
+  color: rgba(247, 235, 224, 0.94);
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+.arrival-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.arrival-choice-chip {
+  min-height: 54px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(215, 183, 153, 0.18);
+  background: linear-gradient(180deg, rgba(61, 42, 49, 0.38), rgba(31, 23, 28, 0.44));
+  color: rgba(244, 231, 220, 0.9);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    transform 180ms var(--moon-ease-premium),
+    border-color 180ms ease,
+    background 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease;
+}
+
+.arrival-choice-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(224, 189, 158, 0.32);
+  background: linear-gradient(180deg, rgba(72, 48, 57, 0.48), rgba(36, 25, 31, 0.5));
+}
+
+.arrival-choice-chip.is-selected {
+  border-color: rgba(219, 181, 143, 0.48);
+  background: linear-gradient(180deg, rgba(112, 72, 83, 0.76), rgba(62, 40, 48, 0.84));
+  color: #fff2e6;
+  box-shadow:
+    0 16px 28px rgba(12, 7, 14, 0.24),
+    0 0 0 1px rgba(255, 230, 208, 0.06) inset,
+    0 0 24px rgba(177, 132, 95, 0.12);
+}
+
+.arrival-choice-chip:focus-visible {
+  outline: 2px solid rgba(255, 219, 195, 0.94);
+  outline-offset: 2px;
+}
+
+#btn-arrival-admission-next,
 #btn-arrival-continue {
   margin-top: 10px;
   color: #f2e3ce;
@@ -550,6 +633,7 @@ body {
     inset 0 1px 0 rgba(255, 229, 196, 0.12);
 }
 
+#btn-arrival-admission-next::before,
 #btn-arrival-continue::before {
   content: "";
   width: 18px;
@@ -558,6 +642,7 @@ body {
   mask: center / contain no-repeat url('/svg/arrow-right.svg');
 }
 
+#btn-arrival-admission-next:hover,
 #btn-arrival-continue:hover {
   filter: brightness(1.04);
   transform: translateY(-1px);
@@ -566,6 +651,7 @@ body {
     inset 0 1px 0 rgba(255, 229, 196, 0.16);
 }
 
+#btn-arrival-admission-next:active,
 #btn-arrival-continue:active {
   transform: translateY(0);
 }
@@ -599,11 +685,92 @@ body {
 }
 
 .arrival-step-3 .login-eyebrow {
+  margin-bottom: 1px;
+  color: rgba(223, 196, 167, 0.84);
+}
+
+.arrival-step-3 .login-title {
+  margin: 0;
+  font-size: clamp(33px, 5vw, 47px);
+  line-height: 1.14;
+  font-weight: 740;
+  letter-spacing: 0.3px;
+  color: #f1e4d2;
+  text-shadow: 0 8px 26px rgba(9, 4, 12, 0.4);
+}
+
+.arrival-step-3 .login-subtitle {
+  margin: 0;
+  color: rgba(226, 210, 193, 0.78);
+  font-size: clamp(16px, 1.8vw, 19px);
+  line-height: 1.34;
+}
+
+.arrival-step-3 .arrival-label {
+  margin-top: 2px;
+  font-size: 14px;
+  color: rgba(224, 206, 188, 0.9);
+}
+
+.arrival-step-3 .email-wrap,
+.arrival-step-3 .password-wrap {
+  margin-top: 0;
+}
+
+.arrival-step-3-copy {
+  margin-top: 4px;
+  color: rgba(213, 188, 166, 0.62);
+  letter-spacing: 0.01em;
+}
+
+#login-container[data-step="3"] {
+  background:
+    linear-gradient(162deg, rgba(37, 22, 33, 0.88) 0%, rgba(27, 18, 28, 0.85) 52%, rgba(20, 15, 21, 0.9) 100%),
+    rgba(20, 14, 21, 0.82);
+  border: 1px solid rgba(187, 145, 122, 0.32);
+  box-shadow:
+    0 26px 46px rgba(9, 6, 12, 0.6),
+    inset 0 1px 0 rgba(255, 226, 196, 0.08);
+  backdrop-filter: blur(16px) saturate(105%);
+}
+
+#login-container[data-step="3"]::before,
+#login-container[data-step="3"]::after {
+  opacity: 0.15;
+}
+
+#login-container[data-step="3"] .input-icon {
+  color: rgba(195, 152, 121, 0.8);
+}
+
+#login-container[data-step="3"] #arrival-email,
+#login-container[data-step="3"] #arrival-password {
+  border: 1px solid rgba(189, 146, 112, 0.36);
+  background: linear-gradient(180deg, rgba(34, 24, 33, 0.9), rgba(26, 19, 27, 0.93));
+  color: #f0ddc7;
+  box-shadow: inset 0 1px 0 rgba(255, 229, 202, 0.05);
+}
+
+#login-container[data-step="3"] #arrival-email::placeholder,
+#login-container[data-step="3"] #arrival-password::placeholder {
+  color: rgba(206, 178, 154, 0.52);
+}
+
+#login-container[data-step="3"] #arrival-email:focus,
+#login-container[data-step="3"] #arrival-password:focus {
+  border-color: rgba(214, 168, 132, 0.6);
+  box-shadow:
+    0 0 0 3px rgba(181, 133, 95, 0.15),
+    inset 0 1px 0 rgba(255, 232, 209, 0.08);
+  transform: translateY(-1px);
+}
+
+.arrival-step-4 .login-eyebrow {
   margin-bottom: 0;
   color: rgba(226, 198, 168, 0.88);
 }
 
-.arrival-step-3 .login-title {
+.arrival-step-4 .login-title {
   margin: 0;
   max-width: 11ch;
   font-size: clamp(36px, 4.8vw, 48px);
@@ -614,7 +781,7 @@ body {
   text-shadow: 0 12px 34px rgba(9, 5, 13, 0.5);
 }
 
-.arrival-step-3 .login-subtitle {
+.arrival-step-4 .login-subtitle {
   margin: -2px 0 0;
   max-width: 31ch;
   color: rgba(230, 213, 195, 0.82);
@@ -638,14 +805,14 @@ body {
   gap: 10px;
 }
 
-.arrival-step-3 .arrival-label {
+.arrival-step-4 .arrival-label {
   margin-top: 2px;
   font-size: 14px;
   color: rgba(224, 206, 188, 0.9);
 }
 
-.arrival-step-3 .email-wrap,
-.arrival-step-3 .password-wrap {
+.arrival-step-4 .email-wrap,
+.arrival-step-4 .password-wrap {
   margin-top: 0;
 }
 
@@ -795,14 +962,24 @@ body {
   transform: translateY(0);
 }
 
-.arrival-step-3-copy {
+.arrival-step-4-copy {
   margin-top: 2px;
   max-width: 34ch;
   color: rgba(214, 190, 170, 0.62);
   letter-spacing: 0.01em;
 }
 
-#login-container[data-step="3"] {
+@media (max-width: 640px) {
+  .arrival-choice-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .arrival-choice-chip {
+    min-height: 50px;
+  }
+}
+
+#login-container[data-step="4"] {
   padding-top: clamp(24px, 2.6vw, 32px);
   padding-bottom: clamp(22px, 2.6vw, 30px);
   background:
@@ -815,30 +992,30 @@ body {
   backdrop-filter: blur(16px) saturate(102%);
 }
 
-#login-container[data-step="3"]::before,
-#login-container[data-step="3"]::after {
+#login-container[data-step="4"]::before,
+#login-container[data-step="4"]::after {
   opacity: 0.14;
 }
 
-#login-container[data-step="3"] .input-icon {
+#login-container[data-step="4"] .input-icon {
   color: rgba(195, 152, 121, 0.8);
 }
 
-#login-container[data-step="3"] #arrival-email,
-#login-container[data-step="3"] #arrival-password {
+#login-container[data-step="4"] #arrival-email,
+#login-container[data-step="4"] #arrival-password {
   border: 1px solid rgba(189, 146, 112, 0.36);
   background: linear-gradient(180deg, rgba(34, 24, 33, 0.9), rgba(26, 19, 27, 0.93));
   color: #f0ddc7;
   box-shadow: inset 0 1px 0 rgba(255, 229, 202, 0.05);
 }
 
-#login-container[data-step="3"] #arrival-email::placeholder,
-#login-container[data-step="3"] #arrival-password::placeholder {
+#login-container[data-step="4"] #arrival-email::placeholder,
+#login-container[data-step="4"] #arrival-password::placeholder {
   color: rgba(206, 178, 154, 0.52);
 }
 
-#login-container[data-step="3"] #arrival-email:focus,
-#login-container[data-step="3"] #arrival-password:focus {
+#login-container[data-step="4"] #arrival-email:focus,
+#login-container[data-step="4"] #arrival-password:focus {
   border-color: rgba(214, 168, 132, 0.6);
   box-shadow:
     0 0 0 3px rgba(181, 133, 95, 0.15),
@@ -846,7 +1023,7 @@ body {
   transform: translateY(-1px);
 }
 
-#login-container[data-step="3"] .arrival-textarea {
+#login-container[data-step="4"] .arrival-textarea {
   min-height: 88px;
   padding: 13px 15px;
   line-height: 1.42;
@@ -1528,7 +1705,7 @@ body {
     font-size: clamp(28px, 2.7vw, 36px);
   }
 
-  #login-container[data-step="3"] .arrival-textarea {
+  #login-container[data-step="4"] .arrival-textarea {
     min-height: 72px;
     line-height: 1.36;
   }
@@ -1782,7 +1959,7 @@ body {
     font-size: clamp(29px, 3.6vw, 38px);
   }
 
-  #login-container[data-step="3"] .arrival-textarea {
+  #login-container[data-step="4"] .arrival-textarea {
     min-height: 80px;
     padding: 11px 14px;
   }
@@ -1799,7 +1976,7 @@ body {
     gap: 14px;
   }
 
-  .arrival-step-3 .login-title {
+  .arrival-step-4 .login-title {
     max-width: 12ch;
     font-size: clamp(34px, 10vw, 42px);
   }
