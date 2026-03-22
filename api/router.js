@@ -36,6 +36,48 @@ const POST_PAYMENT_ACTIVATION_TTL_HOURS = 24;
 const MANUAL_RESCUE_TTL_HOURS = 24;
 const POST_PAYMENT_ACTIVATION_PURPOSE = 'post_payment_activation';
 const MANUAL_RESCUE_PURPOSE = 'manual_rescue';
+const CHECKOUT_LEADS_SELECT_COLUMNS = [
+  'email',
+  'auth_user_id',
+  'country_code',
+  'payment_provider',
+  'payment_url',
+  'payment_status',
+  'payment_reference',
+  'payment_confirmed_at',
+  'activated_at',
+  'manually_verified_at',
+  'manually_verified_by',
+  'manual_verification_note',
+  'rescue_link_generated_at',
+  'source',
+  'created_at',
+  'updated_at'
+];
+const CHECKOUT_LEADS_SELECT = CHECKOUT_LEADS_SELECT_COLUMNS.join(',');
+const ACTIVATION_TOKENS_RESCUE_SELECT_COLUMNS = [
+  'id',
+  'email',
+  'purpose',
+  'expires_at',
+  'used_at',
+  'invalidated_at',
+  'created_at'
+];
+const ACTIVATION_TOKENS_RESCUE_SELECT = ACTIVATION_TOKENS_RESCUE_SELECT_COLUMNS.join(',');
+const ACTIVATION_TOKENS_WRITE_COLUMNS = [
+  'auth_user_id',
+  'email',
+  'checkout_email',
+  'checkout_provider',
+  'checkout_reference',
+  'purpose',
+  'token_hash',
+  'expires_at',
+  'used_at',
+  'invalidated_at',
+  'created_at'
+];
 
 function getArrivalAdminUserIds() {
   const configured = String(process.env.ARRIVAL_ADMIN_UIDS || process.env.ARRIVAL_ADMIN_UID || '')
@@ -2548,12 +2590,17 @@ async function findCheckoutLeadByEmail(supabaseAdmin, email) {
 
   const { data, error } = await supabaseAdmin
     .from('checkout_leads')
-    .select('email,auth_user_id,country_code,payment_provider,payment_url,payment_status,payment_reference,payment_confirmed_at,activated_at,manually_verified_at,manually_verified_by,manual_verification_note,rescue_link_generated_at,source,created_at,updated_at')
+    .select(CHECKOUT_LEADS_SELECT)
     .ilike('email', normalizedEmail)
     .maybeSingle();
 
   if (error) {
-    throw new Error(error.message || 'Error reading checkout_leads by email.');
+    throw createSupabaseQueryError('Error reading checkout_leads by email.', error, {
+      table: 'checkout_leads',
+      operation: 'select',
+      email: normalizedEmail,
+      select: CHECKOUT_LEADS_SELECT
+    });
   }
 
   return data || null;
@@ -2572,11 +2619,16 @@ async function updateCheckoutLeadStatus(supabaseAdmin, email, updates) {
     .from('checkout_leads')
     .update(payload)
     .ilike('email', normalizedEmail)
-    .select('email,auth_user_id,country_code,payment_provider,payment_url,payment_status,payment_reference,payment_confirmed_at,activated_at,manually_verified_at,manually_verified_by,manual_verification_note,rescue_link_generated_at,source,created_at,updated_at')
+    .select(CHECKOUT_LEADS_SELECT)
     .single();
 
   if (error) {
-    throw new Error(error.message || 'Error updating checkout lead status.');
+    throw createSupabaseQueryError('Error updating checkout lead status.', error, {
+      table: 'checkout_leads',
+      operation: 'update',
+      email: normalizedEmail,
+      updates: Object.keys(payload).sort()
+    });
   }
 
   return data || null;
@@ -2674,7 +2726,12 @@ async function invalidateActivationTokens(supabaseAdmin, email, purpose) {
     .gt('expires_at', nowIso);
 
   if (error) {
-    throw new Error(error.message || 'Error invalidating previous activation tokens.');
+    throw createSupabaseQueryError('Error invalidating previous activation tokens.', error, {
+      table: 'activation_tokens',
+      operation: 'update',
+      email: normalizedEmail,
+      purpose: normalizedPurpose
+    });
   }
 }
 
@@ -2708,7 +2765,12 @@ async function createActivationToken(supabaseAdmin, req, checkoutLead, options =
     .insert(payload);
 
   if (error) {
-    throw new Error(error.message || 'Error creating activation token.');
+    throw createSupabaseQueryError('Error creating activation token.', error, {
+      table: 'activation_tokens',
+      operation: 'insert',
+      email: normalizedEmail,
+      purpose
+    });
   }
 
   return {
@@ -2750,7 +2812,11 @@ async function findActivationTokenByRawToken(supabaseAdmin, token) {
     .maybeSingle();
 
   if (error) {
-    throw new Error(error.message || 'Error reading activation token.');
+    throw createSupabaseQueryError('Error reading activation token.', error, {
+      table: 'activation_tokens',
+      operation: 'select',
+      purpose: [POST_PAYMENT_ACTIVATION_PURPOSE, MANUAL_RESCUE_PURPOSE]
+    });
   }
 
   return data || null;
@@ -2828,6 +2894,98 @@ function normalizeOptionalText(value, maxLength) {
   return text.slice(0, maxLength);
 }
 
+function createSupabaseQueryError(defaultMessage, error, context = {}) {
+  const wrappedError = new Error(error?.message || defaultMessage);
+  wrappedError.code = error?.code || null;
+  wrappedError.details = error?.details || null;
+  wrappedError.hint = error?.hint || null;
+  wrappedError.context = context;
+  wrappedError.cause = error || null;
+  return wrappedError;
+}
+
+function serializeErrorDetails(error) {
+  const cause = error?.cause && typeof error.cause === 'object' ? error.cause : null;
+  return {
+    message: error?.message || cause?.message || null,
+    code: error?.code || error?.errorCode || cause?.code || null,
+    details: error?.details || cause?.details || null,
+    hint: error?.hint || cause?.hint || null,
+    context: error?.context || null
+  };
+}
+
+async function inspectArrivalAdminRescueSchema(supabaseAdmin) {
+  const expected = {
+    checkout_leads: CHECKOUT_LEADS_SELECT_COLUMNS,
+    activation_tokens: Array.from(new Set([
+      ...ACTIVATION_TOKENS_RESCUE_SELECT_COLUMNS,
+      ...ACTIVATION_TOKENS_WRITE_COLUMNS
+    ]))
+  };
+
+  const tableNames = Object.keys(expected);
+  const [tableResult, columnResult] = await Promise.all([
+    supabaseAdmin
+      .schema('information_schema')
+      .from('tables')
+      .select('table_name')
+      .eq('table_schema', 'public')
+      .in('table_name', tableNames),
+    supabaseAdmin
+      .schema('information_schema')
+      .from('columns')
+      .select('table_name,column_name')
+      .eq('table_schema', 'public')
+      .in('table_name', tableNames)
+  ]);
+
+  if (tableResult.error) {
+    throw createSupabaseQueryError('Error reading public tables schema.', tableResult.error, {
+      schema_target: 'information_schema.tables'
+    });
+  }
+
+  if (columnResult.error) {
+    throw createSupabaseQueryError('Error reading public columns schema.', columnResult.error, {
+      schema_target: 'information_schema.columns'
+    });
+  }
+
+  const existingTables = new Set((tableResult.data || []).map((row) => row.table_name));
+  const columnsByTable = new Map();
+  for (const row of columnResult.data || []) {
+    if (!columnsByTable.has(row.table_name)) {
+      columnsByTable.set(row.table_name, new Set());
+    }
+    columnsByTable.get(row.table_name).add(row.column_name);
+  }
+
+  const tables = {};
+  const missingTables = [];
+  for (const tableName of tableNames) {
+    const exists = existingTables.has(tableName);
+    const existingColumns = exists ? Array.from(columnsByTable.get(tableName) || []).sort() : [];
+    const missingColumns = exists
+      ? expected[tableName].filter((columnName) => !columnsByTable.get(tableName)?.has(columnName))
+      : [...expected[tableName]];
+
+    if (!exists) missingTables.push(tableName);
+
+    tables[tableName] = {
+      exists,
+      expected_columns: expected[tableName],
+      existing_columns: existingColumns,
+      missing_columns: missingColumns
+    };
+  }
+
+  return {
+    missing_tables: missingTables,
+    tables
+  };
+}
+
 function sanitizeCheckoutLeadForAdmin(checkoutLead) {
   if (!checkoutLead) return null;
 
@@ -2863,7 +3021,7 @@ async function buildArrivalAdminRescuePayload(supabaseAdmin, req, checkoutLead) 
 
   const { data: activeTokenRows, error: tokenErr } = await supabaseAdmin
     .from('activation_tokens')
-    .select('id,expires_at,used_at,invalidated_at,created_at,purpose')
+    .select(ACTIVATION_TOKENS_RESCUE_SELECT)
     .eq('purpose', MANUAL_RESCUE_PURPOSE)
     .ilike('email', sanitizedLead.email)
     .is('used_at', null)
@@ -2873,7 +3031,13 @@ async function buildArrivalAdminRescuePayload(supabaseAdmin, req, checkoutLead) 
     .limit(1);
 
   if (tokenErr) {
-    throw new Error(tokenErr.message || 'Error loading manual rescue tokens.');
+    throw createSupabaseQueryError('Error loading manual rescue tokens.', tokenErr, {
+      table: 'activation_tokens',
+      operation: 'select',
+      email: sanitizedLead.email,
+      purpose: MANUAL_RESCUE_PURPOSE,
+      select: ACTIVATION_TOKENS_RESCUE_SELECT
+    });
   }
 
   const activeToken = Array.isArray(activeTokenRows) ? activeTokenRows[0] || null : null;
@@ -3545,7 +3709,19 @@ async function arrivalAdminRescueDetailHandler(req, res) {
     if (status === 401 || status === 403) {
       return res.status(status).json({ error: error?.errorCode || error?.message || 'arrival_admin_forbidden' });
     }
-    console.error('arrival-admin-rescue-detail fatal:', error);
+
+    let schemaSnapshot = null;
+    try {
+      schemaSnapshot = await inspectArrivalAdminRescueSchema(supabaseAdmin);
+    } catch (schemaError) {
+      schemaSnapshot = { schema_inspection_error: serializeErrorDetails(schemaError) };
+    }
+
+    console.error('arrival-admin-rescue-detail fatal:', {
+      email: normalizeArrivalEmail(req.query?.email || getRequestUrl(req).searchParams.get('email') || ''),
+      ...serializeErrorDetails(error),
+      schema: schemaSnapshot
+    });
     return res.status(500).json({ error: 'Internal error' });
   }
 }
