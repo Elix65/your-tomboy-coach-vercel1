@@ -92,10 +92,13 @@ function setReturnState(state, payload = {}) {
   }
 
   if (state === 'pending') {
+    const isVerifyingWithProvider = payload?.verification_status === 'verifying_with_provider';
     eyebrow.textContent = 'CONFIRMANDO TU LLEGADA';
-    title.textContent = 'Tu acceso está siendo confirmado.';
-    subtitle.textContent = 'Estamos esperando la confirmación final de la pasarela.';
-    statusPill.textContent = 'Pago pendiente';
+    title.textContent = 'Estamos confirmando tu pago...';
+    subtitle.textContent = isVerifyingWithProvider
+      ? 'Volviste bien. Ahora estamos validando el pago con una referencia confiable del proveedor antes de habilitar tu acceso.'
+      : 'Volviste bien. Apenas recibamos una confirmación confiable del proveedor, vamos a habilitar tu acceso.';
+    statusPill.textContent = 'Confirmación pendiente';
     primaryCta.textContent = 'Actualizar estado';
     primaryCta.href = window.location.pathname + window.location.search;
     secondaryCta.textContent = 'Volver al inicio';
@@ -177,10 +180,10 @@ function setActivationState(state) {
   }
 
   if (state === 'pending') {
-    statusPill.textContent = 'Pago pendiente';
+    statusPill.textContent = 'Confirmación pendiente';
     eyebrow.textContent = 'CONFIRMANDO TU LLEGADA';
-    title.textContent = 'Tu acceso está siendo confirmado.';
-    subtitle.textContent = 'Estamos esperando la confirmación final de la pasarela.';
+    title.textContent = 'Estamos confirmando tu pago...';
+    subtitle.textContent = 'Todavía no hay verificación suficiente para habilitar tu contraseña. Apenas el backend confirme el pago, este acceso se abrirá.';
     primaryLink.textContent = 'Actualizar estado';
     primaryLink.href = '/arrival/return' + window.location.search.replace(/^[^?]*/, '');
     secondaryLink.textContent = 'Volver al inicio';
