@@ -879,6 +879,68 @@ body {
   opacity: 0.15;
 }
 
+.login-page[data-login-step="2"] {
+  height: 100svh;
+  overflow: hidden;
+}
+
+.login-page[data-login-step="2"] .login-root {
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
+}
+
+.login-page[data-login-step="2"] .auth-shell {
+  height: 100%;
+  min-height: 100%;
+  overflow: hidden;
+  align-items: stretch;
+}
+
+.login-page[data-login-step="2"] .auth-left,
+.login-page[data-login-step="2"] #login-container,
+.login-page[data-login-step="2"] #onboarding-stage,
+.login-page[data-login-step="2"] .arrival-step-2[data-active="true"],
+.login-page[data-login-step="2"] .arrival-admission-chat-shell,
+.login-page[data-login-step="2"] .arrival-chat-window,
+.login-page[data-login-step="2"] .arrival-admission-form {
+  min-height: 0;
+}
+
+.login-page[data-login-step="2"] .auth-left,
+.login-page[data-login-step="2"] #login-container,
+.login-page[data-login-step="2"] #onboarding-stage,
+.login-page[data-login-step="2"] .arrival-step-2[data-active="true"],
+.login-page[data-login-step="2"] .arrival-admission-chat-shell {
+  height: 100%;
+}
+
+.login-page[data-login-step="2"] #login-container {
+  max-height: 100%;
+  overflow: hidden;
+}
+
+.login-page[data-login-step="2"] .login-steps {
+  display: none;
+}
+
+.login-page[data-login-step="2"] .arrival-step-2 {
+  min-height: 0;
+  padding-top: 0;
+  gap: 14px;
+}
+
+.login-page[data-login-step="2"] .arrival-chat-window {
+  min-height: 0;
+  height: 100%;
+}
+
+@supports (height: 100dvh) {
+  .login-page[data-login-step="2"] {
+    height: 100dvh;
+  }
+}
+
 
 .arrival-step-3 {
   gap: 18px;
@@ -1699,6 +1761,16 @@ body {
   .panel-ornament::after {
     opacity: 0.14;
   }
+
+  .login-page[data-login-step="2"] .auth-shell {
+    justify-content: center;
+    padding-top: clamp(20px, 6svh, 44px);
+    padding-bottom: 16px;
+  }
+
+  .login-page[data-login-step="2"] #login-container {
+    margin: 0 auto;
+  }
 }
 
 @media (min-width: 641px) and (max-width: 1024px) {
@@ -1792,6 +1864,11 @@ body {
     text-align: left;
     width: min(540px, 44vw);
     max-width: min(540px, calc(100vw - 32px - clamp(24px, 4.8vw, 92px)));
+  }
+
+  .login-page[data-login-step="2"] .auth-shell {
+    padding-top: clamp(16px, 2.4dvh, 24px);
+    padding-bottom: clamp(16px, 2.4dvh, 24px);
   }
 }
 
