@@ -31,26 +31,15 @@
           </div>
         </div>
 
-        <div id="yumiko-bubble-layer" aria-hidden="true">
-          <div id="yumiko-bubble" class="bubble hidden">
-            <span class="bubble-orbit" aria-hidden="true"></span>
-            <span class="bubble-tail" aria-hidden="true"></span>
-            <div class="bubble-text"></div>
-          </div>
-        </div>
       </div>
 
       <div id="conversation-band" class="conversation-band" aria-label="Zona de conversación">
-        <div class="conversation-band__controls" role="group" aria-label="Controles rápidos">
-          <button id="mini-mic" class="mini-btn" type="button" aria-label="Micrófono">🎤</button>
-          <button id="mini-chat" class="mini-btn mini-btn--chat" type="button" aria-label="Abrir panel de chat" aria-controls="yumiko-chat" aria-expanded="false">💬</button>
-        </div>
-
-        <div class="yumiko-chat" id="yumiko-chat" aria-hidden="true">
+        <div class="yumiko-chat" id="yumiko-chat" aria-hidden="false">
           <div class="chat-card-header">
             <div class="chat-card-header__copy">
               <span class="chat-card-header__eyebrow">Presencia íntima</span>
-              <p class="chat-card-header__title">Lo último que Yumiko te está diciendo.</p>
+              <p id="chat-panel-title" class="chat-card-header__title">Tu espacio fijo para hablar con Yumiko.</p>
+              <p id="chat-panel-status" class="chat-card-header__status">Compacto abajo, ampliado en la misma franja cuando abrís el chat.</p>
             </div>
             <button id="toggle-settings" class="panel-settings-btn" type="button" aria-label="Abrir ajustes">⚙️</button>
           </div>
@@ -163,10 +152,16 @@
 
           <div id="chat-log" class="chat-log" aria-live="polite"></div>
 
-          <div class="chat-compose">
-            <label class="sr-only" for="yumiko-input">Mensaje para Yumiko</label>
-            <input id="yumiko-input" type="text" autocomplete="off" placeholder="Escribí tu mensaje..." />
-            <button id="yumiko-send" class="icon-btn send-btn" type="button" aria-label="Enviar">Enviar</button>
+          <div class="chat-compose-shell">
+            <div class="chat-compose">
+              <label class="sr-only" for="yumiko-input">Mensaje para Yumiko</label>
+              <input id="yumiko-input" type="text" autocomplete="off" placeholder="Escribí tu mensaje..." />
+              <button id="yumiko-send" class="icon-btn send-btn" type="button" aria-label="Enviar">Enviar</button>
+            </div>
+            <div class="conversation-band__controls" role="group" aria-label="Controles rápidos">
+              <button id="mini-mic" class="mini-btn" type="button" aria-label="Micrófono">🎤</button>
+              <button id="mini-chat" class="mini-btn mini-btn--chat" type="button" aria-label="Expandir panel de chat" aria-controls="yumiko-chat" aria-expanded="false">💬</button>
+            </div>
           </div>
         </div>
       </div>
