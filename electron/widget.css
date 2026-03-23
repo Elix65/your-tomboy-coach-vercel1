@@ -71,7 +71,7 @@ a,
 body {
   position: relative;
   display: flex;
-  align-items: stretch;
+  align-items: flex-end;
   justify-content: stretch;
   overflow: hidden !important;
 }
@@ -172,7 +172,7 @@ body {
 
 .presence-stage {
   position: absolute;
-  inset: 0 0 32% 0;
+  inset: 0 0 26% 0;
   overflow: hidden;
   pointer-events: none;
 }
@@ -303,8 +303,8 @@ body {
   display: block;
   height: auto;
   width: auto;
-  max-width: min(86vw, 380px);
-  max-height: min(62vh, 480px);
+  max-width: min(84vw, 390px);
+  max-height: min(66vh, 520px);
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
@@ -322,110 +322,21 @@ body {
   transform: translateY(2px) scale(0.994);
 }
 
-#yumiko-bubble-layer {
-  position: absolute;
-  left: 0;
-  top: 0;
-  z-index: 45;
-  pointer-events: none;
-  overflow: visible;
-  max-width: min(250px, calc(100vw - 20px));
-  transition: opacity var(--moon-timing-base) var(--moon-ease-premium), transform var(--moon-timing-base) var(--moon-ease-premium);
-}
-
-.bubble {
-  position: relative;
-  width: clamp(168px, 34vw, 220px);
-  max-width: min(220px, calc(100vw - 16px));
-  min-height: 56px;
-  padding: 11px 13px;
-  border-radius: var(--moon-radius-md);
-  border: 1px solid var(--moon-border-subtle);
-  background:
-    radial-gradient(120% 120% at 16% 12%, rgba(247, 225, 205, 0.08), rgba(247, 225, 205, 0) 50%),
-    linear-gradient(160deg, rgba(36, 23, 34, 0.78), rgba(19, 13, 20, 0.82));
-  color: var(--moon-color-text-primary);
-  font-size: 12px;
-  line-height: 1.4;
-  backdrop-filter: blur(var(--moon-blur-lg));
-  box-shadow:
-    0 13px 24px rgba(8, 4, 8, 0.2),
-    0 0 14px rgba(177, 132, 95, 0.08),
-    0 0 0 1px rgba(255, 246, 235, 0.04) inset;
-  opacity: 0;
-  transform: translateY(10px) scale(0.986);
-  transform-origin: 82% 100%;
-  transition: opacity var(--moon-timing-base) var(--moon-ease-premium), transform var(--moon-timing-base) var(--moon-ease-premium), box-shadow var(--moon-timing-base) var(--moon-ease-premium), border-color var(--moon-timing-base) var(--moon-ease-premium);
-  pointer-events: none;
-}
-
-.bubble-orbit,
-.bubble-tail {
-  position: absolute;
-  pointer-events: none;
-}
-
-.bubble-orbit {
-  inset: -8px -10px auto auto;
-  width: 58px;
-  height: 58px;
-  border-radius: 50%;
-  border: 1px solid rgba(224, 188, 158, 0.1);
-  opacity: 0.24;
-  filter: blur(0.2px);
-}
-
-.bubble-tail {
-  right: 20px;
-  bottom: -8px;
-  width: 22px;
-  height: 16px;
-  background: linear-gradient(145deg, rgba(38, 25, 35, 0.84), rgba(20, 14, 21, 0.88));
-  border-right: 1px solid rgba(247, 229, 207, 0.12);
-  border-bottom: 1px solid rgba(247, 229, 207, 0.08);
-  border-bottom-right-radius: 15px;
-  transform: skewX(-26deg);
-  box-shadow: 6px 8px 14px rgba(8, 4, 8, 0.08);
-  opacity: 0.72;
-}
-
-.bubble-text {
-  margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  text-wrap: pretty;
-}
-
-.bubble.hidden {
-  opacity: 0;
-  transform: translateY(10px) scale(0.986);
-}
-
-.bubble.visible {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  box-shadow:
-    0 16px 28px rgba(8, 4, 8, 0.2),
-    0 0 14px rgba(177, 132, 95, 0.1),
-    0 0 0 1px rgba(255, 246, 235, 0.05) inset;
-}
 
 .conversation-band {
   position: absolute;
-  inset: 0;
+  inset: 54% 18px 18px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
   pointer-events: none;
-  z-index: 12;
+  z-index: 18;
 }
 
 .conversation-band__controls {
-  position: absolute;
-  right: 22px;
-  bottom: 28px;
+  position: relative;
+  right: auto;
+  bottom: auto;
   display: flex;
   gap: 8px;
   z-index: 22;
@@ -479,12 +390,13 @@ body {
 }
 
 .yumiko-chat {
-  position: absolute;
-  right: clamp(28px, 6vw, 52px);
-  bottom: clamp(72px, 11vh, 112px);
-  width: clamp(320px, 62%, 468px);
-  min-height: 238px;
-  max-height: min(44vh, 352px);
+  position: relative;
+  inset: auto;
+  align-self: end;
+  width: min(100%, 476px);
+  min-height: 214px;
+  height: auto;
+  max-height: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -502,19 +414,26 @@ body {
     0 10px 22px rgba(10, 6, 12, 0.18),
     0 0 0 1px rgba(255, 247, 236, 0.04) inset;
   overflow: hidden;
-  opacity: 0;
-  transform: translate3d(20px, 18px, 0) scale(0.94);
-  transform-origin: calc(100% - 36px) calc(100% - 22px);
-  pointer-events: none;
-  transition: opacity 260ms var(--moon-ease-premium), transform 360ms var(--moon-ease-premium), box-shadow var(--moon-timing-slow) var(--moon-ease-premium), border-color var(--moon-timing-base) var(--moon-ease-premium);
+  opacity: 1;
+  transform: translate3d(0, 18px, 0) scale(0.96);
+  transform-origin: 50% 100%;
+  pointer-events: auto;
+  transition: opacity 260ms var(--moon-ease-premium), transform 360ms var(--moon-ease-premium), box-shadow var(--moon-timing-slow) var(--moon-ease-premium), border-color var(--moon-timing-base) var(--moon-ease-premium), min-height 260ms var(--moon-ease-premium);
   z-index: 18;
 }
 
+.yumiko-widget[data-mode="focus"] .yumiko-chat {
+  min-height: 214px;
+  box-shadow:
+    0 24px 44px rgba(6, 2, 9, 0.34),
+    0 10px 22px rgba(10, 6, 12, 0.16),
+    0 0 0 1px rgba(255, 247, 236, 0.04) inset;
+}
 
 .yumiko-widget[data-mode="chat"] .yumiko-chat {
-  opacity: 1;
+  min-height: 100%;
+  height: 100%;
   transform: translate3d(0, 0, 0) scale(1);
-  pointer-events: auto;
 }
 
 .yumiko-widget[data-mode="chat"] #yumiko-mini {
@@ -570,6 +489,15 @@ body {
   text-wrap: pretty;
 }
 
+
+.chat-card-header__status {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: rgba(232, 218, 204, 0.68);
+  text-wrap: pretty;
+}
+
 .panel-settings-btn {
   justify-self: end;
   align-self: start;
@@ -617,6 +545,16 @@ body {
 
 .panel:not([hidden]) {
   animation: panel-reveal var(--moon-timing-slow) var(--moon-ease-premium);
+}
+
+@media (max-width: 420px), (max-height: 620px) {
+  .chat-compose-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .conversation-band__controls {
+    justify-content: flex-end;
+  }
 }
 
 .panel-header {
@@ -1021,6 +959,13 @@ input[type="checkbox"]:checked::after {
   text-wrap: pretty;
 }
 
+.chat-compose-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 12px;
+}
+
 .chat-compose {
   display: grid;
   align-self: end;
@@ -1032,29 +977,22 @@ input[type="checkbox"]:checked::after {
 
 .yumiko-chat > .chat-card-header,
 .yumiko-chat > .chat-log,
-.yumiko-chat > .chat-compose {
-  opacity: 0;
-  transform: translateX(14px);
+.yumiko-chat > .chat-compose-shell {
+  opacity: 1;
+  transform: translateX(0);
   transition: opacity var(--moon-timing-slow) var(--moon-ease-premium), transform var(--moon-timing-slow) var(--moon-ease-premium);
 }
 
-.yumiko-widget[data-mode="chat"] .yumiko-chat > .chat-card-header,
-.yumiko-widget[data-mode="chat"] .yumiko-chat > .chat-log,
-.yumiko-widget[data-mode="chat"] .yumiko-chat > .chat-compose {
-  opacity: 1;
-  transform: translateX(0);
+.yumiko-widget[data-mode="focus"] .chat-card-header__status {
+  max-width: 34ch;
 }
 
-.yumiko-widget[data-mode="chat"] .yumiko-chat > .chat-card-header {
-  transition-delay: 40ms;
+.yumiko-widget[data-mode="focus"] .chat-log {
+  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 1) 72%, rgba(0, 0, 0, 0.3) 92%, rgba(0, 0, 0, 0));
 }
 
-.yumiko-widget[data-mode="chat"] .yumiko-chat > .chat-log {
-  transition-delay: 90ms;
-}
-
-.yumiko-widget[data-mode="chat"] .yumiko-chat > .chat-compose {
-  transition-delay: 140ms;
+.yumiko-widget[data-mode="chat"] .chat-log {
+  mask-image: none;
 }
 
 #yumiko-input {
@@ -1125,25 +1063,25 @@ input[type="checkbox"]:checked::after {
   }
 
   .presence-stage {
-    inset: 0 0 34% 0;
+    inset: 0 0 30% 0;
   }
 
   #yumiko-character {
-    max-width: min(78vw, 320px);
-    max-height: min(54vh, 400px);
+    max-width: min(80vw, 336px);
+    max-height: min(58vh, 430px);
+  }
+
+  .conversation-band {
+    inset: 52% 14px 14px;
   }
 
   .conversation-band__controls {
-    right: 16px;
-    bottom: 20px;
+    gap: 6px;
   }
 
   .yumiko-chat {
-    right: 16px;
-    bottom: 68px;
-    width: min(68vw, 392px);
-    min-height: 220px;
-    max-height: min(42vh, 324px);
+    width: 100%;
+    min-height: 212px;
     gap: 10px;
     padding: 14px;
     border-radius: 22px;
@@ -1188,18 +1126,17 @@ input[type="checkbox"]:checked::after {
 }
 
 @media (max-width: 420px), (max-height: 620px) {
+  .conversation-band {
+    inset: 50% 12px 12px;
+  }
+
   .conversation-band__controls {
-    right: 12px;
-    bottom: 14px;
+    justify-content: end;
   }
 
   .yumiko-chat {
-    right: 12px;
-    left: 12px;
-    width: auto;
-    bottom: 62px;
+    width: 100%;
     min-height: 208px;
-    max-height: min(44vh, 296px);
   }
 
   .chat-card-header__title {
@@ -1255,8 +1192,6 @@ input[type="checkbox"]:checked::after {
   border: 0;
 }
 
-.yumiko-widget[data-mode="chat"] #yumiko-bubble-layer { opacity: 0; }
-.yumiko-widget[data-mode="focus"] #yumiko-bubble-layer { opacity: 1; }
 
 @media (prefers-reduced-motion: reduce) {
   *,

@@ -55,9 +55,8 @@ const img = document.getElementById('yumiko-character');
 const input = document.getElementById('yumiko-input');
 const send = document.getElementById('yumiko-send');
 const chatLog = document.getElementById('chat-log');
-const bubbleLayer = document.getElementById('yumiko-bubble-layer');
-const bubble = document.getElementById('yumiko-bubble');
-const bubbleText = bubble?.querySelector('.bubble-text');
+const chatPanelTitle = document.getElementById('chat-panel-title');
+const chatPanelStatus = document.getElementById('chat-panel-status');
 
 const CHARACTER_SRC_WHEN_WINDOW_ON_LEFT = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png';
 const CHARACTER_SRC_WHEN_WINDOW_ON_RIGHT = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/overlay1.png';
@@ -129,11 +128,8 @@ let fitRetryCount = 0;
 let minSizeRetryCount = 0;
 let lastGoodFocusFitSize = null;
 let ignoreNextResize = false;
-let bubbleHideTimer = null;
-let bubbleRepositionRaf = null;
 let assistantMessageSequence = 0;
 let lastAssistantMessageId = '';
-let lastAssistantMessageIdShownInBubble = '';
 let lastAssistantMessageAt = 0;
 let lastAssistantMessageText = '';
 let pendingAssistantReplyAfterUserMessage = false;
@@ -247,58 +243,13 @@ function updateCharacterImageForBounds(bounds, { force = false } = {}) {
 }
 
 function positionBubble() {
-  if (!bubbleLayer || !bubble || !mini || settings.mode !== 'focus') return;
-
-  const yumikoRect = (img?.getBoundingClientRect?.() || mini.getBoundingClientRect());
-  if (!yumikoRect || yumikoRect.width <= 0 || yumikoRect.height <= 0) return;
-
-  const bubbleRect = bubble.getBoundingClientRect();
-  const bubbleWidth = Math.max(170, Math.round(bubbleRect.width || 210));
-  const bubbleHeight = Math.max(56, Math.round(bubbleRect.height || 92));
-
-  const desiredLeft = (yumikoRect.left + (yumikoRect.width * 0.5)) - (bubbleWidth * 0.5);
-  const desiredTop = yumikoRect.top + (yumikoRect.height * 0.64);
-
-  const minLeft = 10;
-  const maxLeft = Math.max(minLeft, window.innerWidth - bubbleWidth - 10);
-  const minTop = Math.min(
-    Math.max(10, yumikoRect.top + (yumikoRect.height * 0.48)),
-    Math.max(10, window.innerHeight - bubbleHeight - 10)
-  );
-  const maxTop = Math.max(minTop, window.innerHeight - bubbleHeight - 10);
-
-  const nextLeft = clampToViewport(desiredLeft, minLeft, maxLeft);
-  const nextTop = clampToViewport(desiredTop, minTop, maxTop);
-
-  bubbleLayer.style.left = `${nextLeft}px`;
-  bubbleLayer.style.top = `${nextTop}px`;
-
-  const positionedRect = bubble.getBoundingClientRect();
-  console.info('[yumiko][bubble] show:positioned', {
-    top: nextTop,
-    left: nextLeft,
-    width: bubbleWidth,
-    height: bubbleHeight,
-    maxWidth: bubble.style.maxWidth || null,
-    boundingRect: {
-      top: positionedRect.top,
-      left: positionedRect.left,
-      right: positionedRect.right,
-      bottom: positionedRect.bottom,
-      width: positionedRect.width,
-      height: positionedRect.height
-    }
-  });
+  return;
 }
 
 function scheduleBubblePosition() {
-  if (!bubble || !bubbleLayer) return;
-  if (bubbleRepositionRaf != null) window.cancelAnimationFrame(bubbleRepositionRaf);
-  bubbleRepositionRaf = window.requestAnimationFrame(() => {
-    bubbleRepositionRaf = null;
-    positionBubble();
-  });
+  return;
 }
+
 let autoMessageScheduler = null;
 let isNudgeInFlight = false;
 let lastStrongUserActivityAt = Date.now();
@@ -338,14 +289,7 @@ function clearAutoMessageScheduler() {
 }
 
 function getBubbleComputedStyleSnapshot() {
-  if (!bubble) return {};
-  const computed = window.getComputedStyle(bubble);
-  return {
-    opacity: computed.opacity,
-    visibility: computed.visibility,
-    display: computed.display,
-    zIndex: computed.zIndex
-  };
+  return {};
 }
 
 function getAutoMessageDueInfo() {
@@ -461,9 +405,6 @@ function isNodeEffectivelyVisible(node) {
 
 function getUnionRect() {
   const sceneNodes = [scene, quitAppButton];
-  if (isNodeEffectivelyVisible(bubble) && settings.mode === 'focus') {
-    sceneNodes.push(bubble);
-  }
 
   const rects = sceneNodes
     .map((node) => node?.getBoundingClientRect?.())
@@ -703,41 +644,13 @@ function updateFocusMinimumSize() {
   setFocusMinSize({ width: minW, height: minH });
 }
 
-function hideBubble(reason = 'unspecified') {
-  window.clearTimeout(bubbleHideTimer);
-  bubbleHideTimer = null;
-  if (!bubble) return;
-  bubble.classList.remove('visible');
-  bubble.classList.add('hidden');
-  requestFitDebounced(`bubble-hide:${reason}`);
+function hideBubble() {
+  return;
 }
 
-function showBubble(text, duration = 8000) {
-  if (!bubble || !bubbleText) return;
-  const safeText = typeof text === 'string' ? text.trim() : '';
-  if (!safeText) {
-    hideBubble('empty-text');
-    return;
-  }
-
-  window.clearTimeout(bubbleHideTimer);
-  bubbleText.textContent = safeText;
-  bubble.classList.remove('hidden');
-  scheduleBubblePosition();
-  bubble.classList.add('visible');
-  requestFitDebounced('bubble-show');
-  console.info('[yumiko][bubble] show:classes', {
-    phase: 'show',
-    className: bubble.className,
-    computedStyle: getBubbleComputedStyleSnapshot()
-  });
-
-  const timeoutMs = Number.isFinite(Number(duration)) ? Number(duration) : 8000;
-  bubbleHideTimer = window.setTimeout(() => {
-    hideBubble('timeout');
-  }, Math.max(1000, timeoutMs));
+function showBubble() {
+  return;
 }
-
 
 function normalizeAssistantMessageId(messageId = '', fallbackText = '') {
   const trimmedId = typeof messageId === 'string' ? messageId.trim() : '';
@@ -769,50 +682,9 @@ function registerAssistantReplyForCarry({ text = '', messageId = '', at = Date.n
   };
 }
 
-function showStoredAssistantReplyInFocus({ reason = 'focus-return' } = {}) {
-  const messageId = typeof lastAssistantMessageId === 'string' ? lastAssistantMessageId.trim() : '';
-  if (!pendingAssistantReplyAfterUserMessage) {
-    return false;
-  }
-  const now = Date.now();
-  const hasText = Boolean(lastAssistantMessageText && lastAssistantMessageText.trim());
-  const ageMs = now - (Number(lastAssistantMessageAt) || 0);
-  const hasFreshReply = hasText && Number.isFinite(ageMs) && ageMs >= 0 && ageMs <= RECENT_FOCUS_REPLY_CARRY_WINDOW_MS;
-
-  const currentMessageId = messageId;
-
-  if (!hasFreshReply) {
-    if (hasText) {
-      console.info('[yumiko][reply-carry] skipped expired', {
-        reason,
-        ageMs,
-        windowMs: RECENT_FOCUS_REPLY_CARRY_WINDOW_MS,
-        mode: settings.mode
-      });
-    }
-    pendingAssistantReplyAfterUserMessage = false;
-    return false;
-  }
-
-  if (lastAssistantMessageIdShownInBubble === currentMessageId) {
-    console.info('[yumiko][reply-carry] skipped duplicate', {
-      reason,
-      messageId: currentMessageId,
-      mode: settings.mode
-    });
-    pendingAssistantReplyAfterUserMessage = false;
-    return false;
-  }
-
-  console.info('[yumiko][reply-carry] showing on focus return', {
-    reason,
-    messageId: currentMessageId,
-    durationMs: RECENT_FOCUS_REPLY_CARRY_WINDOW_MS
-  });
-  showBubble(lastAssistantMessageText, RECENT_FOCUS_REPLY_CARRY_WINDOW_MS);
-  lastAssistantMessageIdShownInBubble = currentMessageId;
+function showStoredAssistantReplyInFocus() {
   pendingAssistantReplyAfterUserMessage = false;
-  return true;
+  return false;
 }
 
 function handleAssistantReplyCarry({ text = '', messageId = '', at = Date.now() } = {}) {
@@ -820,16 +692,6 @@ function handleAssistantReplyCarry({ text = '', messageId = '', at = Date.now() 
   if (!stored) return;
 
   if (settings.mode === 'focus') {
-    if (lastAssistantMessageIdShownInBubble === stored.id) {
-      console.info('[yumiko][reply-carry] skipped duplicate', {
-        reason: 'assistant-reply-focus',
-        messageId: stored.id,
-        mode: settings.mode
-      });
-      return;
-    }
-    showBubble(stored.text, RECENT_FOCUS_REPLY_CARRY_WINDOW_MS);
-    lastAssistantMessageIdShownInBubble = stored.id;
     pendingAssistantReplyAfterUserMessage = false;
     return;
   }
@@ -868,6 +730,30 @@ function markUserActivity({ event = 'unknown', strength = 'strong' } = {}) {
   scheduleNextAutoMessageTick({ reason: `user-activity:${strength}:${event}` });
 }
 
+function updateChatPanelChrome() {
+  if (chatPanelTitle) {
+    chatPanelTitle.textContent = settings.mode === 'chat'
+      ? 'Chat ampliado de Yumiko en su franja fija.'
+      : 'Panel compacto de Yumiko, siempre anclado abajo.';
+  }
+
+  if (!chatPanelStatus) return;
+
+  const latestRow = chatLog?.lastElementChild;
+  const latestRole = latestRow?.classList?.contains('user') ? 'Vos' : 'Yumiko';
+  const latestMessage = latestRow?.querySelector('.chat-message')?.textContent?.trim() || '';
+
+  if (latestMessage) {
+    const compactMessage = latestMessage.replace(/\s+/g, ' ').slice(0, 110);
+    chatPanelStatus.textContent = `${latestRole}: ${compactMessage}`;
+    return;
+  }
+
+  chatPanelStatus.textContent = settings.mode === 'chat'
+    ? 'Historial con scroll e input siempre visibles dentro del mismo panel.'
+    : 'Compacto abajo, ampliado en la misma franja cuando abrís el chat.';
+}
+
 function addMessage(role, content, { thinking = false } = {}) {
   if (!chatLog) return null;
   const row = document.createElement('div');
@@ -884,12 +770,14 @@ function addMessage(role, content, { thinking = false } = {}) {
   row.append(label, text);
   chatLog.appendChild(row);
   chatLog.scrollTop = chatLog.scrollHeight;
+  updateChatPanelChrome();
   return row;
 }
 
 function clearMessages() {
   if (!chatLog) return;
   chatLog.innerHTML = '';
+  updateChatPanelChrome();
 }
 
 function renderMessages(messages = []) {
@@ -924,6 +812,7 @@ function setThinking(state) {
   isThinking = Boolean(state);
   if (input) input.disabled = isThinking;
   if (send) send.disabled = isThinking;
+  updateChatPanelChrome();
 }
 
 function toHostMode(uiMode) {
@@ -1046,7 +935,7 @@ function setMode(nextMode, { source = 'ui' } = {}) {
 
   if (chat) {
     chat.hidden = false;
-    chat.setAttribute('aria-hidden', mode === 'chat' ? 'false' : 'true');
+    chat.setAttribute('aria-hidden', 'false');
   }
   if (mini) {
     mini.hidden = false;
@@ -1058,18 +947,17 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   }
 
   if (mode === 'chat') {
-    hideBubble();
     markUserActivity({ event: 'open-chat-mode', strength: 'strong' });
-    hideBubble('chat-open');
     markUserActivity();
     focusChatInputRobust({ reason: `setMode:${source}` });
   } else {
     closeSettingsPanel();
-    scheduleBubblePosition();
     if (previousMode === 'chat') {
       showStoredAssistantReplyInFocus({ reason: `mode-switch:${source}` });
     }
   }
+
+  updateChatPanelChrome();
 
   if (source === 'ui' || source === 'hotkey') {
     notifyHostMode(mode);
@@ -1376,26 +1264,19 @@ async function requestAutoNudge() {
 
     if (message) {
       const resolvedMode = toUiMode(settings.mode);
-      const bubbleDuration = 10000;
-      console.info('[yumiko][bubble] auto-show dispatched', {
+      const panelMessageDuration = 10000;
+      console.info('[yumiko][chat-panel] auto-message dispatched', {
         message,
-        duration: bubbleDuration,
+        duration: panelMessageDuration,
         mode: resolvedMode
       });
 
-      if (resolvedMode === 'chat') {
-        console.info('[yumiko][bubble] auto-show skipped reason=mode-chat', {
-          message,
-          mode: resolvedMode
-        });
-      } else {
-        console.info('[yumiko][bubble] auto-show executed', {
-          message,
-          duration: bubbleDuration,
-          mode: resolvedMode
-        });
-        showBubble(message, bubbleDuration);
-      }
+      console.info('[yumiko][chat-panel] auto-message routed to persistent panel', {
+        message,
+        duration: panelMessageDuration,
+        mode: resolvedMode
+      });
+      addMessage('assistant', message);
       if (!contextCache.some((item, index) => (
         item?.role === 'assistant'
         && item?.content === message
@@ -1404,13 +1285,10 @@ async function requestAutoNudge() {
         contextCache.push({ role: 'assistant', content: message });
         contextCache = contextCache.slice(-20);
       }
-      if (resolvedMode === 'chat') {
-        addMessage('assistant', message);
-      }
       return { sent: true, reason: 'message-generated', messageSource };
     }
 
-    console.info('[yumiko][bubble] auto-show skipped reason=empty-message', {
+    console.info('[yumiko][chat-panel] auto-message skipped reason=empty-message', {
       mode: toUiMode(settings.mode),
       message: result?.message ?? null
     });
@@ -1689,7 +1567,6 @@ window.addEventListener('resize', () => {
   }
 
   requestFitDebounced('resize');
-  scheduleBubblePosition();
 });
 
 send?.addEventListener('click', submitMessage);
@@ -1736,11 +1613,9 @@ window.addEventListener('DOMContentLoaded', () => {
 
     if (img.complete) {
       requestFitDebounced();
-      scheduleBubblePosition();
     } else {
       img.addEventListener('load', () => {
         requestFitDebounced();
-        scheduleBubblePosition();
       }, { once: true });
     }
   }
@@ -1748,7 +1623,6 @@ window.addEventListener('DOMContentLoaded', () => {
   if (typeof ResizeObserver !== 'undefined') {
     resizeObserver = new ResizeObserver(() => {
       requestFitDebounced();
-      scheduleBubblePosition();
     });
     if (mini) resizeObserver.observe(mini);
     if (miniWrap) resizeObserver.observe(miniWrap);
@@ -1813,7 +1687,6 @@ window.addEventListener('DOMContentLoaded', () => {
     .catch(() => setMode('focus', { source: 'state-sync' }));
 
   setMode(settings.mode || 'focus', { source: 'state-sync' });
-  scheduleBubblePosition();
   miniBaseSize = measureMiniBaseSize();
   if (miniBaseSize?.shouldResetScale) {
     setMiniScale(1);
