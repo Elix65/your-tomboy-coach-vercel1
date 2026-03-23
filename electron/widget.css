@@ -26,6 +26,8 @@
   --moon-timing-breath: 7800ms;
   --moon-ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
   --mini-scale: 1;
+  --conversation-bottom-gap: 24px;
+  --conversation-side-gap: 20px;
 
   --text: var(--moon-color-text-primary);
   --muted: var(--moon-color-text-secondary);
@@ -132,6 +134,7 @@ body {
   min-width: 580px;
   min-height: 700px;
   overflow: hidden;
+  padding: 0 var(--conversation-side-gap) var(--conversation-bottom-gap);
 }
 
 .presence-stage {
@@ -289,14 +292,15 @@ body {
 
 .conversation-band {
   position: absolute;
-  left: 20px;
-  right: 20px;
-  bottom: 18px;
+  left: var(--conversation-side-gap);
+  right: var(--conversation-side-gap);
+  bottom: var(--conversation-bottom-gap);
   min-height: 338px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
   pointer-events: none;
+  overflow: visible;
   z-index: 18;
 }
 
@@ -376,10 +380,10 @@ body {
     0 22px 36px rgba(6, 2, 9, 0.38),
     0 10px 20px rgba(10, 6, 12, 0.2),
     0 0 0 1px rgba(255, 247, 236, 0.05) inset;
-  overflow: hidden;
+  overflow: visible;
   opacity: 1;
   transform: translate3d(0, 0, 0);
-  transform-origin: 50% 100%;
+  transform-origin: 50% 60%;
   pointer-events: auto;
   transition: box-shadow var(--moon-timing-base) var(--moon-ease-premium), border-color var(--moon-timing-base) var(--moon-ease-premium), transform var(--moon-timing-fast) var(--moon-ease-premium);
   z-index: 18;
@@ -472,8 +476,9 @@ body {
 
 .panel {
   position: absolute;
-  top: 44px;
+  top: auto;
   right: 10px;
+  bottom: calc(100% - 44px);
   z-index: 24;
   width: min(316px, calc(100% - 20px));
   border: 1px solid rgba(247, 229, 207, 0.12);
@@ -482,7 +487,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: min(74vh, 536px);
+  max-height: min(74vh, 536px, calc(100vh - var(--conversation-bottom-gap) - 88px));
   overflow: auto;
   background:
     radial-gradient(140% 120% at 14% 0%, rgba(184, 136, 111, 0.12), rgba(184, 136, 111, 0) 56%),
@@ -490,7 +495,7 @@ body {
     linear-gradient(180deg, rgba(34, 22, 30, 0.94), rgba(16, 11, 17, 0.97));
   backdrop-filter: blur(calc(var(--moon-blur-lg) + 2px));
   box-shadow: 0 18px 36px rgba(7, 3, 8, 0.44), 0 0 0 1px rgba(255, 247, 236, 0.03) inset;
-  transform-origin: top right;
+  transform-origin: bottom right;
 }
 
 .panel:not([hidden]) {
@@ -986,13 +991,13 @@ input[type="checkbox"]:checked::after {
 
 @keyframes conversation-emphasis {
   0% {
-    transform: translate3d(0, 10px, 0) scale(0.988);
+    transform: translate3d(0, 0, 0) scale(0.992);
     box-shadow:
       0 16px 28px rgba(6, 2, 9, 0.34),
       0 0 0 1px rgba(255, 247, 236, 0.05) inset;
   }
   55% {
-    transform: translate3d(0, -2px, 0) scale(1.006);
+    transform: translate3d(0, -4px, 0) scale(1.006);
     box-shadow:
       0 28px 42px rgba(6, 2, 9, 0.46),
       0 0 0 1px rgba(255, 247, 236, 0.06) inset,
@@ -1030,6 +1035,11 @@ input[type="checkbox"]:checked::after {
 }
 
 @media (max-width: 540px), (max-height: 720px) {
+  :root {
+    --conversation-bottom-gap: 18px;
+    --conversation-side-gap: 14px;
+  }
+
   .overlay-scene {
     min-width: 100%;
     min-height: 100%;
@@ -1045,7 +1055,7 @@ input[type="checkbox"]:checked::after {
   }
 
   .conversation-band {
-    inset: 54% 14px 14px;
+    inset: 54% var(--conversation-side-gap) var(--conversation-bottom-gap);
   }
 
   .conversation-band__controls {
@@ -1061,10 +1071,11 @@ input[type="checkbox"]:checked::after {
   }
 
   .panel {
-    top: 40px;
+    top: auto;
     right: 8px;
+    bottom: calc(100% - 40px);
     width: min(304px, calc(100% - 16px));
-    max-height: min(72vh, 484px);
+    max-height: min(72vh, 484px, calc(100vh - var(--conversation-bottom-gap) - 72px));
     padding: 12px;
     gap: 12px;
     border-radius: 22px;
@@ -1099,8 +1110,13 @@ input[type="checkbox"]:checked::after {
 }
 
 @media (max-width: 420px), (max-height: 620px) {
+  :root {
+    --conversation-bottom-gap: 16px;
+    --conversation-side-gap: 12px;
+  }
+
   .conversation-band {
-    inset: 52% 12px 12px;
+    inset: 52% var(--conversation-side-gap) var(--conversation-bottom-gap);
   }
 
   .conversation-band__controls {
