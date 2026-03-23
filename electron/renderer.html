@@ -13,150 +13,161 @@
   <section class="yumiko-widget" id="yumiko-widget" data-mode="focus" aria-live="polite">
     <div id="drag-region" class="drag-region" aria-hidden="true"></div>
 
-    <div id="yumiko-mini" class="yumiko-mini" aria-hidden="false">
-      <div id="mini-wrap" class="mini-wrap">
-        <div class="mini-atmosphere" aria-hidden="true">
-          <span class="mini-aura mini-aura--halo"></span>
-          <span class="mini-aura mini-aura--ring"></span>
-          <span class="mini-aura mini-aura--veil"></span>
-          <span class="mini-aura mini-aura--floor"></span>
+    <div id="overlay-scene" class="overlay-scene">
+      <div class="presence-stage" aria-label="Presencia de Yumiko">
+        <div id="yumiko-mini" class="yumiko-mini" aria-hidden="false">
+          <div id="mini-wrap" class="mini-wrap">
+            <div class="mini-atmosphere" aria-hidden="true">
+              <span class="mini-aura mini-aura--halo"></span>
+              <span class="mini-aura mini-aura--ring"></span>
+              <span class="mini-aura mini-aura--veil"></span>
+              <span class="mini-aura mini-aura--floor"></span>
+            </div>
+            <img
+              id="yumiko-character"
+              src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png"
+              alt="Yumiko"
+            />
+          </div>
         </div>
-        <img
-          id="yumiko-character"
-          src="https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png"
-          alt="Yumiko"
-        />
 
-        <div class="mini-actions" role="group" aria-label="Controles rápidos">
+        <div id="yumiko-bubble-layer" aria-hidden="true">
+          <div id="yumiko-bubble" class="bubble hidden">
+            <span class="bubble-orbit" aria-hidden="true"></span>
+            <span class="bubble-tail" aria-hidden="true"></span>
+            <div class="bubble-text"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="conversation-band" class="conversation-band" aria-label="Zona de conversación">
+        <div class="conversation-band__copy">
+          <span class="conversation-band__eyebrow">Presencia viva</span>
+          <p class="conversation-band__hint">Yumiko permanece visible arriba. El chat se despliega acá abajo sin reemplazar la escena.</p>
+        </div>
+
+        <div class="conversation-band__controls" role="group" aria-label="Controles rápidos">
           <button id="mini-mic" class="mini-btn" type="button" aria-label="Micrófono">🎤</button>
-          <button id="mini-chat" class="mini-btn" type="button" aria-label="Abrir chat">💬</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="yumiko-chat" id="yumiko-chat" hidden>
-      <button id="toggle-settings" class="panel-settings-btn" type="button" aria-label="Abrir ajustes">⚙️</button>
-
-      <div id="settings-panel" class="panel" hidden>
-        <div class="panel-header">
-          <span class="panel-eyebrow">Salón privado</span>
-          <div>
-            <h2 class="panel-title">Ajustes de Yumiko</h2>
-            <p class="panel-subtitle">Refiná presencia, lectura y discreción sin salir del overlay.</p>
-          </div>
+          <button id="mini-chat" class="mini-btn mini-btn--chat" type="button" aria-label="Abrir panel de chat" aria-controls="yumiko-chat" aria-expanded="false">💬</button>
         </div>
 
-        <div class="settings-group" aria-label="Comportamiento del overlay">
-          <div class="settings-group-header">
-            <span class="settings-kicker">Presencia</span>
-            <h3>Comportamiento del overlay</h3>
-          </div>
-          <div class="toggle-row">
-            <label for="overlay-enabled">
-              <span class="setting-label">Modo Overlay</span>
-              <span class="setting-note">Siempre arriba, con presencia suave y estable.</span>
-            </label>
-            <input id="overlay-enabled" type="checkbox" />
-          </div>
-          <div class="toggle-row">
-            <label for="click-through-enabled">
-              <span class="setting-label">Interacción de fondo</span>
-              <span class="setting-note">Deja pasar clicks sin romper la escena.</span>
-            </label>
-            <input id="click-through-enabled" type="checkbox" />
-          </div>
-          <div class="toggle-row">
-            <label for="side-image-mode">
-              <span class="setting-label">Imagen</span>
-              <span class="setting-note">Elegí cómo acompaña Yumiko el encuadre.</span>
-            </label>
-            <div class="select-shell">
-              <select id="side-image-mode" class="native-select">
-                <option value="auto" selected>Auto</option>
-                <option value="left">Izquierda</option>
-                <option value="right">Derecha</option>
-              </select>
+        <div class="yumiko-chat" id="yumiko-chat" aria-hidden="true">
+          <button id="toggle-settings" class="panel-settings-btn" type="button" aria-label="Abrir ajustes">⚙️</button>
+
+          <div id="settings-panel" class="panel" hidden>
+            <div class="panel-header">
+              <span class="panel-eyebrow">Salón privado</span>
+              <div>
+                <h2 class="panel-title">Ajustes de Yumiko</h2>
+                <p class="panel-subtitle">Refiná presencia, lectura y discreción sin salir del overlay.</p>
+              </div>
+            </div>
+
+            <div class="settings-group" aria-label="Comportamiento del overlay">
+              <div class="settings-group-header">
+                <span class="settings-kicker">Presencia</span>
+                <h3>Comportamiento del overlay</h3>
+              </div>
+              <div class="toggle-row">
+                <label for="overlay-enabled">
+                  <span class="setting-label">Modo Overlay</span>
+                  <span class="setting-note">Siempre arriba, con presencia suave y estable.</span>
+                </label>
+                <input id="overlay-enabled" type="checkbox" />
+              </div>
+              <div class="toggle-row">
+                <label for="click-through-enabled">
+                  <span class="setting-label">Interacción de fondo</span>
+                  <span class="setting-note">Deja pasar clicks sin romper la escena.</span>
+                </label>
+                <input id="click-through-enabled" type="checkbox" />
+              </div>
+              <div class="toggle-row">
+                <label for="side-image-mode">
+                  <span class="setting-label">Imagen</span>
+                  <span class="setting-note">Elegí cómo acompaña Yumiko el encuadre.</span>
+                </label>
+                <div class="select-shell">
+                  <select id="side-image-mode" class="native-select">
+                    <option value="auto" selected>Auto</option>
+                    <option value="left">Izquierda</option>
+                    <option value="right">Derecha</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="settings-group" aria-label="Atajos y accesos">
+              <div class="settings-group-header">
+                <span class="settings-kicker">Ritual</span>
+                <h3>Atajos y accesos</h3>
+              </div>
+              <div class="toggle-row">
+                <label for="shortcuts-enabled">
+                  <span class="setting-label">Atajos globales</span>
+                  <span class="setting-note">Activá la apertura rápida del salón desde cualquier momento.</span>
+                </label>
+                <input id="shortcuts-enabled" type="checkbox" />
+              </div>
+              <div class="toggle-row toggle-row--stacked">
+                <label for="chat-hotkey">
+                  <span class="setting-label">Atajo para abrir/cerrar chat</span>
+                  <span class="setting-note">El panel se despliega o colapsa sin cambiar de escena.</span>
+                </label>
+                <input id="chat-hotkey" type="text" placeholder="Control+Shift+J" />
+              </div>
+              <div class="auth-row auth-row--actions">
+                <button id="chat-hotkey-save" class="panel-btn" type="button">Guardar atajo</button>
+                <button id="chat-hotkey-reset" class="panel-btn panel-btn--ghost" type="button">Restablecer</button>
+              </div>
+              <p id="chat-hotkey-error" class="settings-error" hidden></p>
+            </div>
+
+            <div class="settings-group" aria-label="Vinculación y mensajes sutiles">
+              <div class="settings-group-header">
+                <span class="settings-kicker">Intimidad</span>
+                <h3>Vinculación y susurros</h3>
+              </div>
+              <div class="toggle-row">
+                <label for="auto-message-enabled">
+                  <span class="setting-label">Mensajes sutiles de Yumiko</span>
+                  <span class="setting-note">Pequeñas apariciones para acompañarte sin invadir.</span>
+                </label>
+                <input id="auto-message-enabled" type="checkbox" />
+              </div>
+              <div class="toggle-row">
+                <label for="auto-message-interval">
+                  <span class="setting-label">Ritmo de mensajes</span>
+                  <span class="setting-note">Definí la cadencia de esa presencia.</span>
+                </label>
+                <div class="select-shell">
+                  <select id="auto-message-interval" class="native-select">
+                    <option value="1">1 min</option>
+                    <option value="2">2 min</option>
+                    <option value="5">5 min</option>
+                    <option value="10">10 min</option>
+                    <option value="20" selected>20 min</option>
+                  </select>
+                </div>
+              </div>
+              <div class="auth-row auth-row--status">
+                <div>
+                  <span class="setting-label">Estado de vinculación</span>
+                  <span id="auth-status" class="auth-status">No conectado</span>
+                </div>
+                <button id="auth-action" class="panel-btn" type="button">Vincular</button>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="settings-group" aria-label="Atajos y accesos">
-          <div class="settings-group-header">
-            <span class="settings-kicker">Ritual</span>
-            <h3>Atajos y accesos</h3>
-          </div>
-          <div class="toggle-row">
-            <label for="shortcuts-enabled">
-              <span class="setting-label">Atajos globales</span>
-              <span class="setting-note">Activá la apertura rápida del salón desde cualquier momento.</span>
-            </label>
-            <input id="shortcuts-enabled" type="checkbox" />
-          </div>
-          <div class="toggle-row toggle-row--stacked">
-            <label for="chat-hotkey">
-              <span class="setting-label">Atajo para abrir chat</span>
-              <span class="setting-note">Usá una combinación sobria y fácil de recordar.</span>
-            </label>
-            <input id="chat-hotkey" type="text" placeholder="Control+Shift+J" />
-          </div>
-          <div class="auth-row auth-row--actions">
-            <button id="chat-hotkey-save" class="panel-btn" type="button">Guardar atajo</button>
-            <button id="chat-hotkey-reset" class="panel-btn panel-btn--ghost" type="button">Restablecer</button>
-          </div>
-          <p id="chat-hotkey-error" class="settings-error" hidden></p>
-        </div>
+          <div id="chat-log" class="chat-log" aria-live="polite"></div>
 
-        <div class="settings-group" aria-label="Vinculación y mensajes sutiles">
-          <div class="settings-group-header">
-            <span class="settings-kicker">Intimidad</span>
-            <h3>Vinculación y susurros</h3>
-          </div>
-          <div class="toggle-row">
-            <label for="auto-message-enabled">
-              <span class="setting-label">Mensajes sutiles de Yumiko</span>
-              <span class="setting-note">Pequeñas apariciones para acompañarte sin invadir.</span>
-            </label>
-            <input id="auto-message-enabled" type="checkbox" />
-          </div>
-          <div class="toggle-row">
-            <label for="auto-message-interval">
-              <span class="setting-label">Ritmo de mensajes</span>
-              <span class="setting-note">Definí la cadencia de esa presencia.</span>
-            </label>
-            <div class="select-shell">
-              <select id="auto-message-interval" class="native-select">
-                <option value="1">1 min</option>
-                <option value="2">2 min</option>
-                <option value="5">5 min</option>
-                <option value="10">10 min</option>
-                <option value="20" selected>20 min</option>
-              </select>
-            </div>
-          </div>
-          <div class="auth-row auth-row--status">
-            <div>
-              <span class="setting-label">Estado de vinculación</span>
-              <span id="auth-status" class="auth-status">No conectado</span>
-            </div>
-            <button id="auth-action" class="panel-btn" type="button">Vincular</button>
+          <div class="chat-compose">
+            <label class="sr-only" for="yumiko-input">Mensaje para Yumiko</label>
+            <input id="yumiko-input" type="text" autocomplete="off" placeholder="Escribí tu mensaje..." />
+            <button id="yumiko-send" class="icon-btn send-btn" type="button" aria-label="Enviar">Enviar</button>
           </div>
         </div>
-      </div>
-
-      <div id="chat-log" class="chat-log" aria-live="polite"></div>
-
-      <div class="chat-compose">
-        <label class="sr-only" for="yumiko-input">Mensaje para Yumiko</label>
-        <input id="yumiko-input" type="text" autocomplete="off" placeholder="Escribí tu mensaje..." />
-        <button id="yumiko-send" class="icon-btn send-btn" type="button" aria-label="Enviar">Enviar</button>
-      </div>
-    </div>
-
-    <div id="yumiko-bubble-layer" aria-hidden="true">
-      <div id="yumiko-bubble" class="bubble hidden">
-        <span class="bubble-orbit" aria-hidden="true"></span>
-        <span class="bubble-tail" aria-hidden="true"></span>
-        <div class="bubble-text"></div>
       </div>
     </div>
   </section>
