@@ -8,7 +8,7 @@ const DEFAULT_SETTINGS = {
 };
 const AUTO_MESSAGE_INTERVAL_OPTIONS = [1, 2, 5, 10, 20];
 const RECENT_FOCUS_REPLY_CARRY_WINDOW_MS = 7000;
-const CHAT_WINDOW_SIZE = { width: 462, height: 352 };
+const SCENE_WINDOW_SIZE = { width: 540, height: 720 };
 const MINI_SCALE_MIN = 0.35;
 const MINI_SCALE_MAX = 1;
 const MINI_BASE_FALLBACK = { width: 360, height: 520 };
@@ -44,9 +44,10 @@ const sideImageModeSelect = document.getElementById('side-image-mode');
 const selectShells = Array.from(document.querySelectorAll('.select-shell'));
 
 const widget = document.getElementById('yumiko-widget');
+const scene = document.getElementById('overlay-scene');
 const mini = document.getElementById('yumiko-mini');
 const miniWrap = document.getElementById('mini-wrap');
-const miniActions = document.querySelector('.mini-actions');
+const miniActions = document.querySelector('.conversation-band__controls');
 const miniChatButton = document.getElementById('mini-chat');
 const miniMicButton = document.getElementById('mini-mic');
 const chat = document.getElementById('yumiko-chat');
@@ -459,15 +460,12 @@ function isNodeEffectivelyVisible(node) {
 }
 
 function getUnionRect() {
-  const focusNodes = [miniWrap, miniActions];
+  const sceneNodes = [scene, quitAppButton];
   if (isNodeEffectivelyVisible(bubble) && settings.mode === 'focus') {
-    focusNodes.push(bubble);
-  }
-  if (isNodeEffectivelyVisible(quitAppButton)) {
-    focusNodes.push(quitAppButton);
+    sceneNodes.push(bubble);
   }
 
-  const rects = focusNodes
+  const rects = sceneNodes
     .map((node) => node?.getBoundingClientRect?.())
     .filter((rect) => rect && rect.width > 0 && rect.height > 0);
 
@@ -650,85 +648,34 @@ function scheduleFitRetry(reason = 'retry') {
 function requestFit({ reason = 'unknown', retry = 0 } = {}) {
   if (!window.yumikoOverlay?.setWindowSize || !widget) return;
 
-  if (settings.mode === 'focus') {
-    updateFocusMinimumSize();
+  updateFocusMinimumSize();
 
-    const unionRect = getUnionRect();
-    if (!unionRect) {
-      if (lastGoodFocusFitSize) {
-        const { width, height } = lastGoodFocusFitSize;
-        lastFitRequest = { mode: 'focus', width, height };
-        ignoreNextResize = true;
-        window.yumikoOverlay.setWindowSize({ width, height, preservePosition: true });
-      }
-      scheduleFitRetry(`${reason}:missing-bounds`);
-      return;
-    }
+  const width = SCENE_WINDOW_SIZE.width;
+  const height = SCENE_WINDOW_SIZE.height;
 
-    const unionW = Math.ceil(unionRect.width);
-    const unionH = Math.ceil(unionRect.height);
-    const rawWidth = Math.ceil(unionW + (MINI_BOUNDS_PADDING_X * 2));
-    const rawHeight = Math.ceil(unionH + (MINI_BOUNDS_PADDING_Y * 2));
-
-    if (hasUnsafeCalculatedSize(rawWidth, rawHeight)) {
-      console.warn('[yumiko][fit] invalid measured focus bounds', {
-        rawWidth,
-        rawHeight,
-        unionW,
-        unionH,
-        reason,
-        retry
-      });
-      if (lastGoodFocusFitSize) {
-        const { width: cachedW, height: cachedH } = lastGoodFocusFitSize;
-        lastFitRequest = { mode: 'focus', width: cachedW, height: cachedH };
-        ignoreNextResize = true;
-        window.yumikoOverlay.setWindowSize({ width: cachedW, height: cachedH, preservePosition: true });
-      }
-      if (fitRetryCount < 2) {
-        scheduleFitRetry(`${reason}:invalid-bounds`);
-      }
-      return;
-    }
-
-    const width = Math.max(rawWidth, MINI_MIN_WIDTH);
-    const height = Math.max(rawHeight, MINI_MIN_HEIGHT);
-    if (lastFitRequest.mode === 'focus' && lastFitRequest.width === width && lastFitRequest.height === height) return;
-
-    fitRetryCount = 0;
-    lastGoodFocusFitSize = { width, height };
-    lastFitRequest = { mode: 'focus', width, height };
-
-    if (DEV_FIT_LOG) {
-      console.log('[fit]', {
-        mode: settings.mode,
-        userScale,
-        effectiveScale,
-        unionW,
-        unionH,
-        winW: width,
-        winH: height
-      });
-    }
-
-    ignoreNextResize = true;
-    window.yumikoOverlay.setWindowSize({ width, height, preservePosition: true });
+  if (lastFitRequest.width === width && lastFitRequest.height === height) {
     return;
   }
 
-  window.yumikoOverlay?.setMinimumSize?.({ width: 0, height: 0 });
+  fitRetryCount = 0;
+  lastGoodFocusFitSize = { width, height };
+  lastFitRequest = { mode: settings.mode, width, height };
 
-  if (lastFitRequest.mode === 'chat'
-    && lastFitRequest.width === CHAT_WINDOW_SIZE.width
-    && lastFitRequest.height === CHAT_WINDOW_SIZE.height) {
-    return;
+  if (DEV_FIT_LOG) {
+    console.log('[fit]', {
+      mode: settings.mode,
+      reason,
+      retry,
+      winW: width,
+      winH: height
+    });
   }
 
-  lastFitRequest = { mode: 'chat', width: CHAT_WINDOW_SIZE.width, height: CHAT_WINDOW_SIZE.height };
   ignoreNextResize = true;
+  window.yumikoOverlay?.setMinimumSize?.({ width, height });
   window.yumikoOverlay.setWindowSize({
-    width: CHAT_WINDOW_SIZE.width,
-    height: CHAT_WINDOW_SIZE.height,
+    width,
+    height,
     preservePosition: true
   });
 }
@@ -739,28 +686,14 @@ function requestFitDebounced(reason = 'debounced') {
 }
 
 function updateFocusMinimumSize() {
-  if (settings.mode !== 'focus') return;
-
   const setFocusMinSize = window.yumikoOverlay?.setFocusMinSize || window.yumikoOverlay?.setMinimumSize;
   if (!setFocusMinSize) return;
 
-  const baseSize = getBaseSize();
-  const baseWidth = baseSize?.baseW || 0;
-  const baseHeight = baseSize?.baseH || 0;
+  const baseWidth = SCENE_WINDOW_SIZE.width;
+  const baseHeight = SCENE_WINDOW_SIZE.height;
 
-  if (hasUnsafeCalculatedSize(baseWidth, baseHeight)) {
-    if (minSizeRetryCount >= MINI_MIN_SIZE_RETRY_LIMIT) {
-      console.warn('[yumiko][fit] minimum size measurement failed after retries');
-      return;
-    }
-
-    minSizeRetryCount += 1;
-    window.requestAnimationFrame(() => updateFocusMinimumSize());
-    return;
-  }
-
-  const minW = Math.ceil((baseWidth * MINI_SCALE_MIN) + (MINI_BOUNDS_PADDING_X * 2));
-  const minH = Math.ceil((baseHeight * MINI_SCALE_MIN) + (MINI_BOUNDS_PADDING_Y * 2));
+  const minW = Math.max(Math.ceil(baseWidth), MINI_MIN_WIDTH);
+  const minH = Math.max(Math.ceil(baseHeight), MINI_MIN_HEIGHT);
 
   if (hasUnsafeCalculatedSize(minW, minH)) {
     return;
@@ -1111,24 +1044,17 @@ function setMode(nextMode, { source = 'ui' } = {}) {
     quitAppButton.hidden = mode === 'focus';
   }
 
-  if (mode === 'chat') {
-    if (chat) {
-      chat.hidden = false;
-      chat.setAttribute('aria-hidden', 'false');
-    }
-    if (mini) {
-      mini.hidden = true;
-      mini.setAttribute('aria-hidden', 'true');
-    }
-  } else {
-    if (chat) {
-      chat.hidden = true;
-      chat.setAttribute('aria-hidden', 'true');
-    }
-    if (mini) {
-      mini.hidden = false;
-      mini.setAttribute('aria-hidden', 'false');
-    }
+  if (chat) {
+    chat.hidden = false;
+    chat.setAttribute('aria-hidden', mode === 'chat' ? 'false' : 'true');
+  }
+  if (mini) {
+    mini.hidden = false;
+    mini.setAttribute('aria-hidden', 'false');
+  }
+  if (miniChatButton) {
+    miniChatButton.setAttribute('aria-expanded', String(mode === 'chat'));
+    miniChatButton.setAttribute('aria-label', mode === 'chat' ? 'Cerrar panel de chat' : 'Abrir panel de chat');
   }
 
   if (mode === 'chat') {
@@ -1149,13 +1075,10 @@ function setMode(nextMode, { source = 'ui' } = {}) {
     notifyHostMode(mode);
   }
 
-  if (mode === 'focus') {
-    window.requestAnimationFrame(() => {
-      setMiniScale(userScale, { persist: false });
-    });
-  } else {
-    requestFitDebounced();
-  }
+  window.requestAnimationFrame(() => {
+    setMiniScale(userScale, { persist: false, shouldRequestFit: false });
+  });
+  requestFitDebounced();
 
   console.info('[yumiko][mode] after change', {
     previousMode,
@@ -1668,8 +1591,11 @@ authActionButton?.addEventListener('click', async () => {
 
 miniChatButton?.addEventListener('click', () => {
   markUserActivity({ event: 'mini-chat-button', strength: 'strong' });
-  setMode('chat', { source: 'ui' });
-  focusChatInputRobust({ reason: 'mini-chat-button' });
+  const nextMode = settings.mode === 'chat' ? 'focus' : 'chat';
+  setMode(nextMode, { source: 'ui' });
+  if (nextMode === 'chat') {
+    focusChatInputRobust({ reason: 'mini-chat-button' });
+  }
 });
 
 miniMicButton?.addEventListener('click', () => {
@@ -1748,8 +1674,6 @@ window.addEventListener('pointerdown', (event) => {
 }, { capture: true });
 
 window.addEventListener('resize', () => {
-  if (settings.mode !== 'focus') return;
-
   if (ignoreNextResize) {
     ignoreNextResize = false;
     return;

@@ -14,7 +14,7 @@ const {
 } = require('electron');
 const chatClient = require('./chatClient');
 
-const DEFAULT_BOUNDS = { width: 560, height: 380 };
+const DEFAULT_BOUNDS = { width: 540, height: 720 };
 const SETTINGS_FILE = 'settings.json';
 const AUTH_FILE = 'auth.json';
 const DEFAULT_YUMIKO_WEB_ORIGIN = 'https://21-moon.com';
@@ -90,7 +90,7 @@ function normalizeChatHotkey(value) {
 }
 
 function safeBounds(bounds, reason = 'unknown') {
-  const fallback = { x: 80, y: 80, width: 420, height: 420 };
+  const fallback = { x: 80, y: 80, width: DEFAULT_BOUNDS.width, height: DEFAULT_BOUNDS.height };
   const width = Number(bounds?.width);
   const height = Number(bounds?.height);
 
@@ -615,37 +615,27 @@ function getDefaultPosition() {
 
 function getInitialBounds() {
   const position = getDefaultPosition();
-  const activeBounds = settings.mode === 'chat'
-    ? (settings.chatBounds || settings.overlayBounds || settings.bounds)
-    : (settings.overlayBounds || settings.bounds);
+  const activeBounds = settings.overlayBounds || settings.chatBounds || settings.bounds || null;
+  const safeActiveBounds = activeBounds ? safeBounds(activeBounds, 'initial-bounds') : null;
 
   return {
-    width: DEFAULT_BOUNDS.width,
-    height: DEFAULT_BOUNDS.height,
     ...position,
-    ...(activeBounds || {})
+    x: safeActiveBounds?.x ?? position.x,
+    y: safeActiveBounds?.y ?? position.y,
+    width: Math.max(DEFAULT_BOUNDS.width, safeActiveBounds?.width || 0),
+    height: Math.max(DEFAULT_BOUNDS.height, safeActiveBounds?.height || 0)
   };
 }
 
-function getBoundsForMode(mode) {
-  if (mode === 'chat') {
-    return settings.chatBounds || settings.overlayBounds || settings.bounds || null;
-  }
-  return settings.overlayBounds || settings.bounds || settings.chatBounds || null;
+function getBoundsForMode(_mode) {
+  return settings.overlayBounds || settings.chatBounds || settings.bounds || null;
 }
 
-function persistBoundsForMode(mode, bounds) {
-  const normalizedBounds = safeBounds(bounds, `persist:${mode}`);
-
-  if (mode === 'chat') {
-    settings.chatBounds = normalizedBounds;
-  } else {
-    settings.overlayBounds = normalizedBounds;
-  }
-
-  settings.bounds = mode === settings.mode
-    ? normalizedBounds
-    : (getBoundsForMode(settings.mode) || normalizedBounds);
+function persistBoundsForMode(_mode, bounds) {
+  const normalizedBounds = safeBounds(bounds, 'persist:scene');
+  settings.overlayBounds = normalizedBounds;
+  settings.chatBounds = normalizedBounds;
+  settings.bounds = normalizedBounds;
 }
 
 function broadcastState() {
@@ -714,16 +704,13 @@ function setMode(mode, { fromRenderer = false, userPickedMode = false } = {}) {
 
   if (!win) return;
 
+  win.setResizable(false);
   if (nextMode === 'chat') {
-    win.setResizable(true);
     win.setFocusable(true);
     win.setIgnoreMouseEvents(false);
-    win.setMinimumSize(0, 0);
-  } else {
-    win.setResizable(false);
-    if (focusMinBounds.minW > 0 && focusMinBounds.minH > 0) {
-      win.setMinimumSize(focusMinBounds.minW, focusMinBounds.minH);
-    }
+  }
+  if (focusMinBounds.minW > 0 && focusMinBounds.minH > 0) {
+    win.setMinimumSize(focusMinBounds.minW, focusMinBounds.minH);
   }
 
   applyWindowBehavior();
@@ -1098,9 +1085,9 @@ function createWindow() {
     backgroundColor: '#00000000',
     frame: false,
     alwaysOnTop: Boolean(settings.overlayEnabled),
-    minWidth: 220,
-    minHeight: 220,
-    resizable: settings.mode === 'chat',
+    minWidth: DEFAULT_BOUNDS.width,
+    minHeight: DEFAULT_BOUNDS.height,
+    resizable: false,
     skipTaskbar: true,
     webPreferences: {
       contextIsolation: true,
@@ -1166,22 +1153,8 @@ function createWindow() {
     }
   });
 
-  win.on('will-resize', (event, newBounds) => {
-    if (settings.mode !== 'chat') {
-      event.preventDefault();
-      return;
-    }
-
-    const { minW, minH } = focusMinBounds;
-    if (!minW || !minH) return;
-    if (newBounds.width >= minW && newBounds.height >= minH) return;
-
+  win.on('will-resize', (event) => {
     event.preventDefault();
-    win.setBounds({
-      ...newBounds,
-      width: Math.max(newBounds.width, minW),
-      height: Math.max(newBounds.height, minH)
-    });
   });
 
   win.webContents.on('did-finish-load', () => {
