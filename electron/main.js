@@ -270,9 +270,7 @@ function setFocusMinimumBounds(payload) {
   const minH = Math.max(260, Math.round(requestedHeight));
   focusMinBounds = { minW, minH };
 
-  if (settings.mode === 'focus') {
-    win.setMinimumSize(minW, minH);
-  }
+  win.setMinimumSize(minW, minH);
 }
 const YUMIKO_WEB_ORIGIN = resolveYumikoWebOrigin(settings);
 settings.yumikoWebOrigin = YUMIKO_WEB_ORIGIN;
@@ -682,22 +680,13 @@ function setMode(mode, { fromRenderer = false, userPickedMode = false } = {}) {
     source: fromRenderer ? 'renderer' : 'main'
   });
 
-  if (win && !win.isDestroyed() && previousMode !== nextMode) {
-    persistBoundsForMode(previousMode, win.getBounds());
-  }
-
   settings.mode = nextMode;
   if (userPickedMode) {
     settings.userPickedMode = true;
   }
 
-  if (win && !win.isDestroyed() && previousMode !== nextMode) {
-    const modeBounds = getBoundsForMode(nextMode);
-    if (modeBounds) {
-      const safeModeBounds = safeBounds(modeBounds, `mode-switch:${previousMode}->${nextMode}`);
-      win.setBounds(clampBoundsToWorkArea(safeModeBounds), false);
-      persistBoundsForMode(nextMode, win.getBounds());
-    }
+  if (win && !win.isDestroyed()) {
+    persistBoundsForMode(nextMode, win.getBounds());
   }
 
   writeSettings();
@@ -735,35 +724,18 @@ function requestWindowFocusForChat(reason = 'unknown') {
   win.webContents.focus();
 }
 
-function toggleChatFromHotkey() {
+function activateConversationFromHotkey() {
   if (!win || win.isDestroyed()) return;
 
-  console.info('[yumiko][hotkey] toggle triggered');
-  console.info('[yumiko][hotkey] current mode before toggle', { mode: settings.mode });
-
-  const currentMode = settings.mode;
-  if (currentMode === 'chat') {
-    setMode('focus', { userPickedMode: true });
-    if (!win.webContents.isLoading()) {
-      win.webContents.send('yumiko:toggle-chat-from-hotkey', {
-        targetMode: 'focus',
-        previousMode: currentMode
-      });
-    }
-    return;
-  }
+  console.info('[yumiko][hotkey] conversation activation triggered', {
+    previousMode: settings.mode
+  });
 
   settings.visible = true;
   writeSettings();
-  requestWindowFocusForChat('hotkey:open-chat:start');
-
+  requestWindowFocusForChat('hotkey:activate-conversation');
   setMode('chat', { userPickedMode: true });
-  if (!win.webContents.isLoading()) {
-    win.webContents.send('yumiko:toggle-chat-from-hotkey', {
-      targetMode: 'chat',
-      previousMode: currentMode
-    });
-  }
+  focusChatInput();
 }
 
 function registerChatHotkey() {
@@ -772,7 +744,7 @@ function registerChatHotkey() {
   registeredChatHotkey = null;
   shortcutRegistrationError = '';
 
-  const registered = globalShortcut.register(chatHotkey, toggleChatFromHotkey);
+  const registered = globalShortcut.register(chatHotkey, activateConversationFromHotkey);
   if (!registered) {
     shortcutRegistrationError = `No se pudo registrar el atajo de chat (${chatHotkey}). Está en uso por otra app o el sistema. Cambialo desde Settings.`;
     console.error('[yumiko][shortcuts] chat hotkey registration failed', { chatHotkey });
@@ -879,8 +851,8 @@ function toggleVisible() {
 }
 
 function toggleMode() {
-  console.info('[yumiko][mode] toggleMode shortcut/menu', { previousMode: settings.mode });
-  setMode(settings.mode === 'focus' ? 'chat' : 'focus', { userPickedMode: true });
+  console.info('[yumiko][mode] activate conversation shortcut/menu', { previousMode: settings.mode });
+  activateConversationFromHotkey();
 }
 
 function showAndFocusChat() {
@@ -905,7 +877,7 @@ function refreshTrayMenu() {
   if (!tray || !win) return;
   const contextMenu = Menu.buildFromTemplate([
     { label: win.isVisible() ? 'Hide' : 'Show', click: toggleVisible },
-    { label: `Abrir chat + foco input (${settings.chatHotkey || SHORTCUTS.defaultChatFocus})`, click: toggleChatFromHotkey },
+    { label: `Activar conversación (${settings.chatHotkey || SHORTCUTS.defaultChatFocus})`, click: activateConversationFromHotkey },
     {
       label: 'Modo Overlay (Siempre arriba)',
       type: 'checkbox',

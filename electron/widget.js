@@ -322,7 +322,6 @@ function getAutoMessageDueInfo() {
 
 function getAutoMessageSkipReason() {
   if (!settings.autoMessageEnabled) return 'disabled';
-  if (settings.mode === 'chat') return 'chat-open';
   if (isNudgeInFlight) return 'nudge-in-flight';
   return '';
 }
@@ -732,17 +731,10 @@ function markUserActivity({ event = 'unknown', strength = 'strong' } = {}) {
 
 function updateChatPanelChrome() {
   if (chatPanelTitle) {
-    chatPanelTitle.textContent = settings.mode === 'chat'
-      ? 'Quedate un momento.'
-      : 'Cerca de vos.';
+    chatPanelTitle.textContent = 'Cerca de vos.';
   }
 
   if (!chatPanelStatus) return;
-
-  if (settings.mode === 'focus') {
-    chatPanelStatus.textContent = 'Leé su último mensaje y respondé.';
-    return;
-  }
 
   const latestRow = chatLog?.lastElementChild;
   const latestMessage = latestRow?.querySelector('.chat-message')?.textContent?.trim() || '';
@@ -895,6 +887,17 @@ function focusChatInputRobust({ reason = 'unknown', sendAck = false } = {}) {
   });
 }
 
+function pulseConversationPanel({ reason = 'unknown' } = {}) {
+  if (!chat) return;
+  chat.classList.remove('is-activated');
+  void chat.offsetWidth;
+  chat.classList.add('is-activated');
+  window.setTimeout(() => {
+    chat?.classList.remove('is-activated');
+  }, 620);
+  console.info('[yumiko][conversation] panel emphasis', { reason });
+}
+
 function setMode(nextMode, { source = 'ui' } = {}) {
   const mode = toUiMode(nextMode);
   const previousMode = settings.mode;
@@ -904,19 +907,6 @@ function setMode(nextMode, { source = 'ui' } = {}) {
     normalizedMode: mode,
     source
   });
-  if (settings.mode === mode && source !== 'state-sync') {
-    console.info('[yumiko][route] setMode noop', { mode, source });
-  } else {
-    console.info('[yumiko][route] setMode', { previousMode: settings.mode, nextMode: mode, source });
-  }
-
-  if (previousMode !== mode) {
-    console.info('[yumiko][mode] change', {
-      previousMode,
-      nextMode: mode,
-      source
-    });
-  }
 
   settings.mode = mode;
   if (source !== 'state-sync') {
@@ -928,11 +918,8 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   }
   saveSettings();
 
-  if (widget) {
-    widget.dataset.mode = mode;
-  }
   if (quitAppButton) {
-    quitAppButton.hidden = mode === 'focus';
+    quitAppButton.hidden = false;
   }
 
   if (chat) {
@@ -944,19 +931,15 @@ function setMode(nextMode, { source = 'ui' } = {}) {
     mini.setAttribute('aria-hidden', 'false');
   }
   if (miniChatButton) {
-    miniChatButton.setAttribute('aria-expanded', String(mode === 'chat'));
-    miniChatButton.setAttribute('aria-label', mode === 'chat' ? 'Compactar panel de chat' : 'Ampliar panel de chat');
+    miniChatButton.setAttribute('aria-label', 'Activar conversación con Yumiko');
   }
 
   if (mode === 'chat') {
-    markUserActivity({ event: 'open-chat-mode', strength: 'strong' });
-    markUserActivity();
+    markUserActivity({ event: 'activate-conversation', strength: 'strong' });
     focusChatInputRobust({ reason: `setMode:${source}` });
+    pulseConversationPanel({ reason: source });
   } else {
     closeSettingsPanel();
-    if (previousMode === 'chat') {
-      showStoredAssistantReplyInFocus({ reason: `mode-switch:${source}` });
-    }
   }
 
   updateChatPanelChrome();
@@ -974,7 +957,6 @@ function setMode(nextMode, { source = 'ui' } = {}) {
     previousMode,
     currentMode: settings.mode,
     source,
-    widgetMode: widget?.dataset?.mode || null,
     chatHidden: chat?.hidden ?? null,
     miniHidden: mini?.hidden ?? null
   });
@@ -1393,8 +1375,8 @@ overlayToggle?.addEventListener('change', () => {
 
 clickThroughToggle?.addEventListener('change', () => {
   window.yumikoOverlay?.setClickThroughEnabled?.(clickThroughToggle.checked);
-  if (settings.mode === 'chat') {
-    addMessage('assistant', 'Se aplicará al cerrar el chat (ESC)');
+  if (clickThroughToggle?.checked) {
+    addMessage('assistant', 'Interacción de fondo activada. Si necesitás escribir, usá el atajo o el botón de chat para retomar foco.');
   }
 });
 
@@ -1471,11 +1453,8 @@ authActionButton?.addEventListener('click', async () => {
 
 miniChatButton?.addEventListener('click', () => {
   markUserActivity({ event: 'mini-chat-button', strength: 'strong' });
-  const nextMode = settings.mode === 'chat' ? 'focus' : 'chat';
-  setMode(nextMode, { source: 'ui' });
-  if (nextMode === 'chat') {
-    focusChatInputRobust({ reason: 'mini-chat-button' });
-  }
+  setMode('chat', { source: 'ui' });
+  focusChatInputRobust({ reason: 'mini-chat-button' });
 });
 
 miniMicButton?.addEventListener('click', () => {
@@ -1484,7 +1463,6 @@ miniMicButton?.addEventListener('click', () => {
 });
 
 function adjustMiniScale(delta) {
-  if (settings.mode !== 'focus') return;
   setMiniScale((userScale || 1) + delta);
 }
 
@@ -1510,7 +1488,7 @@ function panicResetRendererState() {
 }
 
 window.addEventListener('wheel', (event) => {
-  if (!event.ctrlKey || widget?.dataset.mode !== 'focus') return;
+  if (!event.ctrlKey || document.activeElement === input) return;
   event.preventDefault();
   adjustMiniScale(event.deltaY < 0 ? 0.05 : -0.05);
 }, { passive: false });
@@ -1522,7 +1500,7 @@ window.addEventListener('keydown', (event) => {
     return;
   }
 
-  if (!event.ctrlKey || settings.mode !== 'focus') return;
+  if (!event.ctrlKey || document.activeElement === input) return;
 
   if (event.key === '0') {
     event.preventDefault();
@@ -1580,18 +1558,14 @@ input?.addEventListener('keydown', (event) => {
   }
 });
 
-function handleEscapeToFocus(event) {
-  if (event.key !== 'Escape' || settings.mode !== 'chat') return;
+function handleEscapeToCloseSettings(event) {
+  if (event.key !== 'Escape' || settingsPanel?.hidden) return;
   event.preventDefault();
-  console.info('[yumiko][mode] close-chat -> focus', {
-    source: 'hotkey',
-    trigger: 'escape'
-  });
-  setMode('focus', { source: 'hotkey' });
+  closeSettingsPanel();
 }
 
-input?.addEventListener('keydown', handleEscapeToFocus);
-window.addEventListener('keydown', handleEscapeToFocus);
+input?.addEventListener('keydown', handleEscapeToCloseSettings);
+window.addEventListener('keydown', handleEscapeToCloseSettings);
 
 window.yumikoWidget = {
   setMode: (mode) => setMode(mode, { source: 'state-sync' }),
@@ -1635,26 +1609,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
   window.yumikoOverlay?.onStateUpdated?.(syncHostState);
   window.yumikoOverlay?.onFocusInput?.(() => {
-    setMode('chat', { source: 'state-sync' });
-    focusChatInputRobust({ reason: 'main:focus-input' });
-  });
-  window.yumikoOverlay?.onToggleChatFromHotkey?.((payload) => {
-    const targetMode = payload?.targetMode === 'focus' ? 'focus' : 'chat';
-    if (targetMode === 'chat') {
-      console.info('[yumiko][mode] hotkey toggle -> chat', {
-        previousMode: settings.mode
-      });
-      console.info('[yumiko][renderer] switching to chat', { source: 'hotkey' });
-      setMode('chat', { source: 'hotkey' });
-      focusChatInputRobust({ reason: 'hotkey:toggle-chat', sendAck: true });
-      return;
-    }
-
-    console.info('[yumiko][mode] hotkey toggle -> focus', {
-      previousMode: settings.mode
-    });
-    console.info('[yumiko][renderer] switching to focus', { source: 'hotkey' });
-    setMode('focus', { source: 'hotkey' });
+    setMode('chat', { source: 'hotkey' });
+    focusChatInputRobust({ reason: 'main:focus-input', sendAck: true });
   });
   window.addEventListener('yumiko:auth-code', (event) => {
     const code = typeof event?.detail?.code === 'string' ? event.detail.code : '';

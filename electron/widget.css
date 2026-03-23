@@ -358,13 +358,13 @@ body {
   align-self: end;
   width: min(100%, 596px);
   min-height: 0;
-  height: var(--chat-panel-height, 194px);
+  height: 330px;
   max-height: 352px;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: var(--chat-panel-gap, 10px);
-  padding: var(--chat-panel-padding, 14px 16px 16px);
+  gap: 12px;
+  padding: 16px 18px 18px;
   border: 1px solid rgba(247, 229, 207, 0.16);
   border-radius: 28px;
   background:
@@ -373,7 +373,7 @@ body {
     linear-gradient(180deg, rgba(26, 18, 24, 0.97), rgba(14, 10, 16, 0.985));
   backdrop-filter: none;
   box-shadow:
-    0 20px 34px rgba(6, 2, 9, 0.36),
+    0 22px 36px rgba(6, 2, 9, 0.38),
     0 10px 20px rgba(10, 6, 12, 0.2),
     0 0 0 1px rgba(255, 247, 236, 0.05) inset;
   overflow: hidden;
@@ -381,27 +381,11 @@ body {
   transform: translate3d(0, 0, 0);
   transform-origin: 50% 100%;
   pointer-events: auto;
-  transition: height 260ms var(--moon-ease-premium), padding 260ms var(--moon-ease-premium), gap 260ms var(--moon-ease-premium), box-shadow var(--moon-timing-base) var(--moon-ease-premium), border-color var(--moon-timing-base) var(--moon-ease-premium);
+  transition: box-shadow var(--moon-timing-base) var(--moon-ease-premium), border-color var(--moon-timing-base) var(--moon-ease-premium), transform var(--moon-timing-fast) var(--moon-ease-premium);
   z-index: 18;
 }
 
-.yumiko-widget[data-mode="focus"] .yumiko-chat {
-  --chat-panel-height: 194px;
-  --chat-panel-padding: 12px 16px 14px;
-  --chat-panel-gap: 8px;
-  box-shadow:
-    0 18px 30px rgba(6, 2, 9, 0.34),
-    0 10px 20px rgba(10, 6, 12, 0.18),
-    0 0 0 1px rgba(255, 247, 236, 0.05) inset;
-}
-
-.yumiko-widget[data-mode="chat"] .yumiko-chat {
-  --chat-panel-height: 330px;
-  --chat-panel-padding: 16px 18px 18px;
-  --chat-panel-gap: 12px;
-}
-
-.yumiko-widget[data-mode="chat"] #yumiko-mini {
+#yumiko-mini {
   opacity: 1;
   visibility: visible;
   pointer-events: none;
@@ -409,17 +393,17 @@ body {
   filter: none;
 }
 
-.yumiko-widget[data-mode="focus"] #yumiko-mini {
-  opacity: 1;
-  visibility: visible;
-  pointer-events: none;
-  transform: translateX(-50%) translateY(0) scale(1);
-  filter: none;
-}
-
-.yumiko-widget[data-mode="focus"] .drag-region,
-.yumiko-widget[data-mode="chat"] .drag-region {
+.drag-region {
   display: block;
+}
+
+.yumiko-chat.is-activated {
+  animation: conversation-emphasis 540ms var(--moon-ease-premium);
+  border-color: rgba(214, 164, 137, 0.28);
+  box-shadow:
+    0 24px 40px rgba(6, 2, 9, 0.44),
+    0 0 0 1px rgba(255, 247, 236, 0.06) inset,
+    0 0 0 4px rgba(170, 117, 96, 0.09);
 }
 
 
@@ -950,37 +934,11 @@ input[type="checkbox"]:checked::after {
   transition: opacity var(--moon-timing-slow) var(--moon-ease-premium), transform var(--moon-timing-slow) var(--moon-ease-premium);
 }
 
-.yumiko-widget[data-mode="focus"] .chat-card-header__status {
-  max-width: 44ch;
+.chat-card-header__status {
+  max-width: 46ch;
 }
 
-.yumiko-widget[data-mode="focus"] .chat-log {
-  max-height: 64px;
-  gap: 0;
-  padding-bottom: 0;
-  mask-image: none;
-}
-
-.yumiko-widget[data-mode="focus"] .chat-log .chat-row:not(:last-child) {
-  display: none;
-}
-
-.yumiko-widget[data-mode="focus"] .chat-log .chat-row:last-child {
-  max-width: min(100%, 100%);
-}
-
-.yumiko-widget[data-mode="focus"] .chat-log .chat-role {
-  display: none;
-}
-
-.yumiko-widget[data-mode="focus"] .chat-log .chat-message {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-
-.yumiko-widget[data-mode="chat"] .chat-log {
+.chat-log {
   max-height: 188px;
   gap: 12px;
   mask-image: none;
@@ -1025,8 +983,28 @@ input[type="checkbox"]:checked::after {
   box-shadow: 0 14px 26px rgba(11, 7, 12, 0.32), 0 0 0 1px rgba(227, 181, 149, 0.12) inset;
 }
 
-.yumiko-widget[data-mode="focus"] #mini-mic {
-  display: none;
+
+@keyframes conversation-emphasis {
+  0% {
+    transform: translate3d(0, 10px, 0) scale(0.988);
+    box-shadow:
+      0 16px 28px rgba(6, 2, 9, 0.34),
+      0 0 0 1px rgba(255, 247, 236, 0.05) inset;
+  }
+  55% {
+    transform: translate3d(0, -2px, 0) scale(1.006);
+    box-shadow:
+      0 28px 42px rgba(6, 2, 9, 0.46),
+      0 0 0 1px rgba(255, 247, 236, 0.06) inset,
+      0 0 0 6px rgba(170, 117, 96, 0.08);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    box-shadow:
+      0 22px 36px rgba(6, 2, 9, 0.38),
+      0 10px 20px rgba(10, 6, 12, 0.2),
+      0 0 0 1px rgba(255, 247, 236, 0.05) inset;
+  }
 }
 
 @keyframes moon-breathe {

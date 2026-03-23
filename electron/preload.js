@@ -61,10 +61,5 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
     ipcRenderer.on('yumiko:focus-input', listener);
     return () => ipcRenderer.removeListener('yumiko:focus-input', listener);
   },
-  onToggleChatFromHotkey: (callback) => {
-    const listener = (_event, payload) => callback(payload);
-    ipcRenderer.on('yumiko:toggle-chat-from-hotkey', listener);
-    return () => ipcRenderer.removeListener('yumiko:toggle-chat-from-hotkey', listener);
-  },
   chatReady: () => ipcRenderer.send('yumiko:chat-ready')
 });

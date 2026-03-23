@@ -10,7 +10,7 @@
 <body>
   <button id="quit-app" class="floating-quit" aria-label="Cerrar app">✕</button>
 
-  <section class="yumiko-widget" id="yumiko-widget" data-mode="focus" aria-live="polite">
+  <section class="yumiko-widget" id="yumiko-widget" aria-live="polite">
     <div id="drag-region" class="drag-region" aria-hidden="true"></div>
 
     <div id="overlay-scene" class="overlay-scene">
@@ -95,14 +95,14 @@
               <div class="toggle-row">
                 <label for="shortcuts-enabled">
                   <span class="setting-label">Atajos globales</span>
-                  <span class="setting-note">Activá la apertura rápida del salón desde cualquier momento.</span>
+                  <span class="setting-note">Activá el acceso rápido para traer Yumiko al frente y entrar directo a la conversación.</span>
                 </label>
                 <input id="shortcuts-enabled" type="checkbox" />
               </div>
               <div class="toggle-row toggle-row--stacked">
                 <label for="chat-hotkey">
-                  <span class="setting-label">Atajo para alternar el panel</span>
-                  <span class="setting-note">Solo cambia entre compacto y ampliado dentro de la misma zona inferior.</span>
+                  <span class="setting-label">Atajo para activar la conversación</span>
+                  <span class="setting-note">Trae el overlay al frente si hace falta y enfoca el input sin cambiar el layout.</span>
                 </label>
                 <input id="chat-hotkey" type="text" placeholder="Control+Shift+J" />
               </div>
@@ -160,7 +160,7 @@
             </div>
             <div class="conversation-band__controls" role="group" aria-label="Controles rápidos">
               <button id="mini-mic" class="mini-btn" type="button" aria-label="Micrófono">🎤</button>
-              <button id="mini-chat" class="mini-btn mini-btn--chat" type="button" aria-label="Ampliar panel de chat" aria-controls="yumiko-chat" aria-expanded="false">💬</button>
+              <button id="mini-chat" class="mini-btn mini-btn--chat" type="button" aria-label="Activar conversación con Yumiko">💬</button>
             </div>
           </div>
         </div>
