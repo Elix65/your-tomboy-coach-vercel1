@@ -416,79 +416,33 @@ body {
 }
 
 .conversation-band {
-  --conversation-height: 34%;
-  position: absolute;
-  left: 18px;
-  right: 18px;
-  bottom: 18px;
-  height: clamp(216px, 34%, 252px);
-  border-radius: 28px;
-  border: 1px solid rgba(247, 229, 207, 0.12);
-  background:
-    radial-gradient(140% 130% at 14% 8%, rgba(180, 129, 106, 0.14), rgba(180, 129, 106, 0) 54%),
-    radial-gradient(125% 160% at 100% 100%, rgba(100, 59, 77, 0.22), rgba(100, 59, 77, 0) 58%),
-    linear-gradient(160deg, rgba(25, 17, 24, 0.92), rgba(12, 9, 15, 0.96));
-  backdrop-filter: blur(calc(var(--moon-blur-lg) + 4px));
-  box-shadow:
-    0 24px 42px rgba(6, 2, 9, 0.46),
-    0 0 0 1px rgba(255, 247, 236, 0.03) inset,
-    var(--moon-glow-accent);
-  overflow: hidden;
-  z-index: 4;
-}
-
-.conversation-band::before {
-  content: "";
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(180deg, rgba(255, 244, 233, 0.05), rgba(255, 244, 233, 0.01) 18%, rgba(255, 244, 233, 0)),
-    linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0));
   pointer-events: none;
-}
-
-.conversation-band__copy {
-  position: absolute;
-  inset: 18px 124px auto 22px;
-  z-index: 1;
-  display: grid;
-  gap: 8px;
-  max-width: 32ch;
-  pointer-events: none;
-}
-
-.conversation-band__eyebrow {
-  font-size: 10px;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: rgba(221, 184, 159, 0.76);
-}
-
-.conversation-band__hint {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.55;
-  color: rgba(234, 220, 206, 0.66);
-  text-wrap: pretty;
+  z-index: 12;
 }
 
 .conversation-band__controls {
   position: absolute;
-  right: 18px;
-  bottom: 18px;
+  right: 22px;
+  bottom: 28px;
   display: flex;
   gap: 8px;
-  z-index: 6;
+  z-index: 22;
   pointer-events: auto;
   -webkit-app-region: no-drag;
   opacity: 1;
-  padding: 6px;
+  padding: 7px;
   border-radius: 999px;
-  border: 1px solid rgba(247, 229, 207, 0.08);
-  background: linear-gradient(180deg, rgba(18, 12, 18, 0.38), rgba(18, 12, 18, 0.14));
-  backdrop-filter: blur(8px);
-  box-shadow: 0 10px 24px rgba(8, 4, 9, 0.2);
-  transition: transform var(--moon-timing-base) var(--moon-ease-premium), border-color var(--moon-timing-fast) var(--moon-ease-premium), box-shadow var(--moon-timing-fast) var(--moon-ease-premium);
+  border: 1px solid rgba(247, 229, 207, 0.1);
+  background:
+    linear-gradient(180deg, rgba(18, 12, 18, 0.62), rgba(18, 12, 18, 0.28)),
+    rgba(20, 13, 20, 0.18);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 16px 32px rgba(8, 4, 9, 0.28),
+    0 0 0 1px rgba(255, 246, 235, 0.03) inset;
+  transition: transform var(--moon-timing-base) var(--moon-ease-premium), border-color var(--moon-timing-fast) var(--moon-ease-premium), box-shadow var(--moon-timing-fast) var(--moon-ease-premium), opacity var(--moon-timing-fast) var(--moon-ease-premium);
 }
 
 .mini-btn {
@@ -526,38 +480,40 @@ body {
 
 .yumiko-chat {
   position: absolute;
-  right: 74px;
-  left: 18px;
-  bottom: 18px;
-  height: calc(100% - 36px);
+  right: clamp(28px, 6vw, 52px);
+  bottom: clamp(72px, 11vh, 112px);
+  width: clamp(320px, 62%, 468px);
+  min-height: 238px;
+  max-height: min(44vh, 352px);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 12px;
-  padding: 14px 14px 14px 18px;
-  border: 1px solid rgba(247, 229, 207, 0.12);
-  border-radius: 24px;
+  padding: 16px;
+  border: 1px solid rgba(247, 229, 207, 0.14);
+  border-radius: 26px;
   background:
-    radial-gradient(130% 140% at 12% 10%, rgba(180, 129, 106, 0.12), rgba(180, 129, 106, 0) 54%),
-    linear-gradient(180deg, rgba(33, 22, 30, 0.86), rgba(16, 11, 18, 0.94));
-  backdrop-filter: blur(calc(var(--moon-blur-lg) + 2px));
+    radial-gradient(140% 150% at 12% 8%, rgba(184, 132, 108, 0.16), rgba(184, 132, 108, 0) 52%),
+    radial-gradient(120% 120% at 100% 100%, rgba(100, 59, 77, 0.22), rgba(100, 59, 77, 0) 56%),
+    linear-gradient(180deg, rgba(31, 20, 28, 0.9), rgba(15, 10, 17, 0.96));
+  backdrop-filter: blur(calc(var(--moon-blur-lg) + 3px));
   box-shadow:
-    0 22px 46px rgba(6, 2, 9, 0.36),
-    0 0 0 1px rgba(255, 247, 236, 0.03) inset;
+    0 28px 52px rgba(6, 2, 9, 0.42),
+    0 10px 22px rgba(10, 6, 12, 0.18),
+    0 0 0 1px rgba(255, 247, 236, 0.04) inset;
   overflow: hidden;
   opacity: 0;
-  clip-path: inset(0 0 0 100% round 24px);
-  transform: translateX(22px) scaleX(0.92);
-  transform-origin: right bottom;
+  transform: translate3d(20px, 18px, 0) scale(0.94);
+  transform-origin: calc(100% - 36px) calc(100% - 22px);
   pointer-events: none;
-  transition: opacity 320ms var(--moon-ease-premium), transform 420ms var(--moon-ease-premium), clip-path 420ms var(--moon-ease-premium), box-shadow var(--moon-timing-slow) var(--moon-ease-premium);
-  z-index: 5;
+  transition: opacity 260ms var(--moon-ease-premium), transform 360ms var(--moon-ease-premium), box-shadow var(--moon-timing-slow) var(--moon-ease-premium), border-color var(--moon-timing-base) var(--moon-ease-premium);
+  z-index: 18;
 }
+
 
 .yumiko-widget[data-mode="chat"] .yumiko-chat {
   opacity: 1;
-  clip-path: inset(0 0 0 0 round 24px);
-  transform: translateX(0) scaleX(1);
+  transform: translate3d(0, 0, 0) scale(1);
   pointer-events: auto;
 }
 
@@ -580,6 +536,38 @@ body {
 .yumiko-widget[data-mode="focus"] .drag-region,
 .yumiko-widget[data-mode="chat"] .drag-region {
   display: block;
+}
+
+
+.chat-card-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+}
+
+.chat-card-header__copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chat-card-header__eyebrow {
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(221, 184, 159, 0.74);
+}
+
+.chat-card-header__title {
+  margin: 0;
+  max-width: 24ch;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 17px;
+  line-height: 1.22;
+  color: rgba(246, 237, 228, 0.94);
+  text-wrap: pretty;
 }
 
 .panel-settings-btn {
@@ -969,12 +957,11 @@ input[type="checkbox"]:checked::after {
 
 .chat-log {
   min-height: 0;
-  min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 6px 4px 8px;
+  padding: 4px 2px 8px;
   border-radius: 18px;
   background:
     linear-gradient(180deg, rgba(255, 248, 241, 0.03), rgba(255, 248, 241, 0.008)),
@@ -1043,7 +1030,7 @@ input[type="checkbox"]:checked::after {
   transition: transform var(--moon-timing-slow) var(--moon-ease-premium), opacity var(--moon-timing-slow) var(--moon-ease-premium);
 }
 
-.yumiko-chat > .panel-settings-btn,
+.yumiko-chat > .chat-card-header,
 .yumiko-chat > .chat-log,
 .yumiko-chat > .chat-compose {
   opacity: 0;
@@ -1051,23 +1038,23 @@ input[type="checkbox"]:checked::after {
   transition: opacity var(--moon-timing-slow) var(--moon-ease-premium), transform var(--moon-timing-slow) var(--moon-ease-premium);
 }
 
-.yumiko-widget[data-mode="chat"] .yumiko-chat > .panel-settings-btn,
+.yumiko-widget[data-mode="chat"] .yumiko-chat > .chat-card-header,
 .yumiko-widget[data-mode="chat"] .yumiko-chat > .chat-log,
 .yumiko-widget[data-mode="chat"] .yumiko-chat > .chat-compose {
   opacity: 1;
   transform: translateX(0);
 }
 
-.yumiko-widget[data-mode="chat"] .yumiko-chat > .panel-settings-btn {
+.yumiko-widget[data-mode="chat"] .yumiko-chat > .chat-card-header {
   transition-delay: 40ms;
 }
 
 .yumiko-widget[data-mode="chat"] .yumiko-chat > .chat-log {
-  transition-delay: 80ms;
+  transition-delay: 90ms;
 }
 
 .yumiko-widget[data-mode="chat"] .yumiko-chat > .chat-compose {
-  transition-delay: 120ms;
+  transition-delay: 140ms;
 }
 
 #yumiko-input {
@@ -1146,26 +1133,20 @@ input[type="checkbox"]:checked::after {
     max-height: min(54vh, 400px);
   }
 
-  .conversation-band {
-    left: 12px;
-    right: 12px;
-    bottom: 12px;
-    height: clamp(208px, 36%, 240px);
-    border-radius: 24px;
-  }
-
-  .conversation-band__copy {
-    inset: 16px 104px auto 18px;
+  .conversation-band__controls {
+    right: 16px;
+    bottom: 20px;
   }
 
   .yumiko-chat {
-    left: 12px;
-    right: 68px;
-    bottom: 12px;
-    height: calc(100% - 24px);
+    right: 16px;
+    bottom: 68px;
+    width: min(68vw, 392px);
+    min-height: 220px;
+    max-height: min(42vh, 324px);
     gap: 10px;
-    padding: 12px 12px 12px 14px;
-    border-radius: 20px;
+    padding: 14px;
+    border-radius: 22px;
   }
 
   .panel {
@@ -1207,18 +1188,23 @@ input[type="checkbox"]:checked::after {
 }
 
 @media (max-width: 420px), (max-height: 620px) {
-  .conversation-band__copy {
-    inset: 14px 88px auto 14px;
-  }
-
-  .conversation-band__hint {
-    font-size: 11px;
-    line-height: 1.45;
-  }
-
   .conversation-band__controls {
     right: 12px;
-    bottom: 12px;
+    bottom: 14px;
+  }
+
+  .yumiko-chat {
+    right: 12px;
+    left: 12px;
+    width: auto;
+    bottom: 62px;
+    min-height: 208px;
+    max-height: min(44vh, 296px);
+  }
+
+  .chat-card-header__title {
+    font-size: 15px;
+    max-width: none;
   }
 
   .panel-header {
