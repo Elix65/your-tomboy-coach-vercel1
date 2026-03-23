@@ -112,43 +112,7 @@ body {
 
 .yumiko-widget::before,
 .yumiko-widget::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.yumiko-widget::before {
-  background:
-    radial-gradient(58% 46% at 84% 78%, rgba(138, 93, 83, 0.13), rgba(138, 93, 83, 0) 72%),
-    radial-gradient(44% 58% at 88% 24%, rgba(74, 52, 80, 0.12), rgba(74, 52, 80, 0) 76%);
-  opacity: 0.88;
-}
-
-.yumiko-widget::after {
-  background: linear-gradient(180deg, rgba(17, 11, 17, 0), rgba(17, 11, 17, 0.16) 72%, rgba(17, 11, 17, 0.28));
-  opacity: 0.72;
-}
-
-.yumiko-widget[data-mode="focus"]::before,
-.yumiko-widget[data-mode="chat"]::before {
-  inset: 2% 4% 12% 4%;
-  background:
-    radial-gradient(46% 46% at 52% 28%, rgba(182, 132, 105, 0.18), rgba(182, 132, 105, 0) 64%),
-    radial-gradient(32% 48% at 50% 48%, rgba(92, 63, 92, 0.16), rgba(92, 63, 92, 0) 72%),
-    radial-gradient(58% 46% at 84% 78%, rgba(138, 93, 83, 0.13), rgba(138, 93, 83, 0) 72%);
-  opacity: 0.82;
-  filter: blur(16px);
-}
-
-.yumiko-widget[data-mode="focus"]::after,
-.yumiko-widget[data-mode="chat"]::after {
-  inset: 0;
-  background:
-    linear-gradient(180deg, rgba(17, 11, 17, 0), rgba(17, 11, 17, 0.12) 60%, rgba(17, 11, 17, 0.32)),
-    radial-gradient(48% 46% at 50% 82%, rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0) 66%);
-  opacity: 0.72;
+  content: none;
 }
 
 .drag-region {
@@ -172,7 +136,7 @@ body {
 
 .presence-stage {
   position: absolute;
-  inset: 0 0 26% 0;
+  inset: 0 0 248px 0;
   overflow: hidden;
   pointer-events: none;
 }
@@ -325,7 +289,10 @@ body {
 
 .conversation-band {
   position: absolute;
-  inset: 54% 18px 18px;
+  left: 18px;
+  right: 18px;
+  bottom: 18px;
+  min-height: 396px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -343,17 +310,12 @@ body {
   pointer-events: auto;
   -webkit-app-region: no-drag;
   opacity: 1;
-  padding: 7px;
-  border-radius: 999px;
-  border: 1px solid rgba(247, 229, 207, 0.1);
-  background:
-    linear-gradient(180deg, rgba(18, 12, 18, 0.62), rgba(18, 12, 18, 0.28)),
-    rgba(20, 13, 20, 0.18);
-  backdrop-filter: blur(12px);
-  box-shadow:
-    0 16px 32px rgba(8, 4, 9, 0.28),
-    0 0 0 1px rgba(255, 246, 235, 0.03) inset;
-  transition: transform var(--moon-timing-base) var(--moon-ease-premium), border-color var(--moon-timing-fast) var(--moon-ease-premium), box-shadow var(--moon-timing-fast) var(--moon-ease-premium), opacity var(--moon-timing-fast) var(--moon-ease-premium);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  backdrop-filter: none;
+  box-shadow: none;
+  transition: transform var(--moon-timing-base) var(--moon-ease-premium), opacity var(--moon-timing-fast) var(--moon-ease-premium);
 }
 
 .mini-btn {
@@ -361,12 +323,12 @@ body {
   height: 30px;
   border-radius: var(--moon-radius-pill);
   border: 1px solid var(--moon-border-subtle);
-  background: linear-gradient(160deg, rgba(46, 29, 43, 0.88), rgba(21, 15, 22, 0.9));
+  background: linear-gradient(160deg, rgba(42, 27, 39, 0.94), rgba(22, 14, 22, 0.96));
   color: var(--moon-color-text-secondary);
   font-size: 15px;
   cursor: pointer;
-  backdrop-filter: blur(var(--moon-blur-md));
-  box-shadow: 0 0 0 1px rgba(245, 228, 212, 0.03) inset, var(--moon-shadow-soft);
+  backdrop-filter: none;
+  box-shadow: 0 0 0 1px rgba(245, 228, 212, 0.03) inset, 0 8px 14px rgba(10, 6, 11, 0.24);
   transition: transform var(--moon-timing-fast) var(--moon-ease-premium), box-shadow var(--moon-timing-base) var(--moon-ease-premium), color var(--moon-timing-fast) var(--moon-ease-premium), border-color var(--moon-timing-fast) var(--moon-ease-premium);
   pointer-events: auto;
   -webkit-app-region: no-drag;
@@ -394,54 +356,56 @@ body {
   inset: auto;
   align-self: end;
   width: min(100%, 476px);
-  min-height: 214px;
-  height: auto;
-  max-height: 100%;
+  min-height: 0;
+  height: var(--chat-panel-height, 248px);
+  max-height: 396px;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 12px;
-  padding: 16px;
+  gap: var(--chat-panel-gap, 10px);
+  padding: var(--chat-panel-padding, 14px);
   border: 1px solid rgba(247, 229, 207, 0.14);
   border-radius: 26px;
   background:
     radial-gradient(140% 150% at 12% 8%, rgba(184, 132, 108, 0.16), rgba(184, 132, 108, 0) 52%),
     radial-gradient(120% 120% at 100% 100%, rgba(100, 59, 77, 0.22), rgba(100, 59, 77, 0) 56%),
     linear-gradient(180deg, rgba(31, 20, 28, 0.9), rgba(15, 10, 17, 0.96));
-  backdrop-filter: blur(calc(var(--moon-blur-lg) + 3px));
+  backdrop-filter: none;
   box-shadow:
-    0 28px 52px rgba(6, 2, 9, 0.42),
-    0 10px 22px rgba(10, 6, 12, 0.18),
+    0 18px 32px rgba(6, 2, 9, 0.3),
+    0 8px 18px rgba(10, 6, 12, 0.14),
     0 0 0 1px rgba(255, 247, 236, 0.04) inset;
   overflow: hidden;
   opacity: 1;
-  transform: translate3d(0, 18px, 0) scale(0.96);
+  transform: translate3d(0, 0, 0);
   transform-origin: 50% 100%;
   pointer-events: auto;
-  transition: opacity 260ms var(--moon-ease-premium), transform 360ms var(--moon-ease-premium), box-shadow var(--moon-timing-slow) var(--moon-ease-premium), border-color var(--moon-timing-base) var(--moon-ease-premium), min-height 260ms var(--moon-ease-premium);
+  transition: height 260ms var(--moon-ease-premium), padding 260ms var(--moon-ease-premium), gap 260ms var(--moon-ease-premium), box-shadow var(--moon-timing-base) var(--moon-ease-premium), border-color var(--moon-timing-base) var(--moon-ease-premium);
   z-index: 18;
 }
 
 .yumiko-widget[data-mode="focus"] .yumiko-chat {
-  min-height: 214px;
+  --chat-panel-height: 248px;
+  --chat-panel-padding: 14px;
+  --chat-panel-gap: 10px;
   box-shadow:
-    0 24px 44px rgba(6, 2, 9, 0.34),
-    0 10px 22px rgba(10, 6, 12, 0.16),
+    0 18px 32px rgba(6, 2, 9, 0.28),
+    0 8px 18px rgba(10, 6, 12, 0.14),
     0 0 0 1px rgba(255, 247, 236, 0.04) inset;
 }
 
 .yumiko-widget[data-mode="chat"] .yumiko-chat {
-  min-height: 100%;
-  height: 100%;
-  transform: translate3d(0, 0, 0) scale(1);
+  --chat-panel-height: 372px;
+  --chat-panel-padding: 16px;
+  --chat-panel-gap: 12px;
 }
 
 .yumiko-widget[data-mode="chat"] #yumiko-mini {
   opacity: 1;
   visibility: visible;
   pointer-events: none;
-  transform: translateX(-50%) translateY(-8px) scale(1.01);
-  filter: saturate(1.02);
+  transform: translateX(-50%) translateY(0) scale(1);
+  filter: none;
 }
 
 .yumiko-widget[data-mode="focus"] #yumiko-mini {
@@ -895,6 +859,7 @@ input[type="checkbox"]:checked::after {
 
 .chat-log {
   min-height: 0;
+  max-height: none;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -988,10 +953,15 @@ input[type="checkbox"]:checked::after {
 }
 
 .yumiko-widget[data-mode="focus"] .chat-log {
-  mask-image: linear-gradient(180deg, rgba(0, 0, 0, 1) 72%, rgba(0, 0, 0, 0.3) 92%, rgba(0, 0, 0, 0));
+  max-height: 102px;
+  gap: 10px;
+  padding-bottom: 6px;
+  mask-image: none;
 }
 
 .yumiko-widget[data-mode="chat"] .chat-log {
+  max-height: 226px;
+  gap: 12px;
   mask-image: none;
 }
 
