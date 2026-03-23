@@ -8,7 +8,7 @@ const DEFAULT_SETTINGS = {
 };
 const AUTO_MESSAGE_INTERVAL_OPTIONS = [1, 2, 5, 10, 20];
 const RECENT_FOCUS_REPLY_CARRY_WINDOW_MS = 7000;
-const SCENE_WINDOW_SIZE = { width: 540, height: 720 };
+const SCENE_WINDOW_SIZE = { width: 600, height: 700 };
 const MINI_SCALE_MIN = 0.35;
 const MINI_SCALE_MAX = 1;
 const MINI_BASE_FALLBACK = { width: 360, height: 520 };
@@ -733,25 +733,27 @@ function markUserActivity({ event = 'unknown', strength = 'strong' } = {}) {
 function updateChatPanelChrome() {
   if (chatPanelTitle) {
     chatPanelTitle.textContent = settings.mode === 'chat'
-      ? 'Panel ampliado de Yumiko, siempre anclado abajo.'
-      : 'Panel compacto de Yumiko, siempre anclado abajo.';
+      ? 'Quedate un momento.'
+      : 'Cerca de vos.';
   }
 
   if (!chatPanelStatus) return;
 
-  const latestRow = chatLog?.lastElementChild;
-  const latestRole = latestRow?.classList?.contains('user') ? 'Vos' : 'Yumiko';
-  const latestMessage = latestRow?.querySelector('.chat-message')?.textContent?.trim() || '';
-
-  if (latestMessage) {
-    const compactMessage = latestMessage.replace(/\s+/g, ' ').slice(0, 110);
-    chatPanelStatus.textContent = `${latestRole}: ${compactMessage}`;
+  if (settings.mode === 'focus') {
+    chatPanelStatus.textContent = 'Leé su último mensaje y respondé.';
     return;
   }
 
-  chatPanelStatus.textContent = settings.mode === 'chat'
-    ? 'Historial con scroll e input siempre visibles dentro del mismo panel.'
-    : 'Compacto abajo, ampliado en la misma franja cuando alternás el panel.';
+  const latestRow = chatLog?.lastElementChild;
+  const latestMessage = latestRow?.querySelector('.chat-message')?.textContent?.trim() || '';
+
+  if (latestMessage) {
+    const compactMessage = latestMessage.replace(/\s+/g, ' ').slice(0, 132);
+    chatPanelStatus.textContent = compactMessage;
+    return;
+  }
+
+  chatPanelStatus.textContent = 'Un único panel abajo para leerla y responder con calma.';
 }
 
 function addMessage(role, content, { thinking = false } = {}) {
