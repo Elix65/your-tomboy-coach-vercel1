@@ -733,7 +733,7 @@ function markUserActivity({ event = 'unknown', strength = 'strong' } = {}) {
 function updateChatPanelChrome() {
   if (chatPanelTitle) {
     chatPanelTitle.textContent = settings.mode === 'chat'
-      ? 'Chat ampliado de Yumiko en su franja fija.'
+      ? 'Panel ampliado de Yumiko, siempre anclado abajo.'
       : 'Panel compacto de Yumiko, siempre anclado abajo.';
   }
 
@@ -751,7 +751,7 @@ function updateChatPanelChrome() {
 
   chatPanelStatus.textContent = settings.mode === 'chat'
     ? 'Historial con scroll e input siempre visibles dentro del mismo panel.'
-    : 'Compacto abajo, ampliado en la misma franja cuando abrís el chat.';
+    : 'Compacto abajo, ampliado en la misma franja cuando alternás el panel.';
 }
 
 function addMessage(role, content, { thinking = false } = {}) {
@@ -943,7 +943,7 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   }
   if (miniChatButton) {
     miniChatButton.setAttribute('aria-expanded', String(mode === 'chat'));
-    miniChatButton.setAttribute('aria-label', mode === 'chat' ? 'Cerrar panel de chat' : 'Abrir panel de chat');
+    miniChatButton.setAttribute('aria-label', mode === 'chat' ? 'Compactar panel de chat' : 'Ampliar panel de chat');
   }
 
   if (mode === 'chat') {

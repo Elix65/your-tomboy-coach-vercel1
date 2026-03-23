@@ -38,8 +38,8 @@
           <div class="chat-card-header">
             <div class="chat-card-header__copy">
               <span class="chat-card-header__eyebrow">Presencia íntima</span>
-              <p id="chat-panel-title" class="chat-card-header__title">Tu espacio fijo para hablar con Yumiko.</p>
-              <p id="chat-panel-status" class="chat-card-header__status">Compacto abajo, ampliado en la misma franja cuando abrís el chat.</p>
+              <p id="chat-panel-title" class="chat-card-header__title">Tu panel fijo para hablar con Yumiko.</p>
+              <p id="chat-panel-status" class="chat-card-header__status">Compacto abajo, ampliado en la misma franja cuando alternás el panel.</p>
             </div>
             <button id="toggle-settings" class="panel-settings-btn" type="button" aria-label="Abrir ajustes">⚙️</button>
           </div>
@@ -101,8 +101,8 @@
               </div>
               <div class="toggle-row toggle-row--stacked">
                 <label for="chat-hotkey">
-                  <span class="setting-label">Atajo para abrir/cerrar chat</span>
-                  <span class="setting-note">El panel se despliega o colapsa sin cambiar de escena.</span>
+                  <span class="setting-label">Atajo para alternar el panel</span>
+                  <span class="setting-note">Solo cambia entre compacto y ampliado dentro de la misma zona inferior.</span>
                 </label>
                 <input id="chat-hotkey" type="text" placeholder="Control+Shift+J" />
               </div>
@@ -160,7 +160,7 @@
             </div>
             <div class="conversation-band__controls" role="group" aria-label="Controles rápidos">
               <button id="mini-mic" class="mini-btn" type="button" aria-label="Micrófono">🎤</button>
-              <button id="mini-chat" class="mini-btn mini-btn--chat" type="button" aria-label="Expandir panel de chat" aria-controls="yumiko-chat" aria-expanded="false">💬</button>
+              <button id="mini-chat" class="mini-btn mini-btn--chat" type="button" aria-label="Ampliar panel de chat" aria-controls="yumiko-chat" aria-expanded="false">💬</button>
             </div>
           </div>
         </div>
