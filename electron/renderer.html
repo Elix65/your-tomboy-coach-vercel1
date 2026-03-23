@@ -41,18 +41,19 @@
       </div>
 
       <div id="conversation-band" class="conversation-band" aria-label="Zona de conversación">
-        <div class="conversation-band__copy">
-          <span class="conversation-band__eyebrow">Presencia viva</span>
-          <p class="conversation-band__hint">Yumiko permanece visible arriba. El chat se despliega acá abajo sin reemplazar la escena.</p>
-        </div>
-
         <div class="conversation-band__controls" role="group" aria-label="Controles rápidos">
           <button id="mini-mic" class="mini-btn" type="button" aria-label="Micrófono">🎤</button>
           <button id="mini-chat" class="mini-btn mini-btn--chat" type="button" aria-label="Abrir panel de chat" aria-controls="yumiko-chat" aria-expanded="false">💬</button>
         </div>
 
         <div class="yumiko-chat" id="yumiko-chat" aria-hidden="true">
-          <button id="toggle-settings" class="panel-settings-btn" type="button" aria-label="Abrir ajustes">⚙️</button>
+          <div class="chat-card-header">
+            <div class="chat-card-header__copy">
+              <span class="chat-card-header__eyebrow">Presencia íntima</span>
+              <p class="chat-card-header__title">Lo último que Yumiko te está diciendo.</p>
+            </div>
+            <button id="toggle-settings" class="panel-settings-btn" type="button" aria-label="Abrir ajustes">⚙️</button>
+          </div>
 
           <div id="settings-panel" class="panel" hidden>
             <div class="panel-header">
