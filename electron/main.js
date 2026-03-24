@@ -14,7 +14,7 @@ const {
 } = require('electron');
 const chatClient = require('./chatClient');
 
-const DEFAULT_BOUNDS = { width: 540, height: 720 };
+const DEFAULT_BOUNDS = { width: 540, height: 752 };
 const SETTINGS_FILE = 'settings.json';
 const AUTH_FILE = 'auth.json';
 const DEFAULT_YUMIKO_WEB_ORIGIN = 'https://21-moon.com';
