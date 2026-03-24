@@ -28,6 +28,8 @@
   --mini-scale: 1;
   --conversation-bottom-gap: 24px;
   --conversation-side-gap: 20px;
+  --overlay-safe-top: 14px;
+  --overlay-safe-bottom: 18px;
 
   --text: var(--moon-color-text-primary);
   --muted: var(--moon-color-text-secondary);
@@ -134,7 +136,10 @@ body {
   min-width: 580px;
   min-height: 700px;
   overflow: visible;
-  padding: 0 var(--conversation-side-gap) var(--conversation-bottom-gap);
+  padding:
+    var(--overlay-safe-top)
+    var(--conversation-side-gap)
+    calc(var(--conversation-bottom-gap) + var(--overlay-safe-bottom));
 }
 
 .presence-stage {
@@ -487,7 +492,13 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  max-height: min(74vh, 536px, calc(100vh - var(--conversation-bottom-gap) - 88px));
+  max-height: min(
+    74vh,
+    536px,
+    calc(
+      100vh - var(--overlay-safe-top) - var(--overlay-safe-bottom) - var(--conversation-bottom-gap) - 88px
+    )
+  );
   overflow: auto;
   background:
     radial-gradient(140% 120% at 14% 0%, rgba(184, 136, 111, 0.12), rgba(184, 136, 111, 0) 56%),
@@ -1038,6 +1049,8 @@ input[type="checkbox"]:checked::after {
   :root {
     --conversation-bottom-gap: 18px;
     --conversation-side-gap: 14px;
+    --overlay-safe-top: 12px;
+    --overlay-safe-bottom: 16px;
   }
 
   .overlay-scene {
@@ -1075,7 +1088,13 @@ input[type="checkbox"]:checked::after {
     right: 8px;
     bottom: calc(100% - 40px);
     width: min(304px, calc(100% - 16px));
-    max-height: min(72vh, 484px, calc(100vh - var(--conversation-bottom-gap) - 72px));
+    max-height: min(
+      72vh,
+      484px,
+      calc(
+        100vh - var(--overlay-safe-top) - var(--overlay-safe-bottom) - var(--conversation-bottom-gap) - 72px
+      )
+    );
     padding: 12px;
     gap: 12px;
     border-radius: 22px;
@@ -1113,6 +1132,8 @@ input[type="checkbox"]:checked::after {
   :root {
     --conversation-bottom-gap: 16px;
     --conversation-side-gap: 12px;
+    --overlay-safe-top: 12px;
+    --overlay-safe-bottom: 16px;
   }
 
   .conversation-band {
