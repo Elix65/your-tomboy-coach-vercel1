@@ -365,7 +365,7 @@ body {
   position: relative;
   inset: auto;
   align-self: end;
-  width: min(100%, 596px);
+  width: clamp(448px, 76%, 596px);
   min-height: 0;
   height: 330px;
   max-height: 352px;
@@ -481,11 +481,11 @@ body {
 
 .panel {
   position: absolute;
-  top: auto;
-  right: 10px;
-  bottom: calc(100% - 44px);
+  top: 14px;
+  right: calc(100% - 44px);
+  bottom: auto;
   z-index: 24;
-  width: min(316px, calc(100% - 20px));
+  width: min(272px, calc(100% - 20px));
   border: 1px solid rgba(247, 229, 207, 0.12);
   border-radius: 24px;
   padding: 12px;
@@ -506,7 +506,7 @@ body {
     linear-gradient(180deg, rgba(34, 22, 30, 0.94), rgba(16, 11, 17, 0.97));
   backdrop-filter: blur(calc(var(--moon-blur-lg) + 2px));
   box-shadow: 0 18px 36px rgba(7, 3, 8, 0.44), 0 0 0 1px rgba(255, 247, 236, 0.03) inset;
-  transform-origin: bottom right;
+  transform-origin: top right;
 }
 
 .panel:not([hidden]) {
@@ -1037,11 +1037,11 @@ input[type="checkbox"]:checked::after {
 @keyframes panel-reveal {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.985);
+    transform: translateX(10px) scale(0.985);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateX(0) scale(1);
   }
 }
 
@@ -1076,7 +1076,7 @@ input[type="checkbox"]:checked::after {
   }
 
   .yumiko-chat {
-    width: 100%;
+    width: clamp(420px, 78%, 548px);
     min-height: 196px;
     gap: 10px;
     padding: 14px;
@@ -1084,10 +1084,10 @@ input[type="checkbox"]:checked::after {
   }
 
   .panel {
-    top: auto;
-    right: 8px;
-    bottom: calc(100% - 40px);
-    width: min(304px, calc(100% - 16px));
+    top: 10px;
+    right: calc(100% - 40px);
+    bottom: auto;
+    width: min(248px, calc(100% - 16px));
     max-height: min(
       72vh,
       484px,
@@ -1145,7 +1145,7 @@ input[type="checkbox"]:checked::after {
   }
 
   .yumiko-chat {
-    width: 100%;
+    width: min(100%, 500px);
     min-height: 208px;
   }
 
