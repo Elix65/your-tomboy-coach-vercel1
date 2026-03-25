@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
   setShortcutsEnabled: (enabled) => ipcRenderer.send('yumiko:set-shortcuts-enabled', enabled),
   setChatHotkey: (hotkey) => ipcRenderer.invoke('yumiko:set-chat-hotkey', hotkey),
   setClickThroughEnabled: (enabled) => ipcRenderer.send('yumiko:set-click-through-enabled', enabled),
+  setInteractiveRegionActive: (active) => ipcRenderer.send('yumiko:set-interactive-region-active', active),
   setWindowSize: (size) => ipcRenderer.send('yumiko:set-window-size', size),
   setMinimumSize: (size) => ipcRenderer.send('yumiko:set-minimum-size', size),
   setFocusMinSize: (size) => ipcRenderer.send('yumiko:set-focus-min-size', size),
