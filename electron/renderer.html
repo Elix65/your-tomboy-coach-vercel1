@@ -85,6 +85,25 @@
                   </select>
                 </div>
               </div>
+              <div class="toggle-row toggle-row--stacked">
+                <label for="overlay-scale">
+                  <span class="setting-label">Tamaño del overlay</span>
+                  <span class="setting-note">Escala estable con base fija (85%, 100%, 110%).</span>
+                </label>
+                <div class="auth-row auth-row--actions">
+                  <div class="select-shell">
+                    <select id="overlay-scale" class="native-select">
+                      <option value="0.85">85%</option>
+                      <option value="0.9">90%</option>
+                      <option value="0.95">95%</option>
+                      <option value="1" selected>100%</option>
+                      <option value="1.05">105%</option>
+                      <option value="1.1">110%</option>
+                    </select>
+                  </div>
+                  <button id="overlay-scale-reset" class="panel-btn panel-btn--ghost" type="button">Reset 100%</button>
+                </div>
+              </div>
             </div>
 
             <div class="settings-group" aria-label="Atajos y accesos">

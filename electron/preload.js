@@ -3,6 +3,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('yumikoOverlay', {
   setMode: (mode) => ipcRenderer.send('yumiko:set-mode', mode),
   setOverlayEnabled: (enabled) => ipcRenderer.send('yumiko:set-overlay-enabled', enabled),
+  setOverlayScale: (scale) => ipcRenderer.send('yumiko:set-overlay-scale', scale),
   setShortcutsEnabled: (enabled) => ipcRenderer.send('yumiko:set-shortcuts-enabled', enabled),
   setChatHotkey: (hotkey) => ipcRenderer.invoke('yumiko:set-chat-hotkey', hotkey),
   setClickThroughEnabled: (enabled) => ipcRenderer.send('yumiko:set-click-through-enabled', enabled),
