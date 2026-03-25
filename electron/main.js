@@ -1343,40 +1343,6 @@ if (!singleInstance) {
       const bounded = clampBoundsToWorkArea(nextBounds);
       win.setBounds(bounded, false);
     });
-    ipcMain.on('yumiko:set-window-footprint', (_event, payload) => {
-      if (!win || win.isDestroyed()) return;
-
-      const requestedWidth = Number(payload?.width);
-      const requestedHeight = Number(payload?.height);
-      const requestedOffsetX = Number(payload?.offsetX);
-      const requestedOffsetY = Number(payload?.offsetY);
-      if (!Number.isFinite(requestedWidth) || !Number.isFinite(requestedHeight)) return;
-
-      const isRidiculous = requestedWidth < 180 || requestedHeight < 180;
-      if (isRidiculous) {
-        console.warn('[yumiko][window] ignored unsafe set-window-footprint request', { requestedWidth, requestedHeight });
-        return;
-      }
-
-      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-      const newW = clamp(Math.round(requestedWidth), 180, 1200);
-      const newH = clamp(Math.round(requestedHeight), 180, 900);
-      const offsetX = Number.isFinite(requestedOffsetX) ? Math.round(requestedOffsetX) : 0;
-      const offsetY = Number.isFinite(requestedOffsetY) ? Math.round(requestedOffsetY) : 0;
-
-      const currentBounds = win.getBounds();
-      const nextBounds = safeBounds(
-        {
-          x: currentBounds.x + offsetX,
-          y: currentBounds.y + offsetY,
-          width: newW,
-          height: newH
-        },
-        'ipc:set-window-footprint'
-      );
-      const bounded = clampBoundsToWorkArea(nextBounds);
-      win.setBounds(bounded, false);
-    });
     ipcMain.on('yumiko:set-minimum-size', (_event, payload) => {
       setFocusMinimumBounds(payload);
     });
