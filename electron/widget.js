@@ -62,6 +62,33 @@ const chatLog = document.getElementById('chat-log');
 const chatPanelTitle = document.getElementById('chat-panel-title');
 const chatPanelStatus = document.getElementById('chat-panel-status');
 
+const INTERACTIVE_ISLAND_SELECTOR = [
+  '#yumiko-chat',
+  '#settings-panel',
+  '#toggle-settings',
+  '#quit-app',
+  '#yumiko-input',
+  '#yumiko-send',
+  '#mini-chat',
+  '#mini-mic',
+  '.panel-settings-btn',
+  '.panel-btn',
+  '.icon-btn',
+  '.mini-btn',
+  '.custom-select',
+  '.custom-select__option',
+  'button',
+  'input',
+  'select',
+  'textarea',
+  'a[href]',
+  '#yumiko-mini',
+  '#drag-region'
+].join(', ');
+
+let hostAllowsDynamicClickThrough = false;
+let hoverInteractiveRegionActive = true;
+
 const CHARACTER_SRC_WHEN_WINDOW_ON_LEFT = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png';
 const CHARACTER_SRC_WHEN_WINDOW_ON_RIGHT = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/overlay1.png';
 const SIDE_SWITCH_HYSTERESIS_PX = 48;
@@ -1321,6 +1348,35 @@ function renderChatHotkeyError(message = '') {
   chatHotkeyError.hidden = !text;
 }
 
+function isDynamicClickThroughEnabled(state = {}) {
+  const mode = toUiMode(state.mode || settings.mode);
+  return Boolean(
+    state.hasCompletedFirstRun
+    && state.overlayEnabled
+    && (state.clickThroughPreferred ?? state.clickThroughEnabled)
+    && mode === 'focus'
+  );
+}
+
+function resolveInteractiveIslandAtPoint(event) {
+  if (!event || !Number.isFinite(event.clientX) || !Number.isFinite(event.clientY)) return false;
+  const candidate = document.elementFromPoint(event.clientX, event.clientY);
+  return Boolean(candidate instanceof Element && candidate.closest(INTERACTIVE_ISLAND_SELECTOR));
+}
+
+function setInteractiveRegionActive(nextActive, reason = 'unknown') {
+  const normalized = Boolean(nextActive);
+  if (hoverInteractiveRegionActive === normalized) return;
+  hoverInteractiveRegionActive = normalized;
+  if (!hostAllowsDynamicClickThrough) return;
+  window.yumikoOverlay?.setInteractiveRegionActive?.(normalized);
+}
+
+function updateInteractiveRegionFromPointer(event, reason = 'pointer') {
+  if (!hostAllowsDynamicClickThrough) return;
+  setInteractiveRegionActive(resolveInteractiveIslandAtPoint(event), reason);
+}
+
 async function persistChatHotkey(hotkey) {
   const normalized = typeof hotkey === 'string' && hotkey.trim() ? hotkey.trim() : DEFAULT_CHAT_HOTKEY;
   const result = await window.yumikoOverlay?.setChatHotkey?.(normalized);
@@ -1367,6 +1423,11 @@ function syncHostState(state = {}) {
       });
       setMode(incomingMode, { source: 'state-sync' });
     }
+  }
+
+  hostAllowsDynamicClickThrough = isDynamicClickThroughEnabled(state);
+  if (hostAllowsDynamicClickThrough) {
+    window.yumikoOverlay?.setInteractiveRegionActive?.(hoverInteractiveRegionActive);
   }
 
   syncAutoMessageControls();
@@ -1564,6 +1625,26 @@ window.addEventListener('pointerdown', (event) => {
   if (!(target instanceof Element) || target.closest('.custom-select')) return;
   closeCustomSelects();
 }, { capture: true });
+
+window.addEventListener('mousemove', (event) => {
+  updateInteractiveRegionFromPointer(event, 'mousemove');
+}, { capture: true });
+
+window.addEventListener('pointermove', (event) => {
+  updateInteractiveRegionFromPointer(event, 'pointermove');
+}, { capture: true });
+
+window.addEventListener('pointerdown', (event) => {
+  updateInteractiveRegionFromPointer(event, 'pointerdown');
+}, { capture: true });
+
+window.addEventListener('mouseleave', () => {
+  setInteractiveRegionActive(false, 'mouseleave');
+}, { capture: true });
+
+window.addEventListener('blur', () => {
+  setInteractiveRegionActive(false, 'blur');
+});
 
 window.addEventListener('resize', () => {
   if (ignoreNextResize) {

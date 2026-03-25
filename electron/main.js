@@ -83,6 +83,9 @@ const OVERLAY_TOPMOST_INTERVAL_MS = 1800;
 let registeredChatHotkey = null;
 let shortcutRegistrationError = '';
 let topmostReassertInterval = null;
+let interactiveRegionActive = false;
+let mouseIgnoreApplied = null;
+let mouseFocusableApplied = null;
 
 function normalizeChatHotkey(value) {
   const raw = typeof value === 'string' ? value.trim() : '';
@@ -641,6 +644,41 @@ function broadcastState() {
   win.webContents.send('yumiko:state-updated', getState());
 }
 
+function canUseDynamicClickThrough() {
+  return Boolean(
+    settings.hasCompletedFirstRun
+    && settings.overlayEnabled
+    && settings.clickThroughPreferred
+    && settings.mode === 'focus'
+  );
+}
+
+function applyMousePolicy(reason = 'unknown') {
+  if (!win || win.isDestroyed()) return;
+
+  const clickThroughEnabled = canUseDynamicClickThrough();
+  const shouldIgnoreMouse = clickThroughEnabled && !interactiveRegionActive;
+  const shouldBeFocusable = !clickThroughEnabled || interactiveRegionActive;
+
+  if (mouseIgnoreApplied !== shouldIgnoreMouse) {
+    if (shouldIgnoreMouse) {
+      win.setIgnoreMouseEvents(true, { forward: true });
+    } else {
+      win.setIgnoreMouseEvents(false);
+    }
+    mouseIgnoreApplied = shouldIgnoreMouse;
+  }
+
+  if (mouseFocusableApplied !== shouldBeFocusable) {
+    win.setFocusable(shouldBeFocusable);
+    mouseFocusableApplied = shouldBeFocusable;
+  }
+
+  if (clickThroughEnabled) {
+    console.info('[yumiko][mouse] policy', { reason, interactiveRegionActive, shouldIgnoreMouse, shouldBeFocusable });
+  }
+}
+
 function applyWindowBehavior() {
   if (!win) return;
 
@@ -653,19 +691,11 @@ function applyWindowBehavior() {
     win.setVisibleOnAllWorkspaces(false);
   }
 
-  const canUseClickThrough = settings.hasCompletedFirstRun;
-  const enableClickThrough = canUseClickThrough
-    && settings.overlayEnabled
-    && settings.clickThroughPreferred
-    && settings.mode === 'focus';
-
-  if (enableClickThrough) {
-    win.setFocusable(false);
-    win.setIgnoreMouseEvents(true, { forward: true });
-  } else {
-    win.setFocusable(true);
-    win.setIgnoreMouseEvents(false);
+  if (!canUseDynamicClickThrough()) {
+    interactiveRegionActive = true;
   }
+
+  applyMousePolicy('apply-window-behavior');
 
   broadcastState();
   refreshTrayMenu();
@@ -695,8 +725,7 @@ function setMode(mode, { fromRenderer = false, userPickedMode = false } = {}) {
 
   win.setResizable(false);
   if (nextMode === 'chat') {
-    win.setFocusable(true);
-    win.setIgnoreMouseEvents(false);
+    interactiveRegionActive = true;
   }
   if (focusMinBounds.minW > 0 && focusMinBounds.minH > 0) {
     win.setMinimumSize(focusMinBounds.minW, focusMinBounds.minH);
@@ -717,6 +746,9 @@ function focusChatInput() {
 function requestWindowFocusForChat(reason = 'unknown') {
   if (!win || win.isDestroyed()) return;
   console.info('[yumiko][window] focus requested', { reason });
+  interactiveRegionActive = true;
+  mouseIgnoreApplied = null;
+  mouseFocusableApplied = null;
   win.setIgnoreMouseEvents(false);
   win.setFocusable(true);
   win.show();
@@ -1068,6 +1100,9 @@ function createWindow() {
     }
   });
 
+  mouseIgnoreApplied = null;
+  mouseFocusableApplied = null;
+
   win.setMenuBarVisibility(false);
   win.setFullScreenable(false);
   if (typeof win.setHasShadow === 'function') {
@@ -1261,6 +1296,12 @@ if (!singleInstance) {
     ipcMain.on('yumiko:set-shortcuts-enabled', (_event, enabled) => setShortcutsEnabled(enabled));
     ipcMain.handle('yumiko:set-chat-hotkey', (_event, hotkey) => setChatHotkey(hotkey));
     ipcMain.on('yumiko:set-click-through-enabled', (_event, enabled) => setClickThroughEnabled(enabled));
+    ipcMain.on('yumiko:set-interactive-region-active', (_event, active) => {
+      const nextActive = Boolean(active);
+      if (interactiveRegionActive === nextActive) return;
+      interactiveRegionActive = nextActive;
+      applyMousePolicy('renderer:hover-region');
+    });
     ipcMain.on('yumiko:set-overlay-enabled', (_event, enabled) => setOverlayEnabled(enabled));
     ipcMain.on('yumiko:complete-first-run', () => completeFirstRun());
     ipcMain.on('yumiko:close-window', () => {

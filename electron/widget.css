@@ -89,9 +89,11 @@ body {
   align-items: flex-end;
   justify-content: stretch;
   overflow: hidden !important;
+  pointer-events: none;
 }
 
 .floating-quit {
+  pointer-events: auto;
   position: absolute;
   top: 18px;
   right: 18px;
@@ -123,6 +125,7 @@ body {
   overflow: visible;
   isolation: isolate;
   background: transparent;
+  pointer-events: none;
 }
 
 .yumiko-widget::before,
@@ -136,7 +139,8 @@ body {
   left: 0;
   right: 0;
   height: 28px;
-  -webkit-app-region: drag;
+  -webkit-app-region: no-drag;
+  pointer-events: none;
   z-index: 50;
 }
 
@@ -151,6 +155,7 @@ body {
     var(--overlay-safe-top)
     var(--conversation-side-gap)
     calc(var(--conversation-bottom-gap) + var(--overlay-safe-bottom));
+  pointer-events: none;
 }
 
 .presence-stage {
@@ -278,6 +283,7 @@ body {
   -webkit-app-region: drag;
   overflow: visible !important;
   z-index: 2;
+  pointer-events: auto;
 }
 
 #yumiko-character {
@@ -408,7 +414,7 @@ body {
 #yumiko-mini {
   opacity: 1;
   visibility: visible;
-  pointer-events: none;
+  pointer-events: auto;
   transform: translateX(-50%) translateY(0) scale(1);
   filter: none;
 }
