@@ -8,7 +8,7 @@ const DEFAULT_SETTINGS = {
 };
 const AUTO_MESSAGE_INTERVAL_OPTIONS = [1, 2, 5, 10, 20];
 const RECENT_FOCUS_REPLY_CARRY_WINDOW_MS = 7000;
-const SCENE_WINDOW_SIZE = { width: 600, height: 700 };
+const SCENE_WINDOW_SIZE = { width: 520, height: 620 };
 const OVERLAY_SCALE_MIN = 0.75;
 const OVERLAY_SCALE_MAX = 1.15;
 const OVERLAY_SCALE_STEP = 0.05;
@@ -17,6 +17,7 @@ const MINI_BOUNDS_PADDING_X = 6;
 const MINI_BOUNDS_PADDING_Y = 4;
 const MINI_MIN_WIDTH = 260;
 const MINI_MIN_HEIGHT = 300;
+const FOOTPRINT_PADDING = 10;
 const MINI_RETRY_LIMIT = 10;
 const MINI_MIN_SIZE_RETRY_LIMIT = 5;
 const DEV_FIT_LOG = window.location.search.includes('dev=1') || localStorage.getItem('yumiko_debug_fit') === '1';
@@ -167,6 +168,7 @@ let miniBaseSize = null;
 let fitRetryCount = 0;
 let minSizeRetryCount = 0;
 let lastGoodFocusFitSize = null;
+let lastMeasuredFootprint = null;
 let ignoreNextResize = false;
 let assistantMessageSequence = 0;
 let lastAssistantMessageId = '';
@@ -454,7 +456,13 @@ function isNodeEffectivelyVisible(node) {
 }
 
 function getUnionRect() {
-  const sceneNodes = [scene, quitAppButton];
+  const sceneNodes = [
+    quitAppButton,
+    img,
+    chat,
+    miniActions,
+    settingsPanel && !settingsPanel.hidden ? settingsPanel : null
+  ];
 
   const rects = sceneNodes
     .map((node) => node?.getBoundingClientRect?.())
@@ -473,6 +481,18 @@ function getUnionRect() {
     ...union,
     width: Math.max(0, union.right - union.left),
     height: Math.max(0, union.bottom - union.top)
+  };
+}
+
+function getMeasuredFootprint() {
+  const unionRect = getUnionRect();
+  if (!unionRect || hasUnsafeCalculatedSize(unionRect.width, unionRect.height)) return null;
+
+  return {
+    width: Math.ceil(unionRect.width + (FOOTPRINT_PADDING * 2)),
+    height: Math.ceil(unionRect.height + (FOOTPRINT_PADDING * 2)),
+    offsetX: Math.floor(unionRect.left - FOOTPRINT_PADDING),
+    offsetY: Math.floor(unionRect.top - FOOTPRINT_PADDING)
   };
 }
 
@@ -641,16 +661,27 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
 
   updateFocusMinimumSize();
 
-  const width = Math.max(MINI_MIN_WIDTH, Math.ceil(OVERLAY_BASE_SIZE.width * effectiveScale));
-  const height = Math.max(MINI_MIN_HEIGHT, Math.ceil(OVERLAY_BASE_SIZE.height * effectiveScale));
+  const measured = getMeasuredFootprint();
+  const fallbackWidth = Math.max(MINI_MIN_WIDTH, Math.ceil(OVERLAY_BASE_SIZE.width * effectiveScale));
+  const fallbackHeight = Math.max(MINI_MIN_HEIGHT, Math.ceil(OVERLAY_BASE_SIZE.height * effectiveScale));
+  const width = Math.max(MINI_MIN_WIDTH, measured?.width ?? fallbackWidth);
+  const height = Math.max(MINI_MIN_HEIGHT, measured?.height ?? fallbackHeight);
+  const offsetX = Number.isFinite(measured?.offsetX) ? measured.offsetX : 0;
+  const offsetY = Number.isFinite(measured?.offsetY) ? measured.offsetY : 0;
 
-  if (lastFitRequest.width === width && lastFitRequest.height === height) {
+  if (
+    lastFitRequest.width === width &&
+    lastFitRequest.height === height &&
+    lastFitRequest.offsetX === offsetX &&
+    lastFitRequest.offsetY === offsetY
+  ) {
     return;
   }
 
   fitRetryCount = 0;
   lastGoodFocusFitSize = { width, height };
-  lastFitRequest = { mode: settings.mode, width, height };
+  lastMeasuredFootprint = measured;
+  lastFitRequest = { mode: settings.mode, width, height, offsetX, offsetY };
 
   if (DEV_FIT_LOG) {
     console.log('[fit]', {
@@ -658,17 +689,23 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
       reason,
       retry,
       winW: width,
-      winH: height
+      winH: height,
+      offsetX,
+      offsetY
     });
   }
 
   ignoreNextResize = true;
   window.yumikoOverlay?.setMinimumSize?.({ width, height });
-  window.yumikoOverlay.setWindowSize({
-    width,
-    height,
-    preservePosition: true
-  });
+  if (window.yumikoOverlay?.setWindowFootprint) {
+    window.yumikoOverlay.setWindowFootprint({ width, height, offsetX, offsetY });
+  } else {
+    window.yumikoOverlay.setWindowSize({
+      width,
+      height,
+      preservePosition: true
+    });
+  }
 }
 
 function requestFitDebounced(reason = 'debounced') {
@@ -680,8 +717,9 @@ function updateFocusMinimumSize() {
   const setFocusMinSize = window.yumikoOverlay?.setFocusMinSize || window.yumikoOverlay?.setMinimumSize;
   if (!setFocusMinSize) return;
 
-  const baseWidth = OVERLAY_BASE_SIZE.width * effectiveScale;
-  const baseHeight = OVERLAY_BASE_SIZE.height * effectiveScale;
+  const measured = lastMeasuredFootprint || getMeasuredFootprint();
+  const baseWidth = measured?.width ?? (OVERLAY_BASE_SIZE.width * effectiveScale);
+  const baseHeight = measured?.height ?? (OVERLAY_BASE_SIZE.height * effectiveScale);
 
   const minW = Math.max(Math.ceil(baseWidth), MINI_MIN_WIDTH);
   const minH = Math.max(Math.ceil(baseHeight), MINI_MIN_HEIGHT);
