@@ -299,7 +299,7 @@ body {
   position: absolute;
   left: var(--conversation-side-gap);
   right: var(--conversation-side-gap);
-  bottom: var(--conversation-bottom-gap);
+  bottom: calc(var(--conversation-bottom-gap) + 14px);
   min-height: 338px;
   display: flex;
   align-items: flex-end;
@@ -365,10 +365,10 @@ body {
   position: relative;
   inset: auto;
   align-self: end;
-  width: clamp(448px, 76%, 596px);
+  width: min(100%, 596px);
   min-height: 0;
-  height: 330px;
-  max-height: 352px;
+  height: 318px;
+  max-height: 340px;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
@@ -481,11 +481,11 @@ body {
 
 .panel {
   position: absolute;
-  top: 14px;
-  right: calc(100% - 44px);
-  bottom: auto;
+  top: auto;
+  right: 10px;
+  bottom: calc(100% - 44px);
   z-index: 24;
-  width: min(272px, calc(100% - 20px));
+  width: min(316px, calc(100% - 20px));
   border: 1px solid rgba(247, 229, 207, 0.12);
   border-radius: 24px;
   padding: 12px;
@@ -506,7 +506,7 @@ body {
     linear-gradient(180deg, rgba(34, 22, 30, 0.94), rgba(16, 11, 17, 0.97));
   backdrop-filter: blur(calc(var(--moon-blur-lg) + 2px));
   box-shadow: 0 18px 36px rgba(7, 3, 8, 0.44), 0 0 0 1px rgba(255, 247, 236, 0.03) inset;
-  transform-origin: top right;
+  transform-origin: bottom right;
 }
 
 .panel:not([hidden]) {
@@ -1037,11 +1037,11 @@ input[type="checkbox"]:checked::after {
 @keyframes panel-reveal {
   from {
     opacity: 0;
-    transform: translateX(10px) scale(0.985);
+    transform: translateY(10px) scale(0.985);
   }
   to {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -1076,7 +1076,7 @@ input[type="checkbox"]:checked::after {
   }
 
   .yumiko-chat {
-    width: clamp(420px, 78%, 548px);
+    width: 100%;
     min-height: 196px;
     gap: 10px;
     padding: 14px;
@@ -1084,10 +1084,10 @@ input[type="checkbox"]:checked::after {
   }
 
   .panel {
-    top: 10px;
-    right: calc(100% - 40px);
-    bottom: auto;
-    width: min(248px, calc(100% - 16px));
+    top: auto;
+    right: 8px;
+    bottom: calc(100% - 40px);
+    width: min(304px, calc(100% - 16px));
     max-height: min(
       72vh,
       484px,
@@ -1145,7 +1145,7 @@ input[type="checkbox"]:checked::after {
   }
 
   .yumiko-chat {
-    width: min(100%, 500px);
+    width: 100%;
     min-height: 208px;
   }
 
