@@ -645,20 +645,14 @@ function broadcastState() {
 }
 
 function canUseDynamicClickThrough() {
-  return Boolean(
-    settings.hasCompletedFirstRun
-    && settings.overlayEnabled
-    && settings.clickThroughPreferred
-    && settings.mode === 'focus'
-  );
+  return false;
 }
 
 function applyMousePolicy(reason = 'unknown') {
   if (!win || win.isDestroyed()) return;
 
-  const clickThroughEnabled = canUseDynamicClickThrough();
-  const shouldIgnoreMouse = clickThroughEnabled && !interactiveRegionActive;
-  const shouldBeFocusable = !clickThroughEnabled || interactiveRegionActive;
+  const shouldIgnoreMouse = false;
+  const shouldBeFocusable = true;
 
   if (mouseIgnoreApplied !== shouldIgnoreMouse) {
     if (shouldIgnoreMouse) {
@@ -674,9 +668,7 @@ function applyMousePolicy(reason = 'unknown') {
     mouseFocusableApplied = shouldBeFocusable;
   }
 
-  if (clickThroughEnabled) {
-    console.info('[yumiko][mouse] policy', { reason, interactiveRegionActive, shouldIgnoreMouse, shouldBeFocusable });
-  }
+  console.info('[yumiko][mouse] policy', { reason, interactiveRegionActive, shouldIgnoreMouse, shouldBeFocusable });
 }
 
 function applyWindowBehavior() {
@@ -691,9 +683,7 @@ function applyWindowBehavior() {
     win.setVisibleOnAllWorkspaces(false);
   }
 
-  if (!canUseDynamicClickThrough()) {
-    interactiveRegionActive = true;
-  }
+  interactiveRegionActive = true;
 
   applyMousePolicy('apply-window-behavior');
 
@@ -1296,12 +1286,6 @@ if (!singleInstance) {
     ipcMain.on('yumiko:set-shortcuts-enabled', (_event, enabled) => setShortcutsEnabled(enabled));
     ipcMain.handle('yumiko:set-chat-hotkey', (_event, hotkey) => setChatHotkey(hotkey));
     ipcMain.on('yumiko:set-click-through-enabled', (_event, enabled) => setClickThroughEnabled(enabled));
-    ipcMain.on('yumiko:set-interactive-region-active', (_event, active) => {
-      const nextActive = Boolean(active);
-      if (interactiveRegionActive === nextActive) return;
-      interactiveRegionActive = nextActive;
-      applyMousePolicy('renderer:hover-region');
-    });
     ipcMain.on('yumiko:set-overlay-enabled', (_event, enabled) => setOverlayEnabled(enabled));
     ipcMain.on('yumiko:complete-first-run', () => completeFirstRun());
     ipcMain.on('yumiko:close-window', () => {
@@ -1340,40 +1324,6 @@ if (!singleInstance) {
 
       const { x, y } = currentBounds;
       const nextBounds = safeBounds({ x, y, width: newW, height: newH }, 'ipc:set-window-size');
-      const bounded = clampBoundsToWorkArea(nextBounds);
-      win.setBounds(bounded, false);
-    });
-    ipcMain.on('yumiko:set-window-footprint', (_event, payload) => {
-      if (!win || win.isDestroyed()) return;
-
-      const requestedWidth = Number(payload?.width);
-      const requestedHeight = Number(payload?.height);
-      const requestedOffsetX = Number(payload?.offsetX);
-      const requestedOffsetY = Number(payload?.offsetY);
-      if (!Number.isFinite(requestedWidth) || !Number.isFinite(requestedHeight)) return;
-
-      const isRidiculous = requestedWidth < 180 || requestedHeight < 180;
-      if (isRidiculous) {
-        console.warn('[yumiko][window] ignored unsafe set-window-footprint request', { requestedWidth, requestedHeight });
-        return;
-      }
-
-      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
-      const newW = clamp(Math.round(requestedWidth), 180, 1200);
-      const newH = clamp(Math.round(requestedHeight), 180, 900);
-      const offsetX = Number.isFinite(requestedOffsetX) ? Math.round(requestedOffsetX) : 0;
-      const offsetY = Number.isFinite(requestedOffsetY) ? Math.round(requestedOffsetY) : 0;
-
-      const currentBounds = win.getBounds();
-      const nextBounds = safeBounds(
-        {
-          x: currentBounds.x + offsetX,
-          y: currentBounds.y + offsetY,
-          width: newW,
-          height: newH
-        },
-        'ipc:set-window-footprint'
-      );
       const bounded = clampBoundsToWorkArea(nextBounds);
       win.setBounds(bounded, false);
     });
