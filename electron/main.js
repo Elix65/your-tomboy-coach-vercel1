@@ -15,6 +15,8 @@ const {
 const chatClient = require('./chatClient');
 
 const DEFAULT_BOUNDS = { width: 540, height: 752 };
+const OVERLAY_SCALE_MIN = 0.85;
+const OVERLAY_SCALE_MAX = 1.1;
 const SETTINGS_FILE = 'settings.json';
 const AUTH_FILE = 'auth.json';
 const DEFAULT_YUMIKO_WEB_ORIGIN = 'https://21-moon.com';
@@ -47,7 +49,8 @@ const defaultSettings = {
   deviceId: '',
   deviceName: '',
   overlayAccessToken: '',
-  overlayAccountEmail: ''
+  overlayAccountEmail: '',
+  overlayScale: 1
 };
 
 function normalizeOrigin(value) {
@@ -131,6 +134,20 @@ function clampBoundsToWorkArea(bounds) {
     height,
     x: Math.max(area.x, Math.min(bounds.x, maxX)),
     y: Math.max(area.y, Math.min(bounds.y, maxY))
+  };
+}
+
+function clampOverlayScale(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 1;
+  return Math.max(OVERLAY_SCALE_MIN, Math.min(OVERLAY_SCALE_MAX, Number(numeric.toFixed(2))));
+}
+
+function getScaledOverlaySize(scale = settings.overlayScale) {
+  const normalizedScale = clampOverlayScale(scale);
+  return {
+    width: Math.round(DEFAULT_BOUNDS.width * normalizedScale),
+    height: Math.round(DEFAULT_BOUNDS.height * normalizedScale)
   };
 }
 
@@ -239,7 +256,8 @@ function readSettings() {
       chatHotkey: normalizeChatHotkey(parsed.chatHotkey),
       yumikoWebOrigin: resolveYumikoWebOrigin(parsed),
       overlayBounds: migratedOverlayBounds,
-      chatBounds: parsed.chatBounds || null
+      chatBounds: parsed.chatBounds || null,
+      overlayScale: clampOverlayScale(parsed.overlayScale)
     };
 
     if (!mergedSettings.hasCompletedFirstRun) {
@@ -615,13 +633,14 @@ function getInitialBounds() {
   const position = getDefaultPosition();
   const activeBounds = settings.overlayBounds || settings.chatBounds || settings.bounds || null;
   const safeActiveBounds = activeBounds ? safeBounds(activeBounds, 'initial-bounds') : null;
+  const scaledSize = getScaledOverlaySize(settings.overlayScale);
 
   return {
     ...position,
     x: safeActiveBounds?.x ?? position.x,
     y: safeActiveBounds?.y ?? position.y,
-    width: Math.max(DEFAULT_BOUNDS.width, safeActiveBounds?.width || 0),
-    height: Math.max(DEFAULT_BOUNDS.height, safeActiveBounds?.height || 0)
+    width: scaledSize.width,
+    height: scaledSize.height
   };
 }
 
@@ -827,6 +846,27 @@ function setOverlayEnabled(enabled) {
   settings.overlayEnabled = Boolean(enabled);
   writeSettings();
   applyWindowBehavior();
+}
+
+function setOverlayScale(scale, { persist = true } = {}) {
+  const nextScale = clampOverlayScale(scale);
+  settings.overlayScale = nextScale;
+
+  if (persist) {
+    writeSettings();
+  }
+
+  if (win && !win.isDestroyed()) {
+    const current = win.getBounds();
+    const scaled = getScaledOverlaySize(nextScale);
+    const nextBounds = safeBounds(
+      { x: current.x, y: current.y, width: scaled.width, height: scaled.height },
+      'set-overlay-scale'
+    );
+    win.setBounds(clampBoundsToWorkArea(nextBounds), false);
+  }
+
+  broadcastState();
 }
 
 function completeFirstRun() {
@@ -1051,14 +1091,15 @@ function createWindow() {
   });
 
   const bounds = getInitialBounds();
+  const minOverlaySize = getScaledOverlaySize(settings.overlayScale);
   win = new BrowserWindow({
     ...bounds,
     transparent: true,
     backgroundColor: '#00000000',
     frame: false,
     alwaysOnTop: Boolean(settings.overlayEnabled),
-    minWidth: DEFAULT_BOUNDS.width,
-    minHeight: DEFAULT_BOUNDS.height,
+    minWidth: minOverlaySize.width,
+    minHeight: minOverlaySize.height,
     resizable: false,
     skipTaskbar: true,
     webPreferences: {
@@ -1262,6 +1303,7 @@ if (!singleInstance) {
     ipcMain.handle('yumiko:set-chat-hotkey', (_event, hotkey) => setChatHotkey(hotkey));
     ipcMain.on('yumiko:set-click-through-enabled', (_event, enabled) => setClickThroughEnabled(enabled));
     ipcMain.on('yumiko:set-overlay-enabled', (_event, enabled) => setOverlayEnabled(enabled));
+    ipcMain.on('yumiko:set-overlay-scale', (_event, scale) => setOverlayScale(scale));
     ipcMain.on('yumiko:complete-first-run', () => completeFirstRun());
     ipcMain.on('yumiko:close-window', () => {
       if (!win || win.isDestroyed()) return;

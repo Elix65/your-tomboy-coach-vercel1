@@ -1,5 +1,4 @@
 const STORAGE_KEY = 'yumiko-widget-settings-v1';
-const MINI_SCALE_KEY = 'yumiko_mini_scale_v1';
 const DEFAULT_SETTINGS = {
   mode: 'focus',
   autoMessageEnabled: false,
@@ -8,17 +7,11 @@ const DEFAULT_SETTINGS = {
 };
 const AUTO_MESSAGE_INTERVAL_OPTIONS = [1, 2, 5, 10, 20];
 const RECENT_FOCUS_REPLY_CARRY_WINDOW_MS = 7000;
-const SCENE_WINDOW_SIZE = { width: 600, height: 700 };
-const MINI_SCALE_MIN = 0.35;
-const MINI_SCALE_MAX = 1;
-const MINI_BASE_FALLBACK = { width: 360, height: 520 };
-const MINI_BOUNDS_PADDING_X = 6;
-const MINI_BOUNDS_PADDING_Y = 4;
+const SCENE_BASE_WINDOW_SIZE = { width: 540, height: 752 };
+const OVERLAY_SCALE_MIN = 0.85;
+const OVERLAY_SCALE_MAX = 1.1;
 const MINI_MIN_WIDTH = 260;
 const MINI_MIN_HEIGHT = 300;
-const MINI_RETRY_LIMIT = 10;
-const MINI_MIN_SIZE_RETRY_LIMIT = 5;
-const DEV_FIT_LOG = window.location.search.includes('dev=1') || localStorage.getItem('yumiko_debug_fit') === '1';
 const AUTO_MESSAGE_MIN_TICK_MS = 5 * 1000;
 const AUTO_MESSAGE_MAX_TICK_MS = 10 * 1000;
 const DEV_AUTO_MESSAGE_LOG = false;
@@ -41,13 +34,14 @@ const authActionButton = document.getElementById('auth-action');
 const autoMessageToggle = document.getElementById('auto-message-enabled');
 const autoMessageIntervalSelect = document.getElementById('auto-message-interval');
 const sideImageModeSelect = document.getElementById('side-image-mode');
+const overlayScaleSelect = document.getElementById('overlay-scale');
+const overlayScaleResetButton = document.getElementById('overlay-scale-reset');
 const selectShells = Array.from(document.querySelectorAll('.select-shell'));
 
 const widget = document.getElementById('yumiko-widget');
 const scene = document.getElementById('overlay-scene');
 const mini = document.getElementById('yumiko-mini');
 const miniWrap = document.getElementById('mini-wrap');
-const miniActions = document.querySelector('.conversation-band__controls');
 const miniChatButton = document.getElementById('mini-chat');
 const miniMicButton = document.getElementById('mini-mic');
 const chat = document.getElementById('yumiko-chat');
@@ -117,17 +111,10 @@ function normalizeSideImageMode(value) {
 }
 
 let settings = loadSettings();
-const storedUserScale = parseFloat(localStorage.getItem(MINI_SCALE_KEY) || '1');
-let userScale = clamp(Number.isFinite(storedUserScale) ? storedUserScale : 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
-let effectiveScale = userScale;
-let resizeObserver;
+let overlayScale = 1;
 let fitTimeout = null;
 let lastFitRequest = { mode: '', width: 0, height: 0 };
-let miniBaseSize = null;
-let fitRetryCount = 0;
-let minSizeRetryCount = 0;
 let lastGoodFocusFitSize = null;
-let ignoreNextResize = false;
 let assistantMessageSequence = 0;
 let lastAssistantMessageId = '';
 let lastAssistantMessageAt = 0;
@@ -360,69 +347,45 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
-function applyScale(source = 'unknown', { shouldRequestFit = true } = {}) {
-  const baseSize = getBaseSize();
-  const baseW = baseSize?.baseW || miniBaseSize?.width;
-  const baseH = baseSize?.baseH || miniBaseSize?.height;
-  let fitScale = MINI_SCALE_MAX;
+function normalizeOverlayScale(value) {
+  const normalized = clamp(Number(value) || 1, OVERLAY_SCALE_MIN, OVERLAY_SCALE_MAX);
+  return Number(normalized.toFixed(2));
+}
 
-  if (baseW > 0 && baseH > 0) {
-    fitScale = clamp(Math.min(window.innerWidth / baseW, window.innerHeight / baseH), MINI_SCALE_MIN, MINI_SCALE_MAX);
+function getScaledWindowSize(scale = overlayScale) {
+  const safeScale = normalizeOverlayScale(scale);
+  return {
+    width: Math.round(SCENE_BASE_WINDOW_SIZE.width * safeScale),
+    height: Math.round(SCENE_BASE_WINDOW_SIZE.height * safeScale)
+  };
+}
+
+function applyOverlayScaleUi(scale) {
+  const safeScale = normalizeOverlayScale(scale);
+  overlayScale = safeScale;
+  document.documentElement.style.setProperty('--mini-scale', String(safeScale));
+  if (overlayScaleSelect) {
+    overlayScaleSelect.value = String(safeScale);
   }
+}
 
-  const nextEffectiveScale = Number(Math.min(userScale, fitScale).toFixed(2));
-  const scaleChanged = Math.abs(nextEffectiveScale - effectiveScale) > 0.001;
-
-  effectiveScale = nextEffectiveScale;
-  document.documentElement.style.setProperty('--mini-scale', String(effectiveScale));
-
+function setOverlayScale(nextScale, { persist = true } = {}) {
+  const safeScale = normalizeOverlayScale(nextScale);
+  const size = getScaledWindowSize(safeScale);
+  applyOverlayScaleUi(safeScale);
   updateFocusMinimumSize();
-  if (shouldRequestFit && (source === 'user' || scaleChanged)) {
-    requestFitDebounced(`scale:${source}`);
+
+  if (persist) {
+    window.yumikoOverlay?.setOverlayScale?.(safeScale);
   }
-}
 
-function setMiniScale(nextScale, { persist = true, shouldRequestFit = true } = {}) {
-  const safeScale = clamp(Number(nextScale) || 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
-  userScale = Number(safeScale.toFixed(2));
-
-  if (persist) localStorage.setItem(MINI_SCALE_KEY, String(userScale));
-  applyScale('user', { shouldRequestFit });
-}
-
-function getCurrentScale() {
-  const cssValue = getComputedStyle(document.documentElement).getPropertyValue('--mini-scale');
-  const parsed = parseFloat(cssValue);
-  return clamp(Number.isFinite(parsed) ? parsed : effectiveScale || 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
+  requestFitDebounced(`scale:${safeScale}`, size);
 }
 
 function isNodeEffectivelyVisible(node) {
   if (!node || node.hidden) return false;
   const computed = window.getComputedStyle(node);
   return computed.display !== 'none' && computed.visibility !== 'hidden' && computed.opacity !== '0';
-}
-
-function getUnionRect() {
-  const sceneNodes = [scene, quitAppButton];
-
-  const rects = sceneNodes
-    .map((node) => node?.getBoundingClientRect?.())
-    .filter((rect) => rect && rect.width > 0 && rect.height > 0);
-
-  if (!rects.length) return null;
-
-  const union = rects.reduce((acc, rect) => ({
-    left: Math.min(acc.left, rect.left),
-    top: Math.min(acc.top, rect.top),
-    right: Math.max(acc.right, rect.right),
-    bottom: Math.max(acc.bottom, rect.bottom)
-  }));
-
-  return {
-    ...union,
-    width: Math.max(0, union.right - union.left),
-    height: Math.max(0, union.bottom - union.top)
-  };
 }
 
 function closeCustomSelects({ except = null } = {}) {
@@ -546,72 +509,25 @@ function enhanceSelect(select) {
   return customSelect;
 }
 
-function getBaseSize() {
-  const unionRect = getUnionRect();
-  const scale = getCurrentScale();
-  if (!unionRect || hasUnsafeCalculatedSize(unionRect.width, unionRect.height) || !Number.isFinite(scale) || scale <= 0) {
-    return null;
-  }
-
-  const baseW = unionRect.width / scale;
-  const baseH = unionRect.height / scale;
-  if (hasUnsafeCalculatedSize(baseW, baseH)) return null;
-
-  return { baseW, baseH, scale };
-}
-
-function measureMiniBaseSize() {
-  const baseSize = getBaseSize();
-  if (!baseSize) return { ...MINI_BASE_FALLBACK, shouldResetScale: true };
-
-  return {
-    width: Math.ceil(baseSize.baseW),
-    height: Math.ceil(baseSize.baseH),
-    shouldResetScale: false
-  };
-}
-
 function hasUnsafeCalculatedSize(width, height) {
   return !Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0;
 }
 
-function scheduleFitRetry(reason = 'retry') {
-  if (fitRetryCount >= MINI_RETRY_LIMIT) {
-    console.warn('[yumiko][fit] retry limit reached', { reason, fitRetryCount });
-    return;
-  }
-
-  fitRetryCount += 1;
-  window.setTimeout(() => requestFit({ reason, retry: fitRetryCount }), 50);
-}
-
-function requestFit({ reason = 'unknown', retry = 0 } = {}) {
+function requestFit({ reason = 'unknown', size } = {}) {
   if (!window.yumikoOverlay?.setWindowSize || !widget) return;
 
   updateFocusMinimumSize();
 
-  const width = SCENE_WINDOW_SIZE.width;
-  const height = SCENE_WINDOW_SIZE.height;
+  const computedSize = size || getScaledWindowSize(overlayScale);
+  const width = computedSize.width;
+  const height = computedSize.height;
 
   if (lastFitRequest.width === width && lastFitRequest.height === height) {
     return;
   }
 
-  fitRetryCount = 0;
   lastGoodFocusFitSize = { width, height };
   lastFitRequest = { mode: settings.mode, width, height };
-
-  if (DEV_FIT_LOG) {
-    console.log('[fit]', {
-      mode: settings.mode,
-      reason,
-      retry,
-      winW: width,
-      winH: height
-    });
-  }
-
-  ignoreNextResize = true;
   window.yumikoOverlay?.setMinimumSize?.({ width, height });
   window.yumikoOverlay.setWindowSize({
     width,
@@ -620,17 +536,16 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
   });
 }
 
-function requestFitDebounced(reason = 'debounced') {
+function requestFitDebounced(reason = 'debounced', size) {
   window.clearTimeout(fitTimeout);
-  fitTimeout = window.setTimeout(() => requestFit({ reason }), 50);
+  fitTimeout = window.setTimeout(() => requestFit({ reason, size }), 50);
 }
 
 function updateFocusMinimumSize() {
   const setFocusMinSize = window.yumikoOverlay?.setFocusMinSize || window.yumikoOverlay?.setMinimumSize;
   if (!setFocusMinSize) return;
 
-  const baseWidth = SCENE_WINDOW_SIZE.width;
-  const baseHeight = SCENE_WINDOW_SIZE.height;
+  const { width: baseWidth, height: baseHeight } = getScaledWindowSize(overlayScale);
 
   const minW = Math.max(Math.ceil(baseWidth), MINI_MIN_WIDTH);
   const minH = Math.max(Math.ceil(baseHeight), MINI_MIN_HEIGHT);
@@ -639,7 +554,6 @@ function updateFocusMinimumSize() {
     return;
   }
 
-  minSizeRetryCount = 0;
   setFocusMinSize({ width: minW, height: minH });
 }
 
@@ -949,9 +863,9 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   }
 
   window.requestAnimationFrame(() => {
-    setMiniScale(userScale, { persist: false, shouldRequestFit: false });
+    applyOverlayScaleUi(overlayScale);
   });
-  requestFitDebounced();
+  requestFitDebounced('mode-change');
 
   console.info('[yumiko][mode] after change', {
     previousMode,
@@ -1346,6 +1260,11 @@ function syncHostState(state = {}) {
 
   syncAutoMessageControls();
   lastKnownBounds = state.bounds || lastKnownBounds;
+  if (state.overlayScale != null) {
+    applyOverlayScaleUi(state.overlayScale);
+    updateFocusMinimumSize();
+    requestFitDebounced('state:overlay-scale');
+  }
   updateCharacterImageForBounds(lastKnownBounds);
 }
 
@@ -1431,6 +1350,14 @@ sideImageModeSelect?.addEventListener('change', () => {
   updateCharacterImageForBounds(lastKnownBounds, { force: true });
 });
 
+overlayScaleSelect?.addEventListener('change', () => {
+  setOverlayScale(overlayScaleSelect.value);
+});
+
+overlayScaleResetButton?.addEventListener('click', () => {
+  setOverlayScale(1);
+});
+
 authActionButton?.addEventListener('click', async () => {
   authActionButton.disabled = true;
   try {
@@ -1462,16 +1389,15 @@ miniMicButton?.addEventListener('click', () => {
   console.info('[yumiko][mic] Próximamente');
 });
 
-function adjustMiniScale(delta) {
-  setMiniScale((userScale || 1) + delta);
+function adjustOverlayScale(delta) {
+  setOverlayScale((overlayScale || 1) + delta);
 }
 
 function panicResetRendererState() {
   console.info('PANIC RESET');
   localStorage.removeItem('miniScale');
-  localStorage.removeItem(MINI_SCALE_KEY);
   settings = { ...settings, mode: 'focus' };
-  setMiniScale(1, { persist: true });
+  setOverlayScale(1, { persist: true });
   setMode('focus', { source: 'panic-reset' });
 
   const schedulePanicFit = () => {
@@ -1490,7 +1416,7 @@ function panicResetRendererState() {
 window.addEventListener('wheel', (event) => {
   if (!event.ctrlKey || document.activeElement === input) return;
   event.preventDefault();
-  adjustMiniScale(event.deltaY < 0 ? 0.05 : -0.05);
+  adjustOverlayScale(event.deltaY < 0 ? 0.05 : -0.05);
 }, { passive: false });
 
 window.addEventListener('keydown', (event) => {
@@ -1504,19 +1430,19 @@ window.addEventListener('keydown', (event) => {
 
   if (event.key === '0') {
     event.preventDefault();
-    setMiniScale(1);
+    setOverlayScale(1);
     return;
   }
 
   if (event.key === '+' || event.key === '=' || event.key === '/') {
     event.preventDefault();
-    adjustMiniScale(0.05);
+    adjustOverlayScale(0.05);
     return;
   }
 
   if (event.key === '-') {
     event.preventDefault();
-    adjustMiniScale(-0.05);
+    adjustOverlayScale(-0.05);
   }
 });
 
@@ -1530,24 +1456,6 @@ window.addEventListener('pointerdown', (event) => {
   if (!(target instanceof Element) || target.closest('.custom-select')) return;
   closeCustomSelects();
 }, { capture: true });
-
-window.addEventListener('resize', () => {
-  if (ignoreNextResize) {
-    ignoreNextResize = false;
-    return;
-  }
-
-  updateFocusMinimumSize();
-  const previousScale = effectiveScale;
-  applyScale('resize', { shouldRequestFit: false });
-
-  if (Math.abs(previousScale - effectiveScale) > 0.001) {
-    requestFitDebounced('resize:auto-fit');
-    return;
-  }
-
-  requestFitDebounced('resize');
-});
 
 send?.addEventListener('click', submitMessage);
 
@@ -1577,7 +1485,7 @@ window.yumikoWidget = {
 
 window.addEventListener('DOMContentLoaded', () => {
   setSettingsPanelHidden(true);
-  setMiniScale(userScale, { persist: false });
+  applyOverlayScaleUi(1);
   syncAutoMessageControls();
   startAutoMessageScheduler();
   persistAutoMessageSettings();
@@ -1588,23 +1496,12 @@ window.addEventListener('DOMContentLoaded', () => {
     preloadCharacterImage(CHARACTER_SRC_WHEN_WINDOW_ON_LEFT);
 
     if (img.complete) {
-      requestFitDebounced();
+      requestFitDebounced('image-ready');
     } else {
       img.addEventListener('load', () => {
-        requestFitDebounced();
+        requestFitDebounced('image-loaded');
       }, { once: true });
     }
-  }
-
-  if (typeof ResizeObserver !== 'undefined') {
-    resizeObserver = new ResizeObserver(() => {
-      requestFitDebounced();
-    });
-    if (mini) resizeObserver.observe(mini);
-    if (miniWrap) resizeObserver.observe(miniWrap);
-    if (miniActions) resizeObserver.observe(miniActions);
-    if (quitAppButton) resizeObserver.observe(quitAppButton);
-    if (chat) resizeObserver.observe(chat);
   }
 
   window.yumikoOverlay?.onStateUpdated?.(syncHostState);
@@ -1628,11 +1525,11 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('yumiko:mini-scale', (event) => {
     const payload = event?.detail || {};
     if (payload.set != null) {
-      setMiniScale(payload.set);
+      setOverlayScale(payload.set);
       return;
     }
     if (payload.delta != null) {
-      setMiniScale(userScale + payload.delta);
+      setOverlayScale(overlayScale + payload.delta);
     }
   });
   window.yumikoOverlay?.getState?.()
@@ -1645,11 +1542,6 @@ window.addEventListener('DOMContentLoaded', () => {
     .catch(() => setMode('focus', { source: 'state-sync' }));
 
   setMode(settings.mode || 'focus', { source: 'state-sync' });
-  miniBaseSize = measureMiniBaseSize();
-  if (miniBaseSize?.shouldResetScale) {
-    setMiniScale(1);
-  } else {
-    applyScale('init', { shouldRequestFit: false });
-  }
+  requestFitDebounced('init');
   loadChatHistory();
 });
