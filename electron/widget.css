@@ -25,11 +25,22 @@
   --moon-timing-slow: 520ms;
   --moon-timing-breath: 7800ms;
   --moon-ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
-  --mini-scale: 1;
-  --conversation-bottom-gap: 24px;
-  --conversation-side-gap: 20px;
-  --overlay-safe-top: 14px;
-  --overlay-safe-bottom: 18px;
+  --overlay-scale: 1;
+  --overlay-min-width: calc(580px * var(--overlay-scale));
+  --overlay-min-height: calc(700px * var(--overlay-scale));
+  --conversation-bottom-gap: calc(24px * var(--overlay-scale));
+  --conversation-side-gap: calc(20px * var(--overlay-scale));
+  --overlay-safe-top: calc(14px * var(--overlay-scale));
+  --overlay-safe-bottom: calc(18px * var(--overlay-scale));
+  --presence-stage-bottom-inset: calc(212px * var(--overlay-scale));
+  --chat-width-max: calc(548px * var(--overlay-scale));
+  --chat-height: calc(272px * var(--overlay-scale));
+  --chat-max-height: calc(292px * var(--overlay-scale));
+  --chat-radius: calc(24px * var(--overlay-scale));
+  --chat-gap: calc(10px * var(--overlay-scale));
+  --chat-padding-y: calc(14px * var(--overlay-scale));
+  --chat-padding-x: calc(16px * var(--overlay-scale));
+  --mini-offset-bottom: calc(2px * var(--overlay-scale));
 
   --text: var(--moon-color-text-primary);
   --muted: var(--moon-color-text-secondary);
@@ -133,8 +144,8 @@ body {
   position: relative;
   width: 100%;
   height: 100%;
-  min-width: 580px;
-  min-height: 700px;
+  min-width: var(--overlay-min-width);
+  min-height: var(--overlay-min-height);
   overflow: visible;
   padding:
     var(--overlay-safe-top)
@@ -144,7 +155,7 @@ body {
 
 .presence-stage {
   position: absolute;
-  inset: 0 0 212px 0;
+  inset: 0 0 var(--presence-stage-bottom-inset) 0;
   overflow: hidden;
   pointer-events: none;
 }
@@ -260,8 +271,8 @@ body {
   position: absolute;
   left: 50%;
   right: auto;
-  bottom: 2px;
-  zoom: var(--mini-scale);
+  bottom: var(--mini-offset-bottom);
+  zoom: var(--overlay-scale);
   transform: translateX(-50%) translateY(0) scale(1);
   transform-origin: bottom center;
   -webkit-app-region: drag;
@@ -275,8 +286,8 @@ body {
   display: block;
   height: auto;
   width: auto;
-  max-width: min(86vw, 430px);
-  max-height: min(72vh, 580px);
+  max-width: min(86vw, calc(430px * var(--overlay-scale)));
+  max-height: min(72vh, calc(580px * var(--overlay-scale)));
   object-fit: contain;
   user-select: none;
   -webkit-user-drag: none;
@@ -299,8 +310,8 @@ body {
   position: absolute;
   left: var(--conversation-side-gap);
   right: var(--conversation-side-gap);
-  bottom: calc(var(--conversation-bottom-gap) + 38px);
-  min-height: 286px;
+  bottom: calc(var(--conversation-bottom-gap) + calc(38px * var(--overlay-scale)));
+  min-height: calc(286px * var(--overlay-scale));
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -329,13 +340,13 @@ body {
 }
 
 .mini-btn {
-  width: 32px;
-  height: 32px;
+  width: calc(32px * var(--overlay-scale));
+  height: calc(32px * var(--overlay-scale));
   border-radius: var(--moon-radius-pill);
   border: 1px solid var(--moon-border-subtle);
   background: linear-gradient(160deg, rgba(38, 24, 35, 0.98), rgba(20, 13, 21, 0.98));
   color: var(--moon-color-text-secondary);
-  font-size: 14px;
+  font-size: calc(14px * var(--overlay-scale));
   cursor: pointer;
   backdrop-filter: none;
   box-shadow: 0 0 0 1px rgba(245, 228, 212, 0.03) inset, 0 8px 16px rgba(10, 6, 11, 0.24);
@@ -365,17 +376,17 @@ body {
   position: relative;
   inset: auto;
   align-self: end;
-  width: min(100%, 548px);
+  width: min(100%, var(--chat-width-max));
   min-height: 0;
-  height: 272px;
-  max-height: 292px;
+  height: var(--chat-height);
+  max-height: var(--chat-max-height);
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 10px;
-  padding: 14px 16px 14px;
+  gap: var(--chat-gap);
+  padding: var(--chat-padding-y) var(--chat-padding-x) var(--chat-padding-y);
   border: 1px solid rgba(247, 229, 207, 0.16);
-  border-radius: 24px;
+  border-radius: var(--chat-radius);
   background:
     radial-gradient(140% 160% at 14% 6%, rgba(184, 132, 108, 0.15), rgba(184, 132, 108, 0) 52%),
     radial-gradient(128% 124% at 100% 100%, rgba(96, 57, 74, 0.18), rgba(96, 57, 74, 0) 54%),
@@ -460,8 +471,8 @@ body {
 .panel-settings-btn {
   justify-self: end;
   align-self: start;
-  width: 32px;
-  height: 32px;
+  width: calc(32px * var(--overlay-scale));
+  height: calc(32px * var(--overlay-scale));
   border: 1px solid rgba(247, 229, 207, 0.14);
   border-radius: 13px;
   background:
@@ -487,7 +498,7 @@ body {
   z-index: 24;
   width: min(316px, calc(100% - 20px));
   border: 1px solid rgba(247, 229, 207, 0.12);
-  border-radius: 24px;
+  border-radius: var(--chat-radius);
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -562,7 +573,7 @@ body {
 
 .settings-group {
   display: grid;
-  gap: 10px;
+  gap: var(--chat-gap);
   padding: 12px;
   border: 1px solid rgba(247, 229, 207, 0.08);
   border-radius: 20px;
@@ -588,7 +599,7 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: var(--chat-gap);
   font-size: 12px;
   color: var(--muted);
 }
@@ -618,6 +629,35 @@ body {
   line-height: 1.45;
   color: rgba(226, 212, 198, 0.58);
   text-wrap: pretty;
+}
+
+.setting-stack-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.setting-value-pill {
+  min-width: 54px;
+  padding: 4px 10px;
+  border-radius: var(--moon-radius-pill);
+  border: 1px solid rgba(247, 229, 207, 0.18);
+  background: linear-gradient(180deg, rgba(53, 33, 44, 0.74), rgba(24, 15, 24, 0.9));
+  color: rgba(245, 234, 223, 0.92);
+  font-size: 12px;
+  text-align: center;
+}
+
+.overlay-scale-controls {
+  display: grid;
+  gap: 10px;
+}
+
+.overlay-scale-slider {
+  width: 100%;
+  accent-color: rgba(199, 146, 120, 0.9);
+  cursor: pointer;
 }
 
 .select-shell,
@@ -667,7 +707,7 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: var(--chat-gap);
   cursor: pointer;
   text-align: left;
   box-shadow: 0 0 0 1px rgba(255, 245, 235, 0.02) inset;
@@ -1078,7 +1118,7 @@ input[type="checkbox"]:checked::after {
   .yumiko-chat {
     width: 100%;
     min-height: 196px;
-    gap: 10px;
+    gap: var(--chat-gap);
     padding: 14px;
     border-radius: 22px;
   }
@@ -1102,12 +1142,12 @@ input[type="checkbox"]:checked::after {
 
   .settings-group {
     padding: 12px;
-    gap: 10px;
+    gap: var(--chat-gap);
     border-radius: 18px;
   }
 
   .chat-log {
-    gap: 10px;
+    gap: var(--chat-gap);
     padding: 4px 0 6px;
   }
 

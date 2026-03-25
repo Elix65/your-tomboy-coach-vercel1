@@ -1,16 +1,17 @@
 const STORAGE_KEY = 'yumiko-widget-settings-v1';
-const MINI_SCALE_KEY = 'yumiko_mini_scale_v1';
 const DEFAULT_SETTINGS = {
   mode: 'focus',
   autoMessageEnabled: false,
   autoMessageIntervalMinutes: 20,
-  sideImageMode: 'auto'
+  sideImageMode: 'auto',
+  overlayScale: 1
 };
 const AUTO_MESSAGE_INTERVAL_OPTIONS = [1, 2, 5, 10, 20];
 const RECENT_FOCUS_REPLY_CARRY_WINDOW_MS = 7000;
 const SCENE_WINDOW_SIZE = { width: 600, height: 700 };
-const MINI_SCALE_MIN = 0.35;
-const MINI_SCALE_MAX = 1;
+const OVERLAY_SCALE_MIN = 0.75;
+const OVERLAY_SCALE_MAX = 1.15;
+const OVERLAY_SCALE_STEP = 0.05;
 const MINI_BASE_FALLBACK = { width: 360, height: 520 };
 const MINI_BOUNDS_PADDING_X = 6;
 const MINI_BOUNDS_PADDING_Y = 4;
@@ -41,6 +42,9 @@ const authActionButton = document.getElementById('auth-action');
 const autoMessageToggle = document.getElementById('auto-message-enabled');
 const autoMessageIntervalSelect = document.getElementById('auto-message-interval');
 const sideImageModeSelect = document.getElementById('side-image-mode');
+const overlayScaleInput = document.getElementById('overlay-scale');
+const overlayScaleValue = document.getElementById('overlay-scale-value');
+const overlayScaleResetButton = document.getElementById('overlay-scale-reset');
 const selectShells = Array.from(document.querySelectorAll('.select-shell'));
 
 const widget = document.getElementById('yumiko-widget');
@@ -106,6 +110,7 @@ function loadSettings() {
     const parsedInterval = Number(parsed.autoMessageIntervalMinutes);
     parsed.autoMessageIntervalMinutes = AUTO_MESSAGE_INTERVAL_OPTIONS.includes(parsedInterval) ? parsedInterval : 20;
     parsed.sideImageMode = normalizeSideImageMode(parsed.sideImageMode);
+    parsed.overlayScale = normalizeOverlayScale(parsed.overlayScale);
     return parsed;
   } catch {
     return { ...DEFAULT_SETTINGS };
@@ -116,9 +121,17 @@ function normalizeSideImageMode(value) {
   return value === 'left' || value === 'right' ? value : 'auto';
 }
 
+
+function normalizeOverlayScale(value) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return DEFAULT_SETTINGS.overlayScale;
+  const clamped = clamp(parsed, OVERLAY_SCALE_MIN, OVERLAY_SCALE_MAX);
+  return Number((Math.round(clamped / OVERLAY_SCALE_STEP) * OVERLAY_SCALE_STEP).toFixed(2));
+}
+
+
 let settings = loadSettings();
-const storedUserScale = parseFloat(localStorage.getItem(MINI_SCALE_KEY) || '1');
-let userScale = clamp(Number.isFinite(storedUserScale) ? storedUserScale : 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
+let userScale = normalizeOverlayScale(settings.overlayScale);
 let effectiveScale = userScale;
 let resizeObserver;
 let fitTimeout = null;
@@ -364,17 +377,17 @@ function applyScale(source = 'unknown', { shouldRequestFit = true } = {}) {
   const baseSize = getBaseSize();
   const baseW = baseSize?.baseW || miniBaseSize?.width;
   const baseH = baseSize?.baseH || miniBaseSize?.height;
-  let fitScale = MINI_SCALE_MAX;
+  let fitScale = OVERLAY_SCALE_MAX;
 
   if (baseW > 0 && baseH > 0) {
-    fitScale = clamp(Math.min(window.innerWidth / baseW, window.innerHeight / baseH), MINI_SCALE_MIN, MINI_SCALE_MAX);
+    fitScale = clamp(Math.min(window.innerWidth / baseW, window.innerHeight / baseH), OVERLAY_SCALE_MIN, OVERLAY_SCALE_MAX);
   }
 
   const nextEffectiveScale = Number(Math.min(userScale, fitScale).toFixed(2));
   const scaleChanged = Math.abs(nextEffectiveScale - effectiveScale) > 0.001;
 
   effectiveScale = nextEffectiveScale;
-  document.documentElement.style.setProperty('--mini-scale', String(effectiveScale));
+  document.documentElement.style.setProperty('--overlay-scale', String(effectiveScale));
 
   updateFocusMinimumSize();
   if (shouldRequestFit && (source === 'user' || scaleChanged)) {
@@ -382,18 +395,25 @@ function applyScale(source = 'unknown', { shouldRequestFit = true } = {}) {
   }
 }
 
-function setMiniScale(nextScale, { persist = true, shouldRequestFit = true } = {}) {
-  const safeScale = clamp(Number(nextScale) || 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
-  userScale = Number(safeScale.toFixed(2));
+function syncOverlayScaleControls() {
+  const normalizedPercent = Math.round((normalizeOverlayScale(userScale) || 1) * 100);
+  if (overlayScaleInput) overlayScaleInput.value = String(normalizedPercent);
+  if (overlayScaleValue) overlayScaleValue.textContent = `${normalizedPercent}%`;
+}
 
-  if (persist) localStorage.setItem(MINI_SCALE_KEY, String(userScale));
-  applyScale('user', { shouldRequestFit });
+function setOverlayScale(nextScale, { persist = true, shouldRequestFit = true, source = 'user' } = {}) {
+  userScale = normalizeOverlayScale(nextScale);
+  settings.overlayScale = userScale;
+  syncOverlayScaleControls();
+
+  if (persist) saveSettings();
+  applyScale(source, { shouldRequestFit });
 }
 
 function getCurrentScale() {
-  const cssValue = getComputedStyle(document.documentElement).getPropertyValue('--mini-scale');
+  const cssValue = getComputedStyle(document.documentElement).getPropertyValue('--overlay-scale');
   const parsed = parseFloat(cssValue);
-  return clamp(Number.isFinite(parsed) ? parsed : effectiveScale || 1, MINI_SCALE_MIN, MINI_SCALE_MAX);
+  return clamp(Number.isFinite(parsed) ? parsed : effectiveScale || 1, OVERLAY_SCALE_MIN, OVERLAY_SCALE_MAX);
 }
 
 function isNodeEffectivelyVisible(node) {
@@ -949,7 +969,7 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   }
 
   window.requestAnimationFrame(() => {
-    setMiniScale(userScale, { persist: false, shouldRequestFit: false });
+    setOverlayScale(userScale, { persist: false, shouldRequestFit: false, source: 'mode-change' });
   });
   requestFitDebounced();
 
@@ -1192,6 +1212,7 @@ function syncAutoMessageControls() {
   if (sideImageModeSelect) {
     sideImageModeSelect.value = normalizeSideImageMode(settings.sideImageMode);
   }
+  syncOverlayScaleControls();
 }
 
 async function requestAutoNudge() {
@@ -1431,6 +1452,16 @@ sideImageModeSelect?.addEventListener('change', () => {
   updateCharacterImageForBounds(lastKnownBounds, { force: true });
 });
 
+
+overlayScaleInput?.addEventListener('input', () => {
+  const sliderPercent = Number(overlayScaleInput.value);
+  setOverlayScale(sliderPercent / 100, { persist: true, source: 'user' });
+});
+
+overlayScaleResetButton?.addEventListener('click', () => {
+  setOverlayScale(DEFAULT_SETTINGS.overlayScale, { persist: true, source: 'user' });
+});
+
 authActionButton?.addEventListener('click', async () => {
   authActionButton.disabled = true;
   try {
@@ -1463,15 +1494,14 @@ miniMicButton?.addEventListener('click', () => {
 });
 
 function adjustMiniScale(delta) {
-  setMiniScale((userScale || 1) + delta);
+  setOverlayScale((userScale || 1) + delta);
 }
 
 function panicResetRendererState() {
   console.info('PANIC RESET');
   localStorage.removeItem('miniScale');
-  localStorage.removeItem(MINI_SCALE_KEY);
   settings = { ...settings, mode: 'focus' };
-  setMiniScale(1, { persist: true });
+  setOverlayScale(1, { persist: true });
   setMode('focus', { source: 'panic-reset' });
 
   const schedulePanicFit = () => {
@@ -1504,7 +1534,7 @@ window.addEventListener('keydown', (event) => {
 
   if (event.key === '0') {
     event.preventDefault();
-    setMiniScale(1);
+    setOverlayScale(1);
     return;
   }
 
@@ -1577,7 +1607,7 @@ window.yumikoWidget = {
 
 window.addEventListener('DOMContentLoaded', () => {
   setSettingsPanelHidden(true);
-  setMiniScale(userScale, { persist: false });
+  setOverlayScale(userScale, { persist: false, source: 'init' });
   syncAutoMessageControls();
   startAutoMessageScheduler();
   persistAutoMessageSettings();
@@ -1628,11 +1658,11 @@ window.addEventListener('DOMContentLoaded', () => {
   window.addEventListener('yumiko:mini-scale', (event) => {
     const payload = event?.detail || {};
     if (payload.set != null) {
-      setMiniScale(payload.set);
+      setOverlayScale(payload.set);
       return;
     }
     if (payload.delta != null) {
-      setMiniScale(userScale + payload.delta);
+      setOverlayScale(userScale + payload.delta);
     }
   });
   window.yumikoOverlay?.getState?.()
@@ -1647,7 +1677,7 @@ window.addEventListener('DOMContentLoaded', () => {
   setMode(settings.mode || 'focus', { source: 'state-sync' });
   miniBaseSize = measureMiniBaseSize();
   if (miniBaseSize?.shouldResetScale) {
-    setMiniScale(1);
+    setOverlayScale(1);
   } else {
     applyScale('init', { shouldRequestFit: false });
   }
