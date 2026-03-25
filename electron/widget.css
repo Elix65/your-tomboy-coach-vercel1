@@ -299,8 +299,8 @@ body {
   position: absolute;
   left: var(--conversation-side-gap);
   right: var(--conversation-side-gap);
-  bottom: calc(var(--conversation-bottom-gap) + 14px);
-  min-height: 338px;
+  bottom: calc(var(--conversation-bottom-gap) + 38px);
+  min-height: 286px;
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -365,25 +365,25 @@ body {
   position: relative;
   inset: auto;
   align-self: end;
-  width: min(100%, 596px);
+  width: min(100%, 548px);
   min-height: 0;
-  height: 318px;
-  max-height: 340px;
+  height: 272px;
+  max-height: 292px;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 12px;
-  padding: 16px 18px 18px;
+  gap: 10px;
+  padding: 14px 16px 14px;
   border: 1px solid rgba(247, 229, 207, 0.16);
-  border-radius: 28px;
+  border-radius: 24px;
   background:
     radial-gradient(140% 160% at 14% 6%, rgba(184, 132, 108, 0.15), rgba(184, 132, 108, 0) 52%),
     radial-gradient(128% 124% at 100% 100%, rgba(96, 57, 74, 0.18), rgba(96, 57, 74, 0) 54%),
     linear-gradient(180deg, rgba(26, 18, 24, 0.97), rgba(14, 10, 16, 0.985));
   backdrop-filter: none;
   box-shadow:
-    0 22px 36px rgba(6, 2, 9, 0.38),
-    0 10px 20px rgba(10, 6, 12, 0.2),
+    0 18px 30px rgba(6, 2, 9, 0.34),
+    0 8px 16px rgba(10, 6, 12, 0.18),
     0 0 0 1px rgba(255, 247, 236, 0.05) inset;
   overflow: visible;
   opacity: 1;
@@ -420,12 +420,12 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  gap: 10px;
+  gap: 8px;
 }
 
 .chat-card-header__copy {
   display: grid;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
 }
 
@@ -441,7 +441,7 @@ body {
   margin: 0;
   max-width: 20ch;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1.14;
   color: rgba(246, 237, 228, 0.95);
   text-wrap: pretty;
@@ -450,8 +450,8 @@ body {
 
 .chat-card-header__status {
   margin: 0;
-  font-size: 11.5px;
-  line-height: 1.45;
+  font-size: 11px;
+  line-height: 1.35;
   color: rgba(232, 218, 204, 0.64);
   text-wrap: pretty;
   max-width: 46ch;
@@ -865,9 +865,9 @@ input[type="checkbox"]:checked::after {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 2px 0 4px;
-  border-radius: 18px;
+  gap: 8px;
+  padding: 0 0 2px;
+  border-radius: 16px;
   background:
     linear-gradient(180deg, rgba(255, 248, 241, 0.018), rgba(255, 248, 241, 0.004)),
     rgba(11, 8, 13, 0.08);
@@ -883,8 +883,8 @@ input[type="checkbox"]:checked::after {
 
 .chat-row {
   max-width: min(84%, 42ch);
-  padding: 11px 13px 12px;
-  border-radius: 18px;
+  padding: 9px 11px 10px;
+  border-radius: 16px;
   border: 1px solid rgba(244, 224, 203, 0.08);
   background: linear-gradient(180deg, rgba(46, 31, 42, 0.86), rgba(28, 20, 29, 0.9));
   box-shadow: 0 12px 24px rgba(7, 4, 8, 0.14);
@@ -913,15 +913,15 @@ input[type="checkbox"]:checked::after {
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: rgba(221, 189, 165, 0.62);
-  margin-bottom: 6px;
+  margin-bottom: 5px;
 }
 
 .chat-message {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
-  font-size: 12.5px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.5;
   color: rgba(245, 237, 229, 0.92);
   text-wrap: pretty;
 }
@@ -930,14 +930,14 @@ input[type="checkbox"]:checked::after {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: end;
-  gap: 10px;
+  gap: 8px;
 }
 
 .chat-compose {
   display: grid;
   align-self: end;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
+  gap: 7px;
   padding-top: 0;
   transition: transform var(--moon-timing-slow) var(--moon-ease-premium), opacity var(--moon-timing-slow) var(--moon-ease-premium);
 }
@@ -955,18 +955,18 @@ input[type="checkbox"]:checked::after {
 }
 
 .chat-log {
-  max-height: 188px;
-  gap: 12px;
+  max-height: 126px;
+  gap: 8px;
   mask-image: none;
 }
 
 #yumiko-input {
   border: 1px solid rgba(247, 229, 207, 0.12);
-  border-radius: 16px;
+  border-radius: 14px;
   background: linear-gradient(180deg, rgba(24, 16, 21, 0.96), rgba(14, 10, 15, 0.98));
   color: var(--moon-color-text-primary);
   padding: 0 14px;
-  min-height: 40px;
+  min-height: 36px;
   font-size: 13px;
   line-height: 1.4;
   outline: none;
@@ -977,9 +977,9 @@ input[type="checkbox"]:checked::after {
 }
 
 .icon-btn {
-  min-width: 82px;
-  min-height: 40px;
-  border-radius: 16px;
+  min-width: 76px;
+  min-height: 36px;
+  border-radius: 14px;
   border: 1px solid rgba(247, 229, 207, 0.16);
   cursor: pointer;
   color: var(--moon-color-text-primary);
