@@ -83,9 +83,6 @@ const OVERLAY_TOPMOST_INTERVAL_MS = 1800;
 let registeredChatHotkey = null;
 let shortcutRegistrationError = '';
 let topmostReassertInterval = null;
-let interactiveRegionActive = false;
-let mouseIgnoreApplied = null;
-let mouseFocusableApplied = null;
 
 function normalizeChatHotkey(value) {
   const raw = typeof value === 'string' ? value.trim() : '';
@@ -644,33 +641,6 @@ function broadcastState() {
   win.webContents.send('yumiko:state-updated', getState());
 }
 
-function canUseDynamicClickThrough() {
-  return false;
-}
-
-function applyMousePolicy(reason = 'unknown') {
-  if (!win || win.isDestroyed()) return;
-
-  const shouldIgnoreMouse = false;
-  const shouldBeFocusable = true;
-
-  if (mouseIgnoreApplied !== shouldIgnoreMouse) {
-    if (shouldIgnoreMouse) {
-      win.setIgnoreMouseEvents(true, { forward: true });
-    } else {
-      win.setIgnoreMouseEvents(false);
-    }
-    mouseIgnoreApplied = shouldIgnoreMouse;
-  }
-
-  if (mouseFocusableApplied !== shouldBeFocusable) {
-    win.setFocusable(shouldBeFocusable);
-    mouseFocusableApplied = shouldBeFocusable;
-  }
-
-  console.info('[yumiko][mouse] policy', { reason, interactiveRegionActive, shouldIgnoreMouse, shouldBeFocusable });
-}
-
 function applyWindowBehavior() {
   if (!win) return;
 
@@ -683,9 +653,19 @@ function applyWindowBehavior() {
     win.setVisibleOnAllWorkspaces(false);
   }
 
-  interactiveRegionActive = true;
+  const canUseClickThrough = settings.hasCompletedFirstRun;
+  const enableClickThrough = canUseClickThrough
+    && settings.overlayEnabled
+    && settings.clickThroughPreferred
+    && settings.mode === 'focus';
 
-  applyMousePolicy('apply-window-behavior');
+  if (enableClickThrough) {
+    win.setFocusable(false);
+    win.setIgnoreMouseEvents(true, { forward: true });
+  } else {
+    win.setFocusable(true);
+    win.setIgnoreMouseEvents(false);
+  }
 
   broadcastState();
   refreshTrayMenu();
@@ -715,7 +695,8 @@ function setMode(mode, { fromRenderer = false, userPickedMode = false } = {}) {
 
   win.setResizable(false);
   if (nextMode === 'chat') {
-    interactiveRegionActive = true;
+    win.setFocusable(true);
+    win.setIgnoreMouseEvents(false);
   }
   if (focusMinBounds.minW > 0 && focusMinBounds.minH > 0) {
     win.setMinimumSize(focusMinBounds.minW, focusMinBounds.minH);
@@ -736,9 +717,6 @@ function focusChatInput() {
 function requestWindowFocusForChat(reason = 'unknown') {
   if (!win || win.isDestroyed()) return;
   console.info('[yumiko][window] focus requested', { reason });
-  interactiveRegionActive = true;
-  mouseIgnoreApplied = null;
-  mouseFocusableApplied = null;
   win.setIgnoreMouseEvents(false);
   win.setFocusable(true);
   win.show();
@@ -1090,9 +1068,6 @@ function createWindow() {
     }
   });
 
-  mouseIgnoreApplied = null;
-  mouseFocusableApplied = null;
-
   win.setMenuBarVisibility(false);
   win.setFullScreenable(false);
   if (typeof win.setHasShadow === 'function') {
@@ -1300,7 +1275,6 @@ if (!singleInstance) {
       const requestedWidth = Number(payload?.width);
       const requestedHeight = Number(payload?.height);
       if (!Number.isFinite(requestedWidth) || !Number.isFinite(requestedHeight)) return;
-      const currentBounds = win.getBounds();
 
       const isRidiculous = requestedWidth < 200 || requestedHeight < 200;
       if (isRidiculous) {
@@ -1313,19 +1287,17 @@ if (!singleInstance) {
       const newH = clamp(Math.round(requestedHeight), 200, 900);
 
       if (payload?.anchor === 'bottom-right' && !payload?.preservePosition) {
-        const old = currentBounds;
+        const old = win.getBounds();
         const newX = old.x + (old.width - newW);
         const newY = old.y + (old.height - newH);
         const anchoredBounds = safeBounds({ x: newX, y: newY, width: newW, height: newH }, 'ipc:set-window-size:anchor');
-        const bounded = clampBoundsToWorkArea(anchoredBounds);
-        win.setBounds(bounded, false);
+        win.setBounds(clampBoundsToWorkArea(anchoredBounds), false);
         return;
       }
 
-      const { x, y } = currentBounds;
+      const { x, y } = win.getBounds();
       const nextBounds = safeBounds({ x, y, width: newW, height: newH }, 'ipc:set-window-size');
-      const bounded = clampBoundsToWorkArea(nextBounds);
-      win.setBounds(bounded, false);
+      win.setBounds(clampBoundsToWorkArea(nextBounds), false);
     });
     ipcMain.on('yumiko:set-minimum-size', (_event, payload) => {
       setFocusMinimumBounds(payload);
