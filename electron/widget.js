@@ -20,6 +20,9 @@ const MINI_MIN_HEIGHT = 300;
 const FOOTPRINT_PADDING = 10;
 const MINI_RETRY_LIMIT = 10;
 const MINI_MIN_SIZE_RETRY_LIMIT = 5;
+const FIT_SIZE_EPSILON_PX = 3;
+const FIT_OFFSET_EPSILON_PX = 2;
+const FIT_LOCK_MS = 140;
 const DEV_FIT_LOG = window.location.search.includes('dev=1') || localStorage.getItem('yumiko_debug_fit') === '1';
 const AUTO_MESSAGE_MIN_TICK_MS = 5 * 1000;
 const AUTO_MESSAGE_MAX_TICK_MS = 10 * 1000;
@@ -51,8 +54,6 @@ const selectShells = Array.from(document.querySelectorAll('.select-shell'));
 const widget = document.getElementById('yumiko-widget');
 const scene = document.getElementById('overlay-scene');
 const mini = document.getElementById('yumiko-mini');
-const miniWrap = document.getElementById('mini-wrap');
-const miniActions = document.querySelector('.conversation-band__controls');
 const miniChatButton = document.getElementById('mini-chat');
 const miniMicButton = document.getElementById('mini-mic');
 const chat = document.getElementById('yumiko-chat');
@@ -161,7 +162,6 @@ function normalizeOverlayScale(value) {
 let settings = loadSettings();
 let userScale = normalizeOverlayScale(settings.overlayScale);
 let effectiveScale = userScale;
-let resizeObserver;
 let fitTimeout = null;
 let lastFitRequest = { mode: '', width: 0, height: 0 };
 let miniBaseSize = null;
@@ -170,6 +170,9 @@ let minSizeRetryCount = 0;
 let lastGoodFocusFitSize = null;
 let lastMeasuredFootprint = null;
 let ignoreNextResize = false;
+let fitInProgress = false;
+let fitUnlockTimer = null;
+let isWindowDragActive = false;
 let assistantMessageSequence = 0;
 let lastAssistantMessageId = '';
 let lastAssistantMessageAt = 0;
@@ -460,7 +463,6 @@ function getUnionRect() {
     quitAppButton,
     img,
     chat,
-    miniActions,
     settingsPanel && !settingsPanel.hidden ? settingsPanel : null
   ];
 
@@ -656,8 +658,26 @@ function scheduleFitRetry(reason = 'retry') {
   window.setTimeout(() => requestFit({ reason, retry: fitRetryCount }), 50);
 }
 
+function isFitCloseEnough(current, next) {
+  if (!current || !next) return false;
+  return Math.abs((current.width || 0) - (next.width || 0)) <= FIT_SIZE_EPSILON_PX
+    && Math.abs((current.height || 0) - (next.height || 0)) <= FIT_SIZE_EPSILON_PX
+    && Math.abs((current.offsetX || 0) - (next.offsetX || 0)) <= FIT_OFFSET_EPSILON_PX
+    && Math.abs((current.offsetY || 0) - (next.offsetY || 0)) <= FIT_OFFSET_EPSILON_PX;
+}
+
+function unlockFitRequest() {
+  fitInProgress = false;
+  if (fitUnlockTimer) {
+    window.clearTimeout(fitUnlockTimer);
+    fitUnlockTimer = null;
+  }
+}
+
 function requestFit({ reason = 'unknown', retry = 0 } = {}) {
   if (!window.yumikoOverlay?.setWindowSize || !widget) return;
+  if (isWindowDragActive) return;
+  if (fitInProgress) return;
 
   updateFocusMinimumSize();
 
@@ -668,20 +688,25 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
   const height = Math.max(MINI_MIN_HEIGHT, measured?.height ?? fallbackHeight);
   const offsetX = Number.isFinite(measured?.offsetX) ? measured.offsetX : 0;
   const offsetY = Number.isFinite(measured?.offsetY) ? measured.offsetY : 0;
+  const nextFitRequest = { mode: settings.mode, width, height, offsetX, offsetY };
 
-  if (
-    lastFitRequest.width === width &&
-    lastFitRequest.height === height &&
-    lastFitRequest.offsetX === offsetX &&
-    lastFitRequest.offsetY === offsetY
-  ) {
+  if (isFitCloseEnough(lastFitRequest, nextFitRequest)) {
     return;
   }
+
+  fitInProgress = true;
+  if (fitUnlockTimer) {
+    window.clearTimeout(fitUnlockTimer);
+  }
+  fitUnlockTimer = window.setTimeout(() => {
+    fitInProgress = false;
+    fitUnlockTimer = null;
+  }, FIT_LOCK_MS);
 
   fitRetryCount = 0;
   lastGoodFocusFitSize = { width, height };
   lastMeasuredFootprint = measured;
-  lastFitRequest = { mode: settings.mode, width, height, offsetX, offsetY };
+  lastFitRequest = nextFitRequest;
 
   if (DEV_FIT_LOG) {
     console.log('[fit]', {
@@ -922,8 +947,13 @@ function closeSettingsPanel() {
 function setSettingsPanelHidden(nextHidden) {
   if (!settingsPanel) return;
 
+  const wasHidden = settingsPanel.hidden;
   settingsPanel.hidden = Boolean(nextHidden);
   toggleSettingsButton?.setAttribute('aria-expanded', String(!settingsPanel.hidden));
+
+  if (wasHidden !== settingsPanel.hidden) {
+    requestFitDebounced(`settings-panel:${settingsPanel.hidden ? 'close' : 'open'}`);
+  }
 
   if (settingsPanel.hidden) {
     removeOutsideClickListener();
@@ -1660,6 +1690,9 @@ window.addEventListener('mousedown', () => {
 
 window.addEventListener('pointerdown', (event) => {
   const target = event.target;
+  if (target instanceof Element && target.closest('#drag-region')) {
+    isWindowDragActive = true;
+  }
   if (!(target instanceof Element) || target.closest('.custom-select')) return;
   closeCustomSelects();
 }, { capture: true });
@@ -1682,11 +1715,21 @@ window.addEventListener('mouseleave', () => {
 
 window.addEventListener('blur', () => {
   setInteractiveRegionActive(false, 'blur');
+  isWindowDragActive = false;
 });
+
+window.addEventListener('pointerup', () => {
+  isWindowDragActive = false;
+}, { capture: true });
 
 window.addEventListener('resize', () => {
   if (ignoreNextResize) {
     ignoreNextResize = false;
+    unlockFitRequest();
+    return;
+  }
+
+  if (fitInProgress || isWindowDragActive) {
     return;
   }
 
@@ -1695,11 +1738,9 @@ window.addEventListener('resize', () => {
   applyScale('resize', { shouldRequestFit: false });
 
   if (Math.abs(previousScale - effectiveScale) > 0.001) {
-    requestFitDebounced('resize:auto-fit');
+    requestFitDebounced('resize:scale-change');
     return;
   }
-
-  requestFitDebounced('resize');
 });
 
 send?.addEventListener('click', submitMessage);
@@ -1747,17 +1788,6 @@ window.addEventListener('DOMContentLoaded', () => {
         requestFitDebounced();
       }, { once: true });
     }
-  }
-
-  if (typeof ResizeObserver !== 'undefined') {
-    resizeObserver = new ResizeObserver(() => {
-      requestFitDebounced();
-    });
-    if (mini) resizeObserver.observe(mini);
-    if (miniWrap) resizeObserver.observe(miniWrap);
-    if (miniActions) resizeObserver.observe(miniActions);
-    if (quitAppButton) resizeObserver.observe(quitAppButton);
-    if (chat) resizeObserver.observe(chat);
   }
 
   window.yumikoOverlay?.onStateUpdated?.(syncHostState);
