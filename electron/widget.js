@@ -155,6 +155,10 @@ let lastLocalModeIntent = {
   source: 'init',
   at: 0
 };
+const OVERLAY_BASE_SIZE = Object.freeze({
+  width: SCENE_WINDOW_SIZE.width,
+  height: SCENE_WINDOW_SIZE.height
+});
 
 function clampToViewport(value, min, max) {
   if (!Number.isFinite(value)) return min;
@@ -374,9 +378,8 @@ function clamp(value, min, max) {
 }
 
 function applyScale(source = 'unknown', { shouldRequestFit = true } = {}) {
-  const baseSize = getBaseSize();
-  const baseW = baseSize?.baseW || miniBaseSize?.width;
-  const baseH = baseSize?.baseH || miniBaseSize?.height;
+  const baseW = OVERLAY_BASE_SIZE.width;
+  const baseH = OVERLAY_BASE_SIZE.height;
   let fitScale = OVERLAY_SCALE_MAX;
 
   if (baseW > 0 && baseH > 0) {
@@ -610,8 +613,8 @@ function requestFit({ reason = 'unknown', retry = 0 } = {}) {
 
   updateFocusMinimumSize();
 
-  const width = SCENE_WINDOW_SIZE.width;
-  const height = SCENE_WINDOW_SIZE.height;
+  const width = Math.max(MINI_MIN_WIDTH, Math.ceil(OVERLAY_BASE_SIZE.width * effectiveScale));
+  const height = Math.max(MINI_MIN_HEIGHT, Math.ceil(OVERLAY_BASE_SIZE.height * effectiveScale));
 
   if (lastFitRequest.width === width && lastFitRequest.height === height) {
     return;
@@ -649,8 +652,8 @@ function updateFocusMinimumSize() {
   const setFocusMinSize = window.yumikoOverlay?.setFocusMinSize || window.yumikoOverlay?.setMinimumSize;
   if (!setFocusMinSize) return;
 
-  const baseWidth = SCENE_WINDOW_SIZE.width;
-  const baseHeight = SCENE_WINDOW_SIZE.height;
+  const baseWidth = OVERLAY_BASE_SIZE.width * effectiveScale;
+  const baseHeight = OVERLAY_BASE_SIZE.height * effectiveScale;
 
   const minW = Math.max(Math.ceil(baseWidth), MINI_MIN_WIDTH);
   const minH = Math.max(Math.ceil(baseHeight), MINI_MIN_HEIGHT);
