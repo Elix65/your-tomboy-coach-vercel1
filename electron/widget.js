@@ -380,9 +380,10 @@ function clamp(value, min, max) {
 function applyScale(source = 'unknown', { shouldRequestFit = true } = {}) {
   const baseW = OVERLAY_BASE_SIZE.width;
   const baseH = OVERLAY_BASE_SIZE.height;
+  const shouldClampToViewport = source === 'resize';
   let fitScale = OVERLAY_SCALE_MAX;
 
-  if (baseW > 0 && baseH > 0) {
+  if (shouldClampToViewport && baseW > 0 && baseH > 0) {
     fitScale = clamp(Math.min(window.innerWidth / baseW, window.innerHeight / baseH), OVERLAY_SCALE_MIN, OVERLAY_SCALE_MAX);
   }
 

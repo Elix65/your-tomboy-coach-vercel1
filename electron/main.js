@@ -1275,6 +1275,7 @@ if (!singleInstance) {
       const requestedWidth = Number(payload?.width);
       const requestedHeight = Number(payload?.height);
       if (!Number.isFinite(requestedWidth) || !Number.isFinite(requestedHeight)) return;
+      const currentBounds = win.getBounds();
 
       const isRidiculous = requestedWidth < 200 || requestedHeight < 200;
       if (isRidiculous) {
@@ -1287,17 +1288,19 @@ if (!singleInstance) {
       const newH = clamp(Math.round(requestedHeight), 200, 900);
 
       if (payload?.anchor === 'bottom-right' && !payload?.preservePosition) {
-        const old = win.getBounds();
+        const old = currentBounds;
         const newX = old.x + (old.width - newW);
         const newY = old.y + (old.height - newH);
         const anchoredBounds = safeBounds({ x: newX, y: newY, width: newW, height: newH }, 'ipc:set-window-size:anchor');
-        win.setBounds(clampBoundsToWorkArea(anchoredBounds), false);
+        const bounded = clampBoundsToWorkArea(anchoredBounds);
+        win.setBounds(bounded, false);
         return;
       }
 
-      const { x, y } = win.getBounds();
+      const { x, y } = currentBounds;
       const nextBounds = safeBounds({ x, y, width: newW, height: newH }, 'ipc:set-window-size');
-      win.setBounds(clampBoundsToWorkArea(nextBounds), false);
+      const bounded = clampBoundsToWorkArea(nextBounds);
+      win.setBounds(bounded, false);
     });
     ipcMain.on('yumiko:set-minimum-size', (_event, payload) => {
       setFocusMinimumBounds(payload);
