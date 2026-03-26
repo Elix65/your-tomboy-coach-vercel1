@@ -361,10 +361,24 @@ function getScaledWindowSize(scale = overlayScale) {
   };
 }
 
+function getCharacterPresenceScale(scale = overlayScale) {
+  const safeScale = normalizeOverlayScale(scale);
+  const minScaleRange = 1 - OVERLAY_SCALE_MIN;
+  const minBias = minScaleRange > 0
+    ? clamp((1 - safeScale) / minScaleRange, 0, 1)
+    : 0;
+  const baseCharacterScale = 0.88;
+  const minScaleExtraReduction = 0.04;
+  const characterScale = baseCharacterScale - (minBias * minScaleExtraReduction);
+  return Number(characterScale.toFixed(3));
+}
+
 function applyOverlayScaleUi(scale) {
   const safeScale = normalizeOverlayScale(scale);
+  const characterScale = getCharacterPresenceScale(safeScale);
   overlayScale = safeScale;
   document.documentElement.style.setProperty('--mini-scale', String(safeScale));
+  document.documentElement.style.setProperty('--yumiko-character-scale', String(characterScale));
   if (overlayScaleSelect) {
     overlayScaleSelect.value = String(safeScale);
   }

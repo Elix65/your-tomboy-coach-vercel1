@@ -26,6 +26,7 @@
   --moon-timing-breath: 7800ms;
   --moon-ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
   --mini-scale: 1;
+  --yumiko-character-scale: 0.88;
   --conversation-bottom-gap: 24px;
   --conversation-side-gap: 20px;
   --overlay-safe-top: 14px;
@@ -263,7 +264,7 @@ body {
   right: auto;
   bottom: 2px;
   zoom: var(--mini-scale);
-  transform: translateX(-50%) translateY(0) scale(1);
+  transform: translateX(-50%) translateY(0) scale(var(--yumiko-character-scale));
   transform-origin: bottom center;
   -webkit-app-region: drag;
   overflow: visible !important;
@@ -399,7 +400,7 @@ body {
   opacity: 1;
   visibility: visible;
   pointer-events: none;
-  transform: translateX(-50%) translateY(0) scale(1);
+  transform: translateX(-50%) translateY(0) scale(var(--yumiko-character-scale));
   filter: none;
 }
 
