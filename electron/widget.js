@@ -148,8 +148,10 @@ let hostOverlayState = {
 let isInteractiveRegionActive = false;
 
 const INTERACTIVE_REGION_SELECTORS = [
-  '#drag-region',
+  '#quit-app',
+  '#yumiko-chat',
   '.chat-compose',
+  '.chat-compose-shell',
   '.conversation-band__controls',
   '#settings-panel',
   '#chat-log',
@@ -158,14 +160,16 @@ const INTERACTIVE_REGION_SELECTORS = [
   '#toggle-settings',
   '#mini-chat',
   '#mini-mic',
-  '#quit-app',
-  'button',
-  'input',
-  'select',
-  'textarea',
-  'a',
-  '[role=\"button\"]',
+  '.panel',
+  '.panel *',
   '[data-interactive-region=\"true\"]'
+];
+
+const YUMIKO_PASS_THROUGH_SELECTORS = [
+  '#yumiko-mini',
+  '#mini-wrap',
+  '#yumiko-character',
+  '.presence-stage'
 ];
 
 function canUseSelectiveClickThrough() {
@@ -186,6 +190,9 @@ function setInteractiveRegionFromRenderer(enabled) {
 
 function resolveIsInteractiveTarget(target) {
   if (!(target instanceof Element)) return false;
+  if (target.closest(YUMIKO_PASS_THROUGH_SELECTORS.join(','))) {
+    return false;
+  }
   return Boolean(target.closest(INTERACTIVE_REGION_SELECTORS.join(',')));
 }
 
@@ -1411,9 +1418,7 @@ overlayToggle?.addEventListener('change', () => {
 });
 
 clickThroughToggle?.addEventListener('change', () => {
-  if (!clickThroughToggle?.checked) {
-    setInteractiveRegionFromRenderer(false);
-  }
+  setInteractiveRegionFromRenderer(false);
   window.yumikoOverlay?.setClickThroughEnabled?.(clickThroughToggle.checked);
   if (clickThroughToggle?.checked) {
     addMessage('assistant', 'Interacción de fondo activada. Si necesitás escribir, usá el atajo o el botón de chat para retomar foco.');
