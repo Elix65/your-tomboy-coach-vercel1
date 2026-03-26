@@ -400,6 +400,7 @@ function clearAuth() {
 function getState() {
   return {
     ...settings,
+    clickThroughFeatureEnabled: CLICK_THROUGH_FEATURE_ENABLED,
     clickThroughPreferred: CLICK_THROUGH_FEATURE_ENABLED && Boolean(settings.clickThroughPreferred),
     chatHotkey: normalizeChatHotkey(settings.chatHotkey),
     shortcutRegistrationError,
