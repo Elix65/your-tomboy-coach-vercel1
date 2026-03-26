@@ -83,7 +83,8 @@ const SHORTCUTS = {
 
 const OVERLAY_TOPMOST_LEVEL = 'screen-saver';
 const OVERLAY_TOPMOST_INTERVAL_MS = 1800;
-const CLICK_THROUGH_FEATURE_ENABLED = false;
+const CLICK_THROUGH_FEATURE_ENABLED = process.platform === 'win32'
+  && process.env.YUMIKO_ENABLE_CLICK_THROUGH !== '0';
 
 let registeredChatHotkey = null;
 let shortcutRegistrationError = '';
