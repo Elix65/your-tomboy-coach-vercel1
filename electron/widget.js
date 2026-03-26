@@ -8,7 +8,7 @@ const DEFAULT_SETTINGS = {
 };
 const AUTO_MESSAGE_INTERVAL_OPTIONS = [1, 2, 5, 10, 20];
 const RECENT_FOCUS_REPLY_CARRY_WINDOW_MS = 7000;
-const SCENE_BASE_WINDOW_SIZE = { width: 500, height: 700 };
+const SCENE_BASE_WINDOW_SIZE = { width: 500, height: 676 };
 const OVERLAY_SCALE_MIN = 0.85;
 const OVERLAY_SCALE_MAX = 1.1;
 const MINI_MIN_WIDTH = 260;
