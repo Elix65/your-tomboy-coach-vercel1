@@ -32,10 +32,10 @@
   --overlay-safe-top: 12px;
   --overlay-safe-bottom: 14px;
   --chat-width: min(100%, 520px);
-  --chat-height: 248px;
-  --chat-max-height: 270px;
+  --chat-height: 236px;
+  --chat-max-height: 258px;
   --chat-log-max-height: 112px;
-  --chat-padding-y: 14px;
+  --chat-padding-y: 10px;
   --chat-padding-x: 16px;
   --chat-bubble-max-width: min(84%, 42ch);
   --chat-compose-max-width: 440px;
@@ -383,7 +383,7 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 10px;
+  gap: 8px;
   padding: var(--chat-padding-y) var(--chat-padding-x);
   border: 1px solid rgba(247, 229, 207, 0.16);
   border-radius: 24px;
@@ -432,17 +432,17 @@ body {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: 8px;
+  gap: 5px;
 }
 
 .chat-card-header__copy {
   display: grid;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
 }
 
 .chat-card-header__eyebrow {
-  font-size: 10px;
+  font-size: 9px;
   line-height: 1;
   letter-spacing: 0.3em;
   text-transform: uppercase;
@@ -453,8 +453,8 @@ body {
   margin: 0;
   max-width: 20ch;
   font-family: Georgia, "Times New Roman", serif;
-  font-size: 15px;
-  line-height: 1.14;
+  font-size: 14px;
+  line-height: 1.12;
   color: rgba(246, 237, 228, 0.95);
   text-wrap: pretty;
 }
@@ -462,8 +462,8 @@ body {
 
 .chat-card-header__status {
   margin: 0;
-  font-size: 11px;
-  line-height: 1.35;
+  font-size: 10.5px;
+  line-height: 1.25;
   color: rgba(232, 218, 204, 0.64);
   text-wrap: pretty;
   max-width: 46ch;
