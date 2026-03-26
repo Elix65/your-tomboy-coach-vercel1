@@ -24,6 +24,7 @@ const DEFAULT_YUMIKO_WEB_ORIGIN = 'https://21-moon.com';
 let tray;
 let win;
 let isQuitting = false;
+let hasHandledReady = false;
 let pendingAuthCode = '';
 const processedAuthCodes = new Set();
 let authState = {
@@ -86,6 +87,13 @@ const OVERLAY_TOPMOST_INTERVAL_MS = 1800;
 let registeredChatHotkey = null;
 let shortcutRegistrationError = '';
 let topmostReassertInterval = null;
+const ENABLE_TRAY = process.env.YUMIKO_ENABLE_TRAY === '1';
+const ENABLE_LIFECYCLE_DEBUG_LOGS = process.env.YUMIKO_DEBUG_LIFECYCLE === '1';
+
+function logLifecycle(event, details = {}) {
+  if (!ENABLE_LIFECYCLE_DEBUG_LOGS) return;
+  console.info(`[yumiko][lifecycle] ${event}`, details);
+}
 
 function normalizeChatHotkey(value) {
   const raw = typeof value === 'string' ? value.trim() : '';
@@ -230,8 +238,24 @@ function enforceOverlayTopmost(reason, { skipIfHidden = false } = {}) {
 }
 
 function quitApp() {
+  logLifecycle('quit requested');
   isQuitting = true;
   app.quit();
+}
+
+function destroyTray() {
+  if (!tray) return;
+  try {
+    tray.destroy();
+  } catch {}
+  tray = null;
+}
+
+function cleanupForQuit(reason = 'unknown') {
+  logLifecycle('cleanupForQuit', { reason });
+  stopTopmostReassertInterval();
+  globalShortcut.unregisterAll();
+  destroyTray();
 }
 
 function settingsPath() {
@@ -1079,6 +1103,7 @@ function handleArgvForDeepLink(argv = []) {
 }
 
 function createWindow() {
+  logLifecycle('createWindow called', { existingWindow: Boolean(win && !win.isDestroyed()) });
   ensureInteractiveStartup();
 
   const runtimeSource = app.isPackaged ? 'packaged-app.asar' : 'electron-source';
@@ -1115,6 +1140,7 @@ function createWindow() {
     win.setHasShadow(false);
   }
   win.loadFile(path.join(__dirname, 'renderer.html'));
+  logLifecycle('window created');
 
   win.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
     console.error('[yumiko] did-fail-load', { errorCode, errorDescription, validatedURL });
@@ -1160,10 +1186,18 @@ function createWindow() {
     stopTopmostReassertInterval();
   });
   win.on('close', (event) => {
+    logLifecycle('window close requested', { isQuitting });
     if (!isQuitting) {
+      isQuitting = true;
+      cleanupForQuit('window-close');
       event.preventDefault();
-      win.hide();
+      app.quit();
     }
+  });
+
+  win.on('closed', () => {
+    logLifecycle('window closed');
+    win = null;
   });
 
   win.on('will-resize', (event) => {
@@ -1171,9 +1205,11 @@ function createWindow() {
   });
 
   win.webContents.on('did-finish-load', () => {
+    logLifecycle('renderer loaded');
     ensureInteractiveStartup();
     if (!settings.visible) {
-      win.hide();
+      settings.visible = true;
+      writeSettings();
     }
     applyWindowBehavior();
     setMode(settings.mode);
@@ -1186,10 +1222,13 @@ function createWindow() {
 
 const singleInstance = app.requestSingleInstanceLock();
 if (!singleInstance) {
+  logLifecycle('single instance lock denied');
   app.quit();
 } else {
+  logLifecycle('main started');
   console.info('[yumiko][app] single instance lock acquired');
   app.on('second-instance', (_event, argv) => {
+    logLifecycle('second-instance');
     handleArgvForDeepLink(argv);
     if (win) {
       win.show();
@@ -1198,13 +1237,21 @@ if (!singleInstance) {
   });
 
   app.whenReady().then(() => {
+    if (hasHandledReady) {
+      logLifecycle('whenReady ignored (already handled)');
+      return;
+    }
+    hasHandledReady = true;
+    logLifecycle('app ready');
     app.setAsDefaultProtocolClient('yumiko');
     ensureDeviceIdentity();
     loadAuthStateFromDisk();
     writeSettings();
 
     createWindow();
-    createTray();
+    if (ENABLE_TRAY) {
+      createTray();
+    }
     updateGlobalShortcuts();
 
     ipcMain.handle('yumiko:get-state', () => getState());
@@ -1354,12 +1401,24 @@ if (!singleInstance) {
     });
 
     handleArgvForDeepLink(process.argv);
+  }).catch((error) => {
+    console.error('[yumiko][bootstrap] whenReady failed', error);
   });
 }
 
+app.on('before-quit', () => {
+  logLifecycle('before-quit');
+  isQuitting = true;
+  cleanupForQuit('before-quit');
+});
+
 app.on('will-quit', () => {
-  stopTopmostReassertInterval();
-  globalShortcut.unregisterAll();
+  logLifecycle('will-quit');
+  cleanupForQuit('will-quit');
+});
+
+app.on('quit', (_event, exitCode) => {
+  logLifecycle('app quit', { exitCode });
 });
 
 app.on('open-url', (event, url) => {
@@ -1368,5 +1427,8 @@ app.on('open-url', (event, url) => {
 });
 
 app.on('window-all-closed', () => {
+  logLifecycle('window-all-closed');
+  isQuitting = true;
+  cleanupForQuit('window-all-closed');
   app.quit();
 });

@@ -1,6 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
+const debugLifecycle = process.env.YUMIKO_DEBUG_LIFECYCLE === '1';
 
 contextBridge.exposeInMainWorld('yumikoOverlay', {
+  debugLifecycle,
   setMode: (mode) => ipcRenderer.send('yumiko:set-mode', mode),
   setOverlayEnabled: (enabled) => ipcRenderer.send('yumiko:set-overlay-enabled', enabled),
   setOverlayScale: (scale) => ipcRenderer.send('yumiko:set-overlay-scale', scale),
