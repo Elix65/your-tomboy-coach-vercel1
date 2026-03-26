@@ -3,11 +3,12 @@ const DEFAULT_SETTINGS = {
   mode: 'focus',
   autoMessageEnabled: false,
   autoMessageIntervalMinutes: 20,
-  sideImageMode: 'auto'
+  sideImageMode: 'auto',
+  chatBoxSize: 'normal'
 };
 const AUTO_MESSAGE_INTERVAL_OPTIONS = [1, 2, 5, 10, 20];
 const RECENT_FOCUS_REPLY_CARRY_WINDOW_MS = 7000;
-const SCENE_BASE_WINDOW_SIZE = { width: 540, height: 752 };
+const SCENE_BASE_WINDOW_SIZE = { width: 500, height: 700 };
 const OVERLAY_SCALE_MIN = 0.85;
 const OVERLAY_SCALE_MAX = 1.1;
 const MINI_MIN_WIDTH = 260;
@@ -34,6 +35,7 @@ const authActionButton = document.getElementById('auth-action');
 const autoMessageToggle = document.getElementById('auto-message-enabled');
 const autoMessageIntervalSelect = document.getElementById('auto-message-interval');
 const sideImageModeSelect = document.getElementById('side-image-mode');
+const chatBoxSizeSelect = document.getElementById('chat-box-size');
 const overlayScaleSelect = document.getElementById('overlay-scale');
 const overlayScaleValue = document.getElementById('overlay-scale-value');
 const overlayScaleResetButton = document.getElementById('overlay-scale-reset');
@@ -101,6 +103,7 @@ function loadSettings() {
     const parsedInterval = Number(parsed.autoMessageIntervalMinutes);
     parsed.autoMessageIntervalMinutes = AUTO_MESSAGE_INTERVAL_OPTIONS.includes(parsedInterval) ? parsedInterval : 20;
     parsed.sideImageMode = normalizeSideImageMode(parsed.sideImageMode);
+    parsed.chatBoxSize = normalizeChatBoxSize(parsed.chatBoxSize);
     return parsed;
   } catch {
     return { ...DEFAULT_SETTINGS };
@@ -109,6 +112,10 @@ function loadSettings() {
 
 function normalizeSideImageMode(value) {
   return value === 'left' || value === 'right' ? value : 'auto';
+}
+
+function normalizeChatBoxSize(value) {
+  return value === 'compact' || value === 'wide' ? value : 'normal';
 }
 
 let settings = loadSettings();
@@ -384,6 +391,15 @@ function applyOverlayScaleUi(scale) {
   }
   if (overlayScaleValue) {
     overlayScaleValue.textContent = `${Math.round(safeScale * 100)}%`;
+  }
+}
+
+function applyChatBoxSizeUi(chatBoxSize) {
+  const safeChatBoxSize = normalizeChatBoxSize(chatBoxSize);
+  settings.chatBoxSize = safeChatBoxSize;
+  document.documentElement.dataset.chatBoxSize = safeChatBoxSize;
+  if (chatBoxSizeSelect) {
+    chatBoxSizeSelect.value = safeChatBoxSize;
   }
 }
 
@@ -1124,6 +1140,9 @@ function syncAutoMessageControls() {
   if (sideImageModeSelect) {
     sideImageModeSelect.value = normalizeSideImageMode(settings.sideImageMode);
   }
+  if (chatBoxSizeSelect) {
+    chatBoxSizeSelect.value = normalizeChatBoxSize(settings.chatBoxSize);
+  }
 }
 
 async function requestAutoNudge() {
@@ -1368,6 +1387,12 @@ sideImageModeSelect?.addEventListener('change', () => {
   updateCharacterImageForBounds(lastKnownBounds, { force: true });
 });
 
+chatBoxSizeSelect?.addEventListener('change', () => {
+  const nextChatBoxSize = normalizeChatBoxSize(chatBoxSizeSelect.value);
+  applyChatBoxSizeUi(nextChatBoxSize);
+  saveSettings();
+});
+
 overlayScaleSelect?.addEventListener('input', () => {
   setOverlayScale(overlayScaleSelect.value);
 });
@@ -1504,10 +1529,11 @@ window.yumikoWidget = {
 window.addEventListener('DOMContentLoaded', () => {
   setSettingsPanelHidden(true);
   applyOverlayScaleUi(1);
+  applyChatBoxSizeUi(settings.chatBoxSize);
   syncAutoMessageControls();
   startAutoMessageScheduler();
   persistAutoMessageSettings();
-  [sideImageModeSelect, autoMessageIntervalSelect].forEach((select) => enhanceSelect(select));
+  [sideImageModeSelect, autoMessageIntervalSelect, chatBoxSizeSelect].forEach((select) => enhanceSelect(select));
 
   if (img) {
     preloadCharacterImage(CHARACTER_SRC_WHEN_WINDOW_ON_RIGHT);
