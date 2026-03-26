@@ -25,6 +25,7 @@ const toggleSettingsButton = document.getElementById('toggle-settings');
 const quitAppButton = document.getElementById('quit-app');
 const overlayToggle = document.getElementById('overlay-enabled');
 const clickThroughToggle = document.getElementById('click-through-enabled');
+const clickThroughNote = document.getElementById('click-through-note');
 const shortcutsToggle = document.getElementById('shortcuts-enabled');
 const chatHotkeyInput = document.getElementById('chat-hotkey');
 const chatHotkeySaveButton = document.getElementById('chat-hotkey-save');
@@ -139,6 +140,7 @@ let lastLocalModeIntent = {
 };
 let hostOverlayState = {
   overlayEnabled: true,
+  clickThroughFeatureEnabled: false,
   clickThroughPreferred: false,
   hasCompletedFirstRun: false,
   mode: 'focus'
@@ -1316,6 +1318,7 @@ function syncHostState(state = {}) {
   console.info('[yumiko][renderer] state updated', { authState: state?.authState });
   hostOverlayState = {
     overlayEnabled: Boolean(state.overlayEnabled),
+    clickThroughFeatureEnabled: Boolean(state.clickThroughFeatureEnabled),
     clickThroughPreferred: Boolean(state.clickThroughPreferred ?? state.clickThroughEnabled),
     hasCompletedFirstRun: Boolean(state.hasCompletedFirstRun),
     mode: state.mode === 'chat' ? 'chat' : 'focus'
@@ -1325,7 +1328,19 @@ function syncHostState(state = {}) {
   }
   renderAuthState(state);
   if (overlayToggle) overlayToggle.checked = Boolean(state.overlayEnabled);
-  if (clickThroughToggle) clickThroughToggle.checked = Boolean(state.clickThroughPreferred ?? state.clickThroughEnabled);
+  if (clickThroughToggle) {
+    clickThroughToggle.checked = Boolean(state.clickThroughPreferred ?? state.clickThroughEnabled);
+    const clickThroughAvailable = Boolean(state.clickThroughFeatureEnabled);
+    clickThroughToggle.disabled = !clickThroughAvailable;
+    clickThroughToggle.title = clickThroughAvailable
+      ? ''
+      : 'Temporalmente deshabilitado hasta estabilizar click-through.';
+    if (clickThroughNote) {
+      clickThroughNote.textContent = clickThroughAvailable
+        ? 'Deja pasar clicks sin romper la escena.'
+        : 'Visible por transparencia: temporalmente deshabilitado hasta estabilizar click-through.';
+    }
+  }
   if (shortcutsToggle) shortcutsToggle.checked = Boolean(state.shortcutsEnabled);
   if (chatHotkeyInput) chatHotkeyInput.value = state.chatHotkey || DEFAULT_CHAT_HOTKEY;
   renderChatHotkeyError(state.shortcutRegistrationError || '');
