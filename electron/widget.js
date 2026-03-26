@@ -35,6 +35,7 @@ const autoMessageToggle = document.getElementById('auto-message-enabled');
 const autoMessageIntervalSelect = document.getElementById('auto-message-interval');
 const sideImageModeSelect = document.getElementById('side-image-mode');
 const overlayScaleSelect = document.getElementById('overlay-scale');
+const overlayScaleValue = document.getElementById('overlay-scale-value');
 const overlayScaleResetButton = document.getElementById('overlay-scale-reset');
 const selectShells = Array.from(document.querySelectorAll('.select-shell'));
 
@@ -366,6 +367,9 @@ function applyOverlayScaleUi(scale) {
   document.documentElement.style.setProperty('--mini-scale', String(safeScale));
   if (overlayScaleSelect) {
     overlayScaleSelect.value = String(safeScale);
+  }
+  if (overlayScaleValue) {
+    overlayScaleValue.textContent = `${Math.round(safeScale * 100)}%`;
   }
 }
 
@@ -1350,7 +1354,7 @@ sideImageModeSelect?.addEventListener('change', () => {
   updateCharacterImageForBounds(lastKnownBounds, { force: true });
 });
 
-overlayScaleSelect?.addEventListener('change', () => {
+overlayScaleSelect?.addEventListener('input', () => {
   setOverlayScale(overlayScaleSelect.value);
 });
 
