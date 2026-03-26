@@ -638,6 +638,7 @@ body {
 }
 
 #auto-message-interval,
+#chat-box-size,
 #chat-hotkey,
 #side-image-mode,
 .custom-select__trigger {
@@ -657,6 +658,7 @@ body {
 }
 
 #auto-message-interval,
+#chat-box-size,
 #side-image-mode {
   position: absolute;
   inset: 0;
