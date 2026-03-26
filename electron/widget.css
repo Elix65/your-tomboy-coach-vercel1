@@ -430,7 +430,7 @@ body {
 
 .chat-card-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
   gap: 8px;
 }
@@ -470,8 +470,6 @@ body {
 }
 
 .panel-settings-btn {
-  justify-self: end;
-  align-self: start;
   width: 32px;
   height: 32px;
   border: 1px solid rgba(247, 229, 207, 0.14);
