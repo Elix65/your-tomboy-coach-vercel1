@@ -29,7 +29,7 @@
   --yumiko-character-scale: 0.88;
   --conversation-bottom-gap: 18px;
   --conversation-side-gap: 16px;
-  --overlay-safe-top: 12px;
+  --overlay-safe-top: 8px;
   --overlay-safe-bottom: 14px;
   --chat-width: min(100%, 520px);
   --chat-height: 236px;
@@ -182,7 +182,7 @@ body {
   position: absolute;
   left: 50%;
   right: auto;
-  bottom: 2px;
+  bottom: 10px;
   zoom: var(--mini-scale);
   transform: translateX(-50%) translateY(0) scale(var(--yumiko-character-scale));
   transform-origin: bottom center;
