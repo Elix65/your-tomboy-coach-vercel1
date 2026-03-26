@@ -83,6 +83,7 @@ const SHORTCUTS = {
 
 const OVERLAY_TOPMOST_LEVEL = 'screen-saver';
 const OVERLAY_TOPMOST_INTERVAL_MS = 1800;
+const CLICK_THROUGH_FEATURE_ENABLED = false;
 
 let registeredChatHotkey = null;
 let shortcutRegistrationError = '';
@@ -298,6 +299,9 @@ function readSettings() {
 }
 
 let settings = readSettings();
+if (!CLICK_THROUGH_FEATURE_ENABLED) {
+  settings.clickThroughPreferred = false;
+}
 let focusMinBounds = { minW: 0, minH: 0 };
 let rendererInteractiveRegionActive = false;
 
@@ -396,6 +400,7 @@ function clearAuth() {
 function getState() {
   return {
     ...settings,
+    clickThroughPreferred: CLICK_THROUGH_FEATURE_ENABLED && Boolean(settings.clickThroughPreferred),
     chatHotkey: normalizeChatHotkey(settings.chatHotkey),
     shortcutRegistrationError,
     authState: { ...authState }
@@ -700,6 +705,7 @@ function applyWindowBehavior() {
   const canUseClickThrough = settings.hasCompletedFirstRun;
   const enableClickThrough = canUseClickThrough
     && settings.overlayEnabled
+    && CLICK_THROUGH_FEATURE_ENABLED
     && settings.clickThroughPreferred
     && settings.mode === 'focus';
 
@@ -815,9 +821,11 @@ function updateGlobalShortcuts() {
   globalShortcut.register(SHORTCUTS.forceQuit, quitApp);
   globalShortcut.register(SHORTCUTS.panicReset, panicResetWindowAndRenderer);
   globalShortcut.register(SHORTCUTS.panicSafeMode, panicDisableOverlayAndClickThrough);
-  globalShortcut.register(SHORTCUTS.emergencyClickThrough, () => {
-    setClickThroughEnabled(!settings.clickThroughPreferred);
-  });
+  if (CLICK_THROUGH_FEATURE_ENABLED) {
+    globalShortcut.register(SHORTCUTS.emergencyClickThrough, () => {
+      setClickThroughEnabled(!settings.clickThroughPreferred);
+    });
+  }
   if (win && !win.isDestroyed()) {
     globalShortcut.register('CommandOrControl+Alt+=', () => {
       if (!win || win.isDestroyed()) return;
@@ -865,7 +873,7 @@ function setShortcutsEnabled(enabled) {
 }
 
 function setClickThroughEnabled(enabled) {
-  settings.clickThroughPreferred = Boolean(enabled);
+  settings.clickThroughPreferred = CLICK_THROUGH_FEATURE_ENABLED && Boolean(enabled);
   if (!settings.clickThroughPreferred) {
     rendererInteractiveRegionActive = false;
   }
@@ -964,12 +972,6 @@ function refreshTrayMenu() {
       click: (item) => setOverlayEnabled(item.checked)
     },
     {
-      label: 'Click-through (dejar pasar clicks)',
-      type: 'checkbox',
-      checked: Boolean(settings.clickThroughPreferred),
-      click: (item) => setClickThroughEnabled(item.checked)
-    },
-    {
       label: 'Atajos globales',
       type: 'checkbox',
       checked: Boolean(settings.shortcutsEnabled),
@@ -982,10 +984,6 @@ function refreshTrayMenu() {
     {
       label: 'Panic safe mode (Ctrl+Alt+Shift+S)',
       click: panicDisableOverlayAndClickThrough
-    },
-    {
-      label: 'Emergencia click-through (Ctrl+Alt+C)',
-      click: () => setClickThroughEnabled(!settings.clickThroughPreferred)
     },
     { type: 'separator' },
     { label: 'Quit', click: quitApp }
