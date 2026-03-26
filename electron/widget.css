@@ -1011,13 +1011,21 @@ input[type="checkbox"]:checked::after {
 
 html[data-chat-box-size="compact"] {
   --chat-width: min(100%, 426px);
-  --chat-height: 218px;
-  --chat-max-height: 236px;
-  --chat-log-max-height: 92px;
+  --chat-height: 178px;
+  --chat-max-height: 196px;
+  --chat-log-max-height: 120px;
   --chat-padding-y: 11px;
   --chat-padding-x: 13px;
   --chat-bubble-max-width: min(78%, 34ch);
   --chat-compose-max-width: 356px;
+}
+
+html[data-chat-box-size="compact"] .yumiko-chat {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+html[data-chat-box-size="compact"] .chat-card-header {
+  display: none;
 }
 
 html[data-chat-box-size="wide"] {
