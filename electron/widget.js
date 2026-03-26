@@ -148,9 +148,10 @@ let hostOverlayState = {
 let isInteractiveRegionActive = false;
 
 const INTERACTIVE_REGION_SELECTORS = [
-  '#yumiko-chat',
+  '#drag-region',
+  '.chat-compose',
+  '.conversation-band__controls',
   '#settings-panel',
-  '#conversation-band',
   '#chat-log',
   '#yumiko-input',
   '#yumiko-send',
@@ -1450,6 +1451,7 @@ chatHotkeyResetButton?.addEventListener('click', async () => {
 });
 
 document.addEventListener('mousemove', handlePointerIntent, true);
+document.addEventListener('mouseover', handlePointerIntent, true);
 document.addEventListener('mousedown', handlePointerIntent, true);
 document.addEventListener('mouseleave', () => {
   if (!canUseSelectiveClickThrough()) return;
