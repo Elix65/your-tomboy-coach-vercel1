@@ -137,6 +137,62 @@ let lastLocalModeIntent = {
   source: 'init',
   at: 0
 };
+let hostOverlayState = {
+  overlayEnabled: true,
+  clickThroughPreferred: false,
+  hasCompletedFirstRun: false,
+  mode: 'focus'
+};
+let isInteractiveRegionActive = false;
+
+const INTERACTIVE_REGION_SELECTORS = [
+  '#yumiko-chat',
+  '#settings-panel',
+  '#conversation-band',
+  '#chat-log',
+  '#yumiko-input',
+  '#yumiko-send',
+  '#toggle-settings',
+  '#mini-chat',
+  '#mini-mic',
+  '#quit-app',
+  'button',
+  'input',
+  'select',
+  'textarea',
+  'a',
+  '[role=\"button\"]',
+  '[data-interactive-region=\"true\"]'
+];
+
+function canUseSelectiveClickThrough() {
+  return Boolean(
+    hostOverlayState?.overlayEnabled
+    && hostOverlayState?.clickThroughPreferred
+    && hostOverlayState?.hasCompletedFirstRun
+    && hostOverlayState?.mode === 'focus'
+  );
+}
+
+function setInteractiveRegionFromRenderer(enabled) {
+  const nextValue = Boolean(enabled);
+  if (isInteractiveRegionActive === nextValue) return;
+  isInteractiveRegionActive = nextValue;
+  window.yumikoOverlay?.setInteractiveRegionActive?.(nextValue);
+}
+
+function resolveIsInteractiveTarget(target) {
+  if (!(target instanceof Element)) return false;
+  return Boolean(target.closest(INTERACTIVE_REGION_SELECTORS.join(',')));
+}
+
+function handlePointerIntent(event) {
+  if (!canUseSelectiveClickThrough()) {
+    setInteractiveRegionFromRenderer(false);
+    return;
+  }
+  setInteractiveRegionFromRenderer(resolveIsInteractiveTarget(event?.target || null));
+}
 
 function clampToViewport(value, min, max) {
   if (!Number.isFinite(value)) return min;
@@ -1258,6 +1314,15 @@ async function persistChatHotkey(hotkey) {
 
 function syncHostState(state = {}) {
   console.info('[yumiko][renderer] state updated', { authState: state?.authState });
+  hostOverlayState = {
+    overlayEnabled: Boolean(state.overlayEnabled),
+    clickThroughPreferred: Boolean(state.clickThroughPreferred ?? state.clickThroughEnabled),
+    hasCompletedFirstRun: Boolean(state.hasCompletedFirstRun),
+    mode: state.mode === 'chat' ? 'chat' : 'focus'
+  };
+  if (!canUseSelectiveClickThrough()) {
+    setInteractiveRegionFromRenderer(false);
+  }
   renderAuthState(state);
   if (overlayToggle) overlayToggle.checked = Boolean(state.overlayEnabled);
   if (clickThroughToggle) clickThroughToggle.checked = Boolean(state.clickThroughPreferred ?? state.clickThroughEnabled);
@@ -1330,6 +1395,9 @@ overlayToggle?.addEventListener('change', () => {
 });
 
 clickThroughToggle?.addEventListener('change', () => {
+  if (!clickThroughToggle?.checked) {
+    setInteractiveRegionFromRenderer(false);
+  }
   window.yumikoOverlay?.setClickThroughEnabled?.(clickThroughToggle.checked);
   if (clickThroughToggle?.checked) {
     addMessage('assistant', 'Interacción de fondo activada. Si necesitás escribir, usá el atajo o el botón de chat para retomar foco.');
@@ -1365,6 +1433,13 @@ chatHotkeyResetButton?.addEventListener('click', async () => {
     renderChatHotkeyError(error instanceof Error ? error.message : String(error));
   }
 });
+
+document.addEventListener('mousemove', handlePointerIntent, true);
+document.addEventListener('mousedown', handlePointerIntent, true);
+document.addEventListener('mouseleave', () => {
+  if (!canUseSelectiveClickThrough()) return;
+  setInteractiveRegionFromRenderer(false);
+}, true);
 
 autoMessageToggle?.addEventListener('change', () => {
   settings.autoMessageEnabled = autoMessageToggle.checked;

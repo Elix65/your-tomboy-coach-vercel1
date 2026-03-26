@@ -299,6 +299,7 @@ function readSettings() {
 
 let settings = readSettings();
 let focusMinBounds = { minW: 0, minH: 0 };
+let rendererInteractiveRegionActive = false;
 
 function setFocusMinimumBounds(payload) {
   if (!win || win.isDestroyed()) return;
@@ -702,7 +703,7 @@ function applyWindowBehavior() {
     && settings.clickThroughPreferred
     && settings.mode === 'focus';
 
-  if (enableClickThrough) {
+  if (enableClickThrough && !rendererInteractiveRegionActive) {
     win.setFocusable(false);
     win.setIgnoreMouseEvents(true, { forward: true });
   } else {
@@ -724,6 +725,9 @@ function setMode(mode, { fromRenderer = false, userPickedMode = false } = {}) {
   });
 
   settings.mode = nextMode;
+  if (nextMode !== 'focus') {
+    rendererInteractiveRegionActive = false;
+  }
   if (userPickedMode) {
     settings.userPickedMode = true;
   }
@@ -862,12 +866,23 @@ function setShortcutsEnabled(enabled) {
 
 function setClickThroughEnabled(enabled) {
   settings.clickThroughPreferred = Boolean(enabled);
+  if (!settings.clickThroughPreferred) {
+    rendererInteractiveRegionActive = false;
+  }
   writeSettings();
+  applyWindowBehavior();
+}
+
+function setInteractiveRegionActive(enabled) {
+  rendererInteractiveRegionActive = Boolean(enabled);
   applyWindowBehavior();
 }
 
 function setOverlayEnabled(enabled) {
   settings.overlayEnabled = Boolean(enabled);
+  if (!settings.overlayEnabled) {
+    rendererInteractiveRegionActive = false;
+  }
   writeSettings();
   applyWindowBehavior();
 }
@@ -1349,6 +1364,7 @@ if (!singleInstance) {
     ipcMain.on('yumiko:set-shortcuts-enabled', (_event, enabled) => setShortcutsEnabled(enabled));
     ipcMain.handle('yumiko:set-chat-hotkey', (_event, hotkey) => setChatHotkey(hotkey));
     ipcMain.on('yumiko:set-click-through-enabled', (_event, enabled) => setClickThroughEnabled(enabled));
+    ipcMain.on('yumiko:set-interactive-region-active', (_event, enabled) => setInteractiveRegionActive(enabled));
     ipcMain.on('yumiko:set-overlay-enabled', (_event, enabled) => setOverlayEnabled(enabled));
     ipcMain.on('yumiko:set-overlay-scale', (_event, scale) => setOverlayScale(scale));
     ipcMain.on('yumiko:complete-first-run', () => completeFirstRun());
