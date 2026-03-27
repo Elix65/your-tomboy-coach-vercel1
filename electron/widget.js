@@ -148,7 +148,6 @@ let hostOverlayState = {
 let isInteractiveRegionActive = false;
 
 const INTERACTIVE_REGION_SELECTORS = [
-  '#quit-app',
   '#yumiko-chat',
   '.chat-compose',
   '.chat-compose-shell',
@@ -160,16 +159,14 @@ const INTERACTIVE_REGION_SELECTORS = [
   '#toggle-settings',
   '#mini-chat',
   '#mini-mic',
-  '.panel',
-  '.panel *',
+  '#quit-app',
+  'button',
+  'input',
+  'select',
+  'textarea',
+  'a',
+  '[role=\"button\"]',
   '[data-interactive-region=\"true\"]'
-];
-
-const YUMIKO_PASS_THROUGH_SELECTORS = [
-  '#yumiko-mini',
-  '#mini-wrap',
-  '#yumiko-character',
-  '.presence-stage'
 ];
 
 function canUseSelectiveClickThrough() {
@@ -190,9 +187,6 @@ function setInteractiveRegionFromRenderer(enabled) {
 
 function resolveIsInteractiveTarget(target) {
   if (!(target instanceof Element)) return false;
-  if (target.closest(YUMIKO_PASS_THROUGH_SELECTORS.join(','))) {
-    return false;
-  }
   return Boolean(target.closest(INTERACTIVE_REGION_SELECTORS.join(',')));
 }
 
