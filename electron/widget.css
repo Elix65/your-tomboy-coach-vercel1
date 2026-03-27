@@ -186,7 +186,6 @@ body {
   zoom: var(--mini-scale);
   transform: translateX(-50%) translateY(0) scale(var(--yumiko-character-scale));
   transform-origin: bottom center;
-  -webkit-app-region: drag;
   overflow: visible !important;
   z-index: 2;
 }
@@ -426,7 +425,7 @@ body {
     radial-gradient(100% 120% at 100% 100%, rgba(107, 67, 84, 0.16), rgba(107, 67, 84, 0) 62%),
     linear-gradient(180deg, rgba(34, 22, 30, 0.94), rgba(16, 11, 17, 0.97));
   backdrop-filter: blur(calc(var(--moon-blur-lg) + 2px));
-  box-shadow: 0 18px 36px rgba(7, 3, 8, 0.44), 0 0 0 1px rgba(255, 247, 236, 0.03) inset;
+  box-shadow: 0 14px 28px rgba(7, 3, 8, 0.34), 0 0 0 1px rgba(255, 247, 236, 0.03) inset;
   transform-origin: bottom right;
 }
 
@@ -908,15 +907,9 @@ input[type="checkbox"]:checked::after {
   max-height: var(--chat-log-max-height);
   gap: 8px;
   mask-image: none;
-  -webkit-app-region: drag;
 }
 
 .chat-card-header {
-  -webkit-app-region: drag;
-}
-
-html[data-click-through="on"] .chat-card-header,
-html[data-click-through="on"] .chat-log {
   -webkit-app-region: no-drag;
 }
 
