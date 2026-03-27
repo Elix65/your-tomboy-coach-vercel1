@@ -708,8 +708,7 @@ function applyWindowBehavior() {
   const enableClickThrough = canUseClickThrough
     && settings.overlayEnabled
     && CLICK_THROUGH_FEATURE_ENABLED
-    && settings.clickThroughPreferred
-    && settings.mode === 'focus';
+    && settings.clickThroughPreferred;
 
   if (enableClickThrough && !rendererInteractiveRegionActive) {
     win.setFocusable(false);

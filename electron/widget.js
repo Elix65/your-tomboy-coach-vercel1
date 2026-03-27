@@ -148,25 +148,20 @@ let hostOverlayState = {
 let isInteractiveRegionActive = false;
 
 const INTERACTIVE_REGION_SELECTORS = [
-  '#yumiko-chat',
-  '.chat-compose',
-  '.chat-compose-shell',
-  '.conversation-band__controls',
-  '#settings-panel',
-  '#chat-log',
   '#yumiko-input',
   '#yumiko-send',
   '#toggle-settings',
   '#mini-chat',
   '#mini-mic',
   '#quit-app',
-  'button',
-  'input',
-  'select',
-  'textarea',
-  'a',
-  '[role=\"button\"]',
-  '[data-interactive-region=\"true\"]'
+  '#settings-panel',
+  '#settings-panel button',
+  '#settings-panel input',
+  '#settings-panel select',
+  '#settings-panel textarea',
+  '#settings-panel .select-shell',
+  '#settings-panel [role=\"button\"]',
+  '#settings-panel [data-interactive-region=\"true\"]'
 ];
 
 function canUseSelectiveClickThrough() {
@@ -174,7 +169,6 @@ function canUseSelectiveClickThrough() {
     hostOverlayState?.overlayEnabled
     && hostOverlayState?.clickThroughPreferred
     && hostOverlayState?.hasCompletedFirstRun
-    && hostOverlayState?.mode === 'focus'
   );
 }
 
@@ -1328,6 +1322,7 @@ function syncHostState(state = {}) {
   if (!canUseSelectiveClickThrough()) {
     setInteractiveRegionFromRenderer(false);
   }
+  document.documentElement.dataset.clickThrough = hostOverlayState.clickThroughPreferred ? 'on' : 'off';
   renderAuthState(state);
   if (overlayToggle) overlayToggle.checked = Boolean(state.overlayEnabled);
   if (clickThroughToggle) {
