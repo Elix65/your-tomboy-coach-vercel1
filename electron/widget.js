@@ -145,64 +145,6 @@ let hostOverlayState = {
   hasCompletedFirstRun: false,
   mode: 'focus'
 };
-let isInteractiveRegionActive = false;
-
-const INTERACTIVE_REGION_SELECTORS = [
-  '#yumiko-input',
-  '#yumiko-send',
-  '#toggle-settings',
-  '#quit-app',
-  '#mini-chat',
-  '#mini-mic',
-  '#settings-panel',
-  '#overlay-enabled',
-  '#click-through-enabled',
-  '#shortcuts-enabled',
-  '#chat-hotkey',
-  '#chat-hotkey-save',
-  '#chat-hotkey-reset',
-  '#auth-action',
-  '#auto-message-enabled',
-  '#auto-message-interval',
-  '#side-image-mode',
-  '#chat-box-size',
-  '#overlay-scale',
-  '#overlay-scale-reset',
-  '#settings-panel .panel-btn',
-  '#settings-panel .native-select',
-  '#settings-panel .overlay-scale-control',
-  '#settings-panel .select-shell',
-  '#settings-panel .overlay-scale-track',
-  '#settings-panel .overlay-scale-thumb'
-];
-
-function canUseSelectiveClickThrough() {
-  return Boolean(
-    hostOverlayState?.overlayEnabled
-    && hostOverlayState?.clickThroughPreferred
-    && hostOverlayState?.hasCompletedFirstRun
-  );
-}
-
-function setInteractiveRegionFromRenderer(enabled) {
-  const nextValue = Boolean(enabled);
-  if (isInteractiveRegionActive === nextValue) return;
-  isInteractiveRegionActive = nextValue;
-  window.yumikoOverlay?.setInteractiveRegionActive?.(nextValue);
-}
-
-function resolveIsInteractiveTarget(target) {
-  if (!(target instanceof Element)) return false;
-  return Boolean(target.closest(INTERACTIVE_REGION_SELECTORS.join(',')));
-}
-
-function handlePointerIntent(event) {
-  if (!canUseSelectiveClickThrough()) {
-    setInteractiveRegionFromRenderer(false);
-    return;
-  }
-  setInteractiveRegionFromRenderer(resolveIsInteractiveTarget(event?.target || null));
-}
 
 function clampToViewport(value, min, max) {
   if (!Number.isFinite(value)) return min;
@@ -1331,9 +1273,6 @@ function syncHostState(state = {}) {
     hasCompletedFirstRun: Boolean(state.hasCompletedFirstRun),
     mode: state.mode === 'chat' ? 'chat' : 'focus'
   };
-  if (!canUseSelectiveClickThrough()) {
-    setInteractiveRegionFromRenderer(false);
-  }
   document.documentElement.dataset.clickThrough = hostOverlayState.clickThroughPreferred ? 'on' : 'off';
   renderAuthState(state);
   if (overlayToggle) overlayToggle.checked = Boolean(state.overlayEnabled);
@@ -1346,7 +1285,7 @@ function syncHostState(state = {}) {
       : 'Temporalmente deshabilitado hasta estabilizar click-through.';
     if (clickThroughNote) {
       clickThroughNote.textContent = clickThroughAvailable
-        ? 'Deja pasar clicks sin romper la escena.'
+        ? 'Modo passthrough: no captura clicks ni drag. Volvé con tu hotkey de chat.'
         : 'Visible por transparencia: temporalmente deshabilitado hasta estabilizar click-through.';
     }
   }
@@ -1419,10 +1358,9 @@ overlayToggle?.addEventListener('change', () => {
 });
 
 clickThroughToggle?.addEventListener('change', () => {
-  setInteractiveRegionFromRenderer(false);
   window.yumikoOverlay?.setClickThroughEnabled?.(clickThroughToggle.checked);
   if (clickThroughToggle?.checked) {
-    addMessage('assistant', 'Interacción de fondo activada. Si necesitás escribir, usá el atajo o el botón de chat para retomar foco.');
+    addMessage('assistant', 'Interacción de fondo activada. Para volver a escribir, usá tu hotkey de chat.');
   }
 });
 
@@ -1455,14 +1393,6 @@ chatHotkeyResetButton?.addEventListener('click', async () => {
     renderChatHotkeyError(error instanceof Error ? error.message : String(error));
   }
 });
-
-document.addEventListener('mousemove', handlePointerIntent, true);
-document.addEventListener('mouseover', handlePointerIntent, true);
-document.addEventListener('mousedown', handlePointerIntent, true);
-document.addEventListener('mouseleave', () => {
-  if (!canUseSelectiveClickThrough()) return;
-  setInteractiveRegionFromRenderer(false);
-}, true);
 
 autoMessageToggle?.addEventListener('change', () => {
   settings.autoMessageEnabled = autoMessageToggle.checked;

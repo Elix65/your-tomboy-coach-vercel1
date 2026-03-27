@@ -135,7 +135,7 @@ body {
   left: 0;
   right: 0;
   height: 28px;
-  -webkit-app-region: no-drag;
+  -webkit-app-region: drag;
   z-index: 50;
   pointer-events: none;
 }
@@ -326,6 +326,10 @@ body {
 
 .drag-region {
   display: block;
+}
+
+html[data-click-through="on"] .drag-region {
+  -webkit-app-region: no-drag;
 }
 
 .yumiko-chat.is-activated {
