@@ -704,10 +704,9 @@ function applyWindowBehavior() {
     win.setVisibleOnAllWorkspaces(false);
   }
 
-  const canUseClickThrough = settings.hasCompletedFirstRun;
-  const enableClickThrough = canUseClickThrough
-    && settings.overlayEnabled
+  const enableClickThrough = settings.overlayEnabled
     && CLICK_THROUGH_FEATURE_ENABLED
+    && settings.hasCompletedFirstRun
     && settings.clickThroughPreferred;
 
   if (enableClickThrough && !rendererInteractiveRegionActive) {
