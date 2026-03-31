@@ -1285,7 +1285,7 @@ function syncHostState(state = {}) {
       : 'Temporalmente deshabilitado hasta estabilizar click-through.';
     if (clickThroughNote) {
       clickThroughNote.textContent = clickThroughAvailable
-        ? 'Modo passthrough: no captura clicks ni drag. Volvé con tu hotkey de chat.'
+        ? 'Modo passthrough: no captura clicks ni drag. Volvé con Ctrl+Shift+K.'
         : 'Visible por transparencia: temporalmente deshabilitado hasta estabilizar click-through.';
     }
   }
@@ -1360,7 +1360,9 @@ overlayToggle?.addEventListener('change', () => {
 clickThroughToggle?.addEventListener('change', () => {
   window.yumikoOverlay?.setClickThroughEnabled?.(clickThroughToggle.checked);
   if (clickThroughToggle?.checked) {
-    addMessage('assistant', 'Interacción de fondo activada. Para volver a escribir, usá tu hotkey de chat.');
+    addMessage('assistant', 'Modo fondo activado · Volvé con Ctrl+Shift+K');
+  } else {
+    addMessage('assistant', 'Modo interactivo restaurado');
   }
 });
 
@@ -1603,6 +1605,12 @@ window.addEventListener('DOMContentLoaded', () => {
     if (payload.delta != null) {
       setOverlayScale(overlayScale + payload.delta);
     }
+  });
+  window.addEventListener('yumiko:click-through-feedback', (event) => {
+    const enabled = Boolean(event?.detail?.enabled);
+    addMessage('assistant', enabled
+      ? 'Modo fondo activado · Volvé con Ctrl+Shift+K'
+      : 'Modo interactivo restaurado');
   });
   window.yumikoOverlay?.getState?.()
     .then((state) => {

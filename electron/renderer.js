@@ -76,6 +76,11 @@ window.yumikoOverlay?.onPanicReset?.(() => {
 });
 
 
+
+window.yumikoOverlay?.onClickThroughFeedback?.((payload) => {
+  window.dispatchEvent(new CustomEvent('yumiko:click-through-feedback', { detail: payload || {} }));
+});
+
 window.yumikoOverlay?.onMiniScale?.((payload) => {
   window.dispatchEvent(new CustomEvent('yumiko:mini-scale', { detail: payload || {} }));
 });
