@@ -705,7 +705,6 @@ function applyWindowBehavior() {
 
   const enableClickThrough = settings.overlayEnabled
     && CLICK_THROUGH_FEATURE_ENABLED
-    && settings.hasCompletedFirstRun
     && settings.clickThroughPreferred;
 
   if (enableClickThrough) {
@@ -905,6 +904,7 @@ function completeFirstRun() {
   if (settings.hasCompletedFirstRun) return;
   settings.hasCompletedFirstRun = true;
   writeSettings();
+  applyWindowBehavior();
   broadcastState();
 }
 
