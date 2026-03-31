@@ -22,7 +22,9 @@ const DEFAULT_CHAT_HOTKEY = 'Control+Shift+J';
 
 const settingsPanel = document.getElementById('settings-panel');
 const toggleSettingsButton = document.getElementById('toggle-settings');
-const quitAppButton = document.getElementById('quit-app');
+const settingsCloseButton = document.getElementById('settings-close');
+const settingsChatButton = document.getElementById('settings-chat');
+const settingsMicButton = document.getElementById('settings-mic');
 const overlayToggle = document.getElementById('overlay-enabled');
 const clickThroughToggle = document.getElementById('click-through-enabled');
 const clickThroughNote = document.getElementById('click-through-note');
@@ -46,8 +48,6 @@ const widget = document.getElementById('yumiko-widget');
 const scene = document.getElementById('overlay-scene');
 const mini = document.getElementById('yumiko-mini');
 const miniWrap = document.getElementById('mini-wrap');
-const miniChatButton = document.getElementById('mini-chat');
-const miniMicButton = document.getElementById('mini-mic');
 const chat = document.getElementById('yumiko-chat');
 const img = document.getElementById('yumiko-character');
 const input = document.getElementById('yumiko-input');
@@ -807,6 +807,22 @@ function onOutsideClick(event) {
   closeSettingsPanel();
 }
 
+function requestWindowClose(event = {}) {
+  if (event.shiftKey && typeof window.yumikoOverlay?.quit === 'function') {
+    console.info('[yumiko][window] quit requested from close action + Shift');
+    window.yumikoOverlay.quit();
+    return;
+  }
+
+  console.info('[yumiko][window] hide requested from close action');
+  if (typeof window.yumikoOverlay?.closeWindow === 'function') {
+    window.yumikoOverlay.closeWindow();
+    return;
+  }
+
+  window.close();
+}
+
 function focusChatInputRobust({ reason = 'unknown', sendAck = false } = {}) {
   const tryFocus = (attempt = 'unknown') => {
     const chatInput = input || chat?.querySelector('textarea, input[type="text"], input:not([type])');
@@ -874,10 +890,6 @@ function setMode(nextMode, { source = 'ui' } = {}) {
   }
   saveSettings();
 
-  if (quitAppButton) {
-    quitAppButton.hidden = false;
-  }
-
   if (chat) {
     chat.hidden = false;
     chat.setAttribute('aria-hidden', 'false');
@@ -886,10 +898,6 @@ function setMode(nextMode, { source = 'ui' } = {}) {
     mini.hidden = false;
     mini.setAttribute('aria-hidden', 'false');
   }
-  if (miniChatButton) {
-    miniChatButton.setAttribute('aria-label', 'Activar conversación con Yumiko');
-  }
-
   if (mode === 'chat') {
     markUserActivity({ event: 'activate-conversation', strength: 'strong' });
     focusChatInputRobust({ reason: `setMode:${source}` });
@@ -1337,21 +1345,7 @@ toggleSettingsButton?.addEventListener('click', () => {
   setSettingsPanelHidden(!settingsPanel?.hidden);
 });
 
-quitAppButton?.addEventListener('click', (event) => {
-  if (event.shiftKey && typeof window.yumikoOverlay?.quit === 'function') {
-    console.info('[yumiko][window] quit requested from X + Shift');
-    window.yumikoOverlay.quit();
-    return;
-  }
-
-  console.info('[yumiko][window] hide requested from X');
-  if (typeof window.yumikoOverlay?.closeWindow === 'function') {
-    window.yumikoOverlay.closeWindow();
-    return;
-  }
-
-  window.close();
-});
+settingsCloseButton?.addEventListener('click', requestWindowClose);
 
 overlayToggle?.addEventListener('change', () => {
   window.yumikoOverlay?.setOverlayEnabled?.(overlayToggle.checked);
@@ -1451,14 +1445,15 @@ authActionButton?.addEventListener('click', async () => {
   }
 });
 
-miniChatButton?.addEventListener('click', () => {
-  markUserActivity({ event: 'mini-chat-button', strength: 'strong' });
+settingsChatButton?.addEventListener('click', () => {
+  markUserActivity({ event: 'settings-chat-button', strength: 'strong' });
   setMode('chat', { source: 'ui' });
-  focusChatInputRobust({ reason: 'mini-chat-button' });
+  closeSettingsPanel();
+  focusChatInputRobust({ reason: 'settings-chat-button' });
 });
 
-miniMicButton?.addEventListener('click', () => {
-  miniMicButton.title = 'Próximamente';
+settingsMicButton?.addEventListener('click', () => {
+  settingsMicButton.title = 'Próximamente';
   console.info('[yumiko][mic] Próximamente');
 });
 

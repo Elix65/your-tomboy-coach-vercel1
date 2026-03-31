@@ -77,7 +77,6 @@ textarea,
 a,
 .chat-log,
 .mini-actions,
-#quit-app,
 #toggle-settings {
   -webkit-app-region: no-drag;
 }
@@ -210,10 +209,9 @@ body {
   position: relative;
   right: auto;
   bottom: auto;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 4px;
-  width: 56px;
+  display: flex;
+  gap: 0;
+  width: 28px;
   align-self: end;
   z-index: 22;
   pointer-events: auto;
@@ -241,20 +239,6 @@ body {
   transition: transform var(--moon-timing-fast) var(--moon-ease-premium), box-shadow var(--moon-timing-base) var(--moon-ease-premium), color var(--moon-timing-fast) var(--moon-ease-premium), border-color var(--moon-timing-fast) var(--moon-ease-premium);
   pointer-events: auto;
   -webkit-app-region: no-drag;
-}
-
-#mini-mic,
-#mini-chat {
-  -webkit-app-region: no-drag;
-}
-
-.mini-btn--chat {
-  position: relative;
-  z-index: 8;
-}
-
-.mini-btn--close {
-  opacity: 0.78;
 }
 
 .mini-btn:hover {
@@ -872,6 +856,13 @@ input[type="checkbox"]:checked::after {
   justify-self: center;
 }
 
+.settings-secondary-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
 .chat-compose {
   display: grid;
   align-self: end;
@@ -1049,8 +1040,8 @@ html[data-chat-box-size="wide"] {
   }
 
   .conversation-band__controls {
-    width: 56px;
-    gap: 4px;
+    width: 28px;
+    gap: 0;
   }
 
   .yumiko-chat {
