@@ -122,6 +122,7 @@ body {
   overflow: visible;
   isolation: isolate;
   background: transparent;
+  -webkit-app-region: drag;
 }
 
 .yumiko-widget::before,
@@ -326,6 +327,10 @@ body {
 
 .drag-region {
   display: block;
+}
+
+html[data-click-through="on"] .yumiko-widget {
+  -webkit-app-region: no-drag;
 }
 
 html[data-click-through="on"] .drag-region {
