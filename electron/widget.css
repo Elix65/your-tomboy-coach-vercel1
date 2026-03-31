@@ -331,6 +331,7 @@ body {
 
 html[data-click-through="on"] .yumiko-widget {
   -webkit-app-region: no-drag;
+  pointer-events: none;
 }
 
 html[data-click-through="on"] .drag-region {
