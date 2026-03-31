@@ -140,6 +140,19 @@
               <p id="chat-hotkey-error" class="settings-error" hidden></p>
             </div>
 
+            <div class="settings-group" aria-label="Accesos secundarios">
+              <div class="settings-group-header">
+                <span class="settings-kicker">Acciones</span>
+                <h3>Controles secundarios</h3>
+              </div>
+              <p class="setting-note">Estas acciones siguen disponibles, pero fuera de la fila principal del input.</p>
+              <div class="settings-secondary-actions" role="group" aria-label="Acciones secundarias del chat">
+                <button id="settings-chat" class="panel-btn panel-btn--ghost" type="button">Abrir chat</button>
+                <button id="settings-mic" class="panel-btn panel-btn--ghost" type="button">Micrófono</button>
+                <button id="settings-close" class="panel-btn panel-btn--ghost" type="button">Cerrar ventana</button>
+              </div>
+            </div>
+
             <div class="settings-group" aria-label="Vinculación y mensajes sutiles">
               <div class="settings-group-header">
                 <span class="settings-kicker">Intimidad</span>
@@ -186,10 +199,7 @@
               <button id="yumiko-send" class="icon-btn send-btn" type="button" aria-label="Enviar">Enviar</button>
             </div>
             <div class="conversation-band__controls" role="group" aria-label="Controles rápidos">
-              <button id="mini-mic" class="mini-btn" type="button" aria-label="Micrófono">🎤</button>
-              <button id="mini-chat" class="mini-btn mini-btn--chat" type="button" aria-label="Activar conversación con Yumiko">💬</button>
               <button id="toggle-settings" class="mini-btn panel-settings-btn" type="button" aria-label="Abrir ajustes">⚙️</button>
-              <button id="quit-app" class="mini-btn mini-btn--close" type="button" aria-label="Cerrar app">✕</button>
             </div>
           </div>
         </div>
