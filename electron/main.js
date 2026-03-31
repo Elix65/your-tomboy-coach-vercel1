@@ -75,6 +75,7 @@ function resolveYumikoWebOrigin(persistedSettings = {}) {
 const SHORTCUTS = {
   toggleVisible: 'CommandOrControl+Shift+Y',
   defaultChatFocus: 'Control+Shift+J',
+  toggleClickThrough: 'Control+Shift+K',
   forceQuit: 'CommandOrControl+Shift+Q',
   panicReset: 'Control+Alt+R',
   panicSafeMode: 'CommandOrControl+Alt+Shift+S',
@@ -805,6 +806,7 @@ function registerChatHotkey() {
 function updateGlobalShortcuts() {
   globalShortcut.unregister(SHORTCUTS.toggleVisible);
   if (registeredChatHotkey) globalShortcut.unregister(registeredChatHotkey);
+  globalShortcut.unregister(SHORTCUTS.toggleClickThrough);
   globalShortcut.unregister(SHORTCUTS.forceQuit);
   globalShortcut.unregister(SHORTCUTS.panicReset);
   globalShortcut.unregister(SHORTCUTS.panicSafeMode);
@@ -814,6 +816,9 @@ function updateGlobalShortcuts() {
   globalShortcut.unregister('CommandOrControl+Alt+0');
 
   globalShortcut.register(SHORTCUTS.forceQuit, quitApp);
+  if (CLICK_THROUGH_FEATURE_ENABLED) {
+    globalShortcut.register(SHORTCUTS.toggleClickThrough, toggleClickThroughFromHotkey);
+  }
   globalShortcut.register(SHORTCUTS.panicReset, panicResetWindowAndRenderer);
   globalShortcut.register(SHORTCUTS.panicSafeMode, panicDisableOverlayAndClickThrough);
   if (CLICK_THROUGH_FEATURE_ENABLED) {
@@ -871,6 +876,19 @@ function setClickThroughEnabled(enabled) {
   settings.clickThroughPreferred = CLICK_THROUGH_FEATURE_ENABLED && Boolean(enabled);
   writeSettings();
   applyWindowBehavior();
+}
+
+function toggleClickThroughFromHotkey() {
+  if (!CLICK_THROUGH_FEATURE_ENABLED) return;
+  const nextEnabled = !settings.clickThroughPreferred;
+  setClickThroughEnabled(nextEnabled);
+
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('yumiko:click-through-feedback', {
+      enabled: nextEnabled,
+      source: 'hotkey'
+    });
+  }
 }
 
 function setOverlayEnabled(enabled) {

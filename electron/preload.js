@@ -58,6 +58,11 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
     ipcRenderer.on('yumiko:mini-scale', listener);
     return () => ipcRenderer.removeListener('yumiko:mini-scale', listener);
   },
+  onClickThroughFeedback: (callback) => {
+    const listener = (_event, payload) => callback(payload);
+    ipcRenderer.on('yumiko:click-through-feedback', listener);
+    return () => ipcRenderer.removeListener('yumiko:click-through-feedback', listener);
+  },
 
   onFocusInput: (callback) => {
     const listener = (_event, payload) => callback(payload);
