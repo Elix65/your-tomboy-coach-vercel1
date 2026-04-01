@@ -27,6 +27,7 @@
   --moon-ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
   --mini-scale: 1;
   --yumiko-character-scale: 0.88;
+  --yumiko-headroom-shift: 0px;
   --conversation-bottom-gap: 18px;
   --conversation-side-gap: 16px;
   --overlay-safe-top: 4px;
@@ -159,7 +160,7 @@ body {
   right: auto;
   bottom: 18px;
   zoom: var(--mini-scale);
-  transform: translateX(-50%) translateY(0) scale(var(--yumiko-character-scale));
+  transform: translateX(-50%) translateY(calc(-1 * var(--yumiko-headroom-shift))) scale(var(--yumiko-character-scale));
   transform-origin: bottom center;
   overflow: visible !important;
   z-index: 2;
@@ -285,7 +286,7 @@ body {
   opacity: 1;
   visibility: visible;
   pointer-events: none;
-  transform: translateX(-50%) translateY(0) scale(var(--yumiko-character-scale));
+  transform: translateX(-50%) translateY(calc(-1 * var(--yumiko-headroom-shift))) scale(var(--yumiko-character-scale));
   filter: none;
 }
 

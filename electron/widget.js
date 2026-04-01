@@ -60,6 +60,7 @@ const chatPanelStatus = document.getElementById('chat-panel-status');
 const CHARACTER_SRC_WHEN_WINDOW_ON_LEFT = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png';
 const CHARACTER_SRC_WHEN_WINDOW_ON_RIGHT = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/overlay1.png';
 const SIDE_SWITCH_HYSTERESIS_PX = 48;
+const YUMIKO_HEADROOM_MARGIN_PX = 16;
 
 let isThinking = false;
 let contextCache = [];
@@ -123,6 +124,7 @@ function normalizeChatBoxSize(value) {
 let settings = loadSettings();
 let overlayScale = 1;
 let fitTimeout = null;
+let headroomMeasureTimeout = null;
 let lastFitRequest = { mode: '', width: 0, height: 0 };
 let lastGoodFocusFitSize = null;
 let assistantMessageSequence = 0;
@@ -423,6 +425,7 @@ function setOverlayScale(nextScale, { persist = true } = {}) {
   }
 
   requestFitDebounced(`scale:${safeScale}`, size);
+  scheduleHeadroomCalibration(`scale:${safeScale}`);
 }
 
 function isNodeEffectivelyVisible(node) {
@@ -582,6 +585,30 @@ function requestFit({ reason = 'unknown', size } = {}) {
 function requestFitDebounced(reason = 'debounced', size) {
   window.clearTimeout(fitTimeout);
   fitTimeout = window.setTimeout(() => requestFit({ reason, size }), 50);
+}
+
+function calibrateYumikoHeadroom() {
+  if (!scene || !mini || !img) return;
+  if (!img.complete || img.naturalWidth <= 0 || img.naturalHeight <= 0) return;
+
+  const sceneRect = scene.getBoundingClientRect();
+  const miniRect = mini.getBoundingClientRect();
+  const currentGap = miniRect.top - sceneRect.top;
+
+  if (!Number.isFinite(currentGap)) return;
+
+  const nextShift = Math.max(0, Math.round(currentGap - YUMIKO_HEADROOM_MARGIN_PX));
+  document.documentElement.style.setProperty('--yumiko-headroom-shift', `${nextShift}px`);
+}
+
+function scheduleHeadroomCalibration(reason = 'unknown') {
+  void reason;
+  window.clearTimeout(headroomMeasureTimeout);
+  headroomMeasureTimeout = window.setTimeout(() => {
+    window.requestAnimationFrame(() => {
+      calibrateYumikoHeadroom();
+    });
+  }, 40);
 }
 
 function updateFocusMinimumSize() {
@@ -1339,6 +1366,7 @@ function syncHostState(state = {}) {
     applyOverlayScaleUi(state.overlayScale);
     updateFocusMinimumSize();
     requestFitDebounced('state:overlay-scale');
+    scheduleHeadroomCalibration('state:overlay-scale');
   }
   updateCharacterImageForBounds(lastKnownBounds);
 }
@@ -1579,9 +1607,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
     if (img.complete) {
       requestFitDebounced('image-ready');
+      scheduleHeadroomCalibration('image-ready');
     } else {
       img.addEventListener('load', () => {
         requestFitDebounced('image-loaded');
+        scheduleHeadroomCalibration('image-loaded');
       }, { once: true });
     }
   }
@@ -1631,5 +1661,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
   setMode(settings.mode || 'focus', { source: 'state-sync' });
   requestFitDebounced('init');
+  scheduleHeadroomCalibration('init');
   loadChatHistory();
 });
