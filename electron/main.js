@@ -51,7 +51,8 @@ const defaultSettings = {
   deviceName: '',
   overlayAccessToken: '',
   overlayAccountEmail: '',
-  overlayScale: 1
+  overlayScale: 1,
+  launchAtStartup: false
 };
 
 function normalizeOrigin(value) {
@@ -401,12 +402,40 @@ function clearAuth() {
 function getState() {
   return {
     ...settings,
+    launchAtStartup: getLaunchAtStartupEnabled(),
     clickThroughFeatureEnabled: CLICK_THROUGH_FEATURE_ENABLED,
     clickThroughPreferred: CLICK_THROUGH_FEATURE_ENABLED && Boolean(settings.clickThroughPreferred),
     chatHotkey: normalizeChatHotkey(settings.chatHotkey),
     shortcutRegistrationError,
     authState: { ...authState }
   };
+}
+
+function getLaunchAtStartupEnabled() {
+  if (process.platform !== 'win32') return false;
+  try {
+    return Boolean(app.getLoginItemSettings().openAtLogin);
+  } catch (error) {
+    console.warn('[yumiko][startup] failed to read startup setting', error);
+    return false;
+  }
+}
+
+function setLaunchAtStartupEnabled(enabled) {
+  const nextEnabled = Boolean(enabled);
+  if (process.platform !== 'win32') {
+    settings.launchAtStartup = false;
+    writeSettings();
+    broadcastState();
+    return { enabled: false, supported: false };
+  }
+
+  app.setLoginItemSettings({ openAtLogin: nextEnabled });
+  const effectiveEnabled = getLaunchAtStartupEnabled();
+  settings.launchAtStartup = effectiveEnabled;
+  writeSettings();
+  broadcastState();
+  return { enabled: effectiveEnabled, supported: true };
 }
 
 function markOverlayDisconnected({ clearStoredRefreshToken = false } = {}) {
@@ -1262,6 +1291,7 @@ if (!singleInstance) {
     app.setAsDefaultProtocolClient('yumiko');
     ensureDeviceIdentity();
     loadAuthStateFromDisk();
+    settings.launchAtStartup = getLaunchAtStartupEnabled();
     writeSettings();
 
     createWindow();
@@ -1367,6 +1397,7 @@ if (!singleInstance) {
     ipcMain.on('yumiko:set-click-through-enabled', (_event, enabled) => setClickThroughEnabled(enabled));
     ipcMain.on('yumiko:set-overlay-enabled', (_event, enabled) => setOverlayEnabled(enabled));
     ipcMain.on('yumiko:set-overlay-scale', (_event, scale) => setOverlayScale(scale));
+    ipcMain.handle('yumiko:set-launch-at-startup', (_event, enabled) => setLaunchAtStartupEnabled(enabled));
     ipcMain.on('yumiko:complete-first-run', () => completeFirstRun());
     ipcMain.on('yumiko:close-window', () => {
       if (!win || win.isDestroyed()) return;
