@@ -856,11 +856,40 @@ input[type="checkbox"]:checked::after {
   justify-self: center;
 }
 
+.settings-secondary-actions-shell {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid rgba(247, 229, 207, 0.1);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 245, 235, 0.02), rgba(255, 245, 235, 0.008)),
+    rgba(15, 10, 15, 0.34);
+  box-shadow: 0 0 0 1px rgba(255, 245, 235, 0.02) inset;
+}
+
 .settings-secondary-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 8px;
-  margin-top: 8px;
+}
+
+.settings-secondary-divider {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(247, 229, 207, 0), rgba(247, 229, 207, 0.16), rgba(247, 229, 207, 0));
+}
+
+.panel-btn--close-soft {
+  width: 100%;
+  justify-self: stretch;
+  border-color: rgba(247, 229, 207, 0.2);
+  background: linear-gradient(180deg, rgba(46, 30, 40, 0.78), rgba(28, 18, 28, 0.9));
+}
+
+.panel-btn--close-soft:hover {
+  border-color: rgba(218, 169, 143, 0.3);
+  background: linear-gradient(180deg, rgba(57, 37, 48, 0.86), rgba(32, 21, 31, 0.94));
 }
 
 .chat-compose {
