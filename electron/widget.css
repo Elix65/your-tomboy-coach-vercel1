@@ -29,7 +29,7 @@
   --yumiko-character-scale: 0.88;
   --conversation-bottom-gap: 18px;
   --conversation-side-gap: 16px;
-  --overlay-safe-top: 8px;
+  --overlay-safe-top: 4px;
   --overlay-safe-bottom: 14px;
   --chat-width: min(100%, 520px);
   --chat-height: 236px;
@@ -120,7 +120,7 @@ body {
   width: 100%;
   height: 100%;
   min-width: 500px;
-  min-height: 660px;
+  min-height: 620px;
   overflow: visible;
   padding:
     var(--overlay-safe-top)
@@ -157,7 +157,7 @@ body {
   position: absolute;
   left: 50%;
   right: auto;
-  bottom: 10px;
+  bottom: 18px;
   zoom: var(--mini-scale);
   transform: translateX(-50%) translateY(0) scale(var(--yumiko-character-scale));
   transform-origin: bottom center;
