@@ -61,6 +61,8 @@ const CHARACTER_SRC_WHEN_WINDOW_ON_LEFT = 'https://rlunygzxvpldfaanhxnj.supabase
 const CHARACTER_SRC_WHEN_WINDOW_ON_RIGHT = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/overlay1.png';
 const SIDE_SWITCH_HYSTERESIS_PX = 48;
 const YUMIKO_HEADROOM_MARGIN_PX = 16;
+const YUMIKO_HEADROOM_SCAN_SAMPLE_WIDTH = 96;
+const YUMIKO_HEADROOM_ALPHA_THRESHOLD = 20;
 
 let isThinking = false;
 let contextCache = [];
@@ -135,6 +137,7 @@ let pendingAssistantReplyAfterUserMessage = false;
 let activeCharacterSide = null;
 let pendingCharacterSwapToken = 0;
 const preloadedCharacterImages = new Map();
+const characterOpaqueTopRatioCache = new Map();
 let lastKnownBounds = null;
 let lastLocalModeIntent = {
   mode: toUiMode(settings.mode),
@@ -244,6 +247,7 @@ function updateCharacterImageForBounds(bounds, { force = false } = {}) {
       if (!img || swapToken !== pendingCharacterSwapToken) return;
       img.src = nextSrc;
       img.classList.remove('is-swapping');
+      scheduleHeadroomCalibration('character-source-swapped');
     });
   });
 }
@@ -587,13 +591,61 @@ function requestFitDebounced(reason = 'debounced', size) {
   fitTimeout = window.setTimeout(() => requestFit({ reason, size }), 50);
 }
 
-function calibrateYumikoHeadroom() {
-  if (!scene || !mini || !img) return;
+async function getCharacterOpaqueTopRatio(sourceImage) {
+  const src = typeof sourceImage?.currentSrc === 'string' && sourceImage.currentSrc
+    ? sourceImage.currentSrc
+    : (typeof sourceImage?.src === 'string' ? sourceImage.src : '');
+  if (!src || !sourceImage?.naturalWidth || !sourceImage?.naturalHeight) {
+    return 0;
+  }
+
+  if (characterOpaqueTopRatioCache.has(src)) {
+    return characterOpaqueTopRatioCache.get(src);
+  }
+
+  const sampleWidth = Math.min(sourceImage.naturalWidth, YUMIKO_HEADROOM_SCAN_SAMPLE_WIDTH);
+  const sampleHeight = Math.max(1, Math.round((sourceImage.naturalHeight / sourceImage.naturalWidth) * sampleWidth));
+  const canvas = document.createElement('canvas');
+  canvas.width = sampleWidth;
+  canvas.height = sampleHeight;
+  const context = canvas.getContext('2d', { willReadFrequently: true });
+  if (!context) {
+    characterOpaqueTopRatioCache.set(src, 0);
+    return 0;
+  }
+
+  try {
+    context.clearRect(0, 0, sampleWidth, sampleHeight);
+    context.drawImage(sourceImage, 0, 0, sampleWidth, sampleHeight);
+    const data = context.getImageData(0, 0, sampleWidth, sampleHeight).data;
+    for (let y = 0; y < sampleHeight; y += 1) {
+      const rowStart = y * sampleWidth * 4;
+      for (let x = 0; x < sampleWidth; x += 1) {
+        const alpha = data[rowStart + (x * 4) + 3];
+        if (alpha >= YUMIKO_HEADROOM_ALPHA_THRESHOLD) {
+          const ratio = y / sampleHeight;
+          characterOpaqueTopRatioCache.set(src, ratio);
+          return ratio;
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('[yumiko][headroom] opaque-top scan fallback', { src, error });
+  }
+
+  characterOpaqueTopRatioCache.set(src, 0);
+  return 0;
+}
+
+async function calibrateYumikoHeadroom() {
+  if (!scene || !img) return;
   if (!img.complete || img.naturalWidth <= 0 || img.naturalHeight <= 0) return;
 
   const sceneRect = scene.getBoundingClientRect();
-  const miniRect = mini.getBoundingClientRect();
-  const currentGap = miniRect.top - sceneRect.top;
+  const characterRect = img.getBoundingClientRect();
+  const opaqueTopRatio = await getCharacterOpaqueTopRatio(img);
+  const characterVisibleTop = characterRect.top + (characterRect.height * opaqueTopRatio);
+  const currentGap = characterVisibleTop - sceneRect.top;
 
   if (!Number.isFinite(currentGap)) return;
 
@@ -606,7 +658,7 @@ function scheduleHeadroomCalibration(reason = 'unknown') {
   window.clearTimeout(headroomMeasureTimeout);
   headroomMeasureTimeout = window.setTimeout(() => {
     window.requestAnimationFrame(() => {
-      calibrateYumikoHeadroom();
+      void calibrateYumikoHeadroom();
     });
   }, 40);
 }
