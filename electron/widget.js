@@ -29,6 +29,7 @@ const overlayToggle = document.getElementById('overlay-enabled');
 const clickThroughToggle = document.getElementById('click-through-enabled');
 const clickThroughNote = document.getElementById('click-through-note');
 const shortcutsToggle = document.getElementById('shortcuts-enabled');
+const launchAtStartupToggle = document.getElementById('launch-at-startup');
 const chatHotkeyInput = document.getElementById('chat-hotkey');
 const chatHotkeySaveButton = document.getElementById('chat-hotkey-save');
 const chatHotkeyResetButton = document.getElementById('chat-hotkey-reset');
@@ -1298,6 +1299,7 @@ function syncHostState(state = {}) {
     }
   }
   if (shortcutsToggle) shortcutsToggle.checked = Boolean(state.shortcutsEnabled);
+  if (launchAtStartupToggle) launchAtStartupToggle.checked = Boolean(state.launchAtStartup);
   if (chatHotkeyInput) chatHotkeyInput.value = state.chatHotkey || DEFAULT_CHAT_HOTKEY;
   renderChatHotkeyError(state.shortcutRegistrationError || '');
 
@@ -1362,6 +1364,17 @@ clickThroughToggle?.addEventListener('change', () => {
 
 shortcutsToggle?.addEventListener('change', () => {
   window.yumikoOverlay?.setShortcutsEnabled?.(shortcutsToggle.checked);
+});
+
+launchAtStartupToggle?.addEventListener('change', async () => {
+  const requested = Boolean(launchAtStartupToggle.checked);
+  try {
+    const result = await window.yumikoOverlay?.setLaunchAtStartup?.(requested);
+    launchAtStartupToggle.checked = Boolean(result?.enabled);
+  } catch (error) {
+    console.warn('[yumiko][startup] failed to update startup preference', error);
+    launchAtStartupToggle.checked = !requested;
+  }
 });
 
 chatHotkeySaveButton?.addEventListener('click', async () => {

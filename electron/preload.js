@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
   debugLifecycle,
   setMode: (mode) => ipcRenderer.send('yumiko:set-mode', mode),
   setOverlayEnabled: (enabled) => ipcRenderer.send('yumiko:set-overlay-enabled', enabled),
+  setLaunchAtStartup: (enabled) => ipcRenderer.invoke('yumiko:set-launch-at-startup', enabled),
   setOverlayScale: (scale) => ipcRenderer.send('yumiko:set-overlay-scale', scale),
   setShortcutsEnabled: (enabled) => ipcRenderer.send('yumiko:set-shortcuts-enabled', enabled),
   setChatHotkey: (hotkey) => ipcRenderer.invoke('yumiko:set-chat-hotkey', hotkey),
