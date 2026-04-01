@@ -24,6 +24,7 @@
   --moon-timing-base: 260ms;
   --moon-timing-slow: 520ms;
   --moon-timing-breath: 7800ms;
+  --moon-timing-overlay-enter: 300ms;
   --moon-ease-premium: cubic-bezier(0.22, 1, 0.36, 1);
   --mini-scale: 1;
   --yumiko-character-scale: 0.88;
@@ -127,6 +128,14 @@ body {
     var(--overlay-safe-top)
     var(--conversation-side-gap)
     calc(var(--conversation-bottom-gap) + var(--overlay-safe-bottom));
+  opacity: 0;
+  transform: translate3d(0, 8px, 0);
+  transition: opacity var(--moon-timing-overlay-enter) var(--moon-ease-premium), transform var(--moon-timing-overlay-enter) var(--moon-ease-premium);
+}
+
+.overlay-scene.is-ready {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
 }
 
 .presence-stage {
@@ -152,6 +161,29 @@ body {
   position: relative;
   display: inline-block;
   padding: 12px 16px 0;
+  animation: yumiko-presence-breathing var(--moon-timing-breath) ease-in-out infinite;
+  transform-origin: 50% 82%;
+  will-change: transform, filter;
+}
+
+.yumiko-blink-mask {
+  position: absolute;
+  top: 21%;
+  left: 28%;
+  width: 44%;
+  height: 14%;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(28, 18, 26, 0.36), rgba(18, 12, 18, 0.5));
+  opacity: 0;
+  transform: scaleY(0.08);
+  transform-origin: 50% 50%;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  filter: blur(0.4px);
+}
+
+.yumiko-blink-mask.is-blinking {
+  animation: yumiko-soft-blink var(--blink-duration, 170ms) ease-in-out var(--blink-delay, 0ms) 1;
 }
 
 #yumiko-mini {
@@ -402,10 +434,16 @@ html[data-click-through="on"] .drag-region {
   backdrop-filter: blur(calc(var(--moon-blur-lg) + 2px));
   box-shadow: 0 14px 28px rgba(7, 3, 8, 0.34), 0 0 0 1px rgba(255, 247, 236, 0.03) inset;
   transform-origin: bottom right;
+  opacity: 0;
+  transform: translateY(8px) scale(0.988);
+  pointer-events: none;
+  transition: opacity 240ms var(--moon-ease-premium), transform 240ms var(--moon-ease-premium);
 }
 
-.panel:not([hidden]) {
-  animation: panel-reveal var(--moon-timing-slow) var(--moon-ease-premium);
+.panel.is-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
 }
 
 @media (max-width: 420px), (max-height: 620px) {
@@ -900,6 +938,22 @@ input[type="checkbox"]:checked::after {
   gap: 7px;
   padding-top: 0;
   transition: transform var(--moon-timing-slow) var(--moon-ease-premium), opacity var(--moon-timing-slow) var(--moon-ease-premium);
+  border-radius: 16px;
+  border: 1px solid transparent;
+  box-shadow: 0 0 0 0 rgba(214, 164, 137, 0);
+  transition:
+    transform var(--moon-timing-slow) var(--moon-ease-premium),
+    opacity var(--moon-timing-slow) var(--moon-ease-premium),
+    border-color var(--moon-timing-fast) var(--moon-ease-premium),
+    box-shadow var(--moon-timing-base) var(--moon-ease-premium);
+}
+
+.chat-compose:focus-within,
+.yumiko-chat.is-input-accented .chat-compose {
+  border-color: rgba(216, 171, 145, 0.24);
+  box-shadow:
+    0 0 0 1px rgba(246, 227, 209, 0.05) inset,
+    0 0 16px rgba(177, 132, 95, 0.16);
 }
 
 .yumiko-chat > .chat-card-header,
@@ -1032,14 +1086,29 @@ html[data-chat-box-size="wide"] {
   }
 }
 
-@keyframes panel-reveal {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.985);
+@keyframes yumiko-presence-breathing {
+  0%, 100% {
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: saturate(1.01);
   }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
+  50% {
+    transform: translate3d(0, -2px, 0) scale(1.006);
+    filter: saturate(1.04);
+  }
+}
+
+@keyframes yumiko-soft-blink {
+  0% {
+    opacity: 0;
+    transform: scaleY(0.08);
+  }
+  45% {
+    opacity: 0.72;
+    transform: scaleY(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleY(0.1);
   }
 }
 

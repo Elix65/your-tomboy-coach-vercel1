@@ -49,6 +49,7 @@ const widget = document.getElementById('yumiko-widget');
 const scene = document.getElementById('overlay-scene');
 const mini = document.getElementById('yumiko-mini');
 const miniWrap = document.getElementById('mini-wrap');
+const blinkMask = document.getElementById('yumiko-blink-mask');
 const chat = document.getElementById('yumiko-chat');
 const img = document.getElementById('yumiko-character');
 const input = document.getElementById('yumiko-input');
@@ -139,6 +140,7 @@ let pendingCharacterSwapToken = 0;
 const preloadedCharacterImages = new Map();
 const characterOpaqueTopRatioCache = new Map();
 let lastKnownBounds = null;
+let blinkTimeout = null;
 let lastLocalModeIntent = {
   mode: toUiMode(settings.mode),
   source: 'init',
@@ -868,11 +870,24 @@ function closeSettingsPanel() {
 
 function setSettingsPanelHidden(nextHidden) {
   if (!settingsPanel) return;
+  const willHide = Boolean(nextHidden);
+  if (!willHide && settingsPanel.hidden) {
+    settingsPanel.hidden = false;
+    window.requestAnimationFrame(() => {
+      settingsPanel.classList.add('is-open');
+    });
+  } else if (willHide) {
+    settingsPanel.classList.remove('is-open');
+    window.setTimeout(() => {
+      if (!settingsPanel.classList.contains('is-open')) {
+        settingsPanel.hidden = true;
+      }
+    }, 240);
+  }
 
-  settingsPanel.hidden = Boolean(nextHidden);
   toggleSettingsButton?.setAttribute('aria-expanded', String(!settingsPanel.hidden));
 
-  if (settingsPanel.hidden) {
+  if (willHide) {
     removeOutsideClickListener();
     return;
   }
@@ -904,6 +919,11 @@ function requestWindowClose(event = {}) {
 }
 
 function focusChatInputRobust({ reason = 'unknown', sendAck = false } = {}) {
+  chat?.classList.add('is-input-accented');
+  window.setTimeout(() => {
+    chat?.classList.remove('is-input-accented');
+  }, 1200);
+
   const tryFocus = (attempt = 'unknown') => {
     const chatInput = input || chat?.querySelector('textarea, input[type="text"], input:not([type])');
     if (!chatInput) {
@@ -937,6 +957,24 @@ function focusChatInputRobust({ reason = 'unknown', sendAck = false } = {}) {
       }
     }, 30);
   });
+}
+
+function scheduleSoftBlink() {
+  if (!blinkMask) return;
+  window.clearTimeout(blinkTimeout);
+
+  const nextBlinkInMs = 2600 + Math.floor(Math.random() * 5200);
+  blinkTimeout = window.setTimeout(() => {
+    if (!blinkMask) return;
+    const blinkDuration = 130 + Math.floor(Math.random() * 90);
+    const blinkDelay = Math.floor(Math.random() * 90);
+    blinkMask.style.setProperty('--blink-duration', `${blinkDuration}ms`);
+    blinkMask.style.setProperty('--blink-delay', `${blinkDelay}ms`);
+    blinkMask.classList.remove('is-blinking');
+    void blinkMask.offsetWidth;
+    blinkMask.classList.add('is-blinking');
+    scheduleSoftBlink();
+  }, nextBlinkInMs);
 }
 
 function pulseConversationPanel({ reason = 'unknown' } = {}) {
@@ -1646,6 +1684,7 @@ window.yumikoWidget = {
 
 window.addEventListener('DOMContentLoaded', () => {
   setSettingsPanelHidden(true);
+  settingsPanel?.classList.remove('is-open');
   applyOverlayScaleUi(1);
   applyChatBoxSizeUi(settings.chatBoxSize);
   syncAutoMessageControls();
@@ -1667,6 +1706,13 @@ window.addEventListener('DOMContentLoaded', () => {
       }, { once: true });
     }
   }
+
+  if (scene) {
+    window.requestAnimationFrame(() => {
+      scene.classList.add('is-ready');
+    });
+  }
+  scheduleSoftBlink();
 
   window.yumikoOverlay?.onStateUpdated?.(syncHostState);
   window.yumikoOverlay?.onFocusInput?.(() => {
