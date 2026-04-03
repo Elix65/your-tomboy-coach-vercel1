@@ -153,6 +153,19 @@ let hostOverlayState = {
   hasCompletedFirstRun: false,
   mode: 'focus'
 };
+const INTERACTIVE_REGION_SELECTORS = [
+  '#yumiko-input',
+  '#yumiko-send',
+  '#toggle-settings',
+  '#quit-app',
+  '#mini-chat',
+  '#mini-mic',
+  '#settings-panel',
+  '#settings-panel input',
+  '#settings-panel select'
+];
+const INTERACTIVE_REGION_SELECTOR = INTERACTIVE_REGION_SELECTORS.join(', ');
+let rendererInteractiveRegionActive = false;
 
 function clampToViewport(value, min, max) {
   if (!Number.isFinite(value)) return min;
@@ -1459,6 +1472,27 @@ function syncHostState(state = {}) {
     scheduleHeadroomCalibration('state:overlay-scale');
   }
   updateCharacterImageForBounds(lastKnownBounds);
+  if (!hostOverlayState.clickThroughPreferred || !hostOverlayState.overlayEnabled) {
+    updateRendererInteractiveRegion(false, { force: true });
+  }
+}
+
+function updateRendererInteractiveRegion(active, { force = false } = {}) {
+  const nextActive = Boolean(active);
+  if (!force && rendererInteractiveRegionActive === nextActive) return;
+  rendererInteractiveRegionActive = nextActive;
+  window.yumikoOverlay?.setRendererInteractiveRegionActive?.(nextActive);
+}
+
+function shouldTrackInteractiveRegion() {
+  return hostOverlayState.overlayEnabled
+    && hostOverlayState.clickThroughPreferred
+    && hostOverlayState.hasCompletedFirstRun;
+}
+
+function resolveInteractiveRegionFromEventTarget(target) {
+  if (!(target instanceof Element)) return false;
+  return Boolean(target.closest(INTERACTIVE_REGION_SELECTOR));
 }
 
 toggleSettingsButton?.addEventListener('click', () => {
@@ -1648,6 +1682,33 @@ window.addEventListener('keydown', (event) => {
 
 window.addEventListener('mousedown', () => {
   markUserActivity({ event: 'window-mousedown', strength: 'weak' });
+}, { capture: true });
+
+window.addEventListener('mousemove', (event) => {
+  if (!shouldTrackInteractiveRegion()) {
+    updateRendererInteractiveRegion(false);
+    return;
+  }
+  updateRendererInteractiveRegion(resolveInteractiveRegionFromEventTarget(event.target));
+}, { capture: true });
+
+window.addEventListener('mouseleave', () => {
+  updateRendererInteractiveRegion(false);
+}, { capture: true });
+
+window.addEventListener('blur', () => {
+  updateRendererInteractiveRegion(false);
+});
+
+window.addEventListener('focusin', (event) => {
+  if (!shouldTrackInteractiveRegion()) return;
+  updateRendererInteractiveRegion(resolveInteractiveRegionFromEventTarget(event.target));
+}, { capture: true });
+
+window.addEventListener('focusout', () => {
+  if (!shouldTrackInteractiveRegion()) return;
+  const activeElement = document.activeElement;
+  updateRendererInteractiveRegion(resolveInteractiveRegionFromEventTarget(activeElement));
 }, { capture: true });
 
 window.addEventListener('pointerdown', (event) => {
