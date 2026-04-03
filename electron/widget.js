@@ -13,8 +13,7 @@ const OVERLAY_SCALE_MIN = 0.85;
 const OVERLAY_SCALE_MAX = 1.1;
 const MINI_MIN_WIDTH = 260;
 const MINI_MIN_HEIGHT = 300;
-const AUTO_MESSAGE_MIN_TICK_MS = 5 * 1000;
-const AUTO_MESSAGE_MAX_TICK_MS = 10 * 1000;
+const AUTO_MESSAGE_MIN_TICK_MS = 1000;
 const DEV_AUTO_MESSAGE_LOG = false;
 const AUTO_ACTIVITY_MODE_KEY = 'yumiko_auto_message_recent_activity_mode';
 const AUTO_ACTIVITY_WEAK_WINDOW_KEY = 'yumiko_auto_message_weak_activity_ms';
@@ -279,6 +278,10 @@ let autoMessageScheduler = null;
 let isNudgeInFlight = false;
 let lastStrongUserActivityAt = Date.now();
 let lastWeakUserActivityAt = 0;
+let lastAutoMessageRequestAt = 0;
+const renderedAssistantMessageKeys = [];
+const renderedAssistantMessageKeySet = new Set();
+const MAX_RENDERED_ASSISTANT_MESSAGE_KEYS = 200;
 
 function getRecentActivityMode() {
   if (window.location.search.includes('auto_message_mode=ignore') || localStorage.getItem(AUTO_ACTIVITY_MODE_KEY) === 'ignore') {
@@ -351,15 +354,51 @@ function getAutoMessageSkipReason() {
   return '';
 }
 
+function getAutoMessageNextDelayMs() {
+  const dueInfo = getAutoMessageDueInfo();
+  const requestDueAt = lastAutoMessageRequestAt > 0
+    ? lastAutoMessageRequestAt + dueInfo.intervalMs
+    : dueInfo.now;
+  const requestRemainingMs = requestDueAt - dueInfo.now;
+  const nextDueInMs = Math.max(
+    0,
+    dueInfo.strongRemainingMs,
+    dueInfo.weakRemainingMs,
+    requestRemainingMs
+  );
+  return {
+    ...dueInfo,
+    requestDueAt,
+    requestRemainingMs,
+    nextDueInMs
+  };
+}
+
 function scheduleNextAutoMessageTick({ reason = 'unknown' } = {}) {
   clearAutoMessageScheduler();
-  const delayMs = AUTO_MESSAGE_MIN_TICK_MS;
+  const skipReason = getAutoMessageSkipReason();
+  if (skipReason === 'disabled') {
+    logAutoMessageDebug('scheduler-not-scheduled', {
+      reason,
+      skipReason
+    });
+    return;
+  }
+
+  const dueInfo = getAutoMessageNextDelayMs();
+  const delayMs = skipReason
+    ? AUTO_MESSAGE_MIN_TICK_MS
+    : Math.max(AUTO_MESSAGE_MIN_TICK_MS, Math.round(dueInfo.nextDueInMs));
   autoMessageScheduler = window.setTimeout(runAutoMessageSchedulerTick, delayMs);
 
   logAutoMessageDebug('scheduler-scheduled', {
     reason,
     schedulerTickInMs: delayMs,
-    skipReason: getAutoMessageSkipReason() || 'none'
+    skipReason: skipReason || 'none',
+    strongDueAt: new Date(dueInfo.strongDueAt).toISOString(),
+    weakDueAt: new Date(dueInfo.weakDueAt).toISOString(),
+    requestDueAt: new Date(dueInfo.requestDueAt).toISOString(),
+    nextDueInMs: dueInfo.nextDueInMs
   });
 }
 
@@ -372,7 +411,14 @@ async function runAutoMessageSchedulerTick() {
     return;
   }
 
-  const nudgeResult = await requestAutoNudge();
+  const dueInfo = getAutoMessageNextDelayMs();
+  if (dueInfo.nextDueInMs > 0) {
+    scheduleNextAutoMessageTick({ reason: 'not-due-yet' });
+    return;
+  }
+
+  await requestAutoNudge();
+  lastAutoMessageRequestAt = Date.now();
   scheduleNextAutoMessageTick({ reason: 'post-request' });
 }
 
@@ -710,6 +756,73 @@ function normalizeAssistantMessageId(messageId = '', fallbackText = '') {
   return `assistant-${Date.now()}-${assistantMessageSequence}-${compactText}`;
 }
 
+function buildAssistantMessageDedupKey({ text = '', messageId = '', createdAt = '' } = {}) {
+  const safeText = typeof text === 'string' ? text.trim() : '';
+  if (!safeText) return '';
+
+  const normalizedMessageId = typeof messageId === 'string' ? messageId.trim() : '';
+  if (normalizedMessageId) {
+    return `id:${normalizedMessageId}`;
+  }
+
+  const normalizedCreatedAt = typeof createdAt === 'string' ? createdAt.trim() : '';
+  if (normalizedCreatedAt) {
+    return `at:${normalizedCreatedAt}|text:${safeText.toLowerCase()}`;
+  }
+
+  return `text:${safeText.toLowerCase()}`;
+}
+
+function rememberRenderedAssistantMessageKey(key) {
+  if (!key || renderedAssistantMessageKeySet.has(key)) return;
+  renderedAssistantMessageKeySet.add(key);
+  renderedAssistantMessageKeys.push(key);
+
+  while (renderedAssistantMessageKeys.length > MAX_RENDERED_ASSISTANT_MESSAGE_KEYS) {
+    const oldest = renderedAssistantMessageKeys.shift();
+    if (oldest) {
+      renderedAssistantMessageKeySet.delete(oldest);
+    }
+  }
+}
+
+function wasAssistantMessageRendered({ text = '', messageId = '', createdAt = '' } = {}) {
+  const key = buildAssistantMessageDedupKey({ text, messageId, createdAt });
+  if (!key) return false;
+  return renderedAssistantMessageKeySet.has(key);
+}
+
+function markAssistantMessageRendered({ text = '', messageId = '', createdAt = '' } = {}) {
+  const key = buildAssistantMessageDedupKey({ text, messageId, createdAt });
+  if (!key) return;
+  rememberRenderedAssistantMessageKey(key);
+}
+
+function resetRenderedAssistantMessageRegistry() {
+  renderedAssistantMessageKeySet.clear();
+  renderedAssistantMessageKeys.length = 0;
+}
+
+function addAssistantMessageIfNew({ text = '', messageId = '', createdAt = '', source = 'unknown' } = {}) {
+  const safeText = typeof text === 'string' ? text.trim() : '';
+  if (!safeText) {
+    return false;
+  }
+
+  if (wasAssistantMessageRendered({ text: safeText, messageId, createdAt })) {
+    console.info('[yumiko][chat-panel] assistant message deduped locally', {
+      source,
+      messageId: messageId || null,
+      createdAt: createdAt || null
+    });
+    return false;
+  }
+
+  addMessage('assistant', safeText);
+  markAssistantMessageRendered({ text: safeText, messageId, createdAt });
+  return true;
+}
+
 function registerAssistantReplyForCarry({ text = '', messageId = '', at = Date.now() } = {}) {
   const safeText = typeof text === 'string' ? text.trim() : '';
   if (!safeText) return null;
@@ -814,6 +927,9 @@ function addMessage(role, content, { thinking = false } = {}) {
 
   row.append(label, text);
   chatLog.appendChild(row);
+  if (role === 'assistant' && !thinking) {
+    markAssistantMessageRendered({ text: content });
+  }
   chatLog.scrollTop = chatLog.scrollHeight;
   updateChatPanelChrome();
   return row;
@@ -822,6 +938,7 @@ function addMessage(role, content, { thinking = false } = {}) {
 function clearMessages() {
   if (!chatLog) return;
   chatLog.innerHTML = '';
+  resetRenderedAssistantMessageRegistry();
   updateChatPanelChrome();
 }
 
@@ -844,6 +961,13 @@ function renderMessages(messages = []) {
         createdAt: createdAt || null
       });
       addMessage(role, content);
+      if (role === 'assistant') {
+        markAssistantMessageRendered({
+          text: content,
+          messageId: id || '',
+          createdAt: createdAt || ''
+        });
+      }
       previousRole = role;
     }
   });
@@ -1108,20 +1232,20 @@ function normalizeHistoryRecords(result) {
 }
 
 function findLatestAssistantAfterBaseline(messages, baselineSize, baselineTail) {
-  if (!Array.isArray(messages) || messages.length === 0) return '';
+  if (!Array.isArray(messages) || messages.length === 0) return null;
 
   const latestAssistant = [...messages].reverse().find((item) => item?.role === 'assistant' && item.content);
-  if (!latestAssistant?.content) return '';
+  if (!latestAssistant?.content) return null;
 
   if (messages.length > baselineSize) {
-    return latestAssistant.content;
+    return latestAssistant;
   }
 
   if (!baselineTail.includes(latestAssistant.content)) {
-    return latestAssistant.content;
+    return latestAssistant;
   }
 
-  return '';
+  return null;
 }
 
 async function submitMessage() {
@@ -1323,13 +1447,18 @@ async function requestAutoNudge() {
     let message = typeof result?.message === 'string' && result.message.trim()
       ? result.message.trim()
       : '';
+    let messageId = typeof result?.messageId === 'string' ? result.messageId.trim() : '';
+    let createdAt = typeof result?.createdAt === 'string' ? result.createdAt.trim() : '';
 
     let messageSource = message ? 'request-nudge-response' : 'history-confirmation';
 
     if (!message) {
       const historyResult = await window.yumikoOverlay?.chat?.getHistory?.();
       const historyMessages = normalizeHistoryRecords(historyResult);
-      message = findLatestAssistantAfterBaseline(historyMessages, baselineContextSize, baselineAssistantTail);
+      const latestAssistant = findLatestAssistantAfterBaseline(historyMessages, baselineContextSize, baselineAssistantTail);
+      message = latestAssistant?.content || '';
+      messageId = latestAssistant?.id || '';
+      createdAt = latestAssistant?.createdAt || '';
       if (historyMessages.length > 0) {
         contextCache = historyMessages.slice(-20).map((item) => ({ role: item.role, content: item.content }));
       }
@@ -1358,7 +1487,15 @@ async function requestAutoNudge() {
         duration: panelMessageDuration,
         mode: resolvedMode
       });
-      addMessage('assistant', message);
+      const wasRendered = addAssistantMessageIfNew({
+        text: message,
+        messageId,
+        createdAt,
+        source: messageSource
+      });
+      if (!wasRendered) {
+        return { sent: false, reason: 'duplicate-local', messageSource };
+      }
       if (!contextCache.some((item, index) => (
         item?.role === 'assistant'
         && item?.content === message
