@@ -335,6 +335,12 @@ html[data-click-through="on"] .drag-region {
   -webkit-app-region: no-drag;
 }
 
+html[data-click-through="on"] .chat-card-header,
+html[data-click-through="on"] .chat-log {
+  -webkit-app-region: no-drag;
+  pointer-events: none;
+}
+
 .yumiko-chat.is-activated {
   animation: conversation-emphasis 540ms var(--moon-ease-premium);
   border-color: rgba(214, 164, 137, 0.28);

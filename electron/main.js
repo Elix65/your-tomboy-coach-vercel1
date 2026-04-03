@@ -91,6 +91,7 @@ const CLICK_THROUGH_FEATURE_ENABLED = process.platform === 'win32'
 let registeredChatHotkey = null;
 let shortcutRegistrationError = '';
 let topmostReassertInterval = null;
+let rendererInteractiveRegionActive = false;
 const ENABLE_TRAY = process.env.YUMIKO_ENABLE_TRAY === '1';
 const ENABLE_LIFECYCLE_DEBUG_LOGS = process.env.YUMIKO_DEBUG_LIFECYCLE === '1';
 
@@ -735,9 +736,10 @@ function applyWindowBehavior() {
 
   const enableClickThrough = settings.overlayEnabled
     && CLICK_THROUGH_FEATURE_ENABLED
+    && settings.hasCompletedFirstRun
     && settings.clickThroughPreferred;
 
-  if (enableClickThrough) {
+  if (enableClickThrough && !rendererInteractiveRegionActive) {
     win.setIgnoreMouseEvents(true, { forward: true });
     win.setFocusable(false);
   } else {
@@ -1395,6 +1397,12 @@ if (!singleInstance) {
     ipcMain.on('yumiko:set-shortcuts-enabled', (_event, enabled) => setShortcutsEnabled(enabled));
     ipcMain.handle('yumiko:set-chat-hotkey', (_event, hotkey) => setChatHotkey(hotkey));
     ipcMain.on('yumiko:set-click-through-enabled', (_event, enabled) => setClickThroughEnabled(enabled));
+    ipcMain.on('yumiko:set-renderer-interactive-region', (_event, active) => {
+      const nextActive = Boolean(active);
+      if (rendererInteractiveRegionActive === nextActive) return;
+      rendererInteractiveRegionActive = nextActive;
+      applyWindowBehavior();
+    });
     ipcMain.on('yumiko:set-overlay-enabled', (_event, enabled) => setOverlayEnabled(enabled));
     ipcMain.on('yumiko:set-overlay-scale', (_event, scale) => setOverlayScale(scale));
     ipcMain.handle('yumiko:set-launch-at-startup', (_event, enabled) => setLaunchAtStartupEnabled(enabled));
