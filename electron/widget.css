@@ -174,7 +174,8 @@ body {
   width: 44%;
   height: 14%;
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(28, 18, 26, 0.36), rgba(18, 12, 18, 0.5));
+  display: block;
+  object-fit: contain;
   opacity: 0;
   transform: scaleY(0.08);
   transform-origin: 50% 50%;
