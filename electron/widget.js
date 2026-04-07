@@ -48,20 +48,26 @@ const widget = document.getElementById('yumiko-widget');
 const scene = document.getElementById('overlay-scene');
 const mini = document.getElementById('yumiko-mini');
 const miniWrap = document.getElementById('mini-wrap');
-const blinkMask = document.getElementById('yumikoBlinkOverlay');
-const hasBlinkMaskImageLoadFailed = () => blinkMask instanceof HTMLImageElement && !blinkMask.src;
+const blinkOverlay = document.getElementById('yumikoBlinkOverlay');
+let isBlinkOverlayAvailable = blinkOverlay instanceof HTMLImageElement;
 
-function guardBlinkMaskImage() {
-  if (!(blinkMask instanceof HTMLImageElement)) return;
+function guardBlinkOverlayImage() {
+  if (!(blinkOverlay instanceof HTMLImageElement)) {
+    isBlinkOverlayAvailable = false;
+    return;
+  }
 
-  const hideBlinkMask = () => {
-    blinkMask.removeAttribute('src');
-    blinkMask.style.display = 'none';
+  const disableBlinkOverlay = () => {
+    isBlinkOverlayAvailable = false;
+    blinkOverlay.removeAttribute('src');
+    blinkOverlay.style.display = 'none';
+    blinkOverlay.classList.remove('is-blinking');
+    window.clearTimeout(blinkTimeout);
   };
 
-  blinkMask.addEventListener('error', hideBlinkMask, { once: true });
-  if (blinkMask.complete && blinkMask.naturalWidth === 0) {
-    hideBlinkMask();
+  blinkOverlay.addEventListener('error', disableBlinkOverlay, { once: true });
+  if (blinkOverlay.complete && blinkOverlay.naturalWidth === 0) {
+    disableBlinkOverlay();
   }
 }
 
@@ -1121,19 +1127,19 @@ function focusChatInputRobust({ reason = 'unknown', sendAck = false } = {}) {
 }
 
 function scheduleSoftBlink() {
-  if (!blinkMask || hasBlinkMaskImageLoadFailed()) return;
+  if (!(blinkOverlay instanceof HTMLImageElement) || !isBlinkOverlayAvailable) return;
   window.clearTimeout(blinkTimeout);
 
-  const nextBlinkInMs = 2600 + Math.floor(Math.random() * 5200);
+  const nextBlinkInMs = 2200 + Math.floor(Math.random() * 5600);
   blinkTimeout = window.setTimeout(() => {
-    if (!blinkMask || hasBlinkMaskImageLoadFailed()) return;
-    const blinkDuration = 130 + Math.floor(Math.random() * 90);
-    const blinkDelay = Math.floor(Math.random() * 90);
-    blinkMask.style.setProperty('--blink-duration', `${blinkDuration}ms`);
-    blinkMask.style.setProperty('--blink-delay', `${blinkDelay}ms`);
-    blinkMask.classList.remove('is-blinking');
-    void blinkMask.offsetWidth;
-    blinkMask.classList.add('is-blinking');
+    if (!(blinkOverlay instanceof HTMLImageElement) || !isBlinkOverlayAvailable) return;
+    const blinkDuration = 90 + Math.floor(Math.random() * 70);
+    const blinkDelay = Math.floor(Math.random() * 40);
+    blinkOverlay.style.setProperty('--blink-duration', `${blinkDuration}ms`);
+    blinkOverlay.style.setProperty('--blink-delay', `${blinkDelay}ms`);
+    blinkOverlay.classList.remove('is-blinking');
+    void blinkOverlay.offsetWidth;
+    blinkOverlay.classList.add('is-blinking');
     scheduleSoftBlink();
   }, nextBlinkInMs);
 }
@@ -1934,7 +1940,7 @@ window.addEventListener('DOMContentLoaded', () => {
       scene.classList.add('is-ready');
     });
   }
-  guardBlinkMaskImage();
+  guardBlinkOverlayImage();
   scheduleSoftBlink();
 
   window.yumikoOverlay?.onStateUpdated?.(syncHostState);
