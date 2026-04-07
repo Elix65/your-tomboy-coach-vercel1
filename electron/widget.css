@@ -855,6 +855,7 @@ input[type="checkbox"]:checked::after {
   border: 1px solid rgba(244, 224, 203, 0.08);
   background: linear-gradient(180deg, rgba(46, 31, 42, 0.86), rgba(28, 20, 29, 0.9));
   box-shadow: 0 12px 24px rgba(7, 4, 8, 0.14);
+  transform-origin: 50% 100%;
 }
 
 .chat-row.user {
@@ -871,6 +872,73 @@ input[type="checkbox"]:checked::after {
 .chat-row.thinking {
   opacity: 0.82;
   font-style: italic;
+}
+
+.chat-row.is-entering {
+  animation-duration: 280ms;
+  animation-timing-function: cubic-bezier(0.2, 0.72, 0.24, 1);
+  animation-fill-mode: both;
+  will-change: opacity, transform, box-shadow, border-color, background;
+}
+
+.chat-row.is-entering--assistant {
+  animation-name: chatMessageEnterAssistant;
+}
+
+.chat-row.is-entering--assistant .chat-role,
+.chat-row.is-entering--assistant .chat-message {
+  animation: chatMessageInnerSettle 220ms cubic-bezier(0.18, 0.76, 0.28, 1) 38ms both;
+}
+
+.chat-row.is-entering--user {
+  animation-name: chatMessageEnterUser;
+  animation-duration: 230ms;
+  animation-timing-function: cubic-bezier(0.26, 0.74, 0.32, 1);
+}
+
+@keyframes chatMessageEnterAssistant {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.992);
+    border-color: rgba(244, 224, 203, 0.24);
+    box-shadow: 0 0 0 rgba(229, 196, 170, 0), 0 10px 22px rgba(7, 4, 8, 0.1);
+    background: linear-gradient(180deg, rgba(57, 39, 52, 0.95), rgba(32, 22, 34, 0.97));
+  }
+  65% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    border-color: rgba(244, 224, 203, 0.15);
+    box-shadow: 0 0 0 1px rgba(229, 196, 170, 0.09), 0 13px 26px rgba(7, 4, 8, 0.16);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    border-color: rgba(244, 224, 203, 0.08);
+    box-shadow: 0 12px 24px rgba(7, 4, 8, 0.14);
+    background: linear-gradient(180deg, rgba(43, 29, 40, 0.92), rgba(27, 19, 29, 0.94));
+  }
+}
+
+@keyframes chatMessageEnterUser {
+  0% {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes chatMessageInnerSettle {
+  0% {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .chat-role {
