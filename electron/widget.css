@@ -170,20 +170,27 @@ body {
 #yumikoBlinkOverlay,
 .yumiko-blink-overlay {
   position: absolute;
-  top: 21%;
-  left: 28%;
-  width: 44%;
-  height: 14%;
-  border-radius: 999px;
+  top: -7%;
+  left: 13%;
+  width: 74%;
+  height: 56%;
   display: block;
   object-fit: contain;
   opacity: 0;
-  transform: scaleY(0.08);
+  transform: none;
   transform-origin: 50% 50%;
   pointer-events: none;
-  mix-blend-mode: multiply;
-  filter: blur(0.4px);
+  mix-blend-mode: normal;
+  filter: none;
   z-index: 3;
+}
+
+#yumikoBlinkOverlay.is-debug,
+.yumiko-blink-overlay.is-debug {
+  opacity: 0.8;
+  animation: none !important;
+  mix-blend-mode: normal;
+  filter: none;
 }
 
 #yumikoBlinkOverlay.is-blinking,
@@ -1218,16 +1225,13 @@ html[data-chat-box-size="wide"] {
 @keyframes yumiko-soft-blink {
   0% {
     opacity: 0;
-    transform: scaleY(0.08);
   }
   18%,
   82% {
     opacity: 1;
-    transform: scaleY(1);
   }
   100% {
     opacity: 0;
-    transform: scaleY(0.08);
   }
 }
 
