@@ -912,10 +912,13 @@ function updateChatPanelChrome() {
   chatPanelStatus.textContent = 'Un único panel abajo para leerla y responder con calma.';
 }
 
-function addMessage(role, content, { thinking = false } = {}) {
+function addMessage(role, content, { thinking = false, animate = true } = {}) {
   if (!chatLog) return null;
   const row = document.createElement('div');
   row.className = `chat-row ${role}${thinking ? ' thinking' : ''}`;
+  if (animate) {
+    row.classList.add('is-entering', `is-entering--${role === 'user' ? 'user' : 'assistant'}`);
+  }
 
   const label = document.createElement('span');
   label.className = 'chat-role';
@@ -927,6 +930,11 @@ function addMessage(role, content, { thinking = false } = {}) {
 
   row.append(label, text);
   chatLog.appendChild(row);
+  if (animate) {
+    window.setTimeout(() => {
+      row.classList.remove('is-entering', 'is-entering--assistant', 'is-entering--user');
+    }, 420);
+  }
   if (role === 'assistant' && !thinking) {
     markAssistantMessageRendered({ text: content });
   }
@@ -960,7 +968,7 @@ function renderMessages(messages = []) {
         role,
         createdAt: createdAt || null
       });
-      addMessage(role, content);
+      addMessage(role, content, { animate: false });
       if (role === 'assistant') {
         markAssistantMessageRendered({
           text: content,
@@ -973,7 +981,7 @@ function renderMessages(messages = []) {
   });
 
   if (chatLog?.children.length === 0) {
-    addMessage('assistant', '¡Hola! Soy Yumiko ✨ ¿En qué te ayudo hoy?');
+    addMessage('assistant', '¡Hola! Soy Yumiko ✨ ¿En qué te ayudo hoy?', { animate: false });
   }
 }
 
