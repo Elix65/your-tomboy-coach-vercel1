@@ -167,7 +167,8 @@ body {
   will-change: transform, filter;
 }
 
-.yumiko-blink-mask {
+#yumikoBlinkOverlay,
+.yumiko-blink-overlay {
   position: absolute;
   top: 21%;
   left: 28%;
@@ -182,10 +183,12 @@ body {
   pointer-events: none;
   mix-blend-mode: multiply;
   filter: blur(0.4px);
+  z-index: 3;
 }
 
-.yumiko-blink-mask.is-blinking {
-  animation: yumiko-soft-blink var(--blink-duration, 170ms) ease-in-out var(--blink-delay, 0ms) 1;
+#yumikoBlinkOverlay.is-blinking,
+.yumiko-blink-overlay.is-blinking {
+  animation: yumiko-soft-blink var(--blink-duration, 120ms) steps(1, end) var(--blink-delay, 0ms) 1;
 }
 
 #yumiko-mini {
@@ -1217,13 +1220,14 @@ html[data-chat-box-size="wide"] {
     opacity: 0;
     transform: scaleY(0.08);
   }
-  45% {
-    opacity: 0.72;
+  18%,
+  82% {
+    opacity: 1;
     transform: scaleY(1);
   }
   100% {
     opacity: 0;
-    transform: scaleY(0.1);
+    transform: scaleY(0.08);
   }
 }
 
