@@ -1012,6 +1012,7 @@ html[data-chat-box-size="compact"] .chat-card-header {
 }
 
 html[data-chat-box-size="compact"] .chat-log {
+  max-height: none;
   gap: 6px;
   padding-bottom: 0;
 }
