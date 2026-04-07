@@ -170,10 +170,10 @@ body {
 #yumikoBlinkOverlay,
 .yumiko-blink-overlay {
   position: absolute;
-  top: -7%;
-  left: 13%;
-  width: 74%;
-  height: 56%;
+  top: -32%;
+  left: 10%;
+  width: 90%;
+  height: 100%;
   display: block;
   object-fit: contain;
   opacity: 0;
@@ -1226,8 +1226,8 @@ html[data-chat-box-size="wide"] {
   0% {
     opacity: 0;
   }
-  18%,
-  82% {
+  28%,
+  72% {
     opacity: 1;
   }
   100% {
