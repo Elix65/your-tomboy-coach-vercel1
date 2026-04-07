@@ -1731,14 +1731,6 @@ const yumikoImageHealth = {
   thinkingError: false,
   thinkingBlocked: false
 };
-let yumikoBlinkTimerId = 0;
-
-const YUMIKO_BLINK_MIN_DELAY_MS = 4000;
-const YUMIKO_BLINK_MAX_DELAY_MS = 8000;
-const YUMIKO_BLINK_DOUBLE_CHANCE = 0.16;
-const YUMIKO_BLINK_DOUBLE_MIN_DELAY_MS = 130;
-const YUMIKO_BLINK_DOUBLE_MAX_DELAY_MS = 260;
-const YUMIKO_BLINK_ANIMATION_MS = 120;
 
 function isYumikoImageReady(img) {
   return Boolean(img && img.complete && img.naturalWidth > 0 && img.naturalHeight > 0);
@@ -1883,62 +1875,6 @@ function setYumikoState(state) {
   idle.classList.add("is-active");
   logYumikoDiagnostics("state_idle_applied");
   runtimeDiagLog("set_yumiko_state_exit", { state: "idle", applied: true });
-}
-
-function clearYumikoBlinkTimer() {
-  if (!yumikoBlinkTimerId) return;
-  window.clearTimeout(yumikoBlinkTimerId);
-  yumikoBlinkTimerId = 0;
-}
-
-function runYumikoBlink(blinkOverlay) {
-  if (!blinkOverlay) return;
-  blinkOverlay.classList.remove("is-blinking");
-  // Reinicia la animación para que el blink siempre se ejecute completo.
-  void blinkOverlay.offsetWidth;
-  blinkOverlay.classList.add("is-blinking");
-
-  window.setTimeout(() => {
-    blinkOverlay.classList.remove("is-blinking");
-  }, YUMIKO_BLINK_ANIMATION_MS + 16);
-}
-
-function scheduleYumikoBlink(blinkOverlay, minDelay = YUMIKO_BLINK_MIN_DELAY_MS, maxDelay = YUMIKO_BLINK_MAX_DELAY_MS) {
-  clearYumikoBlinkTimer();
-  const safeMin = Math.max(0, Number(minDelay) || 0);
-  const safeMax = Math.max(safeMin, Number(maxDelay) || safeMin);
-  const delay = safeMin + Math.random() * (safeMax - safeMin);
-
-  yumikoBlinkTimerId = window.setTimeout(() => {
-    runYumikoBlink(blinkOverlay);
-
-    if (Math.random() < YUMIKO_BLINK_DOUBLE_CHANCE) {
-      scheduleYumikoBlink(blinkOverlay, YUMIKO_BLINK_DOUBLE_MIN_DELAY_MS, YUMIKO_BLINK_DOUBLE_MAX_DELAY_MS);
-      return;
-    }
-
-    scheduleYumikoBlink(blinkOverlay, YUMIKO_BLINK_MIN_DELAY_MS, YUMIKO_BLINK_MAX_DELAY_MS);
-  }, delay);
-}
-
-function initializeYumikoBlinkOverlay() {
-  const blinkOverlay = document.getElementById("yumikoBlinkOverlay");
-  if (!(blinkOverlay instanceof HTMLImageElement)) return;
-
-  clearYumikoBlinkTimer();
-
-  blinkOverlay.addEventListener("load", () => {
-    scheduleYumikoBlink(blinkOverlay);
-  });
-
-  blinkOverlay.addEventListener("error", () => {
-    clearYumikoBlinkTimer();
-    console.warn("[YUMIKO_WARN] blink_overlay_failed", blinkOverlay.currentSrc || blinkOverlay.src || "");
-  });
-
-  if (isYumikoImageReady(blinkOverlay)) {
-    scheduleYumikoBlink(blinkOverlay);
-  }
 }
 
 function formatTime(seconds) {
@@ -3080,7 +3016,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   initAudioControls();
   cacheChatDomElements();
   initializeYumikoImageState();
-  initializeYumikoBlinkOverlay();
   registerInputListeners();
   updateActionButtonsState();
 

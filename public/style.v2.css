@@ -508,11 +508,6 @@ body.inventory-open::after {
 }
 
 .yumiko-side {
-  --yumiko-blink-top: 8.6%;
-  --yumiko-blink-width: 41%;
-  --yumiko-blink-offset-x: 0px;
-  --yumiko-blink-offset-y: 0px;
-  --yumiko-blink-scale: 1;
   width: 100%;
   min-width: 0;
   max-width: 430px;
@@ -584,36 +579,9 @@ body.inventory-open::after {
   animation: yumikoFloat 5.8s ease-in-out infinite;
 }
 
-.yumiko-blink-overlay {
-  position: absolute;
-  top: var(--yumiko-blink-top);
-  left: 50%;
-  width: var(--yumiko-blink-width);
-  height: auto;
-  transform: translate3d(calc(-50% + var(--yumiko-blink-offset-x)), var(--yumiko-blink-offset-y), 0) scale(var(--yumiko-blink-scale));
-  transform-origin: center center;
-  display: block;
-  object-fit: contain;
-  pointer-events: none;
-  opacity: 0;
-  z-index: 2;
-  will-change: opacity;
-}
-
-.yumiko-blink-overlay.is-blinking {
-  animation: yumikoBlink 120ms linear both;
-}
-
 @keyframes yumikoFloat {
   0%, 100% { transform: translate3d(0, 0, 0); }
   50% { transform: translate3d(0, -7px, 0); }
-}
-
-@keyframes yumikoBlink {
-  0% { opacity: 0; }
-  16.666% { opacity: 1; }
-  58.333% { opacity: 1; }
-  100% { opacity: 0; }
 }
 
 @media (max-width: 1023px) {
@@ -639,8 +607,6 @@ body.inventory-open::after {
   }
 
   .yumiko-side {
-    --yumiko-blink-top: 7%;
-    --yumiko-blink-width: 42%;
     display: flex;
     width: 100%;
     max-width: 460px;
