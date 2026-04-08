@@ -956,12 +956,10 @@ function addMessage(role, content, { thinking = false, animate = true } = {}) {
   }
 
   if (isAssistantMessage) {
-    row.classList.add('is-fresh-assistant');
     miniWrap?.classList.remove('is-reacting');
     void miniWrap?.offsetWidth;
     miniWrap?.classList.add('is-reacting');
     window.setTimeout(() => {
-      row.classList.remove('is-fresh-assistant');
       miniWrap?.classList.remove('is-reacting');
     }, 900);
   }

@@ -867,10 +867,6 @@ input[type="checkbox"]:checked::after {
   opacity: 0.75;
 }
 
-.chat-row.assistant.is-fresh-assistant {
-  animation: chatMessageAura 900ms cubic-bezier(0.22, 0.74, 0.26, 1) both;
-}
-
 .chat-row.thinking {
   opacity: 0.82;
   font-style: italic;
@@ -1240,18 +1236,6 @@ html[data-chat-box-size="wide"] {
   }
   100% {
     transform: translate3d(0, 0.6px, 0) scale(1);
-  }
-}
-
-@keyframes chatMessageAura {
-  0% {
-    box-shadow: 0 0 0 rgba(220, 172, 145, 0), 0 10px 20px rgba(7, 4, 8, 0.12);
-  }
-  40% {
-    box-shadow: 0 0 0 1px rgba(220, 172, 145, 0.16), 0 14px 24px rgba(7, 4, 8, 0.16);
-  }
-  100% {
-    box-shadow: 0 12px 24px rgba(7, 4, 8, 0.14);
   }
 }
 
