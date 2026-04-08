@@ -20,6 +20,7 @@ const DEV_AUTO_MESSAGE_LOG = false;
 const AUTO_ACTIVITY_MODE_KEY = 'yumiko_auto_message_recent_activity_mode';
 const AUTO_ACTIVITY_WEAK_WINDOW_KEY = 'yumiko_auto_message_weak_activity_ms';
 const DEFAULT_CHAT_HOTKEY = 'Control+Shift+J';
+const SETTINGS_PANEL_TRANSITION_MS = 420;
 
 const settingsPanel = document.getElementById('settings-panel');
 const toggleSettingsButton = document.getElementById('toggle-settings');
@@ -1142,7 +1143,7 @@ function setSettingsPanelHidden(nextHidden) {
       if (!settingsPanel.classList.contains('is-open')) {
         settingsPanel.hidden = true;
       }
-    }, 240);
+    }, SETTINGS_PANEL_TRANSITION_MS);
   }
 
   toggleSettingsButton?.setAttribute('aria-expanded', String(!settingsPanel.hidden));
