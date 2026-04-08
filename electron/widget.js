@@ -65,6 +65,10 @@ const CHARACTER_SOURCES = {
     'left-screen': 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png',
     'right-screen': 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/overlay1.png'
   },
+  thinking: {
+    'left-screen': 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-2.png',
+    'right-screen': 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/Pensativa2.png'
+  },
   sleeping: {
     'left-screen': 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/dormida2.png',
     'right-screen': 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/dormida.png'
@@ -154,6 +158,7 @@ let pendingAssistantReplyAfterUserMessage = false;
 let activeCharacterSide = null;
 let pendingCharacterSwapToken = 0;
 let isSleeping = false;
+let isThinkingPose = false;
 let sleepInactivityTimer = null;
 const preloadedCharacterImages = new Map();
 const characterOpaqueTopRatioCache = new Map();
@@ -236,9 +241,9 @@ function resolveCharacterSideFromBounds(bounds) {
   return delta < 0 ? 'left-screen' : 'right-screen';
 }
 
-function getCharacterSrc({ side, sleeping }) {
+function getCharacterSrc({ side, sleeping, thinking }) {
   const resolvedSide = side === 'left-screen' ? 'left-screen' : 'right-screen';
-  const state = sleeping ? 'sleeping' : 'normal';
+  const state = thinking ? 'thinking' : (sleeping ? 'sleeping' : 'normal');
   return CHARACTER_SOURCES[state][resolvedSide];
 }
 
@@ -252,7 +257,11 @@ function updateCharacterImageForBounds(bounds, { force = false } = {}) {
 
   if (!force && resolvedSide === activeCharacterSide) return;
 
-  const nextSrc = getCharacterSrc({ side: resolvedSide, sleeping: isSleeping });
+  const nextSrc = getCharacterSrc({
+    side: resolvedSide,
+    sleeping: isSleeping,
+    thinking: isThinkingPose
+  });
   const normalizedCurrent = img.currentSrc || img.src || '';
 
   const width = Number(bounds?.width);
@@ -265,6 +274,7 @@ function updateCharacterImageForBounds(bounds, { force = false } = {}) {
     resolvedSide,
     sideImageMode,
     sleeping: isSleeping,
+    thinking: isThinkingPose,
     chosenImageSrc: nextSrc
   });
 
@@ -298,9 +308,21 @@ function clearSleepInactivityTimer() {
 
 function setSleepingState(nextSleeping, { reason = 'unknown' } = {}) {
   const shouldSleep = Boolean(nextSleeping);
+  if (shouldSleep && isThinkingPose) return;
   if (isSleeping === shouldSleep) return;
   isSleeping = shouldSleep;
   console.info('[yumiko][sleeping] state change', { isSleeping, reason });
+  updateCharacterImageForBounds(lastKnownBounds, { force: true });
+}
+
+function setThinkingPose(nextThinking, { reason = 'unknown' } = {}) {
+  const shouldThink = Boolean(nextThinking);
+  if (shouldThink && isSleeping) {
+    setSleepingState(false, { reason: `thinking:${reason}` });
+  }
+  if (isThinkingPose === shouldThink) return;
+  isThinkingPose = shouldThink;
+  console.info('[yumiko][thinking-pose] state change', { isThinkingPose, reason });
   updateCharacterImageForBounds(lastKnownBounds, { force: true });
 }
 
@@ -1079,6 +1101,7 @@ function renderMessages(messages = []) {
 
 function setThinking(state) {
   isThinking = Boolean(state);
+  setThinkingPose(isThinking, { reason: 'chat-thinking-state' });
   if (input) input.disabled = isThinking;
   if (send) send.disabled = isThinking;
   updateChatPanelChrome();
