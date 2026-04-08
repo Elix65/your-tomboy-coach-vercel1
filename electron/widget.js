@@ -952,6 +952,16 @@ function addMessage(role, content, { thinking = false, animate = true } = {}) {
 
   row.append(label, text);
   chatLog.appendChild(row);
+  if (role === 'assistant' && !thinking) {
+    row.classList.add('is-fresh-assistant');
+    miniWrap?.classList.remove('is-reacting');
+    void miniWrap?.offsetWidth;
+    miniWrap?.classList.add('is-reacting');
+    window.setTimeout(() => {
+      row.classList.remove('is-fresh-assistant');
+      miniWrap?.classList.remove('is-reacting');
+    }, 900);
+  }
   if (animate) {
     window.setTimeout(() => {
       row.classList.remove('is-entering', 'is-entering--assistant', 'is-entering--user');
@@ -1133,7 +1143,7 @@ function scheduleSoftBlink() {
   const nextBlinkInMs = 2200 + Math.floor(Math.random() * 5600);
   blinkTimeout = window.setTimeout(() => {
     if (!(blinkOverlay instanceof HTMLImageElement) || !isBlinkOverlayAvailable) return;
-    const blinkDuration = 90 + Math.floor(Math.random() * 70);
+    const blinkDuration = 172 + Math.floor(Math.random() * 20);
     const blinkDelay = Math.floor(Math.random() * 40);
     blinkOverlay.style.setProperty('--blink-duration', `${blinkDuration}ms`);
     blinkOverlay.style.setProperty('--blink-delay', `${blinkDelay}ms`);
