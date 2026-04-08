@@ -21,7 +21,7 @@ contextBridge.exposeInMainWorld('yumikoOverlay', {
   chat: {
     getHistory: () => ipcRenderer.invoke('yumiko:chat-history'),
     sendMessage: ({ message, contextMessages }) => ipcRenderer.invoke('yumiko:chat-send', { message, contextMessages }),
-    requestNudge: ({ intervalMinutes }) => ipcRenderer.invoke('yumiko:chat-request-nudge', { intervalMinutes }),
+    requestNudge: ({ intervalMinutes, contextMessages }) => ipcRenderer.invoke('yumiko:chat-request-nudge', { intervalMinutes, contextMessages }),
     updateNudgeSettings: ({ enabled, intervalMinutes }) => ipcRenderer.invoke('yumiko:chat-update-nudge-settings', { enabled, intervalMinutes })
   },
   disconnectOverlay: () => ipcRenderer.invoke('yumiko:disconnect-overlay'),

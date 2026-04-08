@@ -159,15 +159,31 @@ async function updateNudgeSettings({ baseUrl, overlayAccessToken, enabled, inter
   return parseJsonResponse(response, {});
 }
 
-async function requestNudge({ baseUrl, overlayAccessToken, intervalMinutes }) {
+function normalizeContextMessages(contextMessages = []) {
+  if (!Array.isArray(contextMessages)) return [];
+  return contextMessages
+    .filter((item) => item && (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string')
+    .map((item) => ({
+      role: item.role,
+      content: item.content.trim()
+    }))
+    .filter((item) => item.content)
+    .slice(-20);
+}
+
+async function requestNudge({ baseUrl, overlayAccessToken, intervalMinutes, contextMessages = [] }) {
   const token = assertToken(overlayAccessToken);
   const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
   const nudgeUrl = `${normalizedBaseUrl}/api/overlay/nudge`;
+  const normalizedContextMessages = normalizeContextMessages(contextMessages);
 
   const response = await withTimeout(CHAT_TIMEOUT_MS, (signal) => fetch(nudgeUrl, {
     method: 'POST',
     headers: buildApiHeaders(token),
-    body: JSON.stringify({ interval_minutes: intervalMinutes }),
+    body: JSON.stringify({
+      interval_minutes: intervalMinutes,
+      messages: normalizedContextMessages
+    }),
     signal
   }));
 

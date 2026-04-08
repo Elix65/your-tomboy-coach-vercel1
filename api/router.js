@@ -2351,6 +2351,15 @@ async function overlayNudgeHandler(req, res) {
     const deviceId = auth.deviceId || 'default';
     const requestedInterval = Number(req.body?.interval_minutes);
     const intervalMinutes = OVERLAY_NUDGE_INTERVAL_OPTIONS.includes(requestedInterval) ? requestedInterval : 20;
+    const incomingMessages = Array.isArray(req.body?.messages) ? req.body.messages : [];
+    const frontendContextMessages = incomingMessages
+      .filter((msg) => msg && (msg.role === 'user' || msg.role === 'assistant') && typeof msg.content === 'string')
+      .map((msg) => ({
+        role: msg.role,
+        content: msg.content.trim()
+      }))
+      .filter((msg) => msg.content && !/^pensando[.….\s]*$/i.test(msg.content))
+      .slice(-20);
 
     failedAt = 'overlayNudgeSettings:read';
     const { data: settingsRow, error: settingsErr } = await supabaseAdmin
@@ -2385,6 +2394,7 @@ async function overlayNudgeHandler(req, res) {
       requestedInterval,
       intervalMinutes,
       effectiveInterval,
+      frontendContextMessages: frontendContextMessages.length,
       now: new Date(now).toISOString(),
       lastSentAt: settingsRow?.last_sent_at || null,
       elapsedMs
@@ -2412,6 +2422,14 @@ async function overlayNudgeHandler(req, res) {
 
     failedAt = 'buildYumikoConversationContext';
     const conversationContext = await buildYumikoConversationContext({ supabaseAdmin, userId, limit: 30 });
+    const mergedContextMessages = [
+      ...conversationContext.modelMessages,
+      ...frontendContextMessages
+    ].slice(-20);
+    const recentAssistantTexts = mergedContextMessages
+      .filter((item) => item?.role === 'assistant' && typeof item.content === 'string' && item.content.trim())
+      .map((item) => item.content.trim())
+      .slice(-5);
 
     console.info('[yumiko][auto-nudge] previous last_nudge_bucket=' + String(settingsRow?.last_nudge_bucket || ''));
     console.info('[yumiko][auto-nudge] previous last_nudge_message=' + String(settingsRow?.last_nudge_message || ''));
@@ -2422,7 +2440,12 @@ async function overlayNudgeHandler(req, res) {
       context: conversationContext,
       session: sessionContext,
       summary: '',
-      lastMessage: String(settingsRow?.last_nudge_message || '').trim()
+      lastMessage: String(settingsRow?.last_nudge_message || '').trim(),
+      contextMessages: mergedContextMessages,
+      avoidMessages: [
+        String(settingsRow?.last_nudge_message || '').trim(),
+        ...recentAssistantTexts
+      ].filter(Boolean)
     });
 
     const bucket = conversationContext.activeTopic ? 'context-shared-topic' : 'context-generic';

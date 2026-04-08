@@ -359,6 +359,9 @@ let lastAutoMessageRequestAt = 0;
 const renderedAssistantMessageKeys = [];
 const renderedAssistantMessageKeySet = new Set();
 const MAX_RENDERED_ASSISTANT_MESSAGE_KEYS = 200;
+const recentAutoNudgeTextEntries = [];
+const RECENT_AUTO_NUDGE_TEXT_WINDOW_MS = 45 * 60 * 1000;
+const MAX_RECENT_AUTO_NUDGE_TEXTS = 120;
 
 function getRecentActivityMode() {
   if (window.location.search.includes('auto_message_mode=ignore') || localStorage.getItem(AUTO_ACTIVITY_MODE_KEY) === 'ignore') {
@@ -833,6 +836,21 @@ function normalizeAssistantMessageId(messageId = '', fallbackText = '') {
   return `assistant-${Date.now()}-${assistantMessageSequence}-${compactText}`;
 }
 
+function normalizeMessageTextForComparison(text = '') {
+  return String(text || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isThinkingPlaceholderText(text = '') {
+  const normalized = normalizeMessageTextForComparison(text);
+  return normalized === 'pensando' || normalized === 'pensando.';
+}
+
 function buildAssistantMessageDedupKey({ text = '', messageId = '', createdAt = '' } = {}) {
   const safeText = typeof text === 'string' ? text.trim() : '';
   if (!safeText) return '';
@@ -878,11 +896,51 @@ function markAssistantMessageRendered({ text = '', messageId = '', createdAt = '
 function resetRenderedAssistantMessageRegistry() {
   renderedAssistantMessageKeySet.clear();
   renderedAssistantMessageKeys.length = 0;
+  recentAutoNudgeTextEntries.length = 0;
+}
+
+function pruneRecentAutoNudgeTextEntries(now = Date.now()) {
+  while (recentAutoNudgeTextEntries.length > 0) {
+    const first = recentAutoNudgeTextEntries[0];
+    const expired = !first || !Number.isFinite(first.at) || now - first.at > RECENT_AUTO_NUDGE_TEXT_WINDOW_MS;
+    const overflow = recentAutoNudgeTextEntries.length > MAX_RECENT_AUTO_NUDGE_TEXTS;
+    if (!expired && !overflow) break;
+    recentAutoNudgeTextEntries.shift();
+  }
+}
+
+function wasRecentAutoNudgeTextRendered(text = '') {
+  const normalizedText = normalizeMessageTextForComparison(text);
+  if (!normalizedText) return false;
+  pruneRecentAutoNudgeTextEntries();
+  return recentAutoNudgeTextEntries.some((item) => item?.text === normalizedText);
+}
+
+function rememberAutoNudgeTextRendered(text = '') {
+  const normalizedText = normalizeMessageTextForComparison(text);
+  if (!normalizedText) return;
+  const now = Date.now();
+  pruneRecentAutoNudgeTextEntries(now);
+  const existingIndex = recentAutoNudgeTextEntries.findIndex((item) => item?.text === normalizedText);
+  if (existingIndex >= 0) {
+    recentAutoNudgeTextEntries.splice(existingIndex, 1);
+  }
+  recentAutoNudgeTextEntries.push({ text: normalizedText, at: now });
 }
 
 function addAssistantMessageIfNew({ text = '', messageId = '', createdAt = '', source = 'unknown' } = {}) {
   const safeText = typeof text === 'string' ? text.trim() : '';
   if (!safeText) {
+    return false;
+  }
+
+  const isAutoNudge = source === 'request-nudge-response' || source === 'history-confirmation';
+  if (isAutoNudge && wasRecentAutoNudgeTextRendered(safeText)) {
+    console.info('[yumiko][chat-panel] auto nudge deduped by normalized text', {
+      source,
+      messageId: messageId || null,
+      createdAt: createdAt || null
+    });
     return false;
   }
 
@@ -897,6 +955,9 @@ function addAssistantMessageIfNew({ text = '', messageId = '', createdAt = '', s
 
   addMessage('assistant', safeText);
   markAssistantMessageRendered({ text: safeText, messageId, createdAt });
+  if (isAutoNudge) {
+    rememberAutoNudgeTextRendered(safeText);
+  }
   return true;
 }
 
@@ -1337,18 +1398,44 @@ function normalizeHistoryRecords(result) {
   return normalized;
 }
 
-function findLatestAssistantAfterBaseline(messages, baselineSize, baselineTail) {
+function collectRecentNudgeContextMessages(limit = 16) {
+  return contextCache
+    .filter((item) => item && (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string')
+    .map((item) => ({
+      role: item.role,
+      content: item.content.trim()
+    }))
+    .filter((item) => item.content && !isThinkingPlaceholderText(item.content))
+    .slice(-limit);
+}
+
+function findLatestAssistantAfterBaseline(messages, baselineSnapshot = {}) {
   if (!Array.isArray(messages) || messages.length === 0) return null;
 
-  const latestAssistant = [...messages].reverse().find((item) => item?.role === 'assistant' && item.content);
-  if (!latestAssistant?.content) return null;
+  const baselineTextSet = baselineSnapshot.assistantTextSet instanceof Set ? baselineSnapshot.assistantTextSet : new Set();
+  const baselineIdSet = baselineSnapshot.assistantIdSet instanceof Set ? baselineSnapshot.assistantIdSet : new Set();
+  const baselineLatestCreatedAtMs = Number.isFinite(baselineSnapshot.latestCreatedAtMs)
+    ? baselineSnapshot.latestCreatedAtMs
+    : 0;
+  const baselineSize = Number.isFinite(baselineSnapshot.size) ? baselineSnapshot.size : 0;
 
-  if (messages.length > baselineSize) {
-    return latestAssistant;
-  }
+  for (const candidate of [...messages].reverse()) {
+    if (candidate?.role !== 'assistant' || !candidate?.content) continue;
+    const text = String(candidate.content || '').trim();
+    if (!text) continue;
 
-  if (!baselineTail.includes(latestAssistant.content)) {
-    return latestAssistant;
+    const normalizedText = normalizeMessageTextForComparison(text);
+    const createdAtMs = candidate.createdAt ? Date.parse(candidate.createdAt) : Number.NaN;
+    const hasNewTimestamp = Number.isFinite(createdAtMs) && createdAtMs > baselineLatestCreatedAtMs;
+    const hasNewId = candidate.id && !baselineIdSet.has(String(candidate.id));
+    const hasNewText = normalizedText && !baselineTextSet.has(normalizedText);
+    const grewAndChanged = messages.length > baselineSize && hasNewText;
+
+    if (!(hasNewTimestamp || hasNewId || hasNewText || grewAndChanged)) continue;
+    if (wasAssistantMessageRendered({ text, messageId: candidate.id || '', createdAt: candidate.createdAt || '' })) {
+      continue;
+    }
+    return candidate;
   }
 
   return null;
@@ -1536,23 +1623,30 @@ async function requestAutoNudge() {
 
   isNudgeInFlight = true;
   try {
-    const baselineContextSize = contextCache.length;
-    const baselineAssistantTail = contextCache
+    const baselineAssistantMessages = contextCache
       .filter((item) => item?.role === 'assistant' && typeof item.content === 'string' && item.content.trim())
-      .slice(-5)
-      .map((item) => item.content.trim());
+      .slice(-8);
+    const baselineSnapshot = {
+      size: contextCache.length,
+      assistantTextSet: new Set(baselineAssistantMessages.map((item) => normalizeMessageTextForComparison(item.content))),
+      assistantIdSet: new Set(),
+      latestCreatedAtMs: 0
+    };
+    const contextMessages = collectRecentNudgeContextMessages(16);
 
     console.info('[yumiko][nudge] real-flow:start', {
       now: new Date().toISOString(),
       mode: settings.mode,
       autoMessageEnabled: settings.autoMessageEnabled,
       intervalMinutes: settings.autoMessageIntervalMinutes,
-      baselineContextSize,
-      baselineAssistantTail
+      baselineContextSize: baselineSnapshot.size,
+      baselineAssistantTail: baselineAssistantMessages.map((item) => item.content.trim()),
+      sentContextMessages: contextMessages.length
     });
 
     const result = await window.yumikoOverlay.chat.requestNudge({
-      intervalMinutes: settings.autoMessageIntervalMinutes
+      intervalMinutes: settings.autoMessageIntervalMinutes,
+      contextMessages
     });
     let message = typeof result?.message === 'string' && result.message.trim()
       ? result.message.trim()
@@ -1565,7 +1659,18 @@ async function requestAutoNudge() {
     if (!message) {
       const historyResult = await window.yumikoOverlay?.chat?.getHistory?.();
       const historyMessages = normalizeHistoryRecords(historyResult);
-      const latestAssistant = findLatestAssistantAfterBaseline(historyMessages, baselineContextSize, baselineAssistantTail);
+      const enrichedBaseline = {
+        ...baselineSnapshot,
+        assistantTextSet: new Set([
+          ...baselineSnapshot.assistantTextSet,
+          ...historyMessages
+            .slice(0, Math.max(0, historyMessages.length - 1))
+            .filter((item) => item?.role === 'assistant' && item?.content)
+            .slice(-8)
+            .map((item) => normalizeMessageTextForComparison(item.content))
+        ])
+      };
+      const latestAssistant = findLatestAssistantAfterBaseline(historyMessages, enrichedBaseline);
       message = latestAssistant?.content || '';
       messageId = latestAssistant?.id || '';
       createdAt = latestAssistant?.createdAt || '';
