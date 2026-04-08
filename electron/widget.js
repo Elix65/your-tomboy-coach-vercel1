@@ -915,8 +915,23 @@ function addMessage(role, content, { thinking = false, animate = true } = {}) {
   if (!chatLog) return null;
   const row = document.createElement('div');
   row.className = `chat-row ${role}${thinking ? ' thinking' : ''}`;
+  const isAssistantMessage = role === 'assistant' && !thinking;
+  if (isAssistantMessage) {
+    row.classList.add('yumiko-bubble');
+  }
   if (animate) {
-    row.classList.add('is-entering', `is-entering--${role === 'user' ? 'user' : 'assistant'}`);
+    const enterClass = isAssistantMessage ? 'is-entering--assistant' : 'is-entering--user';
+    row.classList.add('is-entering', enterClass);
+    if (isAssistantMessage) {
+      row.classList.add('yumiko-enter');
+      row.addEventListener(
+        'animationend',
+        () => {
+          row.classList.remove('yumiko-enter');
+        },
+        { once: true }
+      );
+    }
   }
 
   const label = document.createElement('span');
@@ -929,7 +944,7 @@ function addMessage(role, content, { thinking = false, animate = true } = {}) {
 
   row.append(label, text);
   chatLog.appendChild(row);
-  if (role === 'assistant' && !thinking) {
+  if (isAssistantMessage) {
     row.classList.add('is-fresh-assistant');
     miniWrap?.classList.remove('is-reacting');
     void miniWrap?.offsetWidth;
@@ -942,9 +957,9 @@ function addMessage(role, content, { thinking = false, animate = true } = {}) {
   if (animate) {
     window.setTimeout(() => {
       row.classList.remove('is-entering', 'is-entering--assistant', 'is-entering--user');
-    }, 420);
+    }, isAssistantMessage ? 3500 : 420);
   }
-  if (role === 'assistant' && !thinking) {
+  if (isAssistantMessage) {
     markAssistantMessageRendered({ text: content });
   }
   chatLog.scrollTop = chatLog.scrollHeight;
