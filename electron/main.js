@@ -1334,11 +1334,13 @@ if (!singleInstance) {
     });
     ipcMain.handle('yumiko:chat-request-nudge', async (_event, payload) => {
       const intervalMinutes = Number(payload?.intervalMinutes);
+      const contextMessages = Array.isArray(payload?.contextMessages) ? payload.contextMessages : [];
       try {
         return await withOverlayAccessToken((overlayAccessToken) => chatClient.requestNudge({
           baseUrl: YUMIKO_WEB_ORIGIN,
           overlayAccessToken,
-          intervalMinutes
+          intervalMinutes,
+          contextMessages
         }));
       } catch (error) {
         logAuthIssue('chat-request-nudge', error);
