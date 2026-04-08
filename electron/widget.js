@@ -4,9 +4,11 @@ const DEFAULT_SETTINGS = {
   autoMessageEnabled: false,
   autoMessageIntervalMinutes: 20,
   sideImageMode: 'auto',
-  chatBoxSize: 'normal'
+  chatBoxSize: 'normal',
+  sleepAfterMinutes: 4
 };
 const AUTO_MESSAGE_INTERVAL_OPTIONS = [1, 2, 5, 10, 20];
+const SLEEP_AFTER_MINUTES_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 const RECENT_FOCUS_REPLY_CARRY_WINDOW_MS = 7000;
 const SCENE_BASE_WINDOW_SIZE = { width: 500, height: 636 };
 const OVERLAY_SCALE_MIN = 0.85;
@@ -38,6 +40,7 @@ const authActionButton = document.getElementById('auth-action');
 const autoMessageToggle = document.getElementById('auto-message-enabled');
 const autoMessageIntervalSelect = document.getElementById('auto-message-interval');
 const sideImageModeSelect = document.getElementById('side-image-mode');
+const sleepAfterMinutesSelect = document.getElementById('sleep-after-minutes');
 const chatBoxSizeSelect = document.getElementById('chat-box-size');
 const overlayScaleSelect = document.getElementById('overlay-scale');
 const overlayScaleValue = document.getElementById('overlay-scale-value');
@@ -57,8 +60,16 @@ const chatLog = document.getElementById('chat-log');
 const chatPanelTitle = document.getElementById('chat-panel-title');
 const chatPanelStatus = document.getElementById('chat-panel-status');
 
-const CHARACTER_SRC_WHEN_WINDOW_ON_LEFT = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png';
-const CHARACTER_SRC_WHEN_WINDOW_ON_RIGHT = 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/overlay1.png';
+const CHARACTER_SOURCES = {
+  normal: {
+    'left-screen': 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/fase-1.png',
+    'right-screen': 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/overlay1.png'
+  },
+  sleeping: {
+    'left-screen': 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/dormida2.png',
+    'right-screen': 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/dormida.png'
+  }
+};
 const SIDE_SWITCH_HYSTERESIS_PX = 48;
 const YUMIKO_HEADROOM_MARGIN_PX = 16;
 const YUMIKO_HEADROOM_SCAN_SAMPLE_WIDTH = 96;
@@ -109,10 +120,16 @@ function loadSettings() {
     parsed.autoMessageIntervalMinutes = AUTO_MESSAGE_INTERVAL_OPTIONS.includes(parsedInterval) ? parsedInterval : 20;
     parsed.sideImageMode = normalizeSideImageMode(parsed.sideImageMode);
     parsed.chatBoxSize = normalizeChatBoxSize(parsed.chatBoxSize);
+    parsed.sleepAfterMinutes = normalizeSleepAfterMinutes(parsed.sleepAfterMinutes);
     return parsed;
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
+}
+
+function normalizeSleepAfterMinutes(value) {
+  const parsed = Number(value);
+  return SLEEP_AFTER_MINUTES_OPTIONS.includes(parsed) ? parsed : 4;
 }
 
 function normalizeSideImageMode(value) {
@@ -136,6 +153,8 @@ let lastAssistantMessageText = '';
 let pendingAssistantReplyAfterUserMessage = false;
 let activeCharacterSide = null;
 let pendingCharacterSwapToken = 0;
+let isSleeping = false;
+let sleepInactivityTimer = null;
 const preloadedCharacterImages = new Map();
 const characterOpaqueTopRatioCache = new Map();
 let lastKnownBounds = null;
@@ -217,6 +236,12 @@ function resolveCharacterSideFromBounds(bounds) {
   return delta < 0 ? 'left-screen' : 'right-screen';
 }
 
+function getCharacterSrc({ side, sleeping }) {
+  const resolvedSide = side === 'left-screen' ? 'left-screen' : 'right-screen';
+  const state = sleeping ? 'sleeping' : 'normal';
+  return CHARACTER_SOURCES[state][resolvedSide];
+}
+
 function updateCharacterImageForBounds(bounds, { force = false } = {}) {
   if (!img) return;
 
@@ -227,9 +252,7 @@ function updateCharacterImageForBounds(bounds, { force = false } = {}) {
 
   if (!force && resolvedSide === activeCharacterSide) return;
 
-  const nextSrc = resolvedSide === 'left-screen'
-    ? CHARACTER_SRC_WHEN_WINDOW_ON_LEFT
-    : CHARACTER_SRC_WHEN_WINDOW_ON_RIGHT;
+  const nextSrc = getCharacterSrc({ side: resolvedSide, sleeping: isSleeping });
   const normalizedCurrent = img.currentSrc || img.src || '';
 
   const width = Number(bounds?.width);
@@ -241,6 +264,7 @@ function updateCharacterImageForBounds(bounds, { force = false } = {}) {
     screenCenterX,
     resolvedSide,
     sideImageMode,
+    sleeping: isSleeping,
     chosenImageSrc: nextSrc
   });
 
@@ -263,6 +287,37 @@ function updateCharacterImageForBounds(bounds, { force = false } = {}) {
       scheduleHeadroomCalibration('character-source-swapped');
     });
   });
+}
+
+function clearSleepInactivityTimer() {
+  if (sleepInactivityTimer) {
+    window.clearTimeout(sleepInactivityTimer);
+    sleepInactivityTimer = null;
+  }
+}
+
+function setSleepingState(nextSleeping, { reason = 'unknown' } = {}) {
+  const shouldSleep = Boolean(nextSleeping);
+  if (isSleeping === shouldSleep) return;
+  isSleeping = shouldSleep;
+  console.info('[yumiko][sleeping] state change', { isSleeping, reason });
+  updateCharacterImageForBounds(lastKnownBounds, { force: true });
+}
+
+function restartSleepInactivityTimer({ reason = 'unknown' } = {}) {
+  clearSleepInactivityTimer();
+  const sleepAfterMs = normalizeSleepAfterMinutes(settings.sleepAfterMinutes) * 60 * 1000;
+  sleepInactivityTimer = window.setTimeout(() => {
+    setSleepingState(true, { reason: `timer-expired:${reason}` });
+  }, sleepAfterMs);
+}
+
+function registerOverlayActivity({ event = 'unknown', strength = 'strong' } = {}) {
+  if (isSleeping) {
+    setSleepingState(false, { reason: `activity:${event}` });
+  }
+  restartSleepInactivityTimer({ reason: `activity:${event}` });
+  markUserActivity({ event, strength });
 }
 
 function positionBubble() {
@@ -955,6 +1010,9 @@ function addMessage(role, content, { thinking = false, animate = true } = {}) {
     });
   }
 
+  if (isAssistantMessage && animate) {
+    registerOverlayActivity({ event: 'assistant-message-rendered', strength: 'strong' });
+  }
   if (isAssistantMessage) {
     miniWrap?.classList.remove('is-reacting');
     void miniWrap?.offsetWidth;
@@ -1178,7 +1236,7 @@ function setMode(nextMode, { source = 'ui' } = {}) {
     mini.setAttribute('aria-hidden', 'false');
   }
   if (mode === 'chat') {
-    markUserActivity({ event: 'activate-conversation', strength: 'strong' });
+    registerOverlayActivity({ event: 'activate-conversation', strength: 'strong' });
     focusChatInputRobust({ reason: `setMode:${source}` });
     pulseConversationPanel({ reason: source });
   } else {
@@ -1288,7 +1346,7 @@ async function submitMessage() {
   const message = input.value.trim();
   if (!message) return;
 
-  markUserActivity({ event: 'submit-message', strength: 'strong' });
+  registerOverlayActivity({ event: 'submit-message', strength: 'strong' });
   pendingAssistantReplyAfterUserMessage = true;
   console.info('[yumiko][reply-carry] user message sent', {
     mode: settings.mode,
@@ -1438,6 +1496,9 @@ function syncAutoMessageControls() {
   }
   if (chatBoxSizeSelect) {
     chatBoxSizeSelect.value = normalizeChatBoxSize(settings.chatBoxSize);
+  }
+  if (sleepAfterMinutesSelect) {
+    sleepAfterMinutesSelect.value = String(normalizeSleepAfterMinutes(settings.sleepAfterMinutes));
   }
 }
 
@@ -1720,7 +1781,7 @@ chatHotkeyResetButton?.addEventListener('click', async () => {
 autoMessageToggle?.addEventListener('change', () => {
   settings.autoMessageEnabled = autoMessageToggle.checked;
   saveSettings();
-  markUserActivity({ event: 'toggle-auto-message-enabled', strength: 'weak' });
+  registerOverlayActivity({ event: 'toggle-auto-message-enabled', strength: 'weak' });
   persistAutoMessageSettings();
 });
 
@@ -1728,14 +1789,21 @@ autoMessageIntervalSelect?.addEventListener('change', () => {
   const nextValue = Number(autoMessageIntervalSelect.value);
   settings.autoMessageIntervalMinutes = AUTO_MESSAGE_INTERVAL_OPTIONS.includes(nextValue) ? nextValue : 20;
   saveSettings();
-  markUserActivity({ event: 'change-auto-message-interval', strength: 'weak' });
+  registerOverlayActivity({ event: 'change-auto-message-interval', strength: 'weak' });
   persistAutoMessageSettings();
 });
 
 sideImageModeSelect?.addEventListener('change', () => {
   settings.sideImageMode = normalizeSideImageMode(sideImageModeSelect.value);
   saveSettings();
+  registerOverlayActivity({ event: 'change-side-image-mode', strength: 'weak' });
   updateCharacterImageForBounds(lastKnownBounds, { force: true });
+});
+
+sleepAfterMinutesSelect?.addEventListener('change', () => {
+  settings.sleepAfterMinutes = normalizeSleepAfterMinutes(sleepAfterMinutesSelect.value);
+  saveSettings();
+  registerOverlayActivity({ event: 'change-sleep-after-minutes', strength: 'weak' });
 });
 
 chatBoxSizeSelect?.addEventListener('change', () => {
@@ -1773,7 +1841,7 @@ authActionButton?.addEventListener('click', async () => {
 });
 
 settingsChatButton?.addEventListener('click', () => {
-  markUserActivity({ event: 'settings-chat-button', strength: 'strong' });
+  registerOverlayActivity({ event: 'settings-chat-button', strength: 'strong' });
   setMode('chat', { source: 'ui' });
   closeSettingsPanel();
   focusChatInputRobust({ reason: 'settings-chat-button' });
@@ -1843,7 +1911,7 @@ window.addEventListener('keydown', (event) => {
 
 
 window.addEventListener('mousedown', () => {
-  markUserActivity({ event: 'window-mousedown', strength: 'weak' });
+  registerOverlayActivity({ event: 'window-mousedown', strength: 'weak' });
 }, { capture: true });
 
 window.addEventListener('mousemove', (event) => {
@@ -1881,6 +1949,10 @@ window.addEventListener('pointerdown', (event) => {
 
 send?.addEventListener('click', submitMessage);
 
+input?.addEventListener('input', () => {
+  registerOverlayActivity({ event: 'input-typing', strength: 'strong' });
+});
+
 input?.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' && !event.shiftKey) {
     event.preventDefault();
@@ -1913,11 +1985,12 @@ window.addEventListener('DOMContentLoaded', () => {
   syncAutoMessageControls();
   startAutoMessageScheduler();
   persistAutoMessageSettings();
-  [sideImageModeSelect, autoMessageIntervalSelect, chatBoxSizeSelect].forEach((select) => enhanceSelect(select));
+  [sideImageModeSelect, autoMessageIntervalSelect, chatBoxSizeSelect, sleepAfterMinutesSelect].forEach((select) => enhanceSelect(select));
 
   if (img) {
-    preloadCharacterImage(CHARACTER_SRC_WHEN_WINDOW_ON_RIGHT);
-    preloadCharacterImage(CHARACTER_SRC_WHEN_WINDOW_ON_LEFT);
+    Object.values(CHARACTER_SOURCES).forEach((sourcesBySide) => {
+      Object.values(sourcesBySide).forEach((src) => preloadCharacterImage(src));
+    });
 
     if (img.complete) {
       requestFitDebounced('image-ready');
@@ -1980,6 +2053,7 @@ window.addEventListener('DOMContentLoaded', () => {
     .catch(() => setMode('focus', { source: 'state-sync' }));
 
   setMode(settings.mode || 'focus', { source: 'state-sync' });
+  restartSleepInactivityTimer({ reason: 'init' });
   requestFitDebounced('init');
   scheduleHeadroomCalibration('init');
   loadChatHistory();
