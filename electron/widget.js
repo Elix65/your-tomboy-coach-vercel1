@@ -1262,6 +1262,17 @@ function findLatestAssistantAfterBaseline(messages, baselineSize, baselineTail) 
   return null;
 }
 
+function removeThinkingNode(thinkingNode) {
+  if (!thinkingNode || !thinkingNode.parentElement) return;
+  thinkingNode.classList.add('thinking-exit');
+  window.setTimeout(() => {
+    if (thinkingNode.parentElement) {
+      thinkingNode.remove();
+      updateChatPanelChrome();
+    }
+  }, 120);
+}
+
 async function submitMessage() {
   if (!input || isThinking) return;
   const message = input.value.trim();
@@ -1290,13 +1301,8 @@ async function submitMessage() {
       ? result.reply.trim()
       : 'Me quedé sin palabras por un segundo. ¿Me repetís eso?';
 
-    if (thinkingNode) {
-      thinkingNode.classList.remove('thinking');
-      const textNode = thinkingNode.querySelector('.chat-message');
-      if (textNode) textNode.textContent = reply;
-    } else {
-      addMessage('assistant', reply);
-    }
+    removeThinkingNode(thinkingNode);
+    addMessage('assistant', reply);
 
     const replyMessageId = typeof result?.replyId === 'string'
       ? result.replyId
@@ -1323,13 +1329,8 @@ async function submitMessage() {
         ? AUTH_MISSING_MESSAGE
         : (httpErrorMessage || 'Tuve un problema al responder. Probá de nuevo en un momento.');
 
-    if (thinkingNode) {
-      thinkingNode.classList.remove('thinking');
-      const textNode = thinkingNode.querySelector('.chat-message');
-      if (textNode) textNode.textContent = fallback;
-    } else {
-      addMessage('assistant', fallback);
-    }
+    removeThinkingNode(thinkingNode);
+    addMessage('assistant', fallback);
     pendingAssistantReplyAfterUserMessage = false;
     if (authCode) {
       console.warn(`[yumiko][auth] ${authCode} on widget sendMessage`);
