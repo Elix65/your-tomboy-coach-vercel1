@@ -881,6 +881,10 @@ input[type="checkbox"]:checked::after {
   animation: chatThinkingDots 760ms ease-in-out infinite;
 }
 
+.chat-row.thinking.thinking-exit {
+  animation: thinkingFadeOut 120ms ease-out forwards;
+}
+
 .chat-row.is-entering {
   animation-duration: 280ms;
   animation-timing-function: cubic-bezier(0.2, 0.72, 0.24, 1);
@@ -916,6 +920,17 @@ input[type="checkbox"]:checked::after {
     transform: translateX(0);
     filter: blur(0);
     opacity: 1;
+  }
+}
+
+@keyframes thinkingFadeOut {
+  0% {
+    opacity: 0.82;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(2px);
   }
 }
 
