@@ -860,6 +860,13 @@ input[type="checkbox"]:checked::after {
   will-change: clip-path, transform, filter, opacity;
 }
 
+.chat-row.assistant.yumiko-pre-enter {
+  clip-path: inset(0 100% 0 0 round 12px);
+  transform: translateX(-10px);
+  filter: blur(4px);
+  opacity: 0.75;
+}
+
 .chat-row.assistant.is-fresh-assistant {
   animation: chatMessageAura 900ms cubic-bezier(0.22, 0.74, 0.26, 1) both;
 }
@@ -893,7 +900,7 @@ input[type="checkbox"]:checked::after {
 }
 
 .chat-row.is-entering--assistant {
-  animation: yumikoReveal 3.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: yumikoReveal 3.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .chat-row.is-entering--user {

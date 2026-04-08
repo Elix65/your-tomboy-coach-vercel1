@@ -920,10 +920,8 @@ function addMessage(role, content, { thinking = false, animate = true } = {}) {
     row.classList.add('yumiko-bubble');
   }
   if (animate) {
-    const enterClass = isAssistantMessage ? 'is-entering--assistant' : 'is-entering--user';
-    row.classList.add('is-entering', enterClass);
     if (isAssistantMessage) {
-      row.classList.add('yumiko-enter');
+      row.classList.add('yumiko-pre-enter');
       row.addEventListener(
         'animationend',
         () => {
@@ -931,6 +929,8 @@ function addMessage(role, content, { thinking = false, animate = true } = {}) {
         },
         { once: true }
       );
+    } else {
+      row.classList.add('is-entering', 'is-entering--user');
     }
   }
 
@@ -944,6 +944,17 @@ function addMessage(role, content, { thinking = false, animate = true } = {}) {
 
   row.append(label, text);
   chatLog.appendChild(row);
+
+  if (animate && isAssistantMessage) {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        void row.offsetWidth;
+        row.classList.remove('yumiko-pre-enter');
+        row.classList.add('is-entering', 'is-entering--assistant', 'yumiko-enter');
+      });
+    });
+  }
+
   if (isAssistantMessage) {
     row.classList.add('is-fresh-assistant');
     miniWrap?.classList.remove('is-reacting');
@@ -955,9 +966,10 @@ function addMessage(role, content, { thinking = false, animate = true } = {}) {
     }, 900);
   }
   if (animate) {
+    const cleanupDelayMs = isAssistantMessage ? 3600 : 420;
     window.setTimeout(() => {
       row.classList.remove('is-entering', 'is-entering--assistant', 'is-entering--user');
-    }, isAssistantMessage ? 3500 : 420);
+    }, cleanupDelayMs);
   }
   if (isAssistantMessage) {
     markAssistantMessageRendered({ text: content });
