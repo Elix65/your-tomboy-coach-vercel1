@@ -591,6 +591,7 @@ html[data-click-through="on"] .chat-log {
 #auto-message-interval,
 #chat-box-size,
 #chat-hotkey,
+#sleep-after-minutes,
 #side-image-mode,
 .custom-select__trigger {
   min-height: 36px;
@@ -610,6 +611,7 @@ html[data-click-through="on"] .chat-log {
 
 #auto-message-interval,
 #chat-box-size,
+#sleep-after-minutes,
 #side-image-mode {
   position: absolute;
   inset: 0;
