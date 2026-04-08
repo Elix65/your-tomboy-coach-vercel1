@@ -48,28 +48,6 @@ const widget = document.getElementById('yumiko-widget');
 const scene = document.getElementById('overlay-scene');
 const mini = document.getElementById('yumiko-mini');
 const miniWrap = document.getElementById('mini-wrap');
-const blinkOverlay = document.getElementById('yumikoBlinkOverlay');
-let isBlinkOverlayAvailable = blinkOverlay instanceof HTMLImageElement;
-
-function guardBlinkOverlayImage() {
-  if (!(blinkOverlay instanceof HTMLImageElement)) {
-    isBlinkOverlayAvailable = false;
-    return;
-  }
-
-  const disableBlinkOverlay = () => {
-    isBlinkOverlayAvailable = false;
-    blinkOverlay.removeAttribute('src');
-    blinkOverlay.style.display = 'none';
-    blinkOverlay.classList.remove('is-blinking');
-    window.clearTimeout(blinkTimeout);
-  };
-
-  blinkOverlay.addEventListener('error', disableBlinkOverlay, { once: true });
-  if (blinkOverlay.complete && blinkOverlay.naturalWidth === 0) {
-    disableBlinkOverlay();
-  }
-}
 
 const chat = document.getElementById('yumiko-chat');
 const img = document.getElementById('yumiko-character');
@@ -161,7 +139,6 @@ let pendingCharacterSwapToken = 0;
 const preloadedCharacterImages = new Map();
 const characterOpaqueTopRatioCache = new Map();
 let lastKnownBounds = null;
-let blinkTimeout = null;
 let lastLocalModeIntent = {
   mode: toUiMode(settings.mode),
   source: 'init',
@@ -1136,24 +1113,6 @@ function focusChatInputRobust({ reason = 'unknown', sendAck = false } = {}) {
   });
 }
 
-function scheduleSoftBlink() {
-  if (!(blinkOverlay instanceof HTMLImageElement) || !isBlinkOverlayAvailable) return;
-  window.clearTimeout(blinkTimeout);
-
-  const nextBlinkInMs = 2200 + Math.floor(Math.random() * 5600);
-  blinkTimeout = window.setTimeout(() => {
-    if (!(blinkOverlay instanceof HTMLImageElement) || !isBlinkOverlayAvailable) return;
-    const blinkDuration = 172 + Math.floor(Math.random() * 20);
-    const blinkDelay = Math.floor(Math.random() * 40);
-    blinkOverlay.style.setProperty('--blink-duration', `${blinkDuration}ms`);
-    blinkOverlay.style.setProperty('--blink-delay', `${blinkDelay}ms`);
-    blinkOverlay.classList.remove('is-blinking');
-    void blinkOverlay.offsetWidth;
-    blinkOverlay.classList.add('is-blinking');
-    scheduleSoftBlink();
-  }, nextBlinkInMs);
-}
-
 function pulseConversationPanel({ reason = 'unknown' } = {}) {
   if (!chat) return;
   chat.classList.remove('is-activated');
@@ -1950,8 +1909,6 @@ window.addEventListener('DOMContentLoaded', () => {
       scene.classList.add('is-ready');
     });
   }
-  guardBlinkOverlayImage();
-  scheduleSoftBlink();
 
   window.yumikoOverlay?.onStateUpdated?.(syncHostState);
   window.yumikoOverlay?.onFocusInput?.(() => {

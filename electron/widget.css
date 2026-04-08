@@ -173,37 +173,6 @@ body {
     yumiko-presence-react 580ms cubic-bezier(0.18, 0.82, 0.32, 1) 1;
 }
 
-#yumikoBlinkOverlay,
-.yumiko-blink-overlay {
-  position: absolute;
-  top: -32%;
-  left: 10%;
-  width: 90%;
-  height: 100%;
-  display: block;
-  object-fit: contain;
-  opacity: 0;
-  transform: none;
-  transform-origin: 50% 50%;
-  pointer-events: none;
-  mix-blend-mode: normal;
-  filter: none;
-  z-index: 3;
-}
-
-#yumikoBlinkOverlay.is-debug,
-.yumiko-blink-overlay.is-debug {
-  opacity: 0.8;
-  animation: none !important;
-  mix-blend-mode: normal;
-  filter: none;
-}
-
-#yumikoBlinkOverlay.is-blinking,
-.yumiko-blink-overlay.is-blinking {
-  animation: yumiko-soft-blink var(--blink-duration, 180ms) var(--moon-ease-premium) var(--blink-delay, 0ms) 1;
-}
-
 #yumiko-mini {
   position: absolute;
   left: 50%;
@@ -1250,21 +1219,6 @@ html[data-chat-box-size="wide"] {
   50% {
     transform: translate3d(0, -0.8px, 0) scale(1.003);
     filter: saturate(1.03);
-  }
-}
-
-@keyframes yumiko-soft-blink {
-  0% {
-    opacity: 0;
-  }
-  42% {
-    opacity: 0.52;
-  }
-  58% {
-    opacity: 0.49;
-  }
-  100% {
-    opacity: 0;
   }
 }
 
