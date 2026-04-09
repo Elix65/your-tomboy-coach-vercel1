@@ -1164,9 +1164,17 @@ function renderMessages(messages = []) {
 function setThinking(state) {
   isThinking = Boolean(state);
   setThinkingPose(isThinking, { reason: 'chat-thinking-state' });
-  if (input) input.disabled = isThinking;
   if (send) send.disabled = isThinking;
   updateChatPanelChrome();
+}
+
+function keepChatInputFocused() {
+  if (!input) return;
+  input.focus({ preventScroll: true });
+  const end = input.value.length;
+  if (typeof input.setSelectionRange === 'function') {
+    input.setSelectionRange(end, end);
+  }
 }
 
 function toHostMode(uiMode) {
@@ -1467,6 +1475,7 @@ async function submitMessage() {
   contextCache.push({ role: 'user', content: message });
   contextCache = contextCache.slice(-20);
   input.value = '';
+  keepChatInputFocused();
   setThinking(true);
   const thinkingNode = addMessage('assistant', 'Pensando…', { thinking: true });
 
@@ -1517,6 +1526,9 @@ async function submitMessage() {
     console.error('[yumiko][chat] sendMessage failed:', error);
   } finally {
     setThinking(false);
+    window.requestAnimationFrame(() => {
+      keepChatInputFocused();
+    });
   }
 }
 
