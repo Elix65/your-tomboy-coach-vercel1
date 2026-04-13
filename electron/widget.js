@@ -75,6 +75,40 @@ const CHARACTER_SOURCES = {
     'right-screen': 'https://rlunygzxvpldfaanhxnj.supabase.co/storage/v1/object/public/cosas%20de%2021-moon/dormida.png'
   }
 };
+const MOOD_TYPES = ['normal', 'sleeping', 'thinking', 'warm', 'protective', 'uwu'];
+const MOOD_VISUAL_SOURCE = {
+  normal: 'normal',
+  sleeping: 'sleeping',
+  thinking: 'thinking',
+  warm: 'normal',
+  protective: 'normal',
+  uwu: 'normal'
+};
+const MOOD_SWITCH_COOLDOWN_MS = {
+  normal: 4000,
+  sleeping: 9000,
+  thinking: 0,
+  warm: 7000,
+  protective: 12000,
+  uwu: 180000
+};
+const MOOD_MIN_HOLD_MS = 3500;
+const INACTIVITY_RETURN_WINDOW_MS = 2 * 60 * 1000;
+const UWU_TRIGGER_CHANCE = 0.08;
+const DESTRUCTIVE_TOPIC_PATTERNS = [
+  /\b(auto-?sabot|autoboicot|sabote[ao])\b/i,
+  /\b(procrastin[a-záéíóúñ]*)\b/i,
+  /\b(me destruye|destruirme|me hace mal|arruinarme)\b/i,
+  /\b(no puedo parar|quiero dejarlo pero)\b/i
+];
+const POSITIVE_AFFECTION_PATTERNS = [
+  /\bgracias\b/i,
+  /\bte quiero\b/i,
+  /\bme gust[oó]\b/i,
+  /\bjaja(ja)?\b/i,
+  /\bamo\b/i,
+  /\bfeliz\b/i
+];
 const SIDE_SWITCH_HYSTERESIS_PX = 48;
 const YUMIKO_HEADROOM_MARGIN_PX = 16;
 const YUMIKO_HEADROOM_SCAN_SAMPLE_WIDTH = 96;
@@ -161,6 +195,29 @@ let pendingCharacterSwapToken = 0;
 let isSleeping = false;
 let isThinkingPose = false;
 let sleepInactivityTimer = null;
+let currentMood = 'normal';
+let visibleMood = 'normal';
+let lastMoodChangeAt = 0;
+const moodCooldowns = new Map();
+const moodScores = {
+  normal: 0,
+  sleeping: 0,
+  thinking: 0,
+  warm: 0,
+  protective: 0,
+  uwu: 0
+};
+const moodMeta = {
+  context: {
+    lastEvent: 'init',
+    isProcessingReply: false,
+    wasSleepingBeforeActivity: false,
+    lastIdleTimeoutAt: 0,
+    lastActivityAt: Date.now(),
+    lastPositiveAt: 0,
+    lastDestructiveAt: 0
+  }
+};
 const preloadedCharacterImages = new Map();
 const characterOpaqueTopRatioCache = new Map();
 let lastKnownBounds = null;
@@ -242,10 +299,171 @@ function resolveCharacterSideFromBounds(bounds) {
   return delta < 0 ? 'left-screen' : 'right-screen';
 }
 
-function getCharacterSrc({ side, sleeping, thinking }) {
+function getCharacterSrc({ side, sleeping, thinking, mood = 'normal' }) {
   const resolvedSide = side === 'left-screen' ? 'left-screen' : 'right-screen';
-  const state = thinking ? 'thinking' : (sleeping ? 'sleeping' : 'normal');
+  const moodKey = MOOD_TYPES.includes(mood) ? mood : 'normal';
+  const state = thinking
+    ? 'thinking'
+    : (sleeping ? 'sleeping' : (MOOD_VISUAL_SOURCE[moodKey] || 'normal'));
   return CHARACTER_SOURCES[state][resolvedSide];
+}
+
+function detectDestructiveTopic(text = '') {
+  const normalized = typeof text === 'string' ? text.trim() : '';
+  if (!normalized) return false;
+  return DESTRUCTIVE_TOPIC_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
+function detectPositiveAffection(text = '') {
+  const normalized = typeof text === 'string' ? text.trim() : '';
+  if (!normalized) return false;
+  return POSITIVE_AFFECTION_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
+function applyMoodScoresDecay(multiplier = 0.78) {
+  Object.keys(moodScores).forEach((mood) => {
+    moodScores[mood] = Number((moodScores[mood] * multiplier).toFixed(4));
+  });
+}
+
+function addMoodScore(mood, points) {
+  if (!Object.prototype.hasOwnProperty.call(moodScores, mood)) return;
+  moodScores[mood] = Math.max(0, moodScores[mood] + Number(points || 0));
+}
+
+function canEnterMoodByCooldown(mood, now) {
+  const previousAt = moodCooldowns.get(mood) || 0;
+  const cooldownMs = MOOD_SWITCH_COOLDOWN_MS[mood] || 0;
+  return (now - previousAt) >= cooldownMs;
+}
+
+function commitMood(nextMood, { reason = 'unknown', force = false } = {}) {
+  const now = Date.now();
+  const normalizedMood = MOOD_TYPES.includes(nextMood) ? nextMood : 'normal';
+  if (!force && normalizedMood === currentMood) return false;
+
+  if (!force && currentMood !== 'thinking') {
+    const heldMs = now - lastMoodChangeAt;
+    if (heldMs < MOOD_MIN_HOLD_MS) {
+      return false;
+    }
+  }
+
+  if (!force && !canEnterMoodByCooldown(normalizedMood, now)) {
+    return false;
+  }
+
+  const previousMood = currentMood;
+  currentMood = normalizedMood;
+  visibleMood = moodMeta.context.isProcessingReply ? 'thinking' : normalizedMood;
+  lastMoodChangeAt = now;
+  moodCooldowns.set(normalizedMood, now);
+  isThinkingPose = visibleMood === 'thinking';
+  isSleeping = visibleMood === 'sleeping';
+  console.info('[yumiko][mood] change', {
+    previousMood,
+    currentMood,
+    visibleMood,
+    reason,
+    force
+  });
+  updateCharacterImageForBounds(lastKnownBounds, { force: true });
+  return true;
+}
+
+function resolveMoodCandidate({ now = Date.now(), trigger = 'unknown', force = false } = {}) {
+  if (moodMeta.context.isProcessingReply) {
+    return { mood: 'thinking', reason: `event:${trigger}:processing` };
+  }
+
+  const weightedCandidates = [
+    { mood: 'protective', weight: moodScores.protective + (now - moodMeta.context.lastDestructiveAt < 45000 ? 1.2 : 0) },
+    { mood: 'sleeping', weight: moodScores.sleeping },
+    { mood: 'warm', weight: moodScores.warm + (now - moodMeta.context.lastPositiveAt < 45000 ? 0.7 : 0) },
+    { mood: 'uwu', weight: moodScores.uwu },
+    { mood: 'normal', weight: 0.35 }
+  ];
+
+  let selected = weightedCandidates
+    .filter((candidate) => candidate.weight > 0.45)
+    .sort((a, b) => b.weight - a.weight)[0];
+
+  if (!selected) {
+    selected = { mood: 'normal' };
+  }
+
+  if (selected.mood === 'uwu') {
+    const hasPositiveContext = (now - moodMeta.context.lastPositiveAt) < 120000;
+    if (!hasPositiveContext || Math.random() > UWU_TRIGGER_CHANCE) {
+      selected = { mood: 'warm', reason: 'uwu-soft-fallback' };
+    }
+  }
+
+  if (!force && (selected.mood === 'warm' || selected.mood === 'normal') && Math.random() < 0.22) {
+    return { mood: currentMood, reason: `event:${trigger}:emotional-inertia` };
+  }
+
+  return { mood: selected.mood, reason: selected.reason || `event:${trigger}` };
+}
+
+function processMoodEvent(eventName, { text = '', force = false } = {}) {
+  const now = Date.now();
+  moodMeta.context.lastEvent = eventName;
+  applyMoodScoresDecay();
+
+  switch (eventName) {
+    case 'idle-timeout':
+      moodMeta.context.lastIdleTimeoutAt = now;
+      addMoodScore('sleeping', 2.6);
+      addMoodScore('warm', -0.5);
+      break;
+    case 'user-returned-after-inactivity':
+      moodMeta.context.wasSleepingBeforeActivity = true;
+      addMoodScore('sleeping', -2.2);
+      addMoodScore('warm', 1.6);
+      break;
+    case 'user-message-sent':
+      moodMeta.context.lastActivityAt = now;
+      addMoodScore('sleeping', -1.8);
+      break;
+    case 'assistant-reply-received':
+      moodMeta.context.isProcessingReply = false;
+      addMoodScore('thinking', -2.8);
+      addMoodScore('warm', 0.25);
+      break;
+    case 'destructive-topic-detected':
+      moodMeta.context.lastDestructiveAt = now;
+      addMoodScore('protective', 2.8);
+      addMoodScore('warm', -0.2);
+      break;
+    case 'positive-affection-detected':
+      moodMeta.context.lastPositiveAt = now;
+      addMoodScore('warm', 2.2);
+      addMoodScore('uwu', 0.9);
+      break;
+    case 'thinking-started':
+      moodMeta.context.isProcessingReply = true;
+      addMoodScore('thinking', 3.2);
+      break;
+    case 'thinking-finished':
+      moodMeta.context.isProcessingReply = false;
+      addMoodScore('thinking', -3.4);
+      break;
+    default:
+      break;
+  }
+
+  if (eventName === 'user-message-sent') {
+    if (detectDestructiveTopic(text)) {
+      processMoodEvent('destructive-topic-detected', { text, force });
+    }
+    if (detectPositiveAffection(text)) {
+      processMoodEvent('positive-affection-detected', { text, force });
+    }
+  }
+
+  const nextCandidate = resolveMoodCandidate({ now, trigger: eventName, force });
+  commitMood(nextCandidate.mood, { reason: nextCandidate.reason, force });
 }
 
 function updateCharacterImageForBounds(bounds, { force = false } = {}) {
@@ -261,7 +479,8 @@ function updateCharacterImageForBounds(bounds, { force = false } = {}) {
   const nextSrc = getCharacterSrc({
     side: resolvedSide,
     sleeping: isSleeping,
-    thinking: isThinkingPose
+    thinking: isThinkingPose,
+    mood: currentMood
   });
   const normalizedCurrent = img.currentSrc || img.src || '';
 
@@ -276,6 +495,7 @@ function updateCharacterImageForBounds(bounds, { force = false } = {}) {
     sideImageMode,
     sleeping: isSleeping,
     thinking: isThinkingPose,
+    mood: currentMood,
     chosenImageSrc: nextSrc
   });
 
@@ -308,37 +528,32 @@ function clearSleepInactivityTimer() {
 }
 
 function setSleepingState(nextSleeping, { reason = 'unknown' } = {}) {
-  const shouldSleep = Boolean(nextSleeping);
-  if (shouldSleep && isThinkingPose) return;
-  if (isSleeping === shouldSleep) return;
-  isSleeping = shouldSleep;
-  console.info('[yumiko][sleeping] state change', { isSleeping, reason });
-  updateCharacterImageForBounds(lastKnownBounds, { force: true });
+  processMoodEvent(nextSleeping ? 'idle-timeout' : 'user-returned-after-inactivity', {
+    force: true,
+    text: reason
+  });
 }
 
 function setThinkingPose(nextThinking, { reason = 'unknown' } = {}) {
-  const shouldThink = Boolean(nextThinking);
-  if (shouldThink && isSleeping) {
-    setSleepingState(false, { reason: `thinking:${reason}` });
-  }
-  if (isThinkingPose === shouldThink) return;
-  isThinkingPose = shouldThink;
-  console.info('[yumiko][thinking-pose] state change', { isThinkingPose, reason });
-  updateCharacterImageForBounds(lastKnownBounds, { force: true });
+  processMoodEvent(nextThinking ? 'thinking-started' : 'thinking-finished', {
+    force: true,
+    text: reason
+  });
 }
 
 function restartSleepInactivityTimer({ reason = 'unknown' } = {}) {
   clearSleepInactivityTimer();
   const sleepAfterMs = normalizeSleepAfterMinutes(settings.sleepAfterMinutes) * 60 * 1000;
   sleepInactivityTimer = window.setTimeout(() => {
-    setSleepingState(true, { reason: `timer-expired:${reason}` });
+    processMoodEvent('idle-timeout', { force: true, text: `timer-expired:${reason}` });
   }, sleepAfterMs);
 }
 
 function registerOverlayActivity({ event = 'unknown', strength = 'strong' } = {}) {
-  if (isSleeping) {
-    setSleepingState(false, { reason: `activity:${event}` });
+  if (isSleeping || (Date.now() - moodMeta.context.lastActivityAt) > INACTIVITY_RETURN_WINDOW_MS) {
+    processMoodEvent('user-returned-after-inactivity', { force: true, text: event });
   }
+  moodMeta.context.lastActivityAt = Date.now();
   restartSleepInactivityTimer({ reason: `activity:${event}` });
   markUserActivity({ event, strength });
 }
@@ -1472,6 +1687,7 @@ async function submitMessage() {
     at: new Date().toISOString()
   });
   addMessage('user', message);
+  processMoodEvent('user-message-sent', { text: message });
   contextCache.push({ role: 'user', content: message });
   contextCache = contextCache.slice(-20);
   input.value = '';
@@ -1491,6 +1707,7 @@ async function submitMessage() {
 
     removeThinkingNode(thinkingNode);
     addMessage('assistant', reply);
+    processMoodEvent('assistant-reply-received', { text: reply });
 
     const replyMessageId = typeof result?.replyId === 'string'
       ? result.replyId
@@ -1519,6 +1736,7 @@ async function submitMessage() {
 
     removeThinkingNode(thinkingNode);
     addMessage('assistant', fallback);
+    processMoodEvent('assistant-reply-received', { text: fallback });
     pendingAssistantReplyAfterUserMessage = false;
     if (authCode) {
       console.warn(`[yumiko][auth] ${authCode} on widget sendMessage`);
@@ -1731,6 +1949,7 @@ async function requestAutoNudge() {
         contextCache.push({ role: 'assistant', content: message });
         contextCache = contextCache.slice(-20);
       }
+      processMoodEvent('assistant-reply-received', { text: message });
       return { sent: true, reason: 'message-generated', messageSource };
     }
 
@@ -2163,6 +2382,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const message = typeof event?.detail?.message === 'string' ? event.detail.message : '';
     if (message) {
       addMessage('assistant', message);
+      processMoodEvent('assistant-reply-received', { text: message });
     }
   });
   window.addEventListener('yumiko:panic-reset', () => {
