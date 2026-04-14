@@ -316,6 +316,9 @@ function setupPublicArrivalFlow() {
   const arrivalEmailInput = document.getElementById('arrival-email');
   const arrivalPasswordInput = document.getElementById('arrival-password');
   const arrivalInviteLinks = Array.from(document.querySelectorAll('[data-private-door-link]'));
+  const arrivalConfirmationState = document.getElementById('arrival-confirmation-state');
+  const arrivalConfirmedBtn = document.getElementById('btn-arrival-confirmed');
+  const arrivalResendBtn = document.getElementById('btn-arrival-resend');
 
   const RITUAL_LINES_BY_STEP = {
     '1': 'Tu llegada empieza ahora.',
@@ -809,6 +812,34 @@ function setupPublicArrivalFlow() {
     return null;
   }
 
+  function setArrivalAccessMode(mode = 'form') {
+    const showConfirmation = mode === 'confirmation';
+
+    if (arrivalCheckoutForm) {
+      arrivalCheckoutForm.classList.toggle('hidden', showConfirmation);
+      if (showConfirmation) {
+        arrivalCheckoutForm.setAttribute('aria-hidden', 'true');
+      } else {
+        arrivalCheckoutForm.removeAttribute('aria-hidden');
+      }
+    }
+
+    if (arrivalConfirmationState) {
+      arrivalConfirmationState.classList.toggle('hidden', !showConfirmation);
+      arrivalConfirmationState.setAttribute('aria-hidden', String(!showConfirmation));
+    }
+
+    if (showConfirmation) {
+      arrivalConfirmedBtn?.focus();
+    }
+  }
+
+  function isSignupConfirmationPending(signUpAttempt) {
+    const hasCreatedUser = Boolean(signUpAttempt?.data?.user?.id);
+    const hasSession = Boolean(signUpAttempt?.data?.session);
+    return hasCreatedUser && !hasSession;
+  }
+
   async function submitArrivalAccess() {
     const email = normalizeEmail(arrivalEmailInput?.value || '');
     const password = arrivalPasswordInput?.value || '';
@@ -827,34 +858,46 @@ function setupPublicArrivalFlow() {
     }
 
     clearAuthMessage();
+    setArrivalAccessMode('form');
     if (arrivalContinueBtn) {
       arrivalContinueBtn.disabled = true;
     }
 
     try {
       const signInAttempt = await supabaseClient.auth.signInWithPassword({ email, password });
-      if (signInAttempt?.error) {
-        const signUpAttempt = await supabaseClient.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              arrival_name: getArrivalName(),
-              arrival_source: 'public_onboarding'
-            }
-          }
-        });
-        if (signUpAttempt?.error) {
-          throw signUpAttempt.error;
-        }
+      if (!signInAttempt?.error) {
+        window.sessionStorage.setItem('yumiko_arrival_email', email);
+        completeSignedInArrival();
+        return;
+      }
 
-        const secondSignInAttempt = await supabaseClient.auth.signInWithPassword({ email, password });
-        if (secondSignInAttempt?.error) {
-          throw secondSignInAttempt.error;
+      const signUpAttempt = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            arrival_name: getArrivalName(),
+            arrival_source: 'public_onboarding'
+          }
         }
+      });
+      if (signUpAttempt?.error) {
+        throw signUpAttempt.error;
       }
 
       window.sessionStorage.setItem('yumiko_arrival_email', email);
+
+      if (isSignupConfirmationPending(signUpAttempt)) {
+        setArrivalAccessMode('confirmation');
+        clearAuthMessage();
+        return;
+      }
+
+      const secondSignInAttempt = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (secondSignInAttempt?.error) {
+        throw secondSignInAttempt.error;
+      }
+
       completeSignedInArrival();
     } catch (error) {
       console.error('Arrival access error:', error?.payload || error?.message || error);
@@ -913,6 +956,46 @@ function setupPublicArrivalFlow() {
     });
   }
 
+  if (arrivalConfirmedBtn) {
+    arrivalConfirmedBtn.addEventListener('click', async () => {
+      await submitArrivalAccess();
+    });
+  }
+
+  if (arrivalResendBtn) {
+    arrivalResendBtn.addEventListener('click', async () => {
+      const email = normalizeEmail(arrivalEmailInput?.value || window.sessionStorage.getItem('yumiko_arrival_email') || '');
+      if (!email) {
+        showAuthMessage('Decime con qué correo te registraste y lo reenviamos.');
+        setArrivalAccessMode('form');
+        arrivalEmailInput?.focus();
+        return;
+      }
+
+      arrivalResendBtn.disabled = true;
+      try {
+        const resendAttempt = await supabaseClient.auth.resend({
+          type: 'signup',
+          email,
+          options: {
+            emailRedirectTo: `${window.location.origin}${postLoginRedirectPath}`
+          }
+        });
+
+        if (resendAttempt?.error) {
+          throw resendAttempt.error;
+        }
+
+        showAuthMessage('Listo. Te reenviamos el enlace para abrir tu acceso.', 'success');
+      } catch (error) {
+        console.error('Arrival resend signup confirmation error:', error?.message || error);
+        showAuthMessage('No pude reenviar el enlace por ahora. Probá de nuevo en un momento.');
+      } finally {
+        arrivalResendBtn.disabled = false;
+      }
+    });
+  }
+
   const observer = new MutationObserver(() => {
     if (loginContainer.dataset.step === '2') {
       updateArrivalWelcomeName();
@@ -921,6 +1004,7 @@ function setupPublicArrivalFlow() {
     }
 
     if (loginContainer.dataset.step === '3') {
+      setArrivalAccessMode('form');
       arrivalEmailInput?.focus();
     }
   });
