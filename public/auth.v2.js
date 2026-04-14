@@ -314,24 +314,13 @@ function setupPublicArrivalFlow() {
   const arrivalNameDisplay = document.getElementById('arrival-name-display');
   const arrivalCheckoutForm = document.getElementById('arrival-direct-checkout-form');
   const arrivalEmailInput = document.getElementById('arrival-email');
-  const arrivalProviderRecommendation = document.getElementById('arrival-provider-recommendation');
-  const arrivalProviderPrimary = document.getElementById('arrival-provider-primary');
-  const arrivalProviderSecondary = document.getElementById('arrival-provider-secondary');
+  const arrivalPasswordInput = document.getElementById('arrival-password');
   const arrivalInviteLinks = Array.from(document.querySelectorAll('[data-private-door-link]'));
 
   const RITUAL_LINES_BY_STEP = {
     '1': 'Tu llegada empieza ahora.',
     '2': 'Yumiko quiere leerte un poco más.',
-    '3': 'Tu email queda resguardado antes del acceso.',
-    '4': 'Elegí cómo querés abrir tu acceso.'
-  };
-  const ARRIVAL_PROVIDER_LABELS = {
-    mercadopago: 'Mercado Pago',
-    paypal: 'PayPal'
-  };
-  const ARRIVAL_PROVIDER_RECOMMENDATION_COPY = {
-    mercadopago: 'Mercado Pago',
-    paypal: 'PayPal'
+    '3': 'Tu acceso queda resguardado para volver cuando quieras.'
   };
   const ARRIVAL_CHAT_STATE_KEY = 'yumiko_arrival_chat_state';
   const ARRIVAL_CHAT_TRANSCRIPT_KEY = 'yumiko_arrival_chat_transcript';
@@ -602,7 +591,7 @@ function setupPublicArrivalFlow() {
         pushArrivalMessage('assistant', 'Bien. Creo que puedo abrirte la siguiente puerta.', { isClosure: true });
         updateArrivalChatStatus('La puerta se abrió');
         scheduleArrivalChat(async () => {
-          pushArrivalMessage('assistant', 'Dejame guardar tu email y seguimos.', { isClosure: true });
+          pushArrivalMessage('assistant', 'Creá tu acceso y entrá. Te espero del otro lado.', { isClosure: true });
           await setOnboardingStep(3, RITUAL_LINES_BY_STEP);
         }, 900);
         return;
@@ -796,70 +785,9 @@ function setupPublicArrivalFlow() {
     }
   }
 
-  function buildArrivalReturnUrl(provider) {
-    const email = normalizeEmail(window.sessionStorage.getItem('yumiko_arrival_email') || '');
-    const returnUrl = new URL('/arrival/return', window.location.origin);
-    if (email) {
-      returnUrl.searchParams.set('email', email);
-    }
-    if (provider) {
-      returnUrl.searchParams.set('provider', provider);
-    }
-    return returnUrl;
-  }
-
-  function withReturnParams(paymentUrl, provider) {
-    const normalizedPaymentUrl = String(paymentUrl || '').trim();
-    if (!normalizedPaymentUrl) {
-      return normalizedPaymentUrl;
-    }
-
-    const urlObject = new URL(normalizedPaymentUrl);
-    const returnUrl = buildArrivalReturnUrl(provider);
-
-    urlObject.searchParams.set('return', returnUrl.toString());
-    urlObject.searchParams.set('cancel_return', returnUrl.toString());
-    urlObject.searchParams.set('custom', normalizeEmail(window.sessionStorage.getItem('yumiko_arrival_email') || ''));
-    urlObject.searchParams.set('external_reference', normalizeEmail(window.sessionStorage.getItem('yumiko_arrival_email') || ''));
-    urlObject.searchParams.set('back_url', returnUrl.toString());
-    urlObject.searchParams.set('back_url_success', returnUrl.toString());
-    urlObject.searchParams.set('back_url_pending', returnUrl.toString());
-    urlObject.searchParams.set('back_url_failure', returnUrl.toString());
-
-    return urlObject.toString();
-  }
-
-  function updateArrivalProviderChoice(data) {
-    const recommendedProvider = String(data?.recommended_provider || '').trim().toLowerCase();
-    const alternativeProvider = String(data?.alternative_provider || '').trim().toLowerCase();
-    const paymentUrls = data?.payment_urls && typeof data.payment_urls === 'object' ? data.payment_urls : {};
-    const recommendedUrl = withReturnParams(paymentUrls?.[recommendedProvider], recommendedProvider);
-    const alternativeUrl = withReturnParams(paymentUrls?.[alternativeProvider], alternativeProvider);
-    const recommendedLabel = ARRIVAL_PROVIDER_LABELS[recommendedProvider];
-    const alternativeLabel = ARRIVAL_PROVIDER_LABELS[alternativeProvider];
-
-    if (!recommendedLabel || !alternativeLabel || !recommendedUrl || !alternativeUrl) {
-      throw new Error('missing_payment_options');
-    }
-
-    if (arrivalProviderRecommendation) {
-      arrivalProviderRecommendation.textContent = ARRIVAL_PROVIDER_RECOMMENDATION_COPY[recommendedProvider] || ARRIVAL_PROVIDER_RECOMMENDATION_COPY.paypal;
-    }
-
-    if (arrivalProviderPrimary) {
-      arrivalProviderPrimary.textContent = `Continuar con ${recommendedLabel}`;
-      arrivalProviderPrimary.href = recommendedUrl;
-    }
-
-    if (arrivalProviderSecondary) {
-      arrivalProviderSecondary.textContent = `Usar ${alternativeLabel}`;
-      arrivalProviderSecondary.href = alternativeUrl;
-    }
-  }
-
-  function validateArrivalCheckoutEmail(email) {
+  function validateArrivalAccessEmail(email) {
     if (!email) {
-      return 'Dejanos tu email para poder abrir tu acceso ahora.';
+      return 'Dejemos tu email para resguardar esta entrada.';
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -869,13 +797,32 @@ function setupPublicArrivalFlow() {
     return null;
   }
 
-  async function submitArrivalCheckout() {
-    const email = normalizeEmail(arrivalEmailInput?.value || '');
-    const validationError = validateArrivalCheckoutEmail(email);
+  function validateArrivalAccessPassword(password) {
+    if (!password) {
+      return 'Elegí una contraseña para resguardar tu acceso.';
+    }
 
-    if (validationError) {
-      showAuthMessage(validationError);
+    if (password.length < 8) {
+      return 'Tu contraseña necesita al menos 8 caracteres.';
+    }
+
+    return null;
+  }
+
+  async function submitArrivalAccess() {
+    const email = normalizeEmail(arrivalEmailInput?.value || '');
+    const password = arrivalPasswordInput?.value || '';
+    const emailValidationError = validateArrivalAccessEmail(email);
+    const passwordValidationError = validateArrivalAccessPassword(password);
+
+    if (emailValidationError) {
+      showAuthMessage(emailValidationError);
       arrivalEmailInput?.focus();
+      return;
+    }
+    if (passwordValidationError) {
+      showAuthMessage(passwordValidationError);
+      arrivalPasswordInput?.focus();
       return;
     }
 
@@ -885,18 +832,40 @@ function setupPublicArrivalFlow() {
     }
 
     try {
-      const data = await postJson('/api/arrival/request', {
-        email,
-        source: 'public_direct_checkout'
-      });
+      const signInAttempt = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (signInAttempt?.error) {
+        const signUpAttempt = await supabaseClient.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              arrival_name: getArrivalName(),
+              arrival_source: 'public_onboarding'
+            }
+          }
+        });
+        if (signUpAttempt?.error) {
+          throw signUpAttempt.error;
+        }
 
-      updateArrivalProviderChoice(data);
+        const secondSignInAttempt = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (secondSignInAttempt?.error) {
+          throw secondSignInAttempt.error;
+        }
+      }
+
       window.sessionStorage.setItem('yumiko_arrival_email', email);
-      await setOnboardingStep(4, RITUAL_LINES_BY_STEP);
+      completeSignedInArrival();
     } catch (error) {
-      console.error('Arrival checkout error:', error?.payload || error?.message || error);
-      const fallbackMessage = 'Uhm… algo interrumpió tu acceso. Intentemos de nuevo en un momento.';
-      showAuthMessage(error?.payload?.error_description || error?.payload?.error || fallbackMessage);
+      console.error('Arrival access error:', error?.payload || error?.message || error);
+      const message = String(error?.message || '').toLowerCase();
+      if (message.includes('already registered') || message.includes('already been registered')) {
+        showAuthMessage('Ese email ya tiene acceso. Probá entrando con tu contraseña.');
+      } else if (message.includes('invalid login credentials')) {
+        showAuthMessage('Ese acceso ya existe, pero la contraseña no coincide.');
+      } else {
+        showAuthMessage('Uhm… algo interrumpió tu acceso. Intentemos de nuevo en un momento.');
+      }
     } finally {
       if (arrivalContinueBtn) {
         arrivalContinueBtn.disabled = false;
@@ -940,7 +909,7 @@ function setupPublicArrivalFlow() {
   if (arrivalCheckoutForm) {
     arrivalCheckoutForm.addEventListener('submit', async (event) => {
       event.preventDefault();
-      await submitArrivalCheckout();
+      await submitArrivalAccess();
     });
   }
 
@@ -953,11 +922,6 @@ function setupPublicArrivalFlow() {
 
     if (loginContainer.dataset.step === '3') {
       arrivalEmailInput?.focus();
-      return;
-    }
-
-    if (loginContainer.dataset.step === '4') {
-      arrivalProviderPrimary?.focus();
     }
   });
 
