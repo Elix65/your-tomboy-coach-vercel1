@@ -1002,6 +1002,63 @@ body {
   letter-spacing: 0.01em;
 }
 
+
+.arrival-confirmation-state {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 2px;
+  padding: 18px 20px;
+  border-radius: 24px;
+  border: 1px solid rgba(214, 172, 140, 0.26);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(188, 126, 93, 0.16), transparent 52%),
+    linear-gradient(180deg, rgba(52, 34, 44, 0.72), rgba(31, 22, 30, 0.88));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 234, 214, 0.08),
+    0 20px 42px rgba(9, 5, 12, 0.34);
+}
+
+.arrival-confirmation-state .login-eyebrow {
+  color: rgba(240, 211, 179, 0.9);
+  font-size: 11px;
+}
+
+.arrival-confirmation-title {
+  margin: 0;
+  font-size: clamp(26px, 3.8vw, 34px);
+  line-height: 1.1;
+  color: #f7ead9;
+  text-shadow: 0 10px 24px rgba(8, 4, 12, 0.36);
+}
+
+.arrival-confirmation-body {
+  margin: 0;
+  color: rgba(238, 223, 208, 0.88);
+  line-height: 1.5;
+}
+
+.arrival-confirmation-note {
+  margin: 0;
+  color: rgba(217, 195, 173, 0.76);
+  font-size: 13px;
+}
+
+.arrival-confirmation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.arrival-confirmation-actions .login-btn {
+  margin-top: 0;
+}
+
+.arrival-confirmation-actions .login-btn.secondary {
+  min-height: 44px;
+}
+
 #login-container[data-step="3"] {
   background:
     linear-gradient(162deg, rgba(37, 22, 33, 0.88) 0%, rgba(27, 18, 28, 0.85) 52%, rgba(20, 15, 21, 0.9) 100%),
