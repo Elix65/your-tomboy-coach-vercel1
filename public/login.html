@@ -94,9 +94,9 @@
             </div>
 
             <div class="onboarding-step arrival-step arrival-step-3 hidden" data-onboarding-step="3" aria-hidden="true">
-              <p class="login-eyebrow">Tu acceso reservado</p>
-              <h2 id="arrival-welcome-title" class="login-title">Bien. <span id="arrival-name-display">Vos</span> ya podés dejar tu email.</h2>
-              <p class="login-subtitle">Si hay encaje, Yumiko resguarda tu email antes de mostrarte la pasarela.</p>
+              <p class="login-eyebrow">TU ACCESO RESERVADO</p>
+              <h2 id="arrival-welcome-title" class="login-title">Tu acceso ya está listo, <span id="arrival-name-display">vos</span>.</h2>
+              <p class="login-subtitle">Creá tu entrada reservada para pasar a hablar con Yumiko.</p>
 
               <form id="arrival-direct-checkout-form" class="arrival-auth-form arrival-request-form" novalidate>
                 <div class="arrival-form-block">
@@ -107,28 +107,17 @@
                   </div>
                 </div>
 
-                <button id="btn-arrival-continue" class="login-btn" type="submit">Continuar al acceso</button>
+                <div class="arrival-form-block">
+                  <label for="arrival-password" class="arrival-label">Contraseña</label>
+                  <div class="input-wrap password-wrap">
+                    <span class="input-icon" aria-hidden="true"></span>
+                    <input id="arrival-password" type="password" placeholder="Tu contraseña" autocomplete="new-password" aria-label="Contraseña">
+                  </div>
+                </div>
+
+                <button id="btn-arrival-continue" class="login-btn" type="submit">Entrar con Yumiko</button>
               </form>
-              <p class="login-copy arrival-step-3-copy">Tu email queda resguardado antes de elegir la pasarela.</p>
-            </div>
-
-            <div class="onboarding-step arrival-step arrival-step-4 hidden" data-onboarding-step="4" aria-hidden="true">
-              <p class="login-eyebrow">TU ACCESO RESERVADO</p>
-              <h2 class="login-title">Elegí cómo querés abrir tu acceso.</h2>
-              <p class="login-subtitle">Tu email ya quedó resguardado. Solo falta elegir la pasarela.</p>
-
-              <div class="arrival-provider-card" aria-live="polite">
-                <p class="arrival-provider-card-eyebrow">Recomendado para tu ubicación</p>
-                <p id="arrival-provider-recommendation" class="arrival-provider-recommendation">PayPal</p>
-              </div>
-
-              <div class="arrival-provider-actions">
-                <a id="arrival-provider-primary" class="login-btn arrival-provider-btn arrival-provider-btn--primary" href="#" rel="noreferrer noopener">Continuar con PayPal</a>
-                <p class="arrival-provider-divider" aria-hidden="true">o si lo preferís</p>
-                <a id="arrival-provider-secondary" class="premium-secondary-door arrival-provider-btn arrival-provider-btn--secondary" href="#" rel="noreferrer noopener">Usar Mercado Pago</a>
-              </div>
-
-              <p class="login-copy arrival-step-4-copy">Tu acceso se abre apenas completes la pasarela.</p>
+              <p class="login-copy arrival-step-3-copy">Tu acceso queda resguardado para volver cuando quieras.</p>
             </div>
 
           </div>
@@ -139,7 +128,6 @@
         <div class="login-steps" id="login-steps" data-step="1" aria-live="polite">
           <span class="login-steps-text" id="login-steps-text">Tu llegada empieza ahora.</span>
           <span class="login-steps-phases" aria-hidden="true">
-            <span class="login-steps-phase"></span>
             <span class="login-steps-phase"></span>
             <span class="login-steps-phase"></span>
             <span class="login-steps-phase"></span>
